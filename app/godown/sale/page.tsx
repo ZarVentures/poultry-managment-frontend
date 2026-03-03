@@ -252,7 +252,7 @@ export default function GodownSalePage() {
 
                 <div className="flex justify-end">
                   <div className="text-lg font-semibold">
-                    Total: ${calculateTotal()}
+                    Total: ₹{calculateTotal()}
                   </div>
                 </div>
 
@@ -309,8 +309,8 @@ export default function GodownSalePage() {
                       <TableCell>
                         {sale.quantity} {sale.unit}
                       </TableCell>
-                      <TableCell>${Number(sale.rate).toFixed(2)}</TableCell>
-                      <TableCell>${Number(sale.totalAmount).toFixed(2)}</TableCell>
+                      <TableCell>₹{Number(sale.rate).toFixed(2)}</TableCell>
+                      <TableCell>₹{Number(sale.totalAmount).toFixed(2)}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           <Button variant="ghost" size="sm" onClick={() => handleEdit(sale)}>

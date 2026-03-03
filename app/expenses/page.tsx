@@ -276,7 +276,7 @@ export default function ExpensesPage() {
                       <TableCell>{new Date(expense.expenseDate).toLocaleDateString()}</TableCell>
                       <TableCell className="capitalize">{expense.category}</TableCell>
                       <TableCell>{expense.description}</TableCell>
-                      <TableCell>${Number(expense.amount).toFixed(2)}</TableCell>
+                      <TableCell>₹{Number(expense.amount).toFixed(2)}</TableCell>
                       <TableCell className="capitalize">{expense.paymentMethod.replace('_', ' ')}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">

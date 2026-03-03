@@ -368,7 +368,7 @@ export default function SalesPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Total Amount</Label>
-                    <Input value={`$${calculateTotal()}`} disabled className="font-semibold" />
+                    <Input value={`₹${calculateTotal()}`} disabled className="font-semibold" />
                   </div>
                 </div>
 
@@ -404,7 +404,7 @@ export default function SalesPage() {
                   <div className="space-y-2">
                     <Label>Balance</Label>
                     <Input 
-                      value={`$${calculateBalance()}`} 
+                      value={`₹${calculateBalance()}`} 
                       disabled 
                       className={`font-semibold ${parseFloat(calculateBalance()) > 0 ? 'text-red-600' : 'text-green-600'}`}
                     />
@@ -468,7 +468,7 @@ export default function SalesPage() {
                       <TableCell>
                         {sale.quantity} {sale.unit}
                       </TableCell>
-                      <TableCell>${Number(sale.totalAmount).toFixed(2)}</TableCell>
+                      <TableCell>₹{Number(sale.totalAmount).toFixed(2)}</TableCell>
                       <TableCell>
                         <span
                           className={`px-2 py-1 rounded text-xs ${

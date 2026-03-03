@@ -289,7 +289,7 @@ export default function GodownInwardPage() {
 
                 <div className="flex justify-end">
                   <div className="text-lg font-semibold">
-                    Total: ${calculateTotal()}
+                    Total: ₹{calculateTotal()}
                   </div>
                 </div>
 
@@ -348,8 +348,8 @@ export default function GodownInwardPage() {
                       <TableCell>
                         {entry.quantity} {entry.unit}
                       </TableCell>
-                      <TableCell>${Number(entry.rate).toFixed(2)}</TableCell>
-                      <TableCell>${Number(entry.totalAmount).toFixed(2)}</TableCell>
+                      <TableCell>₹{Number(entry.rate).toFixed(2)}</TableCell>
+                      <TableCell>₹{Number(entry.totalAmount).toFixed(2)}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           <Button variant="ghost" size="sm" onClick={() => handleEdit(entry)}>

@@ -237,7 +237,7 @@ export default function GodownExpensePage() {
                       <TableCell>{new Date(expense.expenseDate).toLocaleDateString()}</TableCell>
                       <TableCell>{expense.category || "-"}</TableCell>
                       <TableCell>{expense.description}</TableCell>
-                      <TableCell>${Number(expense.amount).toFixed(2)}</TableCell>
+                      <TableCell>₹{Number(expense.amount).toFixed(2)}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           <Button variant="ghost" size="sm" onClick={() => handleEdit(expense)}>
