@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Users, UserCheck, Shield, Briefcase } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { usersApi, type User as ApiUser } from "@/lib/api"
 import { toast } from "sonner"
@@ -145,6 +145,12 @@ export default function UsersPage() {
 
   if (!mounted) return null
 
+  const totalUsers = users.length
+  const activeUsers = users.filter(u => u.status === 'active').length
+  const administrators = users.filter(u => u.role === 'admin').length
+  const managers = users.filter(u => u.role === 'manager').length
+  const staff = users.filter(u => u.role === 'staff').length
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -243,6 +249,52 @@ export default function UsersPage() {
               </div>
             </DialogContent>
           </Dialog>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalUsers}</div>
+              <p className="text-xs text-muted-foreground mt-1">All registered users</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+              <UserCheck className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{activeUsers}</div>
+              <p className="text-xs text-muted-foreground mt-1">Currently active</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Administrators</CardTitle>
+              <Shield className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{administrators}</div>
+              <p className="text-xs text-muted-foreground mt-1">Admin role users</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Managers & Staff</CardTitle>
+              <Briefcase className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{managers + staff}</div>
+              <p className="text-xs text-muted-foreground mt-1">{managers} managers, {staff} staff</p>
+            </CardContent>
+          </Card>
         </div>
 
         <Card>
