@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X, Users, UserCheck, Shield, Briefcase } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Users, UserCheck, Shield, Briefcase, Lock, Unlock, Search, Filter } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { usersApi, type User as ApiUser } from "@/lib/api"
 import { toast } from "sonner"
@@ -327,7 +327,7 @@ export default function UsersPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalUsers}</div>
-              <p className="text-xs text-muted-foreground mt-1">All registered users</p>
+              <button className="text-xs text-blue-600 hover:underline mt-1">View details</button>
             </CardContent>
           </Card>
 
@@ -337,8 +337,8 @@ export default function UsersPage() {
               <UserCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.activeUsers}</div>
-              <p className="text-xs text-muted-foreground mt-1">Currently active</p>
+              <div className="text-2xl font-bold">{stats.activeUsers}</div>
+              <button className="text-xs text-blue-600 hover:underline mt-1">View details</button>
             </CardContent>
           </Card>
 
@@ -349,37 +349,46 @@ export default function UsersPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.administrators}</div>
-              <p className="text-xs text-muted-foreground mt-1">Admin role users</p>
+              <button className="text-xs text-blue-600 hover:underline mt-1">View details</button>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Managers & Staff</CardTitle>
+              <CardTitle className="text-sm font-medium">Operators</CardTitle>
               <Briefcase className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.managers + stats.staff}</div>
-              <p className="text-xs text-muted-foreground mt-1">{stats.managers} managers, {stats.staff} staff</p>
+              <button className="text-xs text-blue-600 hover:underline mt-1">View details</button>
             </CardContent>
           </Card>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Users List</CardTitle>
+            <CardTitle>User Accounts List</CardTitle>
+            <p className="text-sm text-muted-foreground">Manage all user accounts and permissions</p>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex gap-4">
-                <div className="flex-1">
+              <div className="flex gap-4 items-center">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search by name, email, or phone..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="max-w-sm"
+                    className="pl-10"
                   />
                 </div>
+                <Button variant="outline" className="gap-2">
+                  <Filter size={16} />
+                  Filter
+                </Button>
+              </div>
+
+              <div className="flex gap-4">
                 <Select value={roleFilter} onValueChange={setRoleFilter}>
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Filter by role" />
@@ -421,6 +430,7 @@ export default function UsersPage() {
                       <TableHead>Role</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Join Date</TableHead>
+                      <TableHead>Last Login</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -430,20 +440,41 @@ export default function UsersPage() {
                         <TableCell className="font-medium">{user.name}</TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>{user.phone || "-"}</TableCell>
-                        <TableCell className="capitalize">{user.role}</TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleToggleStatus(user.id, user.status)}
-                            className={user.status === "active" ? "text-green-600" : "text-red-600"}
-                          >
-                            {user.status}
-                          </Button>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            user.role === 'admin' ? 'bg-red-100 text-red-800' : 
+                            user.role === 'manager' ? 'bg-blue-100 text-blue-800' : 
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {user.role === 'admin' ? 'Admin' : user.role === 'manager' ? 'Manager' : 'Operator'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {user.status === 'active' ? 'Active' : 'Inactive'}
+                            </span>
+                            {user.status === 'inactive' && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                Locked
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>{new Date(user.joinDate).toLocaleDateString()}</TableCell>
+                        <TableCell>{user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleToggleStatus(user.id, user.status)}
+                              title={user.status === "active" ? "Lock user" : "Unlock user"}
+                            >
+                              {user.status === "active" ? <Unlock size={16} className="text-green-600" /> : <Lock size={16} className="text-red-600" />}
+                            </Button>
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(user)}>
                               <Edit2 size={16} />
                             </Button>
