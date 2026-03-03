@@ -64,10 +64,11 @@ export default function FarmersPage() {
     try {
       setLoading(true)
       const data = await farmersApi.getAll()
-      setFarmers(data)
+      setFarmers(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Failed to fetch farmers:', error)
       toast.error('Failed to load farmers')
+      setFarmers([]) // Set empty array on error
     } finally {
       setLoading(false)
     }
@@ -187,6 +188,10 @@ export default function FarmersPage() {
   }
 
   const getFilteredAndSortedFarmers = () => {
+    if (!Array.isArray(farmers)) {
+      return []
+    }
+    
     let filtered = farmers
 
     // Apply date range filter
@@ -474,7 +479,7 @@ export default function FarmersPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Farmers</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{farmers.length}</div>
+              <div className="text-3xl font-bold">{Array.isArray(farmers) ? farmers.length : 0}</div>
             </CardContent>
           </Card>
           <Card>
@@ -483,7 +488,7 @@ export default function FarmersPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">
-                {farmers.filter((f) => (f.status || "active") === "active").length}
+                {Array.isArray(farmers) ? farmers.filter((f) => (f.status || "active") === "active").length : 0}
               </div>
           </CardContent>
         </Card>
@@ -493,7 +498,7 @@ export default function FarmersPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">
-                {farmers.filter((f) => (f.status || "active") === "inactive").length}
+                {Array.isArray(farmers) ? farmers.filter((f) => (f.status || "active") === "inactive").length : 0}
               </div>
             </CardContent>
           </Card>
