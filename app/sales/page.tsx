@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,10 +9,11 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Download, Printer } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Combobox } from "@/components/ui/combobox"
+import { DateRangeFilter } from "@/components/date-range-filter"
 import { salesApi, retailersApi, type Sale as ApiSale, type Retailer } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -23,6 +24,9 @@ export default function SalesPage() {
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
+  const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [formData, setFormData] = useState({
     invoiceNumber: "",
     customerName: "",
@@ -262,6 +266,123 @@ export default function SalesPage() {
     return (net - received).toFixed(2)
   }
 
+  const handleDateRangeChange = (start: Date | undefined, end: Date | undefined) => {
+    setDateRangeStart(start)
+    setDateRangeEnd(end)
+  }
+
+  const stats = useMemo(() => {
+    const totalSales = sales.length
+    const totalBirds = sales.reduce((sum, sale) => sum + Number(sale.quantity), 0)
+    const totalValue = sales.reduce((sum, sale) => sum + Number(sale.netAmount || sale.totalAmount), 0)
+    const totalReceived = sales.reduce((sum, sale) => sum + Number(sale.amountReceived), 0)
+    const totalCredit = totalValue - totalReceived
+
+    return {
+      totalSales,
+      totalBirds,
+      totalValue,
+      totalReceived,
+      totalCredit,
+    }
+  }, [sales])
+
+  const filteredSales = useMemo(() => {
+    let filtered = [...sales]
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter(
+        (sale) =>
+          sale.invoiceNumber.toLowerCase().includes(query) ||
+          sale.customerName.toLowerCase().includes(query)
+      )
+    }
+
+    // Apply date range filter
+    if (dateRangeStart && dateRangeEnd) {
+      const start = new Date(dateRangeStart)
+      const end = new Date(dateRangeEnd)
+      start.setHours(0, 0, 0, 0)
+      end.setHours(23, 59, 59, 999)
+
+      filtered = filtered.filter((sale) => {
+        const saleDate = new Date(sale.saleDate)
+        saleDate.setHours(0, 0, 0, 0)
+        return saleDate >= start && saleDate <= end
+      })
+    }
+
+    return filtered
+  }, [sales, searchQuery, dateRangeStart, dateRangeEnd])
+
+  const handleDownloadPDF = () => {
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Sales Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1 { text-align: center; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+            .header { margin-bottom: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Sales Report</h1>
+            <div><strong>Total Sales:</strong> ${stats.totalSales}</div>
+            <div><strong>Total Value:</strong> ₹${stats.totalValue.toFixed(2)}</div>
+            <div><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Invoice No</th>
+                <th>Shop Name</th>
+                <th>Sale Date</th>
+                <th>Rate per Kg</th>
+                <th>Bird Qty</th>
+                <th>Total Value</th>
+                <th>Sale Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredSales.map(sale => `
+                <tr>
+                  <td>${sale.invoiceNumber}</td>
+                  <td>${sale.customerName}</td>
+                  <td>${new Date(sale.saleDate).toLocaleDateString()}</td>
+                  <td>₹${Number(sale.unitPrice).toFixed(2)}</td>
+                  <td>${sale.quantity}</td>
+                  <td>₹${Number(sale.netAmount || sale.totalAmount).toFixed(2)}</td>
+                  <td>${sale.saleMode === 'from_vehicle' ? 'Vehicle' : 'Godown'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `
+
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.onload = () => {
+        printWindow.print()
+      }
+    }
+  }
+
+  const handlePrintReport = () => {
+    handleDownloadPDF()
+  }
+
   if (!mounted) return null
 
   return (
@@ -269,14 +390,14 @@ export default function SalesPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold">Sales</h1>
-            <p className="text-muted-foreground">Manage your sales transactions</p>
+            <h1 className="text-3xl font-bold">Sales Tracking</h1>
+            <p className="text-muted-foreground">Record and manage customer sales</p>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
               <Button onClick={resetForm}>
                 <Plus className="mr-2" size={20} />
-                New Sale
+                Add New Sale
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" aria-describedby="dialog-description">
@@ -624,77 +745,148 @@ export default function SalesPage() {
           </Dialog>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Sales (no)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{stats.totalSales}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Birds Sales (Qty)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{stats.totalBirds.toFixed(0)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Value (₹)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">₹{stats.totalValue.toFixed(2)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total payment Received (₹)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-600">₹{stats.totalReceived.toFixed(2)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Credit (₹)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-red-600">₹{stats.totalCredit.toFixed(2)}</div>
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
           <CardHeader>
-            <CardTitle>Sales List</CardTitle>
+            <div className="flex justify-between items-start">
+              <div>
+                <CardTitle>Sales List</CardTitle>
+                <p className="text-sm text-muted-foreground">View and manage all sales transactions</p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <DateRangeFilter
+                  startDate={dateRangeStart}
+                  endDate={dateRangeEnd}
+                  onDateRangeChange={handleDateRangeChange}
+                />
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium whitespace-nowrap">Filter:</Label>
+                  <Input
+                    placeholder="Search by invoice, shop name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-[250px]"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadPDF}
+                >
+                  <Download className="mr-2" size={16} />
+                  Download PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrintReport}
+                >
+                  <Printer className="mr-2" size={16} />
+                  Print Report
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
           </CardHeader>
           <CardContent>
             {loading && sales.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">Loading...</p>
-            ) : sales.length === 0 ? (
-              <p className="text-center py-8 text-muted-foreground">No sales found</p>
+            ) : filteredSales.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">
+                {searchQuery || (dateRangeStart && dateRangeEnd) 
+                  ? "No sales match your filters" 
+                  : 'No sales found. Click "Add New Sale" to create your first sale.'}
+              </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Invoice</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Sale Mode</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Sale Amount</TableHead>
-                    <TableHead>Net Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sales.map((sale) => (
-                    <TableRow key={sale.id}>
-                      <TableCell>{sale.invoiceNumber}</TableCell>
-                      <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <span className="text-xs">
-                          {sale.saleMode === 'from_vehicle' ? 'Vehicle' : 'Godown'}
-                        </span>
-                      </TableCell>
-                      <TableCell>{sale.customerName}</TableCell>
-                      <TableCell className="capitalize">{sale.productType}</TableCell>
-                      <TableCell>
-                        {sale.quantity} {sale.unit}
-                      </TableCell>
-                      <TableCell>₹{Number(sale.totalAmount).toFixed(2)}</TableCell>
-                      <TableCell className="font-semibold text-green-600">
-                        ₹{Number(sale.netAmount || sale.totalAmount).toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`px-2 py-1 rounded text-xs ${
-                            sale.paymentStatus === "paid"
-                              ? "bg-green-100 text-green-800"
-                              : sale.paymentStatus === "partial"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {sale.paymentStatus}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(sale)}>
-                            <Edit2 size={16} />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(sale.id)}>
-                            <Trash2 size={16} />
-                          </Button>
-                        </div>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Sale Invoice No.</TableHead>
+                      <TableHead>Shop Name</TableHead>
+                      <TableHead>Sale Date</TableHead>
+                      <TableHead>Rate per Kg</TableHead>
+                      <TableHead>Cage Qty</TableHead>
+                      <TableHead>Bird Qty</TableHead>
+                      <TableHead>Average Bird Weight (Kg)</TableHead>
+                      <TableHead>Total Value</TableHead>
+                      <TableHead>Sale Type</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSales.map((sale) => (
+                      <TableRow key={sale.id}>
+                        <TableCell className="font-medium">{sale.invoiceNumber}</TableCell>
+                        <TableCell>{sale.customerName}</TableCell>
+                        <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
+                        <TableCell>₹{Number(sale.unitPrice).toFixed(2)}</TableCell>
+                        <TableCell className="text-center">-</TableCell>
+                        <TableCell>{Number(sale.quantity).toFixed(0)}</TableCell>
+                        <TableCell className="text-center">-</TableCell>
+                        <TableCell className="font-semibold">₹{Number(sale.netAmount || sale.totalAmount).toFixed(2)}</TableCell>
+                        <TableCell>
+                          <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                            {sale.saleMode === 'from_vehicle' ? 'Vehicle' : 'Godown'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(sale)}>
+                              <Edit2 size={16} />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(sale.id)}>
+                              <Trash2 size={16} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
