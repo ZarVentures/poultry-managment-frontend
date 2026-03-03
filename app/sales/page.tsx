@@ -829,7 +829,6 @@ export default function SalesPage() {
               </div>
             </div>
           </CardHeader>
-          </CardHeader>
           <CardContent>
             {loading && sales.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">Loading...</p>
