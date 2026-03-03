@@ -402,41 +402,45 @@ export default function FarmersPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Farmer Name *</Label>
-                  <Input
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    <Input
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       placeholder="Farmer name"
-                  />
-                </div>
+                      disabled={loading}
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label>Farm House Name</Label>
-                  <Input
-                    value={formData.farmhouseName}
-                    onChange={(e) => setFormData({ ...formData, farmhouseName: e.target.value })}
+                    <Input
+                      value={formData.farmhouseName}
+                      onChange={(e) => setFormData({ ...formData, farmhouseName: e.target.value })}
                       placeholder="Farm House name"
-                  />
-                </div>
+                      disabled={loading}
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label>Phone *</Label>
-                  <Input
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    <Input
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       placeholder="Phone number"
-                  />
-                </div>
+                      disabled={loading}
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label>Join Date *</Label>
-                  <DatePicker
+                    <DatePicker
                       value={formData.joinDate}
                       onChange={(date) => setFormData({ ...formData, joinDate: date })}
                       disabled={loading}
                     />
-                </div>
+                  </div>
                   <div className="space-y-2">
                     <Label>Status *</Label>
                     <Select
                       value={formData.status}
                       onValueChange={(value: "active" | "inactive") => setFormData({ ...formData, status: value })}
+                      disabled={loading}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -449,12 +453,13 @@ export default function FarmersPage() {
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label>Address</Label>
-                  <Input
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    <Input
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                       placeholder="Farm address"
-                  />
-                </div>
+                      disabled={loading}
+                    />
+                  </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label>Note</Label>
                     <Textarea
@@ -462,12 +467,14 @@ export default function FarmersPage() {
                       onChange={(e) => setFormData({ ...formData, note: e.target.value })}
                       placeholder="Additional notes about the farmer"
                       rows={3}
+                      disabled={loading}
                     />
                   </div>
-              </div>
+                </div>
                 <Button onClick={handleSave} className="w-full" disabled={loading}>
                   {loading ? "Saving..." : editingId ? "Update" : "Add"} Farmer
                 </Button>
+              </div>
               </div>
             </DialogContent>
           </Dialog>
