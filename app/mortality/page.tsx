@@ -67,6 +67,7 @@ export default function MortalityPage() {
   const [purchases, setPurchases] = useState<PurchaseOrder[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [mounted, setMounted] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [showViewDialog, setShowViewDialog] = useState(false)
   const [viewingMortality, setViewingMortality] = useState<Mortality | null>(null)
