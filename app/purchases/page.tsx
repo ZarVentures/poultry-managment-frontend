@@ -191,13 +191,13 @@ export default function PurchasesPage() {
         totalAmount,
         notes: formData.notes,
         items,
-        transportCharges: formData.transportCharges || undefined,
-        loadingCharges: formData.loadingCharges || undefined,
-        commission: formData.commission || undefined,
-        otherCharges: formData.otherCharges || undefined,
-        weightShortage: formData.weightShortage || undefined,
-        mortalityDeduction: formData.mortalityDeduction || undefined,
-        otherDeduction: formData.otherDeduction || undefined,
+        transportCharges: formData.transportCharges ? parseFloat(formData.transportCharges) : undefined,
+        loadingCharges: formData.loadingCharges ? parseFloat(formData.loadingCharges) : undefined,
+        commission: formData.commission ? parseFloat(formData.commission) : undefined,
+        otherCharges: formData.otherCharges ? parseFloat(formData.otherCharges) : undefined,
+        weightShortage: formData.weightShortage ? parseFloat(formData.weightShortage) : undefined,
+        mortalityDeduction: formData.mortalityDeduction ? parseFloat(formData.mortalityDeduction) : undefined,
+        otherDeduction: formData.otherDeduction ? parseFloat(formData.otherDeduction) : undefined,
       }
 
       if (editingId) {
