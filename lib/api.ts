@@ -346,7 +346,7 @@ export const usersApi = {
   
   getOne: (id: string) => apiRequest<User>(`/users/${id}`),
   
-  create: (data: { name: string; email: string; password: string; role: string; status: string }) =>
+  create: (data: { name: string; email: string; password: string; role: string; status: string; phone?: string; notes?: string }) =>
     apiRequest<User>('/users', {
       method: 'POST',
       body: JSON.stringify(data),
