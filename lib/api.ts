@@ -86,10 +86,12 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   role: 'admin' | 'manager' | 'staff';
   status: 'active' | 'inactive';
   joinDate: string;
   lastLogin?: string;
+  notes?: string;
   createdAt?: string;
   updatedAt?: string;
 }

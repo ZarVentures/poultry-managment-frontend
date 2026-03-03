@@ -22,9 +22,11 @@ export default function UsersPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    phone: "",
     password: "",
     role: "staff" as "admin" | "manager" | "staff",
     status: "active" as "active" | "inactive",
+    notes: "",
   })
 
   useEffect(() => {
@@ -50,9 +52,11 @@ export default function UsersPage() {
     setFormData({
       name: "",
       email: "",
+      phone: "",
       password: "",
       role: "staff",
       status: "active",
+      notes: "",
     })
     setEditingId(null)
   }
@@ -61,9 +65,11 @@ export default function UsersPage() {
     setFormData({
       name: user.name,
       email: user.email,
+      phone: user.phone || "",
       password: "",
       role: user.role,
       status: user.status,
+      notes: user.notes || "",
     })
     setEditingId(user.id)
     setShowDialog(true)
@@ -87,17 +93,21 @@ export default function UsersPage() {
         await usersApi.update(editingId, {
           name: formData.name,
           email: formData.email,
+          phone: formData.phone || undefined,
           role: formData.role,
           status: formData.status,
+          notes: formData.notes || undefined,
         })
         toast.success("User updated successfully")
       } else {
         await usersApi.create({
           name: formData.name,
           email: formData.email,
+          phone: formData.phone || undefined,
           password: formData.password,
           role: formData.role,
           status: formData.status,
+          notes: formData.notes || undefined,
         })
         toast.success("User created successfully")
       }
@@ -208,6 +218,16 @@ export default function UsersPage() {
                     disabled={loading}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Phone</Label>
+                  <Input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="Phone number"
+                    disabled={loading}
+                  />
+                </div>
                 {!editingId && (
                   <div className="space-y-2">
                     <Label>Password *</Label>
@@ -252,6 +272,15 @@ export default function UsersPage() {
                       <SelectItem value="inactive">Inactive</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Notes</Label>
+                  <Input
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    placeholder="Additional notes"
+                    disabled={loading}
+                  />
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={handleSave} className="flex-1" disabled={loading}>
@@ -327,6 +356,7 @@ export default function UsersPage() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Join Date</TableHead>
@@ -338,6 +368,7 @@ export default function UsersPage() {
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.name}</TableCell>
                       <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.phone || "-"}</TableCell>
                       <TableCell className="capitalize">{user.role}</TableCell>
                       <TableCell>
                         <Button
