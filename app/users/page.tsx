@@ -144,8 +144,6 @@ export default function UsersPage() {
     }
   }
 
-  if (!mounted) return null
-
   const stats = useMemo(() => {
     if (!Array.isArray(users)) {
       return {
@@ -165,6 +163,8 @@ export default function UsersPage() {
       staff: users.filter(u => u.role === 'staff').length
     }
   }, [users])
+
+  if (!mounted) return null
 
   return (
     <DashboardLayout>
