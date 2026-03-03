@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -146,11 +146,25 @@ export default function UsersPage() {
 
   if (!mounted) return null
 
-  const totalUsers = users?.length || 0
-  const activeUsers = users?.filter(u => u.status === 'active').length || 0
-  const administrators = users?.filter(u => u.role === 'admin').length || 0
-  const managers = users?.filter(u => u.role === 'manager').length || 0
-  const staff = users?.filter(u => u.role === 'staff').length || 0
+  const stats = useMemo(() => {
+    if (!Array.isArray(users)) {
+      return {
+        totalUsers: 0,
+        activeUsers: 0,
+        administrators: 0,
+        managers: 0,
+        staff: 0
+      }
+    }
+    
+    return {
+      totalUsers: users.length,
+      activeUsers: users.filter(u => u.status === 'active').length,
+      administrators: users.filter(u => u.role === 'admin').length,
+      managers: users.filter(u => u.role === 'manager').length,
+      staff: users.filter(u => u.role === 'staff').length
+    }
+  }, [users])
 
   return (
     <DashboardLayout>
@@ -259,7 +273,7 @@ export default function UsersPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalUsers}</div>
+              <div className="text-2xl font-bold">{stats.totalUsers}</div>
               <p className="text-xs text-muted-foreground mt-1">All registered users</p>
             </CardContent>
           </Card>
@@ -270,7 +284,7 @@ export default function UsersPage() {
               <UserCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{activeUsers}</div>
+              <div className="text-2xl font-bold text-green-600">{stats.activeUsers}</div>
               <p className="text-xs text-muted-foreground mt-1">Currently active</p>
             </CardContent>
           </Card>
@@ -281,7 +295,7 @@ export default function UsersPage() {
               <Shield className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{administrators}</div>
+              <div className="text-2xl font-bold">{stats.administrators}</div>
               <p className="text-xs text-muted-foreground mt-1">Admin role users</p>
             </CardContent>
           </Card>
@@ -292,8 +306,8 @@ export default function UsersPage() {
               <Briefcase className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{managers + staff}</div>
-              <p className="text-xs text-muted-foreground mt-1">{managers} managers, {staff} staff</p>
+              <div className="text-2xl font-bold">{stats.managers + stats.staff}</div>
+              <p className="text-xs text-muted-foreground mt-1">{stats.managers} managers, {stats.staff} staff</p>
             </CardContent>
           </Card>
         </div>
