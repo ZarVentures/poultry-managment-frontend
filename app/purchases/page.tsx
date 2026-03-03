@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Download, Printer } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { DateRangeFilter } from "@/components/date-range-filter"
 import { purchasesApi, farmersApi, type PurchaseOrder as ApiPurchaseOrder, type Farmer } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -22,6 +23,9 @@ export default function PurchasesPage() {
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
+  const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [formData, setFormData] = useState({
     orderNumber: "",
     supplierName: "",
@@ -233,6 +237,123 @@ export default function PurchasesPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleDateRangeChange = (start: Date | undefined, end: Date | undefined) => {
+    setDateRangeStart(start)
+    setDateRangeEnd(end)
+  }
+
+  const stats = useMemo(() => {
+    const totalPurchases = purchases.length
+    const totalBirds = purchases.reduce((sum, purchase) => {
+      return sum + purchase.items.reduce((itemSum, item) => itemSum + Number(item.quantity), 0)
+    }, 0)
+    const totalValue = purchases.reduce((sum, purchase) => sum + Number(purchase.netAmount || purchase.totalAmount), 0)
+    const totalPaymentMade = purchases
+      .filter(p => p.status === 'received')
+      .reduce((sum, purchase) => sum + Number(purchase.netAmount || purchase.totalAmount), 0)
+
+    return {
+      totalPurchases,
+      totalBirds,
+      totalValue,
+      totalPaymentMade,
+    }
+  }, [purchases])
+
+  const filteredPurchases = useMemo(() => {
+    let filtered = [...purchases]
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter(
+        (purchase) =>
+          purchase.orderNumber.toLowerCase().includes(query) ||
+          purchase.supplierName.toLowerCase().includes(query)
+      )
+    }
+
+    // Apply date range filter
+    if (dateRangeStart && dateRangeEnd) {
+      const start = new Date(dateRangeStart)
+      const end = new Date(dateRangeEnd)
+      start.setHours(0, 0, 0, 0)
+      end.setHours(23, 59, 59, 999)
+
+      filtered = filtered.filter((purchase) => {
+        const purchaseDate = new Date(purchase.orderDate)
+        purchaseDate.setHours(0, 0, 0, 0)
+        return purchaseDate >= start && purchaseDate <= end
+      })
+    }
+
+    return filtered
+  }, [purchases, searchQuery, dateRangeStart, dateRangeEnd])
+
+  const handleDownloadPDF = () => {
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Purchase Orders Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1 { text-align: center; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+            .header { margin-bottom: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Purchase Orders Report</h1>
+            <div><strong>Total Purchases:</strong> ${stats.totalPurchases}</div>
+            <div><strong>Total Value:</strong> ₹${stats.totalValue.toFixed(2)}</div>
+            <div><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Order #</th>
+                <th>Supplier</th>
+                <th>Order Date</th>
+                <th>Bird Amount</th>
+                <th>Net Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredPurchases.map(purchase => `
+                <tr>
+                  <td>${purchase.orderNumber}</td>
+                  <td>${purchase.supplierName}</td>
+                  <td>${new Date(purchase.orderDate).toLocaleDateString()}</td>
+                  <td>₹${Number(purchase.totalAmount).toFixed(2)}</td>
+                  <td>₹${Number(purchase.netAmount || purchase.totalAmount).toFixed(2)}</td>
+                  <td>${purchase.status}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `
+
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.onload = () => {
+        printWindow.print()
+      }
+    }
+  }
+
+  const handlePrintReport = () => {
+    handleDownloadPDF()
   }
 
   if (!mounted) return null
@@ -513,71 +634,149 @@ export default function PurchasesPage() {
           </Dialog>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total purchase (no)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{stats.totalPurchases}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Birds Purchase (Qty)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{stats.totalBirds.toFixed(0)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Value (₹)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">₹{stats.totalValue.toFixed(2)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total payment Made (₹)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-600">₹{stats.totalPaymentMade.toFixed(2)}</div>
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
           <CardHeader>
-            <CardTitle>Purchase Orders List</CardTitle>
+            <div className="flex justify-between items-start">
+              <div>
+                <CardTitle>Purchase Orders List</CardTitle>
+                <p className="text-sm text-muted-foreground">View and manage all purchase orders</p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <DateRangeFilter
+                  startDate={dateRangeStart}
+                  endDate={dateRangeEnd}
+                  onDateRangeChange={handleDateRangeChange}
+                />
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium whitespace-nowrap">Filter:</Label>
+                  <Input
+                    placeholder="Search by invoice, farmer..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-[250px]"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadPDF}
+                >
+                  <Download className="mr-2" size={16} />
+                  Download PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrintReport}
+                >
+                  <Printer className="mr-2" size={16} />
+                  Print Report
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {loading && purchases.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">Loading...</p>
-            ) : purchases.length === 0 ? (
-              <p className="text-center py-8 text-muted-foreground">No purchase orders found</p>
+            ) : filteredPurchases.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">
+                {searchQuery || (dateRangeStart && dateRangeEnd) 
+                  ? "No purchase orders match your filters" 
+                  : "No purchase orders found"}
+              </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Order #</TableHead>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead>Order Date</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead>Bird Amount</TableHead>
-                    <TableHead>Gross Amount</TableHead>
-                    <TableHead>Net Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {purchases.map((purchase) => (
-                    <TableRow key={purchase.id}>
-                      <TableCell>{purchase.orderNumber}</TableCell>
-                      <TableCell>{purchase.supplierName}</TableCell>
-                      <TableCell>{new Date(purchase.orderDate).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        {purchase.dueDate ? new Date(purchase.dueDate).toLocaleDateString() : "-"}
-                      </TableCell>
-                      <TableCell>₹{Number(purchase.totalAmount).toFixed(2)}</TableCell>
-                      <TableCell>₹{Number(purchase.grossAmount || purchase.totalAmount).toFixed(2)}</TableCell>
-                      <TableCell className="font-semibold text-green-600">
-                        ₹{Number(purchase.netAmount || purchase.totalAmount).toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`px-2 py-1 rounded text-xs ${
-                            purchase.status === "received"
-                              ? "bg-green-100 text-green-800"
-                              : purchase.status === "cancelled"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {purchase.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(purchase)}>
-                            <Edit2 size={16} />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(purchase.id)}>
-                            <Trash2 size={16} />
-                          </Button>
-                        </div>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Order #</TableHead>
+                      <TableHead>Supplier</TableHead>
+                      <TableHead>Order Date</TableHead>
+                      <TableHead>Due Date</TableHead>
+                      <TableHead>Bird Amount</TableHead>
+                      <TableHead>Gross Amount</TableHead>
+                      <TableHead>Net Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPurchases.map((purchase) => (
+                      <TableRow key={purchase.id}>
+                        <TableCell>{purchase.orderNumber}</TableCell>
+                        <TableCell>{purchase.supplierName}</TableCell>
+                        <TableCell>{new Date(purchase.orderDate).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          {purchase.dueDate ? new Date(purchase.dueDate).toLocaleDateString() : "-"}
+                        </TableCell>
+                        <TableCell>₹{Number(purchase.totalAmount).toFixed(2)}</TableCell>
+                        <TableCell>₹{Number(purchase.grossAmount || purchase.totalAmount).toFixed(2)}</TableCell>
+                        <TableCell className="font-semibold text-green-600">
+                          ₹{Number(purchase.netAmount || purchase.totalAmount).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={`px-2 py-1 rounded text-xs ${
+                              purchase.status === "received"
+                                ? "bg-green-100 text-green-800"
+                                : purchase.status === "cancelled"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
+                            {purchase.status}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(purchase)}>
+                              <Edit2 size={16} />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(purchase.id)}>
+                              <Trash2 size={16} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>

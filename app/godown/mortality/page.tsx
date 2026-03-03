@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Printer } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
+import { DateRangeFilter } from "@/components/date-range-filter"
 import { godownApi, type GodownMortality } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -20,6 +21,9 @@ export default function GodownMortalityPage() {
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
+  const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [formData, setFormData] = useState({
     mortalityDate: new Date().toISOString().split("T")[0],
     quantity: "",
@@ -120,6 +124,94 @@ export default function GodownMortalityPage() {
     }
   }
 
+  const handleDateRangeChange = (start: Date | undefined, end: Date | undefined) => {
+    setDateRangeStart(start)
+    setDateRangeEnd(end)
+  }
+
+  const filteredMortalities = useMemo(() => {
+    let filtered = [...mortalities]
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter(
+        (mortality) =>
+          (mortality.reason && mortality.reason.toLowerCase().includes(query))
+      )
+    }
+
+    // Apply date range filter
+    if (dateRangeStart && dateRangeEnd) {
+      const start = new Date(dateRangeStart)
+      const end = new Date(dateRangeEnd)
+      start.setHours(0, 0, 0, 0)
+      end.setHours(23, 59, 59, 999)
+
+      filtered = filtered.filter((mortality) => {
+        const mortalityDate = new Date(mortality.mortalityDate)
+        mortalityDate.setHours(0, 0, 0, 0)
+        return mortalityDate >= start && mortalityDate <= end
+      })
+    }
+
+    return filtered
+  }, [mortalities, searchQuery, dateRangeStart, dateRangeEnd])
+
+  const handlePrintReport = () => {
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Godown Mortality Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1 { text-align: center; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+            .header { margin-bottom: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Godown Mortality Report</h1>
+            <div><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Quantity</th>
+                <th>Reason</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredMortalities.map(mortality => `
+                <tr>
+                  <td>${new Date(mortality.mortalityDate).toLocaleDateString()}</td>
+                  <td>${mortality.quantity} ${mortality.unit}</td>
+                  <td>${mortality.reason || "-"}</td>
+                  <td>${mortality.notes || "-"}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `
+
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.onload = () => {
+        printWindow.print()
+      }
+    }
+  }
+
   if (!mounted) return null
 
   return (
@@ -213,47 +305,82 @@ export default function GodownMortalityPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Mortality Records</CardTitle>
+            <div className="flex justify-between items-start">
+              <div>
+                <CardTitle>Mortality Records</CardTitle>
+                <p className="text-sm text-muted-foreground">View and manage mortality records</p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <DateRangeFilter
+                  startDate={dateRangeStart}
+                  endDate={dateRangeEnd}
+                  onDateRangeChange={handleDateRangeChange}
+                />
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium whitespace-nowrap">Filter:</Label>
+                  <Input
+                    placeholder="Search by reason..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-[250px]"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrintReport}
+                >
+                  <Printer className="mr-2" size={16} />
+                  Print Report
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {loading && mortalities.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">Loading...</p>
-            ) : mortalities.length === 0 ? (
-              <p className="text-center py-8 text-muted-foreground">No mortality records found</p>
+            ) : filteredMortalities.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">
+                {searchQuery || (dateRangeStart && dateRangeEnd) 
+                  ? "No mortality records match your filters" 
+                  : "No mortality records found"}
+              </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Notes</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {mortalities.map((mortality) => (
-                    <TableRow key={mortality.id}>
-                      <TableCell>{new Date(mortality.mortalityDate).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        {mortality.quantity} {mortality.unit}
-                      </TableCell>
-                      <TableCell>{mortality.reason || "-"}</TableCell>
-                      <TableCell>{mortality.notes || "-"}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(mortality)}>
-                            <Edit2 size={16} />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(mortality.id)}>
-                            <Trash2 size={16} />
-                          </Button>
-                        </div>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead>Notes</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredMortalities.map((mortality) => (
+                      <TableRow key={mortality.id}>
+                        <TableCell>{new Date(mortality.mortalityDate).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          {mortality.quantity} {mortality.unit}
+                        </TableCell>
+                        <TableCell>{mortality.reason || "-"}</TableCell>
+                        <TableCell>{mortality.notes || "-"}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(mortality)}>
+                              <Edit2 size={16} />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(mortality.id)}>
+                              <Trash2 size={16} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>

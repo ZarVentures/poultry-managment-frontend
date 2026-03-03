@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Printer } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
+import { DateRangeFilter } from "@/components/date-range-filter"
 import { godownApi, retailersApi, type GodownSale, type Retailer } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -21,6 +22,9 @@ export default function GodownSalePage() {
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
+  const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [formData, setFormData] = useState({
     saleDate: new Date().toISOString().split("T")[0],
     customerName: "",
@@ -156,6 +160,96 @@ export default function GodownSalePage() {
     }
   }
 
+  const handleDateRangeChange = (start: Date | undefined, end: Date | undefined) => {
+    setDateRangeStart(start)
+    setDateRangeEnd(end)
+  }
+
+  const filteredSales = useMemo(() => {
+    let filtered = [...sales]
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter(
+        (sale) =>
+          sale.customerName.toLowerCase().includes(query)
+      )
+    }
+
+    // Apply date range filter
+    if (dateRangeStart && dateRangeEnd) {
+      const start = new Date(dateRangeStart)
+      const end = new Date(dateRangeEnd)
+      start.setHours(0, 0, 0, 0)
+      end.setHours(23, 59, 59, 999)
+
+      filtered = filtered.filter((sale) => {
+        const saleDate = new Date(sale.saleDate)
+        saleDate.setHours(0, 0, 0, 0)
+        return saleDate >= start && saleDate <= end
+      })
+    }
+
+    return filtered
+  }, [sales, searchQuery, dateRangeStart, dateRangeEnd])
+
+  const handlePrintReport = () => {
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Godown Sales Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1 { text-align: center; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+            .header { margin-bottom: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Godown Sales Report</h1>
+            <div><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Quantity</th>
+                <th>Rate</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredSales.map(sale => `
+                <tr>
+                  <td>${new Date(sale.saleDate).toLocaleDateString()}</td>
+                  <td>${sale.customerName}</td>
+                  <td>${sale.quantity} ${sale.unit}</td>
+                  <td>₹${Number(sale.rate).toFixed(2)}</td>
+                  <td>₹${Number(sale.totalAmount).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `
+
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.onload = () => {
+        printWindow.print()
+      }
+    }
+  }
+
   if (!mounted) return null
 
   return (
@@ -282,49 +376,84 @@ export default function GodownSalePage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Sales List</CardTitle>
+            <div className="flex justify-between items-start">
+              <div>
+                <CardTitle>Sales List</CardTitle>
+                <p className="text-sm text-muted-foreground">View and manage godown sales</p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <DateRangeFilter
+                  startDate={dateRangeStart}
+                  endDate={dateRangeEnd}
+                  onDateRangeChange={handleDateRangeChange}
+                />
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium whitespace-nowrap">Filter:</Label>
+                  <Input
+                    placeholder="Search by customer..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-[250px]"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrintReport}
+                >
+                  <Printer className="mr-2" size={16} />
+                  Print Report
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {loading && sales.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">Loading...</p>
-            ) : sales.length === 0 ? (
-              <p className="text-center py-8 text-muted-foreground">No sales found</p>
+            ) : filteredSales.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">
+                {searchQuery || (dateRangeStart && dateRangeEnd) 
+                  ? "No sales match your filters" 
+                  : "No sales found"}
+              </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Rate</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sales.map((sale) => (
-                    <TableRow key={sale.id}>
-                      <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
-                      <TableCell>{sale.customerName}</TableCell>
-                      <TableCell>
-                        {sale.quantity} {sale.unit}
-                      </TableCell>
-                      <TableCell>₹{Number(sale.rate).toFixed(2)}</TableCell>
-                      <TableCell>₹{Number(sale.totalAmount).toFixed(2)}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(sale)}>
-                            <Edit2 size={16} />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(sale.id)}>
-                            <Trash2 size={16} />
-                          </Button>
-                        </div>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Rate</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSales.map((sale) => (
+                      <TableRow key={sale.id}>
+                        <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
+                        <TableCell>{sale.customerName}</TableCell>
+                        <TableCell>
+                          {sale.quantity} {sale.unit}
+                        </TableCell>
+                        <TableCell>₹{Number(sale.rate).toFixed(2)}</TableCell>
+                        <TableCell>₹{Number(sale.totalAmount).toFixed(2)}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(sale)}>
+                              <Edit2 size={16} />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(sale.id)}>
+                              <Trash2 size={16} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
