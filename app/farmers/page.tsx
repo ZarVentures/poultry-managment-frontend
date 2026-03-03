@@ -475,7 +475,6 @@ export default function FarmersPage() {
                   {loading ? "Saving..." : editingId ? "Update" : "Add"} Farmer
                 </Button>
               </div>
-              </div>
             </DialogContent>
           </Dialog>
         </div>
