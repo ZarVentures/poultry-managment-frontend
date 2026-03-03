@@ -249,7 +249,7 @@ export default function PurchasesPage() {
             <DialogTrigger asChild>
               <Button onClick={resetForm}>
                 <Plus className="mr-2" size={20} />
-                New Purchase Order
+               Add New purchase
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="dialog-description">
