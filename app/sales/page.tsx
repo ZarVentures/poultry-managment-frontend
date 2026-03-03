@@ -30,6 +30,7 @@ export default function SalesPage() {
     phone: "",
     address: "",
     saleDate: new Date().toISOString().split("T")[0],
+    saleMode: "from_vehicle" as "from_vehicle" | "from_godown",
     productType: "eggs" as "eggs" | "meat" | "chicks" | "other",
     quantity: "",
     unit: "kg",
@@ -76,6 +77,7 @@ export default function SalesPage() {
       phone: "",
       address: "",
       saleDate: new Date().toISOString().split("T")[0],
+      saleMode: "from_vehicle",
       productType: "eggs",
       quantity: "",
       unit: "kg",
@@ -97,6 +99,7 @@ export default function SalesPage() {
       phone: retailer?.phone || "",
       address: retailer?.address || "",
       saleDate: sale.saleDate,
+      saleMode: sale.saleMode || "from_vehicle",
       productType: sale.productType,
       quantity: String(sale.quantity),
       unit: sale.unit || "kg",
@@ -126,6 +129,7 @@ export default function SalesPage() {
         invoiceNumber: formData.invoiceNumber,
         customerName: formData.customerName,
         saleDate: formData.saleDate,
+        saleMode: formData.saleMode,
         productType: formData.productType,
         quantity,
         unit: formData.unit,
@@ -232,7 +236,7 @@ export default function SalesPage() {
                 </p>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>Invoice Number *</Label>
                     <Input
@@ -249,6 +253,22 @@ export default function SalesPage() {
                       onChange={(date) => setFormData({ ...formData, saleDate: date })}
                       disabled={loading}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Sale Mode *</Label>
+                    <Select
+                      value={formData.saleMode}
+                      onValueChange={(value: any) => setFormData({ ...formData, saleMode: value })}
+                      disabled={loading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="from_vehicle">From Gadi (Vehicle)</SelectItem>
+                        <SelectItem value="from_godown">From Godown</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -450,6 +470,7 @@ export default function SalesPage() {
                   <TableRow>
                     <TableHead>Invoice</TableHead>
                     <TableHead>Date</TableHead>
+                    <TableHead>Sale Mode</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead>Product</TableHead>
                     <TableHead>Quantity</TableHead>
@@ -463,6 +484,11 @@ export default function SalesPage() {
                     <TableRow key={sale.id}>
                       <TableCell>{sale.invoiceNumber}</TableCell>
                       <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <span className="text-xs">
+                          {sale.saleMode === 'from_vehicle' ? 'Vehicle' : 'Godown'}
+                        </span>
+                      </TableCell>
                       <TableCell>{sale.customerName}</TableCell>
                       <TableCell className="capitalize">{sale.productType}</TableCell>
                       <TableCell>

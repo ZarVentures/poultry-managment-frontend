@@ -115,6 +115,7 @@ export interface Sale {
   invoiceNumber: string;
   customerName: string;
   saleDate: string;
+  saleMode: 'from_vehicle' | 'from_godown';
   productType: 'eggs' | 'meat' | 'chicks' | 'other';
   quantity: number;
   unit?: string;
