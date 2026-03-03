@@ -69,6 +69,7 @@ export function DatePicker({
           onSelect={handleSelect}
           initialFocus
           disabled={disabled}
+          className="rounded-md border"
         />
       </PopoverContent>
     </Popover>
