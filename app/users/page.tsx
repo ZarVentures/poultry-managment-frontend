@@ -36,10 +36,11 @@ export default function UsersPage() {
     try {
       setLoading(true)
       const data = await usersApi.getAll()
-      setUsers(data)
+      setUsers(Array.isArray(data) ? data : [])
     } catch (error: any) {
       console.error("Failed to fetch users:", error)
       toast.error("Failed to load users")
+      setUsers([]) // Set empty array on error
     } finally {
       setLoading(false)
     }
@@ -145,11 +146,11 @@ export default function UsersPage() {
 
   if (!mounted) return null
 
-  const totalUsers = users.length
-  const activeUsers = users.filter(u => u.status === 'active').length
-  const administrators = users.filter(u => u.role === 'admin').length
-  const managers = users.filter(u => u.role === 'manager').length
-  const staff = users.filter(u => u.role === 'staff').length
+  const totalUsers = users?.length || 0
+  const activeUsers = users?.filter(u => u.status === 'active').length || 0
+  const administrators = users?.filter(u => u.role === 'admin').length || 0
+  const managers = users?.filter(u => u.role === 'manager').length || 0
+  const staff = users?.filter(u => u.role === 'staff').length || 0
 
   return (
     <DashboardLayout>
