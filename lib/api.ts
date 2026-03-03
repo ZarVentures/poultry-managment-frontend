@@ -159,6 +159,15 @@ export interface PurchaseOrder {
   dueDate?: string;
   status: 'pending' | 'received' | 'cancelled';
   totalAmount: number;
+  transportCharges?: number;
+  loadingCharges?: number;
+  commission?: number;
+  otherCharges?: number;
+  weightShortage?: number;
+  mortalityDeduction?: number;
+  otherDeduction?: number;
+  grossAmount?: number;
+  netAmount?: number;
   notes?: string;
   items: PurchaseOrderItem[];
   createdAt?: string;

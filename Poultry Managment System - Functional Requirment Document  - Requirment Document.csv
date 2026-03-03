@@ -1,0 +1,694 @@
+Sl No,Screen Name,Details ,Business Requirement ,Section/ Screen,Functional Requirement ,Field Description/ Validation,Acceptance Criteria ,Remarks
+1,User Authentication System,"There are 2 user role in the system:
+1. Admin","As a Admin, I want to login into the app
+",,"Login screen should contain
+
+1. Phone no as UID
+2. OTP received 
+3. Email id field optional ",Phone no should be taken only numeric 10 numbers only ,"1. Only india no should be taken for login
+2. OTP should go to given no,
+3. this otp should limited time","Master Admin would be created by default by ZV, and then this MA can created another users"
+1.1,,,"As a Admin, after login to the app
+I should have full access of the system ",,"User should land on Dashboard page with below pages available in the left side panel 
+
+1. Dashboard
+2. Godown 
+3. Purchase Order
+4. Sales 
+5. Mortaility 
+6. Expense
+7. Reports
+8. FInancial Analytics
+9. Master Data Entry
+10. Users
+11. Setting",NA,,
+1.2,,2. Manager,"As a Manager, I want to login in the app
+",,"Login screen should contain
+
+1. Phone no as UID
+2. OTP received 
+3. Email id field optional ",Phone no should be taken only numeric 10 numbers only ,"1. Only india no should be taken for login
+2. OTP should go to given no,
+3. this otp should limited time
+4. This operator should be already created by Admin",Admin will add this user already with operator role and then this user would receive the OTP
+1.3,,,"As a Manager, after login to the app
+I should have limited access of the system ",,"User should land on Dashboard page with below pages available in the left side panel 
+
+1. Dashboard
+2. Godown 
+3. Purchase Order
+4. Sales 
+5. Mortaility 
+6. Expense
+7. Master Data Entry
+8. Users
+",NA, ,
+1.2,,2. Operator,"As a Operator, I want to login in the app
+",,"Login screen should contain
+
+1. Phone no as UID
+2. OTP received 
+3. Email id field optional ",Phone no should be taken only numeric 10 numbers only ,"1. Only india no should be taken for login
+2. OTP should go to given no,
+3. this otp should limited time
+4. This operator should be already created by Admin",Admin will add this user already with operator role and then this user would receive the OTP
+1.3,,,"As a Operator, after login to the app
+I should have limited access of the system ",,"User should land on Dashboard page with below pages available in the left side panel 
+
+1. Dashboard
+2. Godown 
+3. Purchase Order
+4. Sales 
+5. Mortaility 
+6. Expense
+",NA, ,
+2,Dashboard Overview,1. initially this will show data from logged in date,1. initially this will show data from logged in date,,"1. It will show different information in multiple blocks like
+a. Total Purchase qnt
+b Total Value rs
+c. Total Expense
+d. Net profit ",,,
+2.1,,,,,2. Revenue Trends ,,,
+2.2,,,,,3. Expense Breakdown ,,,
+2.3,,,,,5. Filter date wise calendar option ,,,
+2.4,,,,,,,,
+3,Godown Management,1. This page should contain complete information of the aziz godown,Admin can see entire detail and status of the godown ,1. Godown Managment Dashboard ,"Dashboard to show with +- status from previous day
+
+Total Quantity - bird
+Total cage qnt
+Total value rs 
+",,,
+,,,,"2. Godown Inward Entry (Vehicle to Godown Transfer)
+
+At the end of the day, leftover birds from vehicle are transferred.","Add New Inward Entry
+
+Section 1 - Vehicle → Godown Transfer
+1.  Date - Current Date - Date picker
+2. Purchase Invoice No - Text Box 
+3. Source Vehicle No - Drop down
+4. Driver Name - Drop down
+5. Bird Type - Text Box
+6. No of Cages 
+7. No of Bird (Qty)
+8. Total Weight
+9. Mortality (if any)
+10. Transfer Note","1. Date - Current Date - When the leftover birds come to Godown 
+2. Purchase Invoice No - on which batch this birds are leftover
+3. Source Vehicle No - by which vechicle this leftover birds came 
+4. Driver Name- Who drove the vehicle and brought the leftover birds 
+5. Bird Type - what type of birds are there
+6. No of Bird (Qty) - Number of birds 
+7. Avg Weight
+8. Total Weight
+9. Mortality (if any)
+10. Transfer Note",,
+,,,,Mini Dashboard ,"1. Godown Capacity 
+1. Total Birds Available
+2. Purchase Invoice No wise stock
+3. Age of birds (Days in Godown)
+4. Mortality
+5. Avg Weight
+6. Total Weight
+7. Capacity Utilization %",,,
+,,,Admin can see the current status of the godown ,,"Tabular View 
+
+1. Date - Current Date 
+2. Purchase Invoice No 
+3. Source Vehicle No 
+4. Driver Name 
+5. Bird Type
+6. No of Bird (Qty)
+7. Avg Weight
+8. Total Weight
+9. Mortality (if any)
+10. Transfer Note",,,
+,,,,"3. Godown Expense Management (Very Important for You)
+
+Since rate changes after adding expenses, we need Cost Allocation Logic.","1. Date
+2. Expense Category
+3. Description
+4. Amount
+5. Applicable Batch (or overall godown)
+6. Payment Method
+7 Actions","Feed Cost
+Labor Charges
+Electricity
+Water
+Medicine
+Rent
+Miscellaneous","System Should:
+
+Automatically recalculate rate after adding expense
+Maintain historical cost version
+
+Show:
+Original Purchase Rate
+Added Expense
+Revised Cost Price
+Suggested Selling Price (with margin %)","Costing Formula:
+
+New Cost Per Bird = 
+(Purchase Cost + Allocated Expenses) ÷ Available Birds
+
+OR
+
+Cost Per KG = 
+(Total Cost Including Expenses) ÷ Total Live Weight"
+,,,,4. Godown Sale to Walk-in Retailer,"This screen should contain multiple sections as follows : 
+
+Section 1: Header Information
+1. Sale Invoice No. - text Box 
+2. Shop Name - Text Box
+6. Sale Mode - From Gadi/ From Godown
+8. Sale Payment - Paid, Credit,Partial Payment
+9. Notes: Text box ",,"Reduce stock batch-wise (FIFO recommended)
+
+Update cost tracking
+
+Track profit per sale",
+,,,,Add New Sale,"Section 2: Bird Details
+1. Bird Type - Dropdown
+3. Number of Birds - Numeric
+4. Rate per Kg - Decimal
+6. Total Weight - Auto Calculated
+7. Total Amount - Auto Calculated",,,
+,,,,Add New Sale,"Section 4: Payment
+1. Total Invoice - Auto Calculated
+Credit Balance - Decimal
+3. Outstanding Payment - Auto Calculated
+4. Payment Mode - Dropdown
+5. Total payment Received - Decimal 
+6. Balance Amount - Auto Calculated
+",,,
+,,,Somewhere it show comparision between today and yesterday status ,5. Godown Mortality Management,"Date
+Batch ID
+No. of Dead Birds
+Reason
+Disposal Method",,"System Should:
+
+Reduce stock
+
+Recalculate cost per bird (since total cost spreads over fewer birds)",
+,,,,,Date Range (Select date) ,Calendar button values,,
+,,,,,Filter/ Search,"There should be a filter button, which can be used to search the user by entering name or phone number",,
+,,,,,"View List:
+Download PDF
+Print Report ","Download PDF, This button allows user to download to download the details based on the selected date range
+Print Report, This button allows user to take printout directly the details based on the selected date range",,
+,,,,,,,,
+4,Purchase Order Management,"1. Admin has multiple sources to buy the birds
+a. Farmer
+b. Big godown","1. Driver, goes to farmhouse or big godown with his truck. he loads the truck with cages. 
+",Add New Purchase,"This screen should contain multiple sections as follows : 
+
+Section 1: Header Information
+1. Purchase Invoice No. - text Box 
+2. Purchase Date - Datepicker
+3. Farmer Name - Dropdown (Master Data)
+4. Farmer Mobile - Autofill
+5. Farm Location - Autofill
+6. Vehicle No - Text
+7. Purchase Payment - Paid / Credit
+8. Notes: Text box ","1. Purchase Invoice no field should accept alphanumeric information 
+2. Purchase date should take the current date automatically when this purchase record is getting added
+3. Farmer name field should auto show the names in list view which is saved in mater entry 
+4. Farmer Mobile field should show the phone number automatically which is saved in master entry
+5. Farm location field should accept alphanumeric information 
+6. Vehicle No field should auto show the vehicle no in list view which is saved in mater entry
+7. Purchase Payment field should show the list as Paid and Credit 
+8. Notes field should accept alphanumeric information ",,"🔥 Advanced Features (For Scalable PMS)
+
+Since you are building a serious product, you should also consider:
+
+Mortality Entry at Purchase Time
+Cage Return Tracking
+Auto Ledger Posting
+PDF Invoice Generation
+WhatsApp Invoice to Farmer
+Vendor Wise Outstanding Report
+Purchase Register Report
+Daily Purchase Summary"
+4.1,,"2. Birds put in a iron cage
+a. Single cage weight 40kg with bird
+b. Single cage contains 15-16 birds","2. Each of the truck contains around 42 cages. There is bilty generated at the time of loading which contains no of cage, total weight, total bird count, total cost 
+",Add New Purchase,"Section 2: Bird Details
+1. Bird Type - Dropdown
+2. Number of Cages - Numeric ***
+3. Number of Birds - Numeric
+4. Rate per Kg - Decimal
+5. Average Weight (Kg) - Decimal
+6. Total Weight - Auto Calculated
+7. Total Amount - Auto Calculated","1. Bird Type - Dropdown This field show different type of birds to selcet which is purchased 
+2. Number of Cages - Dropdown, This field should show three values 42, 130 ,250
+3. Number of Birds - Numeric, This field should accept numeric values only
+4. Rate per Kg - Decimal, This field should accept numeric values only
+5. Average Weight (Kg) - Decimal, This field should accept numeric values only
+6. Total Weight - Auto Calculated, This field should show auto calculated values based on the formula 
+7. Total Amount - Auto Calculated, This field should show auto calculated values based on the formula ",,"Auto Calculation:
+
+Total Weight = Birds × Avg Weight
+Amount = Total Weight × Rate"
+4.2,,"3. Farm or godown Distance 
+a. from 30 km around the durg city","3. Delivery process, trucks deliver the cage direct to the reatailer shops",Add New Purchase,"Section 3: Charges
+1. Transport Charges - Decimal
+2. Loading Charges - Decimal
+3. Commission - Decimal
+4. Other Charges - Decimal
+5. Deductions - Decimal
+    5.1 Weight Shortage:   [ 800 ]
+    5.2 Mortality Deduction: [ 500 ]
+    5.3 Other Deduction:   [ 0 ]",TBD,,"Gross Amount = Bird Amount + Charges
+Net Amount = Gross Amount - Deductions"
+4.3,,,,Add New Purchase,"Section 4: Payment
+1. Total Invoice - Auto Calculated
+2. Advance Paid - Decimal
+3. Outstanding Payment - Auto Calculated
+4. Payment Mode - Dropdown
+5. Total payment Made - Decimal 
+6. Balance Amount - Auto Calculated
+
+","1. Total Invoice - Auto Calculated, This field should show the invoice to be paid
+2. Advance Paid - Decimal, This field should accept numeric values
+3. Outstanding Payment - Auto Calculated This field should auto values based on the formula
+4. Payment Mode - Dropdown This field should contains values as Cash, Credit, Online
+5. Total payment Made - Decimal, This field should accept numeric values 
+6. Balance Amount - Auto Calculated, This field should accept numeric values
+
+",,"Right Side Sticky Summary Panel (Very Important UX)
+
+-----------------------------------
+Invoice Summary
+-----------------------------------
+Total Birds: 1250
+Total Weight: 2350.50 Kg
+Gross Amount: ₹ 3,57,000
+Deductions: ₹ 1,300
+Net Amount: ₹ 3,55,700
+
+Paid: ₹ 1,00,000
+Balance: ₹ 2,55,700
+
+Status: PARTIAL
+-----------------------------------
+[ Save Draft ]
+[ Save & Confirm ]
+[ Save & Print ]
+-----------------------------------"
+4.4,,,,Mini Dashboard,"
+Total purchase (no)
+Total BIrds Purchase (Qty)
+Total Value(rs)
+Total payment Made (rs)
+","Total purchase (no), This widget shows the total number of the purchase made on the current date
+Total BIrds Purchase (Qty, This widget shows the total number of the birds purchased on the current date
+Total Value(rs), This widget shows the total values of the birds purchased on the current date
+Total payment Made (rs), This widget shows the total payment made for purchas on the current date
+",,"Section 5: Stock Impact (Very Important)
+1. When invoice is saved:
+2. Increase Live Bird Stock
+3. Create Farmer Ledger Entry
+4. Update Outstanding Balance
+5. Generate Accounting Entry"
+4.5,,"4. Weight Loss
+a. 1.5kg/ cage
+b. average cage weight 38.5kg ",4. Remaining cages take to Aziz godown,Purchase List ,"Table should contain
+Purchase Invoice No.
+Farmer Name
+Order Date
+Rate per Kg
+Cage Qty
+Bird Qty
+Average Bird Weight (Kg)
+Total Value
+Purchase Type
+Actions",NA,"1. Name column should have sorting function ascending and descending.
+2. There should be a filter button, which can be used to search the user by entering name or phone number",
+4.6,,"5. Birds carries in vehicles
+a. Mini Truck - 42 cages
+b. Medium Truck - 130 cages
+c. Large Truck - 250 cages",,,Date Range (Select date) ,Calendar button values,,
+4.7,,,,,Filter/ Search,"There should be a filter button, which can be used to search the user by entering name or phone number",,
+4.8,,,,,"View List:
+Download PDF
+Print Report ","Download PDF, This button allows user to download to download the details based on the selected date range
+Print Report, This button allows user to take printout directly the details based on the selected date range",,
+,,,,,,,,
+5,Sales Tracking,"1. Sale is done into 3 ways 
+a. Through vehicle direct from Farm to retailer
+b. From Aziz godown after unloading the cage
+c. Aziz retailer shop ","1. Driver, loads the bird cages from farmhouse or big godown and delivers the cage based on the order at retail shops in the city ",Add New Sale,"This screen should contain multiple sections as follows : 
+
+Section 1: Header Information
+1. Sale Invoice No. - text Box 
+2. Shop Name - Text Box
+3. Owner Name - Autofill (Master Data)
+4. Phone - Autofill
+5. Address - Autofill
+6. Sale Mode - From Gadi/ From Godown
+7. Vehicle No - Text
+8. Sale Payment - Paid, Credit,Partial Payment
+9. Notes: Text box ","1. Sale Invoice no field should accept alphanumeric information 
+2. Sale date should take the current date automatically when this sale record is getting added
+3. Owner name field should auto show the names in list view which is saved in master entry 
+4. Phone field should show the phone number automatically which is saved in master entry
+5. Address field should show address automatically which is saved in master entry
+6. Sale Mode should have drop down button with the value as from Gadi and from godown  
+7. Vehicle No field should auto show the vehicle no in list view which is saved in mater entry
+8. Sale Payment field should show the list as Paid and Credit 
+9. Notes field should accept alphanumeric information ",,
+,,,2. Driver gives the bill and accept the payment ,Add New Sale,"Section 2: Bird Details
+1. Bird Type - Dropdown
+2. Number of Cages - Numeric ***
+3. Number of Birds - Numeric
+4. Rate per Kg - Decimal
+5. Average Weight (Kg) - Decimal
+6. Total Weight - Auto Calculated
+7. Total Amount - Auto Calculated","1. Bird Type - Dropdown This field show different type of birds to selcet which is purchased 
+2. Number of Cages - Dropdown, This field should show three values 42, 130 ,250
+3. Number of Birds - Numeric, This field should accept numeric values only
+4. Rate per Kg - Decimal, This field should accept numeric values only
+5. Average Weight (Kg) - Decimal, This field should accept numeric values only
+6. Total Weight - Auto Calculated, This field should show auto calculated values based on the formula 
+7. Total Amount - Auto Calculated, This field should show auto calculated values based on the formula ",,
+,,,3. Drive takes the reamining cages to aziz godown ,Add New Sale,"Section 3: Charges
+1. Transport Charges - Decimal
+2. Loading Charges - Decimal
+3. Commission - Decimal
+4. Other Charges - Decimal
+5. Deductions - Decimal
+    5.1 Weight Shortage:   [ 800 ]
+    5.2 Mortality Deduction: [ 500 ]
+    5.3 Other Deduction:   [ 0 ]",TBD,,
+,,,4. Retailers shop keepers come to godwon to purchase on wholesale rates ,Add New Sale,"Section 4: Payment
+1. Total Invoice - Auto Calculated
+2. Advance Paid - Decimal
+Credit Balance - Decimal
+3. Outstanding Payment - Auto Calculated
+4. Payment Mode - Dropdown
+5. Total payment Received - Decimal 
+6. Balance Amount - Auto Calculated
+","1. Total Invoice - Auto Calculated, This field should show the invoice to be paid
+2. Advance Paid - Decimal, This field should accept numeric values
+Credit Balance should take the credit value if there is anything
+3. Outstanding Payment - Auto Calculated This field should auto values based on the formula
+4. Payment Mode - Dropdown This field should contains values as Cash, Credit, Online
+5. Total payment Made - Decimal, This field should accept numeric values 
+6. Balance Amount - Auto Calculated, This field should accept numeric values
+
+",,
+,,,5. Aziz retail shop also purchase from godown in wholesale rates ,Mini Dashboard,"
+Total purchase (no)
+Total BIrds Sale (Qty)
+Total Value(rs)
+Total payment Received (rs)
+","Total sale (no), This widget shows the total number of the sale made on the current date
+Total BIrds Sale (Qty), This widget shows the total number of the birds sold on the current date
+Total Value(rs), This widget shows the total values of the birds sold on the current date
+Total payment received (rs), This widget shows the total payment recieved for sale on the current date
+",,
+,,,,Purchase List ,"Table should contain
+Sale Invoice No.
+Shop Name
+Sale Date
+Rate per Kg
+Cage Qty
+Bird Qty
+Average Bird Weight (Kg)
+Total Value
+Sale Type
+Actions",NA,,
+,,,,,Date Range (Select date) ,Calendar button values,,
+,,,,,Filter/ Search,"There should be a filter button, which can be used to search the user by entering name or phone number",,
+,,,,,"View List:
+Download PDF
+Print Report ","Download PDF, This button allows user to download to download the details based on the selected date range
+Print Report, This button allows user to take printout directly the details based on the selected date range",,
+,,,,,,,,
+,,,,,,,,
+5,Mortality,,,Add New Mortality ,"1. Purchase Invoice No. - text Box 
+2. Purchase Date - Datepicker
+3. Farmer Name - Dropdown (Master Data)
+4. Farm Location - Autofill
+5. Vehicle No -Drop Down 
+6. Total birds purchased - Auto fill by Invoice no 
+7. Number of Birds Die - text Box 
+8. Cause of Death - text Box 
+9. Notes: Text box ","1. Purchase Invoice no field should accept alphanumeric information 
+2. Purchase date should take the current date automatically when this purchase record is getting added
+3. Farmer Name - Auto fill based on the entered Purchase Invoice number 
+4. Farm Location - Auto fill based on the displated farmer name  
+5. Vehicle No field should auto show the vehicle no in list view which is saved in mater entry
+6. Total birds purchased - Auto fill based on the entered Purchase Invoice number    
+Number of Birds Die - Enter the value manually 
+7. Cause of death need to be entered manually 
+8. Notes field should accept alphanumeric information ",,
+,,,,Mini Dashboard,"
+Total BIrds Purchase (Qty)
+Total Birds Death (Qty)
+Total Value(rs)
+","Total BIrds Purchase (Qty, This widget shows the total number of the birds purchased on the entered Invoice no
+Total Birds Death- this widget shows the total no of birds die
+Total Value(rs), This widget shows the total values of the birds die on the current date against the Invoice 
+",,
+,,,,Mortality List ,"Table should contain
+
+1. Purchase Invoice No. 
+2. Purchase Date
+3. Farmer Name 
+5. Farm Location
+6. Vehicle No  
+7. Total birds purchased  
+7. Number of Birds 
+8. Cause of Death 
+9. Action ",NA,,
+,,,,,Date Range (Select date) ,Calendar button values,,
+,,,,,Filter/ Search,"There should be a filter button, which can be used to search the user by entering name or phone number",,
+,,,,,"View List:
+Download PDF
+Print Report ","Download PDF, This button allows user to download to download the details based on the selected date range
+Print Report, This button allows user to take printout directly the details based on the selected date range",,
+,,,,,,,,
+6,Expense Management,"There are multiple expenses happens on regular basis
+a. Labour payment
+b. Vehicle expenses
+c. Feed expenses
+d. Others ",1. Admin can see the total expenses happening the company under different categories ,Add New Expenses,"
+Expense Owner- Text Field
+Date - Current date with Datepicker 
+Category - Drop down 
+Description - Text Box 
+Amount - Text Box 
+Payment method Drop Down
+Attachment -browser box 
+Notes - Text Box ","
+Expense Owner- Should accept alphabatical values 
+Date - Current date with Datepicker 
+Category - should have differnet category as Feed, Labour, Medicine, Equipment, Maintenance, Transportation
+Description - it should accept Alphanumeric values 
+Amount - It should accept numeric values 
+Payment method Should have different method like cash, online, cheque, online
+Attachment, this field should allow use to attach bills in terms of word, image, pdf formate
+Notes - Text Box ",,
+,,,,Mini Dashboard,"Total Expense (rs)
+Total Expense By category - Feed, Labour, Medicine, Equipment, Maintenance, Transportation
+Total Expenses rs yesterday 
+Variation + or -
+",,,
+,,,,Expense List ,"Table should contain
+
+1. Expense Owner
+2. Date
+3. Category
+4. Description
+5. Amount
+6. Payment Method
+7 Actions",,,
+,,,,,Date Range (Select date) ,Calendar button values,,
+,,,,,Filter/ Search,"There should be a filter button, which can be used to search the user by entering name or phone number",,
+,,,,,"View List:
+Download PDF
+Print Report ","Download PDF, This button allows user to download to download the details based on the selected date range
+Print Report, This button allows user to take printout directly the details based on the selected date range",,
+7,Reports,,,,,,,
+,,,,,6. Filter date wise calendar option ,,,
+,,,,,7. List of all expense in tabular formate on current,,,
+,,,,,"8. Table should contain
+Date
+Category
+Description
+Amount
+Payment method 
+Actions ",,,
+,,,,,,,,
+8,Master Data Management,"1. This page contains details of all entities which are being used in the system
+a, Farmer
+b. Retailers
+c. Vehicles","1. Admin can add details of farmers, regular retailers and Vehicles ",Add New Farmer,"Add New Farmer button  
+1. Farmer Name - Text box
+2. Farm House Name - Text box 
+3. Phone - Text box
+4. Join date- Date Picker
+5. Status - Drop down
+6. Address - Text box 
+7. Notes - Text box 
+8. Add Farmer - button","1. Farmer Name field should accept alphanumeric information
+2. Farm House Name, field should accept alphanumeric information 
+3. Phone field should accept phone number with 10 digits only
+4. Join date should take the current date automatically when this farmer is getting added
+5. Status should be Active by default at the time of adding, other value is Inactive
+6. Address field should accept alphanumeric information 
+7. Notes field should accept alphanumeric information 
+8. Add Farmer, upon clicking on this new farmer should be added and show in the table",,
+8.1,,,Farmer,Mini Dashboard,"Widgets as Mini Dashboard to show
+1. Total Farmers
+2. Active Farmers
+3. Inactive Farmers ","1. This widget shows the total number of the farmers available in the system
+2. This widget shows the total number of the active farmers available in the system
+3. This widget shows the total number of the inactive farmers available in the system",,
+8.2,,,,Farmer List ,"Farmers List tabular view
+This shows entire information of the users like 
+
+1. Farm House Name
+2. Farmer Name 
+3. Phone
+4. Address 
+5. Join Date
+6. Status
+7. Actions","1. Farmer Name column should have sorting function ascending and descending.
+2. Upon clicing on any row, details should be open in new pop up window with view only mode
+3. in Action, Edit can be use to make any changes in the already saved record, Delete can be use to remove the record complely from the system ",,
+,,,,Search ,Date Range (Select date) ,Calendar button values,,
+8.3,,,,Filter,Filter button ,"There should be a filter button, which can be used to search the user by entering name or phone number",NA,
+,,,,View list ,"Download PDF
+Print Report ","Download PDF, This button allows user to download to download the details based on the selected date range
+Print Report, This button allows user to take printout directly the details based on the selected date range",,
+8.4,,,Retailer,Add New Retailer,"Add Retailer button  
+1. Shop Name - Text box 
+2. Owner Name - Text box
+3. Phone - Text box 
+4. Join date - Date Picker
+5. Status - Drop down
+6. Address - Text box 
+7. Notes - Text box","1. Shop Name field should accept alphanumeric information
+2. Owner Name field should accept alphanumeric information 
+3. Phone field should accept phone number with 10 digits only
+4. Join date should take the current date automatically when this farmer is getting added
+5. Status should be Active by default at the time of adding, with Inactive as other option
+6. Address field should accept alphanumeric information 
+7. Notes field should accept alphanumeric information ",,
+8.5,,,,Mini Dashboard,"Widgets as Mini Dashboard to show
+1. Total Retailers
+2. Active Retailers
+3. Inactive Retailers ","1. This widget shows the total number of the retailers available in the system
+2. This widget shows the total number of the active retailers  available in the system
+3. This widget shows the total number of the inactive retailers available in the system",,
+8.6,,,,Retailer List ,"Retailers List tabular view
+This shows entire information of the users like 
+
+1. Shop Name
+2. Owner Name
+3. Phone
+4. Address 
+5. Join Date
+6. Status
+7. Actions","1. Shop Name column should have sorting function ascending and descending.
+2. Upon clicing on any row, details should be open in new pop up window with view only mode
+3. in Action, Edit can be use to make any changes in the already saved record, Delete can be use to remove the record complely from the system ",,
+,,,,Search ,Date Range (Select date) ,Calendar button values,,
+8.7,,,,Filter,Filter button ,"There should be a filter button, which can be used to search the user by entering name or phone number",,
+,,,,View list ,"Download PDF
+Print Report ","Download PDF, This button allows user to download to download the details based on the selected date range
+Print Report, This button allows user to take printout directly the details based on the selected date range",,
+8.8,,,Vehicles ,Add New Vehicle,"Add Vechile button  
+1. Vehicle No - Text box 
+2. Vehicle Type - Drop down
+3. Owner Name - - Text box 
+4. Driver Name - Text box 
+5. Phone - Text box 
+6. Address - Text box 
+7. Join Date Date picker
+8. Status - Drop down
+9. Total Capacity of cages - Drop down
+10. Petrol tank capacity - Text box 
+11. Milage  - Text box 
+12. Notes- Text box ","1. Vehicle No field should accept alphanumeric information
+2. Vehicle type field should have drop down list with value Truck, Mini truck, pickup
+3. Owner Name field should accept alphanumeric information 
+4. Driver Name field should accept alphanumeric information
+5. Phone field should accept phone number with 10 digits only
+6. Address field should accept alphanumeric information 
+7. Join date should take the current date automatically when this farmer is getting added
+8. . Status should be Active by default at the time of adding, with Inactive as other option
+9. Total capacity of cages field should have drop down list with value 42, 130 and 240
+10. Petrol tank capicity field should accept only numeric values
+11. Milage field should accept only numeric values
+12. Notes field should accept alphanumeric information ","Vehicle Type would be: 
+Trcuk 
+Mini Trcuk
+Pickup ",
+8.9,,,,Mini Dashboard,"Widgets as Mini Dashboard to show
+1.  Total Vehicle 
+2. Active Vehicle 
+3. Inactive Vehicle  ","1. Total vehicle widget shows the total number of the vehicle with thier typs  available in the system
+2. This widget shows the total number of the active vehicle with thier typs  available in the system
+3. This widget shows the total number of the inactive vehicle with thier typs  available in the system","Vehicle Type would be: 
+Trcuk 
+Mini Trcuk
+Pickup ",
+8.10',,,,Vehicle List ,"Vehicle List tabular view
+This shows entire information of the vehicle like 
+1. Vehicle No
+2. Vehicle Type
+3. Owner Name
+4. Driver Name
+5. Phone
+6. Address
+7. Join Date
+8. Status 
+9. Total Capacity of cages
+10. Petrol tank capacity 
+11. Milage  
+12. Actions",NA,"1. Name column should have sorting function ascending and descending.
+2. There should be a filter button, which can be used to search the user by entering name or phone number",
+,,,,Search ,Date Range (Select date) ,Calendar button values,,
+8.11,,,,Filter,Filter button ,"There should be a filter button, which can be used to search the user by entering name or phone number",,
+,,,,View list ,"Download PDF
+Print Report ","Download PDF, This button allows user to download to download the details based on the selected date range
+Print Report, This button allows user to take printout directly the details based on the selected date range",,
+,,,,,,,,
+9,User Management,"New user can be added into the system, This screen contains all the details who use this application with different role play ",1. Admin can add more users and give them access level permission ,Add New User ,"Add User button  
+1. Full Name - Text box 
+2. Email id - Text box 
+3. Phone - Text box 
+4. Role - Drop down
+5. Status - Drop down
+6. Join Date - Date Picker 
+7. Notes - Text box ","1. Full name Should be taken alphabate information
+2. Email id should accept the alphanumeric information 
+3. Phone field should accept phone number with 10 digits only
+4. Role, drop down list should have 3 options Admin, Manager, Operator 
+5. By default the status would be selected as active, there will be another option as Inactive,  admin can choose inactive incase of operator leaves
+6. Join date is the date when admin add this user into the system
+7. Notes, this filed should accept alphanumeric information
+",1. Name field should accept only alphabets values,
+9.1,,,,Mini Dashboard,"Widgets- Mini Dashboard to show
+1. Total user
+2. Active user
+3. Admins
+4. Operators ","1. This widget shows the total number of the users available in the system
+2. This widget shows the total number of the active users available in the system
+3. This widget shows the total number of the admin users available in the system
+4. This widget shows the total number of the operator users available in the system",NA,
+9.2,,,,User List,"User Accounts tabular view
+This shows entire information of the users like 
+
+Name
+Email
+Phone
+Role
+Status
+Join Date
+Last Login
+Actions","1. Name column should have sorting function ascending and descending.
+2. Upon clicing on any row, details should be open in new pop up window with view only mode
+3. in Action, Edit can be use to make any changes in the already saved record, Delete can be use to remove the record complely from the system ",,
+9.3,,,,Filter,Filter button ,"There should be a filter button, which can be used to search the user by entering name or phone number",NA,

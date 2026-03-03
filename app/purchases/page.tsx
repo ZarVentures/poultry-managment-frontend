@@ -30,6 +30,13 @@ export default function PurchasesPage() {
     status: "pending" as "pending" | "received" | "cancelled",
     notes: "",
     items: [{ itemName: "", quantity: "", unit: "", unitPrice: "" }],
+    transportCharges: "",
+    loadingCharges: "",
+    commission: "",
+    otherCharges: "",
+    weightShortage: "",
+    mortalityDeduction: "",
+    otherDeduction: "",
   })
 
   useEffect(() => {
@@ -69,6 +76,13 @@ export default function PurchasesPage() {
       status: "pending",
       notes: "",
       items: [{ itemName: "", quantity: "", unit: "", unitPrice: "" }],
+      transportCharges: "",
+      loadingCharges: "",
+      commission: "",
+      otherCharges: "",
+      weightShortage: "",
+      mortalityDeduction: "",
+      otherDeduction: "",
     })
     setEditingId(null)
   }
@@ -87,6 +101,13 @@ export default function PurchasesPage() {
         unit: item.unit,
         unitPrice: String(item.unitPrice),
       })),
+      transportCharges: String(purchase.transportCharges || ""),
+      loadingCharges: String(purchase.loadingCharges || ""),
+      commission: String(purchase.commission || ""),
+      otherCharges: String(purchase.otherCharges || ""),
+      weightShortage: String(purchase.weightShortage || ""),
+      mortalityDeduction: String(purchase.mortalityDeduction || ""),
+      otherDeduction: String(purchase.otherDeduction || ""),
     })
     setEditingId(purchase.id)
     setShowDialog(true)
@@ -117,7 +138,30 @@ export default function PurchasesPage() {
       const quantity = parseFloat(item.quantity) || 0
       const unitPrice = parseFloat(item.unitPrice) || 0
       return sum + (quantity * unitPrice)
-    }, 0).toFixed(2)
+    }, 0)
+  }
+
+  const calculateCharges = () => {
+    const transport = parseFloat(formData.transportCharges) || 0
+    const loading = parseFloat(formData.loadingCharges) || 0
+    const comm = parseFloat(formData.commission) || 0
+    const other = parseFloat(formData.otherCharges) || 0
+    return transport + loading + comm + other
+  }
+
+  const calculateDeductions = () => {
+    const weight = parseFloat(formData.weightShortage) || 0
+    const mortality = parseFloat(formData.mortalityDeduction) || 0
+    const other = parseFloat(formData.otherDeduction) || 0
+    return weight + mortality + other
+  }
+
+  const calculateGrossAmount = () => {
+    return calculateTotal() + calculateCharges()
+  }
+
+  const calculateNetAmount = () => {
+    return calculateGrossAmount() - calculateDeductions()
   }
 
   const handleSave = async () => {
@@ -147,6 +191,13 @@ export default function PurchasesPage() {
         totalAmount,
         notes: formData.notes,
         items,
+        transportCharges: formData.transportCharges || undefined,
+        loadingCharges: formData.loadingCharges || undefined,
+        commission: formData.commission || undefined,
+        otherCharges: formData.otherCharges || undefined,
+        weightShortage: formData.weightShortage || undefined,
+        mortalityDeduction: formData.mortalityDeduction || undefined,
+        otherDeduction: formData.otherDeduction || undefined,
       }
 
       if (editingId) {
@@ -316,7 +367,125 @@ export default function PurchasesPage() {
 
                 <div className="flex justify-end">
                   <div className="text-lg font-semibold">
-                    Total: ${calculateTotal()}
+                    Bird Amount: ₹{calculateTotal().toFixed(2)}
+                  </div>
+                </div>
+
+                <div className="space-y-4 border-t pt-4">
+                  <Label className="text-lg font-semibold">Section 3: Charges & Deductions</Label>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Transport Charges</Label>
+                      <Input
+                        type="number"
+                        value={formData.transportCharges}
+                        onChange={(e) => setFormData({ ...formData, transportCharges: e.target.value })}
+                        placeholder="0.00"
+                        disabled={loading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Loading Charges</Label>
+                      <Input
+                        type="number"
+                        value={formData.loadingCharges}
+                        onChange={(e) => setFormData({ ...formData, loadingCharges: e.target.value })}
+                        placeholder="0.00"
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Commission</Label>
+                      <Input
+                        type="number"
+                        value={formData.commission}
+                        onChange={(e) => setFormData({ ...formData, commission: e.target.value })}
+                        placeholder="0.00"
+                        disabled={loading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Other Charges</Label>
+                      <Input
+                        type="number"
+                        value={formData.otherCharges}
+                        onChange={(e) => setFormData({ ...formData, otherCharges: e.target.value })}
+                        placeholder="0.00"
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end text-sm">
+                    <span className="font-medium">Total Charges: ₹{calculateCharges().toFixed(2)}</span>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <Label className="text-base font-semibold mb-3 block">Deductions</Label>
+                    
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Weight Shortage</Label>
+                        <Input
+                          type="number"
+                          value={formData.weightShortage}
+                          onChange={(e) => setFormData({ ...formData, weightShortage: e.target.value })}
+                          placeholder="0.00"
+                          disabled={loading}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Mortality Deduction</Label>
+                        <Input
+                          type="number"
+                          value={formData.mortalityDeduction}
+                          onChange={(e) => setFormData({ ...formData, mortalityDeduction: e.target.value })}
+                          placeholder="0.00"
+                          disabled={loading}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Other Deduction</Label>
+                        <Input
+                          type="number"
+                          value={formData.otherDeduction}
+                          onChange={(e) => setFormData({ ...formData, otherDeduction: e.target.value })}
+                          placeholder="0.00"
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end text-sm mt-2">
+                      <span className="font-medium">Total Deductions: ₹{calculateDeductions().toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4 space-y-2">
+                    <div className="flex justify-between text-base">
+                      <span>Bird Amount:</span>
+                      <span className="font-medium">₹{calculateTotal().toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-base">
+                      <span>Total Charges:</span>
+                      <span className="font-medium">₹{calculateCharges().toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-lg font-semibold border-t pt-2">
+                      <span>Gross Amount:</span>
+                      <span>₹{calculateGrossAmount().toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-base text-red-600">
+                      <span>Total Deductions:</span>
+                      <span className="font-medium">-₹{calculateDeductions().toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-xl font-bold border-t pt-2 text-green-600">
+                      <span>Net Amount:</span>
+                      <span>₹{calculateNetAmount().toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -361,7 +530,9 @@ export default function PurchasesPage() {
                     <TableHead>Supplier</TableHead>
                     <TableHead>Order Date</TableHead>
                     <TableHead>Due Date</TableHead>
-                    <TableHead>Total Amount</TableHead>
+                    <TableHead>Bird Amount</TableHead>
+                    <TableHead>Gross Amount</TableHead>
+                    <TableHead>Net Amount</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -375,7 +546,11 @@ export default function PurchasesPage() {
                       <TableCell>
                         {purchase.dueDate ? new Date(purchase.dueDate).toLocaleDateString() : "-"}
                       </TableCell>
-                      <TableCell>${Number(purchase.totalAmount).toFixed(2)}</TableCell>
+                      <TableCell>₹{Number(purchase.totalAmount).toFixed(2)}</TableCell>
+                      <TableCell>₹{Number(purchase.grossAmount || purchase.totalAmount).toFixed(2)}</TableCell>
+                      <TableCell className="font-semibold text-green-600">
+                        ₹{Number(purchase.netAmount || purchase.totalAmount).toFixed(2)}
+                      </TableCell>
                       <TableCell>
                         <span
                           className={`px-2 py-1 rounded text-xs ${
