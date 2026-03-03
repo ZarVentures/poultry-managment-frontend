@@ -142,6 +142,7 @@ export interface Sale {
 export interface Expense {
   id: string;
   expenseDate: string;
+  expenseOwner?: string;
   category: 'feed' | 'labor' | 'medicine' | 'utilities' | 'equipment' | 'maintenance' | 'transportation' | 'other';
   description: string;
   amount: number;

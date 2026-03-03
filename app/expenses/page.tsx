@@ -23,6 +23,7 @@ export default function ExpensesPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     expenseDate: new Date().toISOString().split("T")[0],
+    expenseOwner: "",
     category: "feed" as "feed" | "labor" | "medicine" | "utilities" | "equipment" | "maintenance" | "transportation" | "other",
     description: "",
     amount: "",
@@ -51,6 +52,7 @@ export default function ExpensesPage() {
   const resetForm = () => {
     setFormData({
       expenseDate: new Date().toISOString().split("T")[0],
+      expenseOwner: "",
       category: "feed",
       description: "",
       amount: "",
@@ -63,6 +65,7 @@ export default function ExpensesPage() {
   const handleEdit = (expense: ApiExpense) => {
     setFormData({
       expenseDate: expense.expenseDate,
+      expenseOwner: expense.expenseOwner || "",
       category: expense.category,
       description: expense.description,
       amount: String(expense.amount),
@@ -83,6 +86,7 @@ export default function ExpensesPage() {
       setLoading(true)
       const expenseData = {
         expenseDate: formData.expenseDate,
+        expenseOwner: formData.expenseOwner || undefined,
         category: formData.category,
         description: formData.description,
         amount: parseFloat(formData.amount),
@@ -150,6 +154,16 @@ export default function ExpensesPage() {
                 </p>
               </DialogHeader>
               <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Expense Owner</Label>
+                  <Input
+                    value={formData.expenseOwner}
+                    onChange={(e) => setFormData({ ...formData, expenseOwner: e.target.value })}
+                    placeholder="Person or department responsible"
+                    disabled={loading}
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Date *</Label>
