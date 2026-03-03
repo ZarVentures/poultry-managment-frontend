@@ -238,6 +238,8 @@ export interface GodownSummary {
 export const farmersApi = {
   getAll: () => apiRequest<Farmer[]>('/farmers'),
   
+  getActive: () => apiRequest<Array<{ id: string; name: string; phone: string; address?: string }>>('/farmers/active/list'),
+  
   getOne: (id: string) => apiRequest<Farmer>(`/farmers/${id}`),
   
   create: (data: Omit<Farmer, 'id' | 'createdAt' | 'updatedAt'>) =>
@@ -264,6 +266,8 @@ export const farmersApi = {
 export const retailersApi = {
   getAll: () => apiRequest<Retailer[]>('/retailers'),
   
+  getActive: () => apiRequest<Array<{ id: string; name: string; ownerName?: string; phone: string; address?: string }>>('/retailers/active/list'),
+  
   getOne: (id: string) => apiRequest<Retailer>(`/retailers/${id}`),
   
   create: (data: Omit<Retailer, 'id' | 'createdAt' | 'updatedAt'>) =>
@@ -289,6 +293,8 @@ export const retailersApi = {
 // ============================================
 export const vehiclesApi = {
   getAll: () => apiRequest<Vehicle[]>('/vehicles'),
+  
+  getActive: () => apiRequest<Array<{ id: string; vehicleNumber: string; driverName: string; phone: string }>>('/vehicles/active/list'),
   
   getOne: (id: string) => apiRequest<Vehicle>(`/vehicles/${id}`),
   
@@ -438,6 +444,8 @@ export const expensesApi = {
 // ============================================
 export const purchasesApi = {
   getAll: () => apiRequest<PurchaseOrder[]>('/purchases'),
+  
+  getInvoiceList: () => apiRequest<Array<{ id: string; orderNumber: string; orderDate: string; supplierName: string }>>('/purchases/invoices/list'),
   
   getOne: (id: string) => apiRequest<PurchaseOrder>(`/purchases/${id}`),
   

@@ -12,12 +12,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Edit2, Trash2, X } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { Combobox } from "@/components/ui/combobox"
 import { salesApi, retailersApi, type Sale as ApiSale, type Retailer } from "@/lib/api"
 import { toast } from "sonner"
 
 export default function SalesPage() {
   const [sales, setSales] = useState<ApiSale[]>([])
-  const [retailers, setRetailers] = useState<Retailer[]>([])
+  const [retailers, setRetailers] = useState<Array<{ id: string; name: string; ownerName?: string; phone: string; address?: string }>>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
@@ -25,6 +26,9 @@ export default function SalesPage() {
   const [formData, setFormData] = useState({
     invoiceNumber: "",
     customerName: "",
+    ownerName: "",
+    phone: "",
+    address: "",
     saleDate: new Date().toISOString().split("T")[0],
     productType: "eggs" as "eggs" | "meat" | "chicks" | "other",
     quantity: "",
@@ -57,7 +61,7 @@ export default function SalesPage() {
 
   const fetchRetailers = async () => {
     try {
-      const data = await retailersApi.getAll()
+      const data = await retailersApi.getActive()
       setRetailers(data)
     } catch (error) {
       console.error("Failed to fetch retailers:", error)
@@ -68,6 +72,9 @@ export default function SalesPage() {
     setFormData({
       invoiceNumber: "",
       customerName: "",
+      ownerName: "",
+      phone: "",
+      address: "",
       saleDate: new Date().toISOString().split("T")[0],
       productType: "eggs",
       quantity: "",
@@ -82,9 +89,13 @@ export default function SalesPage() {
   }
 
   const handleEdit = (sale: ApiSale) => {
+    const retailer = retailers.find(r => r.id === sale.retailerId)
     setFormData({
       invoiceNumber: sale.invoiceNumber,
       customerName: sale.customerName,
+      ownerName: retailer?.ownerName || "",
+      phone: retailer?.phone || "",
+      address: retailer?.address || "",
       saleDate: sale.saleDate,
       productType: sale.productType,
       quantity: String(sale.quantity),
@@ -168,6 +179,18 @@ export default function SalesPage() {
         ...formData,
         retailerId,
         customerName: retailer.name,
+        ownerName: retailer.ownerName || "",
+        phone: retailer.phone,
+        address: retailer.address || "",
+      })
+    } else {
+      // Clear auto-filled fields if retailer is deselected
+      setFormData({
+        ...formData,
+        retailerId: "",
+        ownerName: "",
+        phone: "",
+        address: "",
       })
     }
   }
@@ -176,6 +199,12 @@ export default function SalesPage() {
     const quantity = parseFloat(formData.quantity) || 0
     const unitPrice = parseFloat(formData.unitPrice) || 0
     return (quantity * unitPrice).toFixed(2)
+  }
+
+  const calculateBalance = () => {
+    const total = parseFloat(calculateTotal()) || 0
+    const received = parseFloat(formData.amountReceived) || 0
+    return (total - received).toFixed(2)
   }
 
   if (!mounted) return null
@@ -225,18 +254,19 @@ export default function SalesPage() {
 
                 <div className="space-y-2">
                   <Label>Retailer (Optional)</Label>
-                  <Select value={formData.retailerId || undefined} onValueChange={handleRetailerChange} disabled={loading}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select retailer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {retailers.map((retailer) => (
-                        <SelectItem key={retailer.id} value={retailer.id}>
-                          {retailer.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Combobox
+                    options={retailers.map(r => ({
+                      value: r.id,
+                      label: r.name,
+                      subtitle: r.phone
+                    }))}
+                    value={formData.retailerId}
+                    onValueChange={handleRetailerChange}
+                    placeholder="Select retailer"
+                    searchPlaceholder="Search retailers..."
+                    emptyText="No retailers found"
+                    disabled={loading}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -246,6 +276,40 @@ export default function SalesPage() {
                     onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
                     placeholder="Customer name"
                     disabled={loading}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Owner Name</Label>
+                    <Input
+                      value={formData.ownerName}
+                      onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
+                      placeholder="Owner name"
+                      disabled={loading}
+                      className="bg-muted/50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phone</Label>
+                    <Input
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      placeholder="Phone number"
+                      disabled={loading}
+                      className="bg-muted/50"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Address</Label>
+                  <Input
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="Address"
+                    disabled={loading}
+                    className="bg-muted/50"
                   />
                 </div>
 
@@ -304,11 +368,11 @@ export default function SalesPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Total Amount</Label>
-                    <Input value={calculateTotal()} disabled />
+                    <Input value={`$${calculateTotal()}`} disabled className="font-semibold" />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>Payment Status *</Label>
                     <Select
@@ -335,6 +399,14 @@ export default function SalesPage() {
                       onChange={(e) => setFormData({ ...formData, amountReceived: e.target.value })}
                       placeholder="0.00"
                       disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Balance</Label>
+                    <Input 
+                      value={`$${calculateBalance()}`} 
+                      disabled 
+                      className={`font-semibold ${parseFloat(calculateBalance()) > 0 ? 'text-red-600' : 'text-green-600'}`}
                     />
                   </div>
                 </div>
