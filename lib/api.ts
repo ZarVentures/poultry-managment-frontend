@@ -121,6 +121,15 @@ export interface Sale {
   unit?: string;
   unitPrice: number;
   totalAmount: number;
+  transportCharges?: number;
+  loadingCharges?: number;
+  commission?: number;
+  otherCharges?: number;
+  weightShortage?: number;
+  mortalityDeduction?: number;
+  otherDeduction?: number;
+  grossAmount?: number;
+  netAmount?: number;
   paymentStatus: 'paid' | 'pending' | 'partial';
   amountReceived: number;
   notes?: string;
