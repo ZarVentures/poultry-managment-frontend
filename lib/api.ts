@@ -200,12 +200,14 @@ export interface Setting {
 export interface GodownInward {
   id: string;
   entryDate: string;
-  farmerName: string;
-  vehicleNumber: string;
-  quantity: number;
-  unit: string;
-  rate: number;
-  totalAmount: number;
+  purchaseInvoiceNo?: string;
+  supplierName?: string;
+  vehicleId?: string;
+  numberOfBirds: number;
+  averageWeight?: number;
+  totalWeight?: number;
+  ratePerKg?: number;
+  totalAmount?: number;
   notes?: string;
   createdAt?: string;
   updatedAt?: string;

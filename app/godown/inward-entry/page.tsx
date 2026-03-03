@@ -25,11 +25,14 @@ export default function GodownInwardPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     entryDate: new Date().toISOString().split("T")[0],
-    farmerName: "",
-    vehicleNumber: "",
-    quantity: "",
-    unit: "kg",
-    rate: "",
+    purchaseInvoiceNo: "",
+    supplierName: "",
+    vehicleId: "",
+    numberOfBirds: "",
+    averageWeight: "",
+    totalWeight: "",
+    ratePerKg: "",
+    totalAmount: "",
     notes: "",
   })
 
@@ -74,11 +77,14 @@ export default function GodownInwardPage() {
   const resetForm = () => {
     setFormData({
       entryDate: new Date().toISOString().split("T")[0],
-      farmerName: "",
-      vehicleNumber: "",
-      quantity: "",
-      unit: "kg",
-      rate: "",
+      purchaseInvoiceNo: "",
+      supplierName: "",
+      vehicleId: "",
+      numberOfBirds: "",
+      averageWeight: "",
+      totalWeight: "",
+      ratePerKg: "",
+      totalAmount: "",
       notes: "",
     })
     setEditingId(null)
@@ -87,11 +93,14 @@ export default function GodownInwardPage() {
   const handleEdit = (entry: GodownInward) => {
     setFormData({
       entryDate: entry.entryDate,
-      farmerName: entry.farmerName,
-      vehicleNumber: entry.vehicleNumber,
-      quantity: String(entry.quantity),
-      unit: entry.unit,
-      rate: String(entry.rate),
+      purchaseInvoiceNo: entry.purchaseInvoiceNo || "",
+      supplierName: entry.supplierName || "",
+      vehicleId: entry.vehicleId || "",
+      numberOfBirds: String(entry.numberOfBirds || ""),
+      averageWeight: String(entry.averageWeight || ""),
+      totalWeight: String(entry.totalWeight || ""),
+      ratePerKg: String(entry.ratePerKg || ""),
+      totalAmount: String(entry.totalAmount || ""),
       notes: entry.notes || "",
     })
     setEditingId(entry.id)
@@ -99,32 +108,43 @@ export default function GodownInwardPage() {
   }
 
   const calculateTotal = () => {
-    const quantity = parseFloat(formData.quantity) || 0
-    const rate = parseFloat(formData.rate) || 0
-    return (quantity * rate).toFixed(2)
+    const totalWeight = parseFloat(formData.totalWeight) || 0
+    const ratePerKg = parseFloat(formData.ratePerKg) || 0
+    return (totalWeight * ratePerKg).toFixed(2)
+  }
+
+  const calculateTotalWeight = () => {
+    const numberOfBirds = parseFloat(formData.numberOfBirds) || 0
+    const averageWeight = parseFloat(formData.averageWeight) || 0
+    const total = (numberOfBirds * averageWeight).toFixed(2)
+    setFormData({ ...formData, totalWeight: total })
   }
 
   const handleSave = async () => {
-    if (!formData.farmerName || !formData.quantity || !formData.rate) {
+    if (!formData.supplierName || !formData.numberOfBirds || !formData.ratePerKg) {
       toast.error("Please fill all required fields")
       return
     }
 
     try {
       setLoading(true)
-      const quantity = parseFloat(formData.quantity)
-      const rate = parseFloat(formData.rate)
-      const totalAmount = quantity * rate
+      const numberOfBirds = parseInt(formData.numberOfBirds)
+      const averageWeight = parseFloat(formData.averageWeight) || 0
+      const totalWeight = parseFloat(formData.totalWeight) || 0
+      const ratePerKg = parseFloat(formData.ratePerKg)
+      const totalAmount = totalWeight * ratePerKg
 
       const entryData = {
         entryDate: formData.entryDate,
-        farmerName: formData.farmerName,
-        vehicleNumber: formData.vehicleNumber,
-        quantity,
-        unit: formData.unit,
-        rate,
+        purchaseInvoiceNo: formData.purchaseInvoiceNo || undefined,
+        supplierName: formData.supplierName,
+        vehicleId: formData.vehicleId || undefined,
+        numberOfBirds,
+        averageWeight: averageWeight || undefined,
+        totalWeight: totalWeight || undefined,
+        ratePerKg,
         totalAmount,
-        notes: formData.notes,
+        notes: formData.notes || undefined,
       }
 
       if (editingId) {
@@ -167,10 +187,29 @@ export default function GodownInwardPage() {
     if (farmer) {
       setFormData({
         ...formData,
-        farmerName: farmer.name,
+        supplierName: farmer.name,
       })
     }
   }
+
+  const handleVehicleChange = (vehicleId: string) => {
+    setFormData({
+      ...formData,
+      vehicleId: vehicleId,
+    })
+  }
+
+  // Auto-calculate total weight when birds or average weight changes
+  useEffect(() => {
+    if (formData.numberOfBirds && formData.averageWeight) {
+      const numberOfBirds = parseFloat(formData.numberOfBirds) || 0
+      const averageWeight = parseFloat(formData.averageWeight) || 0
+      const total = (numberOfBirds * averageWeight).toFixed(2)
+      if (formData.totalWeight !== total) {
+        setFormData(prev => ({ ...prev, totalWeight: total }))
+      }
+    }
+  }, [formData.numberOfBirds, formData.averageWeight])
 
   if (!mounted) return null
 
@@ -207,8 +246,20 @@ export default function GodownInwardPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Farmer (Optional)</Label>
-                    <Select value={formData.farmerName || undefined} onValueChange={handleFarmerChange} disabled={loading}>
+                    <Label>Purchase Invoice No</Label>
+                    <Input
+                      value={formData.purchaseInvoiceNo}
+                      onChange={(e) => setFormData({ ...formData, purchaseInvoiceNo: e.target.value })}
+                      placeholder="PO-2024-001"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Select Farmer (Optional)</Label>
+                    <Select value={formData.supplierName || undefined} onValueChange={handleFarmerChange} disabled={loading}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select farmer" />
                       </SelectTrigger>
@@ -221,23 +272,22 @@ export default function GodownInwardPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-2">
+                    <Label>Supplier Name *</Label>
+                    <Input
+                      value={formData.supplierName}
+                      onChange={(e) => setFormData({ ...formData, supplierName: e.target.value })}
+                      placeholder="Supplier name"
+                      disabled={loading}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Farmer Name *</Label>
-                  <Input
-                    value={formData.farmerName}
-                    onChange={(e) => setFormData({ ...formData, farmerName: e.target.value })}
-                    placeholder="Farmer name"
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Vehicle Number</Label>
+                  <Label>Vehicle</Label>
                   <Select
-                    value={formData.vehicleNumber || undefined}
-                    onValueChange={(value) => setFormData({ ...formData, vehicleNumber: value })}
+                    value={formData.vehicleId || undefined}
+                    onValueChange={handleVehicleChange}
                     disabled={loading}
                   >
                     <SelectTrigger>
@@ -245,7 +295,7 @@ export default function GodownInwardPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {vehicles.map((vehicle) => (
-                        <SelectItem key={vehicle.id} value={vehicle.vehicleNumber}>
+                        <SelectItem key={vehicle.id} value={vehicle.id}>
                           {vehicle.vehicleNumber} - {vehicle.driverName}
                         </SelectItem>
                       ))}
@@ -255,41 +305,56 @@ export default function GodownInwardPage() {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label>Quantity *</Label>
+                    <Label>Number of Birds *</Label>
                     <Input
                       type="number"
-                      step="0.01"
-                      value={formData.quantity}
-                      onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                      placeholder="0.00"
+                      value={formData.numberOfBirds}
+                      onChange={(e) => setFormData({ ...formData, numberOfBirds: e.target.value })}
+                      placeholder="1000"
                       disabled={loading}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Unit</Label>
+                    <Label>Average Weight (Kg)</Label>
                     <Input
-                      value={formData.unit}
-                      onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                      placeholder="kg, pcs"
+                      type="number"
+                      step="0.01"
+                      value={formData.averageWeight}
+                      onChange={(e) => setFormData({ ...formData, averageWeight: e.target.value })}
+                      placeholder="1.5"
                       disabled={loading}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Rate *</Label>
+                    <Label>Total Weight (Kg)</Label>
                     <Input
                       type="number"
                       step="0.01"
-                      value={formData.rate}
-                      onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
-                      placeholder="0.00"
+                      value={formData.totalWeight}
+                      onChange={(e) => setFormData({ ...formData, totalWeight: e.target.value })}
+                      placeholder="Auto-calculated"
                       disabled={loading}
                     />
                   </div>
                 </div>
 
-                <div className="flex justify-end">
-                  <div className="text-lg font-semibold">
-                    Total: ₹{calculateTotal()}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Rate per Kg *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.ratePerKg}
+                      onChange={(e) => setFormData({ ...formData, ratePerKg: e.target.value })}
+                      placeholder="125.00"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Total Amount</Label>
+                    <div className="flex items-center h-10 px-3 border rounded-md bg-muted">
+                      <span className="text-lg font-semibold">₹{calculateTotal()}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -330,12 +395,13 @@ export default function GodownInwardPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Farmer</TableHead>
-                    <TableHead>Vehicle</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Rate</TableHead>
-                    <TableHead>Total</TableHead>
+                    <TableHead>Entry Date</TableHead>
+                    <TableHead>Reference No</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Birds</TableHead>
+                    <TableHead>Weight (Kg)</TableHead>
+                    <TableHead>Rate/Kg</TableHead>
+                    <TableHead>Amount</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -343,13 +409,12 @@ export default function GodownInwardPage() {
                   {entries.map((entry) => (
                     <TableRow key={entry.id}>
                       <TableCell>{new Date(entry.entryDate).toLocaleDateString()}</TableCell>
-                      <TableCell>{entry.farmerName}</TableCell>
-                      <TableCell>{entry.vehicleNumber || "-"}</TableCell>
-                      <TableCell>
-                        {entry.quantity} {entry.unit}
-                      </TableCell>
-                      <TableCell>₹{Number(entry.rate).toFixed(2)}</TableCell>
-                      <TableCell>₹{Number(entry.totalAmount).toFixed(2)}</TableCell>
+                      <TableCell>{entry.purchaseInvoiceNo || "-"}</TableCell>
+                      <TableCell>{entry.supplierName}</TableCell>
+                      <TableCell>{entry.numberOfBirds}</TableCell>
+                      <TableCell>{entry.totalWeight ? Number(entry.totalWeight).toFixed(2) : "-"}</TableCell>
+                      <TableCell>₹{entry.ratePerKg ? Number(entry.ratePerKg).toFixed(2) : "0.00"}</TableCell>
+                      <TableCell className="font-semibold">₹{entry.totalAmount ? Number(entry.totalAmount).toFixed(2) : "0.00"}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           <Button variant="ghost" size="sm" onClick={() => handleEdit(entry)}>
