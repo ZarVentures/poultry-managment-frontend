@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Download, Printer, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { DateRangeFilter } from "@/components/date-range-filter"
 import { retailersApi, type Retailer as ApiRetailer } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -20,6 +21,10 @@ export default function RetailersPage() {
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc" | null>(null)
+  const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
+  const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [formData, setFormData] = useState({
     name: "",
     ownerName: "",
@@ -135,6 +140,136 @@ export default function RetailersPage() {
     }
   }
 
+  const handleSort = () => {
+    if (sortOrder === null) {
+      setSortOrder("asc")
+    } else if (sortOrder === "asc") {
+      setSortOrder("desc")
+    } else {
+      setSortOrder(null)
+    }
+  }
+
+  const handleDateRangeChange = (start: Date | undefined, end: Date | undefined) => {
+    setDateRangeStart(start)
+    setDateRangeEnd(end)
+  }
+
+  const stats = useMemo(() => {
+    return {
+      total: retailers.length,
+      active: retailers.filter(r => r.status === 'active').length,
+      inactive: retailers.filter(r => r.status === 'inactive').length,
+    }
+  }, [retailers])
+
+  const filteredRetailers = useMemo(() => {
+    let filtered = [...retailers]
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter(
+        (retailer) =>
+          retailer.name.toLowerCase().includes(query) ||
+          (retailer.phone && retailer.phone.toLowerCase().includes(query))
+      )
+    }
+
+    // Apply date range filter
+    if (dateRangeStart && dateRangeEnd) {
+      const start = new Date(dateRangeStart)
+      const end = new Date(dateRangeEnd)
+      start.setHours(0, 0, 0, 0)
+      end.setHours(23, 59, 59, 999)
+
+      filtered = filtered.filter((retailer) => {
+        if (!retailer.createdAt) return false
+        const createdDate = new Date(retailer.createdAt)
+        createdDate.setHours(0, 0, 0, 0)
+        return createdDate >= start && createdDate <= end
+      })
+    }
+
+    // Apply sorting
+    if (sortOrder) {
+      filtered.sort((a, b) => {
+        const nameA = a.name.toLowerCase()
+        const nameB = b.name.toLowerCase()
+        if (sortOrder === "asc") {
+          return nameA.localeCompare(nameB)
+        } else {
+          return nameB.localeCompare(nameA)
+        }
+      })
+    }
+
+    return filtered
+  }, [retailers, searchQuery, dateRangeStart, dateRangeEnd, sortOrder])
+
+  const handleDownloadPDF = () => {
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Retailers Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1 { text-align: center; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+            .header { margin-bottom: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Retailers List Report</h1>
+            <div><strong>Total Retailers:</strong> ${filteredRetailers.length}</div>
+            <div><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Shop Name</th>
+                <th>Owner Name</th>
+                <th>Phone</th>
+                <th>Address</th>
+                <th>Join Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredRetailers.map(retailer => `
+                <tr>
+                  <td>${retailer.name}</td>
+                  <td>${retailer.ownerName || "N/A"}</td>
+                  <td>${retailer.phone}</td>
+                  <td>${retailer.address || "N/A"}</td>
+                  <td>${retailer.createdAt ? new Date(retailer.createdAt).toLocaleDateString() : "N/A"}</td>
+                  <td>${retailer.status === "active" ? "Active" : "Inactive"}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `
+
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.onload = () => {
+        printWindow.print()
+      }
+    }
+  }
+
+  const handlePrintReport = () => {
+    handleDownloadPDF()
+  }
+
   if (!mounted) return null
 
   return (
@@ -142,14 +277,14 @@ export default function RetailersPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold">Retailers</h1>
-            <p className="text-muted-foreground">Manage your retail customers</p>
+            <h1 className="text-3xl font-bold">Retailers Management</h1>
+            <p className="text-muted-foreground">Manage all retailers and their information</p>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
               <Button onClick={resetForm}>
                 <Plus className="mr-2" size={20} />
-                New Retailer
+                Add New Retailer
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl" aria-describedby="dialog-description">
@@ -254,59 +389,145 @@ export default function RetailersPage() {
           </Dialog>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Retailers</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{stats.total}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Active Retailers</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{stats.active}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Inactive Retailers</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{stats.inactive}</div>
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
           <CardHeader>
-            <CardTitle>Retailers List</CardTitle>
+            <div className="flex justify-between items-start">
+              <div>
+                <CardTitle>Retailers List</CardTitle>
+                <p className="text-sm text-muted-foreground">View and manage all retailers</p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <DateRangeFilter
+                  startDate={dateRangeStart}
+                  endDate={dateRangeEnd}
+                  onDateRangeChange={handleDateRangeChange}
+                />
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium whitespace-nowrap">Filter:</Label>
+                  <Input
+                    placeholder="Search by shop name or phone..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-[250px]"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadPDF}
+                >
+                  <Download className="mr-2" size={16} />
+                  Download PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrintReport}
+                >
+                  <Printer className="mr-2" size={16} />
+                  Print Report
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {loading && retailers.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">Loading...</p>
-            ) : retailers.length === 0 ? (
-              <p className="text-center py-8 text-muted-foreground">No retailers found</p>
+            ) : filteredRetailers.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">
+                {searchQuery || (dateRangeStart && dateRangeEnd) 
+                  ? "No retailers match your filters" 
+                  : "No retailers found"}
+              </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Shop Name</TableHead>
-                    <TableHead>Owner</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {retailers.map((retailer) => (
-                    <TableRow key={retailer.id}>
-                      <TableCell className="font-medium">{retailer.name}</TableCell>
-                      <TableCell>{retailer.ownerName || "-"}</TableCell>
-                      <TableCell>{retailer.phone}</TableCell>
-                      <TableCell>{retailer.email || "-"}</TableCell>
-                      <TableCell>
-                        <span
-                          className={`px-2 py-1 rounded text-xs ${
-                            retailer.status === "active"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 lg:px-3"
+                          onClick={handleSort}
                         >
-                          {retailer.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(retailer)}>
-                            <Edit2 size={16} />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(retailer.id)}>
-                            <Trash2 size={16} />
-                          </Button>
-                        </div>
-                      </TableCell>
+                          Shop Name
+                          {sortOrder === null && <ArrowUpDown className="ml-2 h-4 w-4" />}
+                          {sortOrder === "asc" && <ArrowUp className="ml-2 h-4 w-4" />}
+                          {sortOrder === "desc" && <ArrowDown className="ml-2 h-4 w-4" />}
+                        </Button>
+                      </TableHead>
+                      <TableHead>Owner Name</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Address</TableHead>
+                      <TableHead>Join Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRetailers.map((retailer) => (
+                      <TableRow key={retailer.id}>
+                        <TableCell className="font-medium">{retailer.name}</TableCell>
+                        <TableCell>{retailer.ownerName || "-"}</TableCell>
+                        <TableCell>{retailer.phone}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{retailer.address || "-"}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {retailer.createdAt ? new Date(retailer.createdAt).toLocaleDateString() : "-"}
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              retailer.status === "active"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {retailer.status === "active" ? "Active" : "Inactive"}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(retailer)}>
+                              <Edit2 size={16} />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(retailer.id)}>
+                              <Trash2 size={16} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
