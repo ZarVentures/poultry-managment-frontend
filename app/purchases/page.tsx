@@ -368,13 +368,6 @@ export default function PurchasesPage() {
           unitCost: item.unitPrice,
         }))
 
-      // Validate that we have at least one item
-      if (items.length === 0) {
-        toast.error("Please add at least one item")
-        setLoading(false)
-        return
-      }
-
       // Prepare cages (filter out empty cages)
       const cages = formData.cages
         .filter(cage => cage.cageId && cage.numberOfBirds && cage.cageWeight)
