@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { CalendarIcon, X } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import type { DateRange } from "react-day-picker"
 
 interface DateRangeFilterProps {
   startDate?: Date
@@ -18,13 +19,16 @@ interface DateRangeFilterProps {
 export function DateRangeFilter({ startDate, endDate, onDateRangeChange }: DateRangeFilterProps) {
   const [isOpen, setIsOpen] = useState(false)
 
-  const handleSelect = (range: { from?: Date; to?: Date } | undefined) => {
+  const handleSelect = (range: DateRange | undefined) => {
     if (range?.from && range?.to) {
+      // Both dates selected - update and close
       onDateRangeChange(range.from, range.to)
       setIsOpen(false)
     } else if (range?.from) {
+      // Only start date selected - keep open for end date selection
       onDateRangeChange(range.from, undefined)
     } else {
+      // No dates selected - clear
       onDateRangeChange(undefined, undefined)
     }
   }
@@ -69,6 +73,7 @@ export function DateRangeFilter({ startDate, endDate, onDateRangeChange }: DateR
               }}
               onSelect={handleSelect}
               numberOfMonths={2}
+              initialFocus
             />
             {(startDate || endDate) && (
               <div className="flex items-center justify-between pt-3 border-t">
