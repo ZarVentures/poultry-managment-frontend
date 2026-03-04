@@ -368,6 +368,48 @@ export interface GodownSummary {
   currentStock: number;
 }
 
+// Mortality (Transport) Interface
+export interface MortalityRecord {
+  id: string;
+  recordNumber: string;
+  purchaseInvoiceNo?: string;
+  purchaseOrderId?: string;
+  vehicleId?: string;
+  mortalityDate: string;
+  numberOfBirdsDied: number;
+  reason?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Product Interface
+export interface Product {
+  id: string;
+  name: string;
+  category?: string;
+  productType?: 'eggs' | 'meat' | 'chicks' | 'feed' | 'medicine' | 'equipment' | 'other';
+  unit?: string;
+  price?: number;
+  description?: string;
+  status: 'active' | 'inactive';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Product DTO for create/update (backend expects string for price)
+export interface CreateProductDto {
+  name: string;
+  category?: string;
+  productType?: 'eggs' | 'meat' | 'chicks' | 'feed' | 'medicine' | 'equipment' | 'other';
+  unit?: string;
+  price?: string;
+  description?: string;
+  status?: 'active' | 'inactive';
+}
+
+export interface UpdateProductDto extends Partial<CreateProductDto> {}
+
 // ============================================
 // FARMERS API
 // ============================================
@@ -773,6 +815,91 @@ export const permissionsApi = {
   // Delete user-specific permission (admin only)
   deleteUserPermission: (userId: string, resource: string) =>
     apiRequest<{ message: string }>(`/permissions/users/${userId}/${resource}`, {
+      method: 'DELETE',
+    }),
+};
+
+
+// ============================================
+// MORTALITY (TRANSPORT) API
+// ============================================
+export const mortalityApi = {
+  getAll: (startDate?: string, endDate?: string, vehicleId?: string, purchaseOrderId?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    if (vehicleId) params.append('vehicleId', vehicleId);
+    if (purchaseOrderId) params.append('purchaseOrderId', purchaseOrderId);
+    return apiRequest<MortalityRecord[]>(`/mortality?${params.toString()}`);
+  },
+  
+  getStats: (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    return apiRequest<{
+      totalRecords: number;
+      totalBirdsDied: number;
+      averagePerRecord: number;
+    }>(`/mortality/stats?${params.toString()}`);
+  },
+  
+  getOne: (id: string) => apiRequest<MortalityRecord>(`/mortality/${id}`),
+  
+  create: (data: Omit<MortalityRecord, 'id' | 'createdAt' | 'updatedAt'>) =>
+    apiRequest<MortalityRecord>('/mortality', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  update: (id: string, data: Partial<MortalityRecord>) =>
+    apiRequest<MortalityRecord>(`/mortality/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  
+  delete: (id: string) =>
+    apiRequest<void>(`/mortality/${id}`, {
+      method: 'DELETE',
+    }),
+};
+
+// ============================================
+// PRODUCTS API
+// ============================================
+export const productsApi = {
+  getAll: (category?: string, productType?: string, status?: string) => {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    if (productType) params.append('productType', productType);
+    if (status) params.append('status', status);
+    return apiRequest<Product[]>(`/products?${params.toString()}`);
+  },
+  
+  getActive: () => apiRequest<Product[]>('/products/active'),
+  
+  getOne: (id: string) => apiRequest<Product>(`/products/${id}`),
+  
+  create: (data: CreateProductDto) =>
+    apiRequest<Product>('/products', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  update: (id: string, data: UpdateProductDto) =>
+    apiRequest<Product>(`/products/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  
+  updateStatus: (id: string, status: 'active' | 'inactive') =>
+    apiRequest<Product>(`/products/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+  
+  delete: (id: string) =>
+    apiRequest<void>(`/products/${id}`, {
       method: 'DELETE',
     }),
 };
