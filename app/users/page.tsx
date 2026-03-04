@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Edit2, Trash2, X, Users, UserCheck, Shield, Briefcase, Lock, Unlock, Search, Filter } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DatePicker } from "@/components/ui/date-picker"
-import { usersApi, type User as ApiUser } from "@/lib/api"
+import { usersApi, permissionsApi, type User as ApiUser } from "@/lib/api"
 import { toast } from "sonner"
 
 export default function UsersPage() {
@@ -23,7 +23,7 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [currentUser, setCurrentUser] = useState<ApiUser | null>(null)
+  const [userPermissions, setUserPermissions] = useState<any>(null)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -38,23 +38,21 @@ export default function UsersPage() {
   useEffect(() => {
     setMounted(true)
     fetchUsers()
-    fetchCurrentUser()
+    fetchPermissions()
   }, [])
 
-  const fetchCurrentUser = () => {
-    // Get current user from localStorage
-    const userStr = localStorage.getItem('user')
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr)
-        setCurrentUser(user)
-      } catch (error) {
-        console.error('Failed to parse user from localStorage:', error)
-      }
+  const fetchPermissions = async () => {
+    try {
+      const perms = await permissionsApi.getMyPermissions()
+      setUserPermissions(perms)
+    } catch (error) {
+      console.error('Failed to fetch permissions:', error)
     }
   }
 
-  const isAdmin = currentUser?.role === 'admin'
+  const canCreate = userPermissions?.permissions?.users?.canCreate || false
+  const canDelete = userPermissions?.permissions?.users?.canDelete || false
+  const canUpdate = userPermissions?.permissions?.users?.canUpdate || false
 
   const fetchUsers = async () => {
     try {
@@ -150,8 +148,8 @@ export default function UsersPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!isAdmin) {
-      toast.error("Only administrators can delete users")
+    if (!canDelete) {
+      toast.error("You don't have permission to delete users")
       return
     }
 
@@ -236,7 +234,7 @@ export default function UsersPage() {
             <h1 className="text-3xl font-bold">User Management</h1>
             <p className="text-muted-foreground">Manage staff accounts and permissions</p>
           </div>
-          {isAdmin && (
+          {canCreate && (
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
               <DialogTrigger asChild>
                 <Button onClick={resetForm}>
@@ -510,14 +508,14 @@ export default function UsersPage() {
                               size="sm" 
                               onClick={() => handleToggleStatus(user.id, user.status)}
                               title={user.status === "active" ? "Lock user" : "Unlock user"}
-                              disabled={!isAdmin}
+                              disabled={!canUpdate}
                             >
                               {user.status === "active" ? <Unlock size={16} className="text-green-600" /> : <Lock size={16} className="text-red-600" />}
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(user)}>
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(user)} disabled={!canUpdate}>
                               <Edit2 size={16} />
                             </Button>
-                            {isAdmin && (
+                            {canDelete && (
                               <Button variant="ghost" size="sm" onClick={() => handleDelete(user.id)}>
                                 <Trash2 size={16} />
                               </Button>

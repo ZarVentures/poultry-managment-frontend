@@ -613,3 +613,52 @@ export default {
   settings: settingsApi,
   godown: godownApi,
 };
+
+
+// ============================================
+// PERMISSIONS API
+// ============================================
+export interface PermissionCheck {
+  canCreate: boolean;
+  canRead: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+}
+
+export interface UserPermissions {
+  userId: string;
+  role: string;
+  permissions: Record<string, PermissionCheck>;
+}
+
+export const permissionsApi = {
+  // Get current user's permissions for all resources
+  getMyPermissions: () => apiRequest<UserPermissions>('/permissions/my-permissions'),
+  
+  // Check permission for a specific resource
+  checkPermission: (resource: string) => 
+    apiRequest<PermissionCheck & { resource: string }>(`/permissions/check/${resource}`),
+  
+  // Get all role permissions (admin only)
+  getAllRolePermissions: () => apiRequest<any[]>('/permissions/roles'),
+  
+  // Update role permission (admin only)
+  updateRolePermission: (role: string, resource: string, permissions: Partial<PermissionCheck>) =>
+    apiRequest<any>(`/permissions/roles/${role}/${resource}`, {
+      method: 'PUT',
+      body: JSON.stringify(permissions),
+    }),
+  
+  // Set user-specific permission (admin only)
+  setUserPermission: (userId: string, resource: string, permissionName: string, permissions: Partial<PermissionCheck>) =>
+    apiRequest<any>(`/permissions/users/${userId}/${resource}`, {
+      method: 'POST',
+      body: JSON.stringify({ permissionName, permissions }),
+    }),
+  
+  // Delete user-specific permission (admin only)
+  deleteUserPermission: (userId: string, resource: string) =>
+    apiRequest<{ message: string }>(`/permissions/users/${userId}/${resource}`, {
+      method: 'DELETE',
+    }),
+};
