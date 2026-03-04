@@ -374,6 +374,16 @@ export default function SalesPage() {
     }
   }, [sales])
 
+  // Helper function to safely convert to number
+  const toNumber = (value: any): number => {
+    if (typeof value === 'number') return value
+    if (typeof value === 'string') {
+      const num = parseFloat(value)
+      return isNaN(num) ? 0 : num
+    }
+    return 0
+  }
+
   const filteredSales = useMemo(() => {
     if (!Array.isArray(sales)) {
       return []
@@ -987,8 +997,8 @@ export default function SalesPage() {
                     <TableCell>
                       <span className="capitalize">{sale.saleMode?.replace('_', ' ')}</span>
                     </TableCell>
-                    <TableCell className="text-right">₹{(sale.totalAmount || 0).toFixed(2)}</TableCell>
-                    <TableCell className="text-right">₹{(sale.totalPaymentReceived || 0).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">₹{toNumber(sale.totalAmount).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">₹{toNumber(sale.totalPaymentReceived).toFixed(2)}</TableCell>
                     <TableCell>
                       <span
                         className={`px-2 py-1 rounded-full text-xs ${
