@@ -18,6 +18,7 @@ import { toast } from "sonner"
 
 export default function PurchasesPage() {
   const [purchases, setPurchases] = useState<ApiPurchaseOrder[]>([])
+  const [invoiceList, setInvoiceList] = useState<Array<{ id: string; orderNumber: string; orderDate: string; supplierName: string }>>([])
   const [farmers, setFarmers] = useState<Farmer[]>([])
   const [vehicles, setVehicles] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -65,6 +66,7 @@ export default function PurchasesPage() {
   useEffect(() => {
     setMounted(true)
     fetchPurchases()
+    fetchInvoiceList()
     fetchFarmers()
     fetchVehicles()
   }, [])
@@ -87,6 +89,20 @@ export default function PurchasesPage() {
       toast.error("Failed to load purchases")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchInvoiceList = async () => {
+    try {
+      const data = await purchasesApi.getInvoiceList()
+      if (Array.isArray(data)) {
+        setInvoiceList(data)
+      } else {
+        setInvoiceList([])
+      }
+    } catch (error) {
+      console.error("Failed to fetch invoice list:", error)
+      setInvoiceList([])
     }
   }
 
@@ -160,6 +176,22 @@ export default function PurchasesPage() {
         farmerMobile: selectedFarmer.phone || "",
         farmLocation: selectedFarmer.address || "",
       })
+    }
+  }
+
+  // Handle invoice selection (for editing existing purchase)
+  const handleInvoiceSelect = async (invoiceId: string) => {
+    if (!invoiceId) return
+    
+    try {
+      setLoading(true)
+      const purchase = await purchasesApi.getOne(invoiceId)
+      handleEdit(purchase)
+    } catch (error) {
+      console.error("Failed to fetch invoice:", error)
+      toast.error("Failed to load invoice")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -288,7 +320,9 @@ export default function PurchasesPage() {
   }
 
   const calculateGrossAmount = () => {
-    return calculateTotal() + calculateCharges()
+    // Use bird-based calculation (total weight * rate per kg)
+    const birdAmount = calculateTotalAmountFromWeight()
+    return birdAmount + calculateCharges()
   }
 
   const calculateNetAmount = () => {
@@ -299,13 +333,13 @@ export default function PurchasesPage() {
   const calculateOutstandingPayment = () => {
     const netAmount = calculateNetAmount()
     const advancePaid = parseFloat(formData.advancePaid) || 0
-    return netAmount - advancePaid
+    return Math.max(0, netAmount - advancePaid)
   }
 
   const calculateBalanceAmount = () => {
     const netAmount = calculateNetAmount()
     const totalPaymentMade = parseFloat(formData.totalPaymentMade) || 0
-    return netAmount - totalPaymentMade
+    return Math.max(0, netAmount - totalPaymentMade)
   }
 
   const handleSave = async () => {
@@ -560,18 +594,45 @@ export default function PurchasesPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Purchase Invoice No. *</Label>
-                        <div className="flex">
-                          <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                            PO-
-                          </span>
-                          <Input
-                            value={formData.orderNumber.replace('PO-', '')}
-                            onChange={(e) => setFormData({ ...formData, orderNumber: 'PO-' + e.target.value })}
-                            placeholder="e.g. 001, 002"
-                            className="rounded-l-none"
-                            disabled={loading}
-                          />
-                        </div>
+                        <Select
+                          value={editingId || "new"}
+                          onValueChange={(value) => {
+                            if (value === "new") {
+                              resetForm()
+                            } else {
+                              handleInvoiceSelect(value)
+                            }
+                          }}
+                          disabled={loading}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select existing or create new" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="new">
+                              <span className="font-semibold text-green-600">+ Create New Invoice</span>
+                            </SelectItem>
+                            {Array.isArray(invoiceList) && invoiceList.map((invoice) => (
+                              <SelectItem key={invoice.id} value={invoice.id}>
+                                {invoice.orderNumber} - {invoice.supplierName} ({invoice.orderDate})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {(!editingId || editingId === "new") && (
+                          <div className="flex mt-2">
+                            <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                              PO-
+                            </span>
+                            <Input
+                              value={formData.orderNumber.replace('PO-', '')}
+                              onChange={(e) => setFormData({ ...formData, orderNumber: 'PO-' + e.target.value })}
+                              placeholder="e.g. 001, 002"
+                              className="rounded-l-none"
+                              disabled={loading}
+                            />
+                          </div>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label>Purchase Date *</Label>
