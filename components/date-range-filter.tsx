@@ -46,7 +46,7 @@ export function DateRangeFilter({ startDate, endDate, onDateRangeChange }: DateR
           <Button
             variant="outline"
             className={cn(
-              "w-[200px] justify-start text-left font-normal",
+              "w-[280px] justify-start text-left font-normal",
               !startDate && !endDate && "text-muted-foreground"
             )}
           >
@@ -62,7 +62,7 @@ export function DateRangeFilter({ startDate, endDate, onDateRangeChange }: DateR
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+        <PopoverContent className="w-auto p-0 max-w-none" align="start">
           <div className="p-3">
             <Calendar
               mode="range"

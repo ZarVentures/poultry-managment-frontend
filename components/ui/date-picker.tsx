@@ -62,7 +62,7 @@ export function DatePicker({
           {date ? dayjs(date).format("DD-MMM-YYYY") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto p-0 max-w-none" align="start">
         <Calendar
           mode="single"
           selected={date}
