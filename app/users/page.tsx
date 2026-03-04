@@ -51,6 +51,7 @@ export default function UsersPage() {
   }
 
   const canCreate = userPermissions?.permissions?.users?.canCreate || false
+  const canDelete = userPermissions?.permissions?.users?.canDelete || false
   const canUpdate = userPermissions?.permissions?.users?.canUpdate || false
 
   const fetchUsers = async () => {
@@ -165,6 +166,29 @@ export default function UsersPage() {
     } catch (error: any) {
       console.error('Failed to toggle user status:', error)
       toast.error(`Failed to ${action} user`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!canDelete) {
+      toast.error("You don't have permission to delete users")
+      return
+    }
+
+    if (!confirm("⚠️ WARNING: This will permanently delete the user and all their data from the database. This action cannot be undone!\n\nAre you sure you want to continue?")) {
+      return
+    }
+
+    try {
+      setLoading(true)
+      await usersApi.delete(id)
+      toast.success("User permanently deleted")
+      await fetchUsers()
+    } catch (error: any) {
+      console.error('Failed to delete user:', error)
+      toast.error("Failed to delete user")
     } finally {
       setLoading(false)
     }
@@ -502,6 +526,16 @@ export default function UsersPage() {
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(user)} disabled={!canUpdate}>
                               <Edit2 size={16} />
                             </Button>
+                            {canDelete && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => handleDelete(user.id)}
+                                title="Permanently delete user from database"
+                              >
+                                <Trash2 size={16} className="text-red-600" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
