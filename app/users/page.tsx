@@ -145,22 +145,27 @@ export default function UsersPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, currentStatus: string) => {
     if (!canDelete) {
-      toast.error("You don't have permission to delete users")
+      toast.error("You don't have permission to deactivate users")
       return
     }
 
-    if (!confirm("Are you sure you want to delete this user?")) return
+    if (currentStatus === 'inactive') {
+      toast.info("User is already inactive")
+      return
+    }
+
+    if (!confirm("Are you sure you want to deactivate this user? They will no longer be able to log in.")) return
 
     try {
       setLoading(true)
-      await usersApi.delete(id)
-      toast.success("User deleted successfully")
+      await usersApi.updateStatus(id, 'inactive')
+      toast.success("User deactivated successfully")
       await fetchUsers()
     } catch (error: any) {
-      console.error('Failed to delete user:', error)
-      toast.error("Failed to delete user")
+      console.error('Failed to deactivate user:', error)
+      toast.error("Failed to deactivate user")
     } finally {
       setLoading(false)
     }
@@ -519,8 +524,14 @@ export default function UsersPage() {
                               <Edit2 size={16} />
                             </Button>
                             {canDelete && (
-                              <Button variant="ghost" size="sm" onClick={() => handleDelete(user.id)}>
-                                <Trash2 size={16} />
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => handleDelete(user.id, user.status)}
+                                disabled={user.status === 'inactive'}
+                                title={user.status === 'inactive' ? "User is already inactive" : "Deactivate user"}
+                              >
+                                <Trash2 size={16} className={user.status === 'inactive' ? 'text-gray-400' : 'text-red-600'} />
                               </Button>
                             )}
                           </div>

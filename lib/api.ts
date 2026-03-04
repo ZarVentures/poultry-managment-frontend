@@ -519,11 +519,6 @@ export const usersApi = {
       method: 'PATCH',
       body: JSON.stringify({}),
     }),
-  
-  delete: (id: string) =>
-    apiRequest<void>(`/users/${id}`, {
-      method: 'DELETE',
-    }),
 };
 
 // ============================================
