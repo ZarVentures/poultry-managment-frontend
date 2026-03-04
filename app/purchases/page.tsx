@@ -358,21 +358,32 @@ export default function PurchasesPage() {
     try {
       setLoading(true)
       
-      // Prepare items with string values for quantity and unitCost
-      const items = formData.items.map(item => ({
-        description: item.itemName,
-        quantity: item.quantity,
-        unit: item.unit,
-        unitCost: item.unitPrice,
-      }))
+      // Prepare items with string values for quantity and unitCost (filter out empty items)
+      const items = formData.items
+        .filter(item => item.itemName && item.quantity && item.unit && item.unitPrice)
+        .map(item => ({
+          description: item.itemName,
+          quantity: item.quantity,
+          unit: item.unit,
+          unitCost: item.unitPrice,
+        }))
 
-      // Prepare cages
-      const cages = formData.cages.map(cage => ({
-        cageId: cage.cageId,
-        birdType: formData.birdType,
-        numberOfBirds: parseInt(cage.numberOfBirds) || 0,
-        cageWeight: parseFloat(cage.cageWeight) || 0,
-      }))
+      // Validate that we have at least one item
+      if (items.length === 0) {
+        toast.error("Please add at least one item")
+        setLoading(false)
+        return
+      }
+
+      // Prepare cages (filter out empty cages)
+      const cages = formData.cages
+        .filter(cage => cage.cageId && cage.numberOfBirds && cage.cageWeight)
+        .map(cage => ({
+          cageId: cage.cageId,
+          birdType: formData.birdType,
+          numberOfBirds: parseInt(cage.numberOfBirds) || 0,
+          cageWeight: parseFloat(cage.cageWeight) || 0,
+        }))
 
       const purchaseData: any = {
         orderNumber: formData.orderNumber,
@@ -406,7 +417,7 @@ export default function PurchasesPage() {
         totalPaymentMade: formData.totalPaymentMade || undefined,
         notes: formData.notes,
         items,
-        cages: cages.length > 0 && cages[0].numberOfBirds > 0 ? cages : undefined,
+        cages: cages.length > 0 ? cages : undefined,
       }
 
       if (editingId) {
