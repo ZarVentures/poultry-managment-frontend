@@ -502,7 +502,7 @@ export const usersApi = {
   
   getOne: (id: string) => apiRequest<User>(`/users/${id}`),
   
-  create: (data: { name: string; email: string; password: string; role: string; status: string; phone?: string; joinDate?: string; notes?: string }) =>
+  create: (data: { name: string; email: string; password: string; role: string; status: string; phone?: string; notes?: string }) =>
     apiRequest<User>('/users', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -512,6 +512,12 @@ export const usersApi = {
     apiRequest<User>(`/users/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
+    }),
+  
+  updateStatus: (id: string, status: 'active' | 'inactive') =>
+    apiRequest<User>(`/users/${id}/${status === 'active' ? 'activate' : 'deactivate'}`, {
+      method: 'PATCH',
+      body: JSON.stringify({}),
     }),
   
   delete: (id: string) =>

@@ -118,7 +118,6 @@ export default function UsersPage() {
           phone: formData.phone || undefined,
           role: formData.role,
           status: formData.status,
-          joinDate: formData.joinDate,
           notes: formData.notes || undefined,
         })
         toast.success("User updated successfully")
@@ -130,7 +129,6 @@ export default function UsersPage() {
           password: formData.password,
           role: formData.role,
           status: formData.status,
-          joinDate: formData.joinDate,
           notes: formData.notes || undefined,
         })
         toast.success("User created successfully")
@@ -141,7 +139,7 @@ export default function UsersPage() {
       setShowDialog(false)
     } catch (error: any) {
       console.error('Failed to save user:', error)
-      toast.error(editingId ? "Failed to update user" : "Failed to create user")
+      toast.error(error.message || (editingId ? "Failed to update user" : "Failed to create user"))
     } finally {
       setLoading(false)
     }
@@ -172,7 +170,12 @@ export default function UsersPage() {
     const newStatus = currentStatus === "active" ? "inactive" : "active"
     try {
       setLoading(true)
-      await usersApi.update(id, { status: newStatus })
+      // Use activate/deactivate endpoints
+      if (newStatus === "active") {
+        await usersApi.updateStatus(id, "active")
+      } else {
+        await usersApi.updateStatus(id, "inactive")
+      }
       toast.success(`User ${newStatus === "active" ? "activated" : "deactivated"} successfully`)
       await fetchUsers()
     } catch (error: any) {
