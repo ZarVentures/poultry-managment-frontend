@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { DateFilterProvider } from "@/contexts/date-filter-context"
+import { Toaster } from "@/components/ui/sonner"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -42,6 +43,7 @@ export default function RootLayout({
         <DateFilterProvider>
         {children}
         </DateFilterProvider>
+        <Toaster />
         <Analytics />
       </body>
     </html>
