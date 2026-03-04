@@ -444,6 +444,8 @@ export const inventoryApi = {
 export const salesApi = {
   getAll: () => apiRequest<Sale[]>('/sales'),
   
+  getInvoiceList: () => apiRequest<Array<{ id: string; invoiceNumber: string; saleDate: string; customerName: string }>>('/sales/invoices/list'),
+  
   getOne: (id: string) => apiRequest<Sale>(`/sales/${id}`),
   
   create: (data: Omit<Sale, 'id' | 'createdAt' | 'updatedAt'>) =>
