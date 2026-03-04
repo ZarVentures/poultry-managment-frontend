@@ -109,14 +109,17 @@ export default function PurchasesPage() {
   const fetchFarmers = async () => {
     try {
       const data = await farmersApi.getAll()
+      console.log("Fetched farmers:", data)
       if (Array.isArray(data)) {
         setFarmers(data)
       } else {
+        console.error("Farmers data is not an array:", data)
         setFarmers([])
       }
     } catch (error) {
       console.error("Failed to fetch farmers:", error)
       setFarmers([])
+      toast.error("Failed to load farmers")
     }
   }
 
@@ -167,7 +170,10 @@ export default function PurchasesPage() {
 
   // Handle farmer selection
   const handleFarmerChange = (farmerId: string) => {
+    console.log("Farmer selected:", farmerId)
+    console.log("Available farmers:", farmers)
     const selectedFarmer = farmers.find(f => f.id === farmerId)
+    console.log("Selected farmer data:", selectedFarmer)
     if (selectedFarmer) {
       setFormData({
         ...formData,
@@ -584,15 +590,15 @@ export default function PurchasesPage() {
                   {editingId ? "Edit purchase order details" : "Create a new purchase order"}
                 </p>
               </DialogHeader>
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {/* Section 1: Header Information */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Section 1: Header Information</CardTitle>
+                <Card className="border-blue-200 shadow-sm">
+                  <CardHeader className="bg-blue-50 border-b border-blue-100">
+                    <CardTitle className="text-blue-900">Section 1: Header Information</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                  <CardContent className="space-y-5 pt-6">
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2.5">
                         <Label>Purchase Invoice No. *</Label>
                         <Select
                           value={editingId || "new"}
@@ -634,7 +640,7 @@ export default function PurchasesPage() {
                           </div>
                         )}
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2.5">
                         <Label>Purchase Date *</Label>
                         <DatePicker
                           value={formData.orderDate}
@@ -644,8 +650,8 @@ export default function PurchasesPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2.5">
                         <Label>Farmer Name *</Label>
                         <Select
                           value={formData.farmerId}
@@ -653,18 +659,24 @@ export default function PurchasesPage() {
                           disabled={loading}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select farmer" />
+                            <SelectValue placeholder={`Select farmer (${farmers.length} available)`} />
                           </SelectTrigger>
                           <SelectContent>
-                            {Array.isArray(farmers) && farmers.map((farmer) => (
-                              <SelectItem key={farmer.id} value={farmer.id}>
-                                {farmer.name}
+                            {Array.isArray(farmers) && farmers.length > 0 ? (
+                              farmers.map((farmer) => (
+                                <SelectItem key={farmer.id} value={farmer.id}>
+                                  {farmer.name}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="no-farmers" disabled>
+                                No farmers available
                               </SelectItem>
-                            ))}
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2.5">
                         <Label>Farmer Mobile</Label>
                         <Input
                           value={formData.farmerMobile}
@@ -675,8 +687,8 @@ export default function PurchasesPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2.5">
                         <Label>Farm Location</Label>
                         <Input
                           value={formData.farmLocation}
@@ -685,7 +697,7 @@ export default function PurchasesPage() {
                           className="bg-gray-50"
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2.5">
                         <Label>Vehicle No</Label>
                         <Select
                           value={formData.vehicleId}
@@ -706,7 +718,7 @@ export default function PurchasesPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       <Label>Purchase Payment *</Label>
                       <Select
                         value={formData.purchasePaymentStatus}
@@ -724,7 +736,7 @@ export default function PurchasesPage() {
                       </Select>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       <Label>Notes</Label>
                       <Textarea
                         value={formData.notes}
@@ -737,12 +749,12 @@ export default function PurchasesPage() {
                   </CardContent>
                 </Card>
                 {/* Section 2: Bird Details */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Section 2: Bird Details</CardTitle>
+                <Card className="border-green-200 shadow-sm">
+                  <CardHeader className="bg-green-50 border-b border-green-100">
+                    <CardTitle className="text-green-900">Section 2: Bird Details</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
+                  <CardContent className="space-y-5 pt-6">
+                    <div className="space-y-2.5">
                       <Label>Bird Type</Label>
                       <Select
                         value={formData.birdType}
@@ -761,22 +773,20 @@ export default function PurchasesPage() {
                       </Select>
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center mb-2">
-                        <div className="grid grid-cols-3 gap-4 flex-1">
-                          <Label>Cage ID Number</Label>
-                          <Label>Number of Birds</Label>
-                          <Label>Cage Weight</Label>
-                        </div>
-                        <div className="w-10"></div>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-3 gap-6 mb-2">
+                        <Label className="text-sm font-medium">Cage ID Number</Label>
+                        <Label className="text-sm font-medium">Number of Birds</Label>
+                        <Label className="text-sm font-medium">Cage Weight (Kg)</Label>
                       </div>
                       {formData.cages.map((cage, index) => (
-                        <div key={index} className="grid grid-cols-4 gap-2 items-end">
+                        <div key={index} className="grid grid-cols-3 gap-6">
                           <Input
                             placeholder="Cage ID"
                             value={cage.cageId}
                             onChange={(e) => updateCage(index, "cageId", e.target.value)}
                             disabled={loading}
+                            className="h-10"
                           />
                           <Input
                             type="number"
@@ -784,33 +794,33 @@ export default function PurchasesPage() {
                             value={cage.numberOfBirds}
                             onChange={(e) => updateCage(index, "numberOfBirds", e.target.value)}
                             disabled={loading}
+                            className="h-10"
                           />
                           <Input
                             type="number"
                             step="0.01"
-                            placeholder="Weight (Kg)"
+                            placeholder="Weight"
                             value={cage.cageWeight}
                             onChange={(e) => updateCage(index, "cageWeight", e.target.value)}
                             disabled={loading}
+                            className="h-10"
                           />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeCage(index)}
-                            disabled={formData.cages.length === 1 || loading}
-                          >
-                            <X size={16} />
-                          </Button>
                         </div>
                       ))}
-                      <Button type="button" variant="outline" size="sm" onClick={addCage} disabled={loading}>
-                        <Plus size={16} className="mr-1" /> Add more
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={addCage} 
+                        disabled={loading}
+                        className="mt-2"
+                      >
+                        <Plus size={16} className="mr-1" /> Add More Cage
                       </Button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2.5">
                         <Label>Total Weight</Label>
                         <Input
                           value={calculateTotalWeight().toFixed(2)}
@@ -819,7 +829,7 @@ export default function PurchasesPage() {
                           className="bg-gray-50"
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2.5">
                         <Label>Rate per Kg</Label>
                         <Input
                           type="number"
@@ -832,7 +842,7 @@ export default function PurchasesPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       <Label>Total Amount</Label>
                       <Input
                         value={`₹${calculateTotalAmountFromWeight().toFixed(2)}`}
@@ -844,13 +854,13 @@ export default function PurchasesPage() {
                   </CardContent>
                 </Card>
                 {/* Section 3: Charges */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Section 3: Charges</CardTitle>
+                <Card className="border-orange-200 shadow-sm">
+                  <CardHeader className="bg-orange-50 border-b border-orange-100">
+                    <CardTitle className="text-orange-900">Section 3: Charges</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                  <CardContent className="space-y-5 pt-6">
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2.5">
                         <Label>Transport Charges</Label>
                         <Input
                           type="number"
@@ -861,7 +871,7 @@ export default function PurchasesPage() {
                           disabled={loading}
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2.5">
                         <Label>Loading Charges</Label>
                         <Input
                           type="number"
@@ -874,8 +884,8 @@ export default function PurchasesPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2.5">
                         <Label>Commission</Label>
                         <Input
                           type="number"
@@ -886,7 +896,7 @@ export default function PurchasesPage() {
                           disabled={loading}
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2.5">
                         <Label>Other Charges</Label>
                         <Input
                           type="number"
@@ -901,7 +911,7 @@ export default function PurchasesPage() {
 
                     <div className="border-t pt-4">
                       <Label className="text-base font-semibold mb-3 block">Deductions</Label>
-                      <div className="space-y-2">
+                      <div className="space-y-2.5">
                         <Input
                           type="number"
                           step="0.01"
@@ -915,13 +925,13 @@ export default function PurchasesPage() {
                   </CardContent>
                 </Card>
                 {/* Section 4: Payment */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Section 4: Payment</CardTitle>
+                <Card className="border-purple-200 shadow-sm">
+                  <CardHeader className="bg-purple-50 border-b border-purple-100">
+                    <CardTitle className="text-purple-900">Section 4: Payment</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                  <CardContent className="space-y-5 pt-6">
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2.5">
                         <Label>Total Invoice</Label>
                         <Input
                           value={`₹${calculateNetAmount().toFixed(2)}`}
@@ -930,7 +940,7 @@ export default function PurchasesPage() {
                           className="bg-gray-50"
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2.5">
                         <Label>Advance Paid</Label>
                         <Input
                           type="number"
@@ -943,8 +953,8 @@ export default function PurchasesPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2.5">
                         <Label>Outstanding Payment</Label>
                         <Input
                           value={`₹${calculateOutstandingPayment().toFixed(2)}`}
@@ -953,7 +963,7 @@ export default function PurchasesPage() {
                           className="bg-gray-50"
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2.5">
                         <Label>Payment Mode</Label>
                         <Select
                           value={formData.paymentMode}
@@ -973,8 +983,8 @@ export default function PurchasesPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2.5">
                         <Label>Total Payment Made</Label>
                         <Input
                           type="number"
@@ -985,7 +995,7 @@ export default function PurchasesPage() {
                           disabled={loading}
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2.5">
                         <Label>Balance Amount</Label>
                         <Input
                           value={`₹${calculateBalanceAmount().toFixed(2)}`}
