@@ -108,7 +108,7 @@ export default function PurchasesPage() {
 
   const fetchFarmers = async () => {
     try {
-      const data = await farmersApi.getAll()
+      const data = await farmersApi.getActive()
       console.log("Fetched farmers:", data)
       if (Array.isArray(data)) {
         setFarmers(data)
