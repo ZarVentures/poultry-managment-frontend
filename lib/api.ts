@@ -179,6 +179,19 @@ export interface Expense {
   updatedAt?: string;
 }
 
+// Expense DTO for create/update (backend expects string for amount)
+export interface CreateExpenseDto {
+  expenseDate: string;
+  expenseOwner?: string;
+  category: 'feed' | 'labor' | 'medicine' | 'utilities' | 'equipment' | 'maintenance' | 'transportation' | 'other';
+  description: string;
+  amount: string;
+  paymentMethod: 'cash' | 'bank_transfer' | 'check' | 'credit_card';
+  notes?: string;
+}
+
+export interface UpdateExpenseDto extends Partial<CreateExpenseDto> {}
+
 // Purchase Order Interface
 export interface PurchaseOrderItem {
   id?: string;
@@ -191,6 +204,21 @@ export interface PurchaseOrderItem {
 
 export interface PurchaseOrderCage {
   id?: string;
+  cageId?: string;
+  birdType?: string;
+  numberOfBirds: number;
+  cageWeight: number;
+}
+
+// Purchase Order DTO Items (backend expects strings for quantity and unitCost)
+export interface CreatePurchaseOrderItemDto {
+  description: string;
+  quantity: string;
+  unit: string;
+  unitCost: string;
+}
+
+export interface CreatePurchaseOrderCageDto {
   cageId?: string;
   birdType?: string;
   numberOfBirds: number;
@@ -238,6 +266,38 @@ export interface PurchaseOrder {
   createdAt?: string;
   updatedAt?: string;
 }
+
+// Purchase Order DTO for create/update (backend expects strings for numeric fields)
+export interface CreatePurchaseOrderDto {
+  orderNumber: string;
+  supplierName: string;
+  orderDate: string;
+  dueDate?: string;
+  status?: 'pending' | 'received' | 'cancelled';
+  farmerId?: string;
+  farmerMobile?: string;
+  farmLocation?: string;
+  vehicleId?: string;
+  birdType?: string;
+  totalWeight?: string;
+  ratePerKg?: string;
+  notes?: string;
+  transportCharges?: string;
+  loadingCharges?: string;
+  commission?: string;
+  otherCharges?: string;
+  weightShortage?: string;
+  mortalityDeduction?: string;
+  otherDeduction?: string;
+  purchasePaymentStatus?: 'paid' | 'pending' | 'partial';
+  advancePaid?: string;
+  paymentMode?: string;
+  totalPaymentMade?: string;
+  items: CreatePurchaseOrderItemDto[];
+  cages?: CreatePurchaseOrderCageDto[];
+}
+
+export interface UpdatePurchaseOrderDto extends Partial<CreatePurchaseOrderDto> {}
 
 // Settings Interface
 export interface Setting {
@@ -499,13 +559,13 @@ export const expensesApi = {
   
   getOne: (id: string) => apiRequest<Expense>(`/expenses/${id}`),
   
-  create: (data: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) =>
+  create: (data: CreateExpenseDto) =>
     apiRequest<Expense>('/expenses', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   
-  update: (id: string, data: Partial<Expense>) =>
+  update: (id: string, data: UpdateExpenseDto) =>
     apiRequest<Expense>(`/expenses/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -527,13 +587,13 @@ export const purchasesApi = {
   
   getOne: (id: string) => apiRequest<PurchaseOrder>(`/purchases/${id}`),
   
-  create: (data: Omit<PurchaseOrder, 'id' | 'createdAt' | 'updatedAt'>) =>
+  create: (data: CreatePurchaseOrderDto) =>
     apiRequest<PurchaseOrder>('/purchases', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   
-  update: (id: string, data: Partial<PurchaseOrder>) =>
+  update: (id: string, data: UpdatePurchaseOrderDto) =>
     apiRequest<PurchaseOrder>(`/purchases/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),

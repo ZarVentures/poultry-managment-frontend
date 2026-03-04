@@ -93,7 +93,7 @@ export default function ExpensesPage() {
         expenseOwner: formData.expenseOwner || undefined,
         category: formData.category,
         description: formData.description,
-        amount: parseFloat(formData.amount),
+        amount: formData.amount, // Send as string
         paymentMethod: formData.paymentMethod,
         notes: formData.notes,
       }

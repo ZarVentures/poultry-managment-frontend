@@ -358,13 +358,12 @@ export default function PurchasesPage() {
     try {
       setLoading(true)
       
-      // Prepare items
+      // Prepare items with string values for quantity and unitCost
       const items = formData.items.map(item => ({
-        itemName: item.itemName,
-        quantity: parseFloat(item.quantity) || 0,
+        description: item.itemName,
+        quantity: item.quantity,
         unit: item.unit,
-        unitPrice: parseFloat(item.unitPrice) || 0,
-        totalPrice: (parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0),
+        unitCost: item.unitPrice,
       }))
 
       // Prepare cages
@@ -391,16 +390,16 @@ export default function PurchasesPage() {
         birdType: formData.birdType || undefined,
         totalWeight: calculateTotalWeight().toString(),
         ratePerKg: formData.ratePerKg || undefined,
-        // Charges
+        // Charges (keep as strings)
         transportCharges: formData.transportCharges || undefined,
         loadingCharges: formData.loadingCharges || undefined,
         commission: formData.commission || undefined,
         otherCharges: formData.otherCharges || undefined,
-        // Deductions
+        // Deductions (keep as strings)
         weightShortage: formData.weightShortage || undefined,
         mortalityDeduction: formData.mortalityDeduction || undefined,
         otherDeduction: formData.otherDeduction || undefined,
-        // Payment tracking
+        // Payment tracking (keep as strings)
         purchasePaymentStatus: formData.purchasePaymentStatus,
         advancePaid: formData.advancePaid || undefined,
         paymentMode: formData.paymentMode || undefined,
