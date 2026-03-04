@@ -28,11 +28,36 @@ async function apiRequest<T>(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+    // Try to parse error response, fallback to generic message
+    let errorMessage = `HTTP ${response.status}`;
+    try {
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const error = await response.json();
+        errorMessage = error.message || errorMessage;
+      } else {
+        const text = await response.text();
+        errorMessage = text || errorMessage;
+      }
+    } catch (e) {
+      // If parsing fails, use status code
+    }
+    throw new Error(errorMessage);
   }
 
-  return response.json();
+  // Handle empty responses (like DELETE)
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    return undefined as T;
+  }
+
+  // Check if response has content
+  const text = await response.text();
+  if (!text || text.trim() === '') {
+    return undefined as T;
+  }
+
+  return JSON.parse(text);
 }
 
 // Farmer Interface
