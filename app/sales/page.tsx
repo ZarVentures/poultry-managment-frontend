@@ -345,8 +345,25 @@ export default function SalesPage() {
 
   // Stats calculations
   const stats = useMemo(() => {
-    const totalSales = sales.reduce((sum, sale) => sum + (sale.totalAmount || 0), 0)
-    const totalReceived = sales.reduce((sum, sale) => sum + (sale.totalPaymentReceived || 0), 0)
+    if (!Array.isArray(sales) || sales.length === 0) {
+      return {
+        totalSales: 0,
+        totalAmount: 0,
+        totalReceived: 0,
+        totalPending: 0,
+      }
+    }
+
+    const totalSales = sales.reduce((sum, sale) => {
+      const amount = typeof sale.totalAmount === 'number' ? sale.totalAmount : parseFloat(String(sale.totalAmount || 0))
+      return sum + (isNaN(amount) ? 0 : amount)
+    }, 0)
+    
+    const totalReceived = sales.reduce((sum, sale) => {
+      const received = typeof sale.totalPaymentReceived === 'number' ? sale.totalPaymentReceived : parseFloat(String(sale.totalPaymentReceived || 0))
+      return sum + (isNaN(received) ? 0 : received)
+    }, 0)
+    
     const totalPending = totalSales - totalReceived
 
     return {
@@ -893,7 +910,7 @@ export default function SalesPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Amount</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">₹{stats.totalAmount.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-green-600">₹{(stats.totalAmount || 0).toFixed(2)}</div>
             </CardContent>
           </Card>
           <Card>
@@ -901,7 +918,7 @@ export default function SalesPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Received</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">₹{stats.totalReceived.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-blue-600">₹{(stats.totalReceived || 0).toFixed(2)}</div>
             </CardContent>
           </Card>
           <Card>
@@ -909,7 +926,7 @@ export default function SalesPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Pending</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600">₹{stats.totalPending.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-orange-600">₹{(stats.totalPending || 0).toFixed(2)}</div>
             </CardContent>
           </Card>
         </div>
