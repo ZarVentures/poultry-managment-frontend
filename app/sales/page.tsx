@@ -283,9 +283,8 @@ export default function SalesPage() {
     try {
       setLoading(true)
 
-      // Calculate total amount from bird details
+      // Calculate total weight from bird details
       const totalWeight = calculateTotalWeight()
-      const totalAmount = calculateTotalAmount()
 
       const saleData = {
         invoiceNumber: formData.invoiceNumber,
@@ -293,21 +292,18 @@ export default function SalesPage() {
         saleDate: formData.saleDate,
         saleMode: formData.saleMode,
         productType: "meat" as const, // Default to meat for bird sales
-        quantity: totalWeight, // Total weight as quantity
+        quantity: String(totalWeight), // Total weight as quantity (string)
         unit: "kg",
-        unitPrice: parseFloat(formData.ratePerKg) || 0,
-        totalAmount: totalAmount,
-        transportCharges: parseFloat(formData.transportCharges) || 0,
-        loadingCharges: parseFloat(formData.loadingCharges) || 0,
-        commission: parseFloat(formData.commission) || 0,
-        otherCharges: parseFloat(formData.otherCharges) || 0,
-        weightShortage: 0,
-        mortalityDeduction: parseFloat(formData.deductions) || 0,
-        otherDeduction: 0,
-        grossAmount: totalAmount,
-        netAmount: calculateTotalInvoice(),
+        unitPrice: formData.ratePerKg || "0",
+        transportCharges: formData.transportCharges || "0",
+        loadingCharges: formData.loadingCharges || "0",
+        commission: formData.commission || "0",
+        otherCharges: formData.otherCharges || "0",
+        weightShortage: "0",
+        mortalityDeduction: formData.deductions || "0",
+        otherDeduction: "0",
         paymentStatus: formData.paymentStatus,
-        amountReceived: parseFloat(formData.totalPaymentReceived) || 0,
+        amountReceived: formData.totalPaymentReceived || "0",
         notes: formData.notes,
         retailerId: formData.retailerId || undefined,
       }

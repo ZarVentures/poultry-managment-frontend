@@ -140,6 +140,31 @@ export interface Sale {
   updatedAt?: string;
 }
 
+// Sale DTO for create/update (backend expects strings for numeric fields)
+export interface CreateSaleDto {
+  invoiceNumber: string;
+  customerName: string;
+  saleDate: string;
+  saleMode: 'from_vehicle' | 'from_godown';
+  productType: 'eggs' | 'meat' | 'chicks' | 'other';
+  quantity: string;
+  unit?: string;
+  unitPrice: string;
+  transportCharges?: string;
+  loadingCharges?: string;
+  commission?: string;
+  otherCharges?: string;
+  weightShortage?: string;
+  mortalityDeduction?: string;
+  otherDeduction?: string;
+  paymentStatus?: 'paid' | 'pending' | 'partial';
+  amountReceived?: string;
+  notes?: string;
+  retailerId?: string;
+}
+
+export interface UpdateSaleDto extends Partial<CreateSaleDto> {}
+
 // Expense Interface
 export interface Expense {
   id: string;
@@ -448,13 +473,13 @@ export const salesApi = {
   
   getOne: (id: string) => apiRequest<Sale>(`/sales/${id}`),
   
-  create: (data: Omit<Sale, 'id' | 'createdAt' | 'updatedAt'>) =>
+  create: (data: CreateSaleDto) =>
     apiRequest<Sale>('/sales', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   
-  update: (id: string, data: Partial<Sale>) =>
+  update: (id: string, data: UpdateSaleDto) =>
     apiRequest<Sale>(`/sales/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
