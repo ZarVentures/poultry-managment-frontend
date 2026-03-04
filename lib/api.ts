@@ -118,11 +118,20 @@ export interface Sale {
   customerName: string;
   saleDate: string;
   saleMode: 'from_vehicle' | 'from_godown';
-  productType: 'eggs' | 'meat' | 'chicks' | 'other';
-  quantity: number;
+  vehicleId?: string;
+  productType?: 'eggs' | 'meat' | 'chicks' | 'other';
+  quantity?: number;
   unit?: string;
-  unitPrice: number;
-  totalAmount: number;
+  unitPrice?: number;
+  totalAmount?: number;
+  // Bird details
+  birdType?: string;
+  numberOfCages?: number;
+  numberOfBirds?: number;
+  ratePerKg?: number;
+  averageWeight?: number;
+  totalWeight?: number;
+  // Charges
   transportCharges?: number;
   loadingCharges?: number;
   commission?: number;
@@ -130,10 +139,17 @@ export interface Sale {
   weightShortage?: number;
   mortalityDeduction?: number;
   otherDeduction?: number;
+  deductions?: number;
   grossAmount?: number;
   netAmount?: number;
+  // Payment
   paymentStatus: 'paid' | 'pending' | 'partial';
-  amountReceived: number;
+  amountReceived?: number;
+  advancePaid?: number;
+  creditBalance?: number;
+  paymentMode?: string;
+  totalPaymentReceived?: number;
+  balanceAmount?: number;
   notes?: string;
   retailerId?: string;
   createdAt?: string;

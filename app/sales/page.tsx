@@ -928,8 +928,10 @@ export default function SalesPage() {
               <DateRangeFilter
                 startDate={dateRangeStart}
                 endDate={dateRangeEnd}
-                onStartDateChange={setDateRangeStart}
-                onEndDateChange={setDateRangeEnd}
+                onDateRangeChange={(start, end) => {
+                  setDateRangeStart(start)
+                  setDateRangeEnd(end)
+                }}
               />
               <div className="flex gap-2">
                 <Button variant="outline" size="icon">
