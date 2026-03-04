@@ -525,256 +525,404 @@ export default function PurchasesPage() {
                   {editingId ? "Edit purchase order details" : "Create a new purchase order"}
                 </p>
               </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Order Number *</Label>
-                    <Input
-                      value={formData.orderNumber}
-                      onChange={(e) => setFormData({ ...formData, orderNumber: e.target.value })}
-                      placeholder="PO-001"
-                      disabled={loading}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Supplier Name *</Label>
-                    <Input
-                      value={formData.supplierName}
-                      onChange={(e) => setFormData({ ...formData, supplierName: e.target.value })}
-                      placeholder="Supplier name"
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
+              <div className="space-y-6">
+                {/* Section 1: Header Information */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Section 1: Header Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Purchase Invoice No. *</Label>
+                        <div className="flex">
+                          <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                            PO-
+                          </span>
+                          <Input
+                            value={formData.orderNumber.replace('PO-', '')}
+                            onChange={(e) => setFormData({ ...formData, orderNumber: 'PO-' + e.target.value })}
+                            placeholder="e.g. 001, 002"
+                            className="rounded-l-none"
+                            disabled={loading}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Purchase Date *</Label>
+                        <DatePicker
+                          value={formData.orderDate}
+                          onChange={(date) => setFormData({ ...formData, orderDate: date })}
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Order Date *</Label>
-                    <DatePicker
-                      value={formData.orderDate}
-                      onChange={(date) => setFormData({ ...formData, orderDate: date })}
-                      disabled={loading}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Due Date</Label>
-                    <DatePicker
-                      value={formData.dueDate}
-                      onChange={(date) => setFormData({ ...formData, dueDate: date })}
-                      disabled={loading}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Status *</Label>
-                    <Select
-                      value={formData.status}
-                      onValueChange={(value: any) => setFormData({ ...formData, status: value })}
-                      disabled={loading}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="received">Received</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Farmer Name *</Label>
+                        <Select
+                          value={formData.farmerId}
+                          onValueChange={handleFarmerChange}
+                          disabled={loading}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select farmer" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {farmers.map((farmer) => (
+                              <SelectItem key={farmer.id} value={farmer.id}>
+                                {farmer.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Farmer Mobile</Label>
+                        <Input
+                          value={formData.farmerMobile}
+                          placeholder="Auto-filled"
+                          disabled
+                          className="bg-gray-50"
+                        />
+                      </div>
+                    </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <Label>Items *</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={addItem}>
-                      <Plus size={16} className="mr-1" /> Add Item
-                    </Button>
-                  </div>
-                  {formData.items.map((item, index) => (
-                    <div key={index} className="grid grid-cols-5 gap-2 items-end">
-                      <Input
-                        placeholder="Item name"
-                        value={item.itemName}
-                        onChange={(e) => updateItem(index, "itemName", e.target.value)}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Farm Location</Label>
+                        <Input
+                          value={formData.farmLocation}
+                          placeholder="Auto-filled"
+                          disabled
+                          className="bg-gray-50"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Vehicle No</Label>
+                        <Select
+                          value={formData.vehicleId}
+                          onValueChange={(value) => setFormData({ ...formData, vehicleId: value })}
+                          disabled={loading}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select vehicle" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {vehicles.map((vehicle) => (
+                              <SelectItem key={vehicle.id} value={vehicle.id}>
+                                {vehicle.vehicleNumber}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Purchase Payment *</Label>
+                      <Select
+                        value={formData.purchasePaymentStatus}
+                        onValueChange={(value: any) => setFormData({ ...formData, purchasePaymentStatus: value })}
                         disabled={loading}
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Quantity"
-                        value={item.quantity}
-                        onChange={(e) => updateItem(index, "quantity", e.target.value)}
-                        disabled={loading}
-                      />
-                      <Input
-                        placeholder="Unit"
-                        value={item.unit}
-                        onChange={(e) => updateItem(index, "unit", e.target.value)}
-                        disabled={loading}
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Unit Price"
-                        value={item.unitPrice}
-                        onChange={(e) => updateItem(index, "unitPrice", e.target.value)}
-                        disabled={loading}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeItem(index)}
-                        disabled={formData.items.length === 1 || loading}
                       >
-                        <X size={16} />
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="paid">Paid</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="partial">Partial</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Notes</Label>
+                      <Textarea
+                        value={formData.notes}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                        placeholder="Additional notes"
+                        rows={3}
+                        disabled={loading}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+                {/* Section 2: Bird Details */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Section 2: Bird Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Bird Type</Label>
+                      <Select
+                        value={formData.birdType}
+                        onValueChange={(value) => setFormData({ ...formData, birdType: value })}
+                        disabled={loading}
+                      >
+                        <SelectTrigger className="w-[250px]">
+                          <SelectValue placeholder="Select bird type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="broiler">Broiler</SelectItem>
+                          <SelectItem value="layer">Layer</SelectItem>
+                          <SelectItem value="desi">Desi</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="grid grid-cols-3 gap-4 flex-1">
+                          <Label>Cage ID Number</Label>
+                          <Label>Number of Birds</Label>
+                          <Label>Cage Weight</Label>
+                        </div>
+                        <div className="w-10"></div>
+                      </div>
+                      {formData.cages.map((cage, index) => (
+                        <div key={index} className="grid grid-cols-4 gap-2 items-end">
+                          <Input
+                            placeholder="Cage ID"
+                            value={cage.cageId}
+                            onChange={(e) => updateCage(index, "cageId", e.target.value)}
+                            disabled={loading}
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Birds"
+                            value={cage.numberOfBirds}
+                            onChange={(e) => updateCage(index, "numberOfBirds", e.target.value)}
+                            disabled={loading}
+                          />
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="Weight (Kg)"
+                            value={cage.cageWeight}
+                            onChange={(e) => updateCage(index, "cageWeight", e.target.value)}
+                            disabled={loading}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeCage(index)}
+                            disabled={formData.cages.length === 1 || loading}
+                          >
+                            <X size={16} />
+                          </Button>
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" size="sm" onClick={addCage} disabled={loading}>
+                        <Plus size={16} className="mr-1" /> Add more
                       </Button>
                     </div>
-                  ))}
-                </div>
 
-                <div className="flex justify-end">
-                  <div className="text-lg font-semibold">
-                    Bird Amount: ₹{calculateTotal().toFixed(2)}
-                  </div>
-                </div>
-
-                <div className="space-y-4 border-t pt-4">
-                  <Label className="text-lg font-semibold">Section 3: Charges & Deductions</Label>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Transport Charges</Label>
-                      <Input
-                        type="number"
-                        value={formData.transportCharges}
-                        onChange={(e) => setFormData({ ...formData, transportCharges: e.target.value })}
-                        placeholder="0.00"
-                        disabled={loading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Loading Charges</Label>
-                      <Input
-                        type="number"
-                        value={formData.loadingCharges}
-                        onChange={(e) => setFormData({ ...formData, loadingCharges: e.target.value })}
-                        placeholder="0.00"
-                        disabled={loading}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Commission</Label>
-                      <Input
-                        type="number"
-                        value={formData.commission}
-                        onChange={(e) => setFormData({ ...formData, commission: e.target.value })}
-                        placeholder="0.00"
-                        disabled={loading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Other Charges</Label>
-                      <Input
-                        type="number"
-                        value={formData.otherCharges}
-                        onChange={(e) => setFormData({ ...formData, otherCharges: e.target.value })}
-                        placeholder="0.00"
-                        disabled={loading}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end text-sm">
-                    <span className="font-medium">Total Charges: ₹{calculateCharges().toFixed(2)}</span>
-                  </div>
-
-                  <div className="border-t pt-4">
-                    <Label className="text-base font-semibold mb-3 block">Deductions</Label>
-                    
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Weight Shortage</Label>
+                        <Label>Total Weight</Label>
+                        <Input
+                          value={calculateTotalWeight().toFixed(2)}
+                          placeholder="Auto-calculated"
+                          disabled
+                          className="bg-gray-50"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Rate per Kg</Label>
                         <Input
                           type="number"
+                          step="0.01"
+                          value={formData.ratePerKg}
+                          onChange={(e) => setFormData({ ...formData, ratePerKg: e.target.value })}
+                          placeholder="0.00"
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Total Amount</Label>
+                      <Input
+                        value={`₹${calculateTotalAmountFromWeight().toFixed(2)}`}
+                        placeholder="Auto-calculated"
+                        disabled
+                        className="bg-gray-50 text-lg font-semibold"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+                {/* Section 3: Charges */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Section 3: Charges</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Transport Charges</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.transportCharges}
+                          onChange={(e) => setFormData({ ...formData, transportCharges: e.target.value })}
+                          placeholder="0.00"
+                          disabled={loading}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Loading Charges</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.loadingCharges}
+                          onChange={(e) => setFormData({ ...formData, loadingCharges: e.target.value })}
+                          placeholder="0.00"
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Commission</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.commission}
+                          onChange={(e) => setFormData({ ...formData, commission: e.target.value })}
+                          placeholder="0.00"
+                          disabled={loading}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Other Charges</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.otherCharges}
+                          onChange={(e) => setFormData({ ...formData, otherCharges: e.target.value })}
+                          placeholder="0.00"
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <Label className="text-base font-semibold mb-3 block">Deductions</Label>
+                      <div className="space-y-2">
+                        <Input
+                          type="number"
+                          step="0.01"
                           value={formData.weightShortage}
                           onChange={(e) => setFormData({ ...formData, weightShortage: e.target.value })}
                           placeholder="0.00"
                           disabled={loading}
                         />
                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                {/* Section 4: Payment */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Section 4: Payment</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Mortality Deduction</Label>
+                        <Label>Total Invoice</Label>
+                        <Input
+                          value={`₹${calculateNetAmount().toFixed(2)}`}
+                          placeholder="Auto-calculated"
+                          disabled
+                          className="bg-gray-50"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Advance Paid</Label>
                         <Input
                           type="number"
-                          value={formData.mortalityDeduction}
-                          onChange={(e) => setFormData({ ...formData, mortalityDeduction: e.target.value })}
+                          step="0.01"
+                          value={formData.advancePaid}
+                          onChange={(e) => setFormData({ ...formData, advancePaid: e.target.value })}
+                          placeholder="0.00"
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Outstanding Payment</Label>
+                        <Input
+                          value={`₹${calculateOutstandingPayment().toFixed(2)}`}
+                          placeholder="Auto-calculated"
+                          disabled
+                          className="bg-gray-50"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Payment Mode</Label>
+                        <Select
+                          value={formData.paymentMode}
+                          onValueChange={(value) => setFormData({ ...formData, paymentMode: value })}
+                          disabled={loading}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select payment mode" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="cash">Cash</SelectItem>
+                            <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                            <SelectItem value="check">Check</SelectItem>
+                            <SelectItem value="credit_card">Credit Card</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Total Payment Made</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.totalPaymentMade}
+                          onChange={(e) => setFormData({ ...formData, totalPaymentMade: e.target.value })}
                           placeholder="0.00"
                           disabled={loading}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Other Deduction</Label>
+                        <Label>Balance Amount</Label>
                         <Input
-                          type="number"
-                          value={formData.otherDeduction}
-                          onChange={(e) => setFormData({ ...formData, otherDeduction: e.target.value })}
-                          placeholder="0.00"
-                          disabled={loading}
+                          value={`₹${calculateBalanceAmount().toFixed(2)}`}
+                          placeholder="Auto-calculated"
+                          disabled
+                          className="bg-gray-50"
                         />
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
 
-                    <div className="flex justify-end text-sm mt-2">
-                      <span className="font-medium">Total Deductions: ₹{calculateDeductions().toFixed(2)}</span>
-                    </div>
-                  </div>
-
-                  <div className="border-t pt-4 space-y-2">
-                    <div className="flex justify-between text-base">
-                      <span>Bird Amount:</span>
-                      <span className="font-medium">₹{calculateTotal().toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-base">
-                      <span>Total Charges:</span>
-                      <span className="font-medium">₹{calculateCharges().toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-lg font-semibold border-t pt-2">
-                      <span>Gross Amount:</span>
-                      <span>₹{calculateGrossAmount().toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-base text-red-600">
-                      <span>Total Deductions:</span>
-                      <span className="font-medium">-₹{calculateDeductions().toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-xl font-bold border-t pt-2 text-green-600">
-                      <span>Net Amount:</span>
-                      <span>₹{calculateNetAmount().toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Notes</Label>
-                  <Textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder="Additional notes"
-                    rows={3}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="flex gap-2">
-                  <Button onClick={handleSave} className="flex-1" disabled={loading}>
-                    {loading ? "Saving..." : editingId ? "Update" : "Create"}
-                  </Button>
+                {/* Action Buttons */}
+                <div className="flex gap-2 justify-end">
                   <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}>
-                    <X size={20} />
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSave} disabled={loading} className="bg-green-600 hover:bg-green-700">
+                    {loading ? "Saving..." : editingId ? "Update Purchase Order" : "Create Purchase Order"}
                   </Button>
                 </div>
               </div>
+
             </DialogContent>
           </Dialog>
         </div>
