@@ -188,7 +188,8 @@ export default function UsersPage() {
       await fetchUsers()
     } catch (error: any) {
       console.error('Failed to delete user:', error)
-      toast.error("Failed to delete user")
+      const errorMessage = error.message || "Failed to delete user"
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
