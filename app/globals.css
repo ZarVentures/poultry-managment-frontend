@@ -69,3 +69,35 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Sonner Toast Styles */
+[data-sonner-toast] {
+  background: white !important;
+  border: 1px solid hsl(var(--border)) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+[data-sonner-toast][data-type="success"] {
+  background: hsl(142 76% 36% / 0.1) !important;
+  border-color: hsl(142 76% 36%) !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  background: hsl(0 84.2% 60.2% / 0.1) !important;
+  border-color: hsl(0 84.2% 60.2%) !important;
+}
+
+[data-sonner-toast][data-type="warning"] {
+  background: hsl(43 74% 66% / 0.1) !important;
+  border-color: hsl(43 74% 66%) !important;
+}
+
+[data-sonner-toast][data-type="info"] {
+  background: hsl(197 37% 24% / 0.1) !important;
+  border-color: hsl(197 37% 24%) !important;
+}
+
+.dark [data-sonner-toast] {
+  background: hsl(var(--card)) !important;
+  border-color: hsl(var(--border)) !important;
+}
