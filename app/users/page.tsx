@@ -51,7 +51,6 @@ export default function UsersPage() {
   }
 
   const canCreate = userPermissions?.permissions?.users?.canCreate || false
-  const canDelete = userPermissions?.permissions?.users?.canDelete || false
   const canUpdate = userPermissions?.permissions?.users?.canUpdate || false
 
   const fetchUsers = async () => {
@@ -145,47 +144,27 @@ export default function UsersPage() {
     }
   }
 
-  const handleDelete = async (id: string, currentStatus: string) => {
-    if (!canDelete) {
-      toast.error("You don't have permission to deactivate users")
-      return
-    }
-
-    if (currentStatus === 'inactive') {
-      toast.info("User is already inactive")
-      return
-    }
-
-    if (!confirm("Are you sure you want to deactivate this user? They will no longer be able to log in.")) return
-
-    try {
-      setLoading(true)
-      await usersApi.updateStatus(id, 'inactive')
-      toast.success("User deactivated successfully")
-      await fetchUsers()
-    } catch (error: any) {
-      console.error('Failed to deactivate user:', error)
-      toast.error("Failed to deactivate user")
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleToggleStatus = async (id: string, currentStatus: string) => {
+    if (!canUpdate) {
+      toast.error("You don't have permission to change user status")
+      return
+    }
+
     const newStatus = currentStatus === "active" ? "inactive" : "active"
+    const action = newStatus === "active" ? "activate" : "deactivate"
+    
+    if (!confirm(`Are you sure you want to ${action} this user?${newStatus === "inactive" ? " They will no longer be able to log in." : ""}`)) {
+      return
+    }
+
     try {
       setLoading(true)
-      // Use activate/deactivate endpoints
-      if (newStatus === "active") {
-        await usersApi.updateStatus(id, "active")
-      } else {
-        await usersApi.updateStatus(id, "inactive")
-      }
-      toast.success(`User ${newStatus === "active" ? "activated" : "deactivated"} successfully`)
+      await usersApi.updateStatus(id, newStatus)
+      toast.success(`User ${action}d successfully`)
       await fetchUsers()
     } catch (error: any) {
       console.error('Failed to toggle user status:', error)
-      toast.error("Failed to update user status")
+      toast.error(`Failed to ${action} user`)
     } finally {
       setLoading(false)
     }
@@ -515,25 +494,14 @@ export default function UsersPage() {
                               variant="ghost" 
                               size="sm" 
                               onClick={() => handleToggleStatus(user.id, user.status)}
-                              title={user.status === "active" ? "Lock user" : "Unlock user"}
+                              title={user.status === "active" ? "Deactivate user (lock)" : "Activate user (unlock)"}
                               disabled={!canUpdate}
                             >
-                              {user.status === "active" ? <Unlock size={16} className="text-green-600" /> : <Lock size={16} className="text-red-600" />}
+                              {user.status === "active" ? <Lock size={16} className="text-orange-600" /> : <Unlock size={16} className="text-green-600" />}
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(user)} disabled={!canUpdate}>
                               <Edit2 size={16} />
                             </Button>
-                            {canDelete && (
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={() => handleDelete(user.id, user.status)}
-                                disabled={user.status === 'inactive'}
-                                title={user.status === 'inactive' ? "User is already inactive" : "Deactivate user"}
-                              >
-                                <Trash2 size={16} className={user.status === 'inactive' ? 'text-gray-400' : 'text-red-600'} />
-                              </Button>
-                            )}
                           </div>
                         </TableCell>
                       </TableRow>
