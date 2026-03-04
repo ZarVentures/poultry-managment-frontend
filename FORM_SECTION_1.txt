@@ -1,0 +1,125 @@
+              <div className="space-y-6">
+                {/* Section 1: Header Information */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Section 1: Header Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Purchase Invoice No. *</Label>
+                        <div className="flex">
+                          <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                            PO-
+                          </span>
+                          <Input
+                            value={formData.orderNumber.replace('PO-', '')}
+                            onChange={(e) => setFormData({ ...formData, orderNumber: 'PO-' + e.target.value })}
+                            placeholder="e.g. 001, 002"
+                            className="rounded-l-none"
+                            disabled={loading}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Purchase Date *</Label>
+                        <DatePicker
+                          value={formData.orderDate}
+                          onChange={(date) => setFormData({ ...formData, orderDate: date })}
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Farmer Name *</Label>
+                        <Select
+                          value={formData.farmerId}
+                          onValueChange={handleFarmerChange}
+                          disabled={loading}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select farmer" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {farmers.map((farmer) => (
+                              <SelectItem key={farmer.id} value={farmer.id}>
+                                {farmer.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Farmer Mobile</Label>
+                        <Input
+                          value={formData.farmerMobile}
+                          placeholder="Auto-filled"
+                          disabled
+                          className="bg-gray-50"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Farm Location</Label>
+                        <Input
+                          value={formData.farmLocation}
+                          placeholder="Auto-filled"
+                          disabled
+                          className="bg-gray-50"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Vehicle No</Label>
+                        <Select
+                          value={formData.vehicleId}
+                          onValueChange={(value) => setFormData({ ...formData, vehicleId: value })}
+                          disabled={loading}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select vehicle" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {vehicles.map((vehicle) => (
+                              <SelectItem key={vehicle.id} value={vehicle.id}>
+                                {vehicle.vehicleNumber}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Purchase Payment *</Label>
+                      <Select
+                        value={formData.purchasePaymentStatus}
+                        onValueChange={(value: any) => setFormData({ ...formData, purchasePaymentStatus: value })}
+                        disabled={loading}
+                      >
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="paid">Paid</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="partial">Partial</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Notes</Label>
+                      <Textarea
+                        value={formData.notes}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                        placeholder="Additional notes"
+                        rows={3}
+                        disabled={loading}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>

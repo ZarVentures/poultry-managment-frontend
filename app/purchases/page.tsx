@@ -13,12 +13,13 @@ import { Plus, Edit2, Trash2, X, Download, Printer } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
-import { purchasesApi, farmersApi, type PurchaseOrder as ApiPurchaseOrder, type Farmer } from "@/lib/api"
+import { purchasesApi, farmersApi, vehiclesApi, type PurchaseOrder as ApiPurchaseOrder, type Farmer, type Vehicle } from "@/lib/api"
 import { toast } from "sonner"
 
 export default function PurchasesPage() {
   const [purchases, setPurchases] = useState<ApiPurchaseOrder[]>([])
   const [farmers, setFarmers] = useState<Farmer[]>([])
+  const [vehicles, setVehicles] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
@@ -32,21 +33,40 @@ export default function PurchasesPage() {
     orderDate: new Date().toISOString().split("T")[0],
     dueDate: "",
     status: "pending" as "pending" | "received" | "cancelled",
-    notes: "",
-    items: [{ itemName: "", quantity: "", unit: "", unitPrice: "" }],
+    // Farmer integration
+    farmerId: "",
+    farmerMobile: "",
+    farmLocation: "",
+    // Vehicle integration
+    vehicleId: "",
+    // Purchase payment
+    purchasePaymentStatus: "pending" as "paid" | "pending" | "partial",
+    // Bird details
+    birdType: "",
+    cages: [{ cageId: "", numberOfBirds: "", cageWeight: "" }],
+    ratePerKg: "",
+    // Charges
     transportCharges: "",
     loadingCharges: "",
     commission: "",
     otherCharges: "",
+    // Deductions
     weightShortage: "",
     mortalityDeduction: "",
     otherDeduction: "",
+    // Payment
+    advancePaid: "",
+    paymentMode: "",
+    totalPaymentMade: "",
+    notes: "",
+    items: [{ itemName: "", quantity: "", unit: "", unitPrice: "" }],
   })
 
   useEffect(() => {
     setMounted(true)
     fetchPurchases()
     fetchFarmers()
+    fetchVehicles()
   }, [])
 
   const fetchPurchases = async () => {
@@ -71,6 +91,15 @@ export default function PurchasesPage() {
     }
   }
 
+  const fetchVehicles = async () => {
+    try {
+      const data = await vehiclesApi.getAll()
+      setVehicles(data)
+    } catch (error) {
+      console.error("Failed to fetch vehicles:", error)
+    }
+  }
+
   const resetForm = () => {
     setFormData({
       orderNumber: "",
@@ -78,8 +107,14 @@ export default function PurchasesPage() {
       orderDate: new Date().toISOString().split("T")[0],
       dueDate: "",
       status: "pending",
-      notes: "",
-      items: [{ itemName: "", quantity: "", unit: "", unitPrice: "" }],
+      farmerId: "",
+      farmerMobile: "",
+      farmLocation: "",
+      vehicleId: "",
+      purchasePaymentStatus: "pending",
+      birdType: "",
+      cages: [{ cageId: "", numberOfBirds: "", cageWeight: "" }],
+      ratePerKg: "",
       transportCharges: "",
       loadingCharges: "",
       commission: "",
@@ -87,8 +122,63 @@ export default function PurchasesPage() {
       weightShortage: "",
       mortalityDeduction: "",
       otherDeduction: "",
+      advancePaid: "",
+      paymentMode: "",
+      totalPaymentMade: "",
+      notes: "",
+      items: [{ itemName: "", quantity: "", unit: "", unitPrice: "" }],
     })
     setEditingId(null)
+  }
+
+  // Handle farmer selection
+  const handleFarmerChange = (farmerId: string) => {
+    const selectedFarmer = farmers.find(f => f.id === farmerId)
+    if (selectedFarmer) {
+      setFormData({
+        ...formData,
+        farmerId,
+        supplierName: selectedFarmer.name,
+        farmerMobile: selectedFarmer.phone || "",
+        farmLocation: selectedFarmer.address || "",
+      })
+    }
+  }
+
+  // Cage management functions
+  const addCage = () => {
+    setFormData({
+      ...formData,
+      cages: [...formData.cages, { cageId: "", numberOfBirds: "", cageWeight: "" }],
+    })
+  }
+
+  const removeCage = (index: number) => {
+    setFormData({
+      ...formData,
+      cages: formData.cages.filter((_, i) => i !== index),
+    })
+  }
+
+  const updateCage = (index: number, field: string, value: string) => {
+    const newCages = [...formData.cages]
+    newCages[index] = { ...newCages[index], [field]: value }
+    setFormData({ ...formData, cages: newCages })
+  }
+
+  // Calculate total weight from cages
+  const calculateTotalWeight = () => {
+    return formData.cages.reduce((sum, cage) => {
+      const weight = parseFloat(cage.cageWeight) || 0
+      return sum + weight
+    }, 0)
+  }
+
+  // Calculate total amount from weight and rate
+  const calculateTotalAmountFromWeight = () => {
+    const totalWeight = calculateTotalWeight()
+    const ratePerKg = parseFloat(formData.ratePerKg) || 0
+    return totalWeight * ratePerKg
   }
 
   const handleEdit = (purchase: ApiPurchaseOrder) => {
@@ -98,13 +188,20 @@ export default function PurchasesPage() {
       orderDate: purchase.orderDate,
       dueDate: purchase.dueDate || "",
       status: purchase.status,
-      notes: purchase.notes || "",
-      items: purchase.items.map(item => ({
-        itemName: item.itemName,
-        quantity: String(item.quantity),
-        unit: item.unit,
-        unitPrice: String(item.unitPrice),
-      })),
+      farmerId: purchase.farmerId || "",
+      farmerMobile: purchase.farmerMobile || "",
+      farmLocation: purchase.farmLocation || "",
+      vehicleId: purchase.vehicleId || "",
+      purchasePaymentStatus: purchase.purchasePaymentStatus || "pending",
+      birdType: purchase.birdType || "",
+      cages: purchase.cages && purchase.cages.length > 0 
+        ? purchase.cages.map(cage => ({
+            cageId: cage.cageId || "",
+            numberOfBirds: String(cage.numberOfBirds),
+            cageWeight: String(cage.cageWeight),
+          }))
+        : [{ cageId: "", numberOfBirds: "", cageWeight: "" }],
+      ratePerKg: String(purchase.ratePerKg || ""),
       transportCharges: String(purchase.transportCharges || ""),
       loadingCharges: String(purchase.loadingCharges || ""),
       commission: String(purchase.commission || ""),
@@ -112,6 +209,16 @@ export default function PurchasesPage() {
       weightShortage: String(purchase.weightShortage || ""),
       mortalityDeduction: String(purchase.mortalityDeduction || ""),
       otherDeduction: String(purchase.otherDeduction || ""),
+      advancePaid: String(purchase.advancePaid || ""),
+      paymentMode: purchase.paymentMode || "",
+      totalPaymentMade: String(purchase.totalPaymentMade || ""),
+      notes: purchase.notes || "",
+      items: purchase.items.map(item => ({
+        itemName: item.itemName,
+        quantity: String(item.quantity),
+        unit: item.unit,
+        unitPrice: String(item.unitPrice),
+      })),
     })
     setEditingId(purchase.id)
     setShowDialog(true)
@@ -168,40 +275,78 @@ export default function PurchasesPage() {
     return calculateGrossAmount() - calculateDeductions()
   }
 
+  // Payment calculations
+  const calculateOutstandingPayment = () => {
+    const netAmount = calculateNetAmount()
+    const advancePaid = parseFloat(formData.advancePaid) || 0
+    return netAmount - advancePaid
+  }
+
+  const calculateBalanceAmount = () => {
+    const netAmount = calculateNetAmount()
+    const totalPaymentMade = parseFloat(formData.totalPaymentMade) || 0
+    return netAmount - totalPaymentMade
+  }
+
   const handleSave = async () => {
-    if (!formData.orderNumber || !formData.supplierName || formData.items.length === 0) {
+    if (!formData.orderNumber || !formData.supplierName) {
       toast.error("Please fill all required fields")
       return
     }
 
     try {
       setLoading(true)
+      
+      // Prepare items
       const items = formData.items.map(item => ({
         itemName: item.itemName,
-        quantity: parseFloat(item.quantity),
+        quantity: parseFloat(item.quantity) || 0,
         unit: item.unit,
-        unitPrice: parseFloat(item.unitPrice),
-        totalPrice: parseFloat(item.quantity) * parseFloat(item.unitPrice),
+        unitPrice: parseFloat(item.unitPrice) || 0,
+        totalPrice: (parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0),
       }))
 
-      const totalAmount = items.reduce((sum, item) => sum + item.totalPrice, 0)
+      // Prepare cages
+      const cages = formData.cages.map(cage => ({
+        cageId: cage.cageId,
+        birdType: formData.birdType,
+        numberOfBirds: parseInt(cage.numberOfBirds) || 0,
+        cageWeight: parseFloat(cage.cageWeight) || 0,
+      }))
 
-      const purchaseData = {
+      const purchaseData: any = {
         orderNumber: formData.orderNumber,
         supplierName: formData.supplierName,
         orderDate: formData.orderDate,
         dueDate: formData.dueDate || undefined,
         status: formData.status,
-        totalAmount,
+        // Farmer integration
+        farmerId: formData.farmerId || undefined,
+        farmerMobile: formData.farmerMobile || undefined,
+        farmLocation: formData.farmLocation || undefined,
+        // Vehicle integration
+        vehicleId: formData.vehicleId || undefined,
+        // Bird details
+        birdType: formData.birdType || undefined,
+        totalWeight: calculateTotalWeight().toString(),
+        ratePerKg: formData.ratePerKg || undefined,
+        // Charges
+        transportCharges: formData.transportCharges || undefined,
+        loadingCharges: formData.loadingCharges || undefined,
+        commission: formData.commission || undefined,
+        otherCharges: formData.otherCharges || undefined,
+        // Deductions
+        weightShortage: formData.weightShortage || undefined,
+        mortalityDeduction: formData.mortalityDeduction || undefined,
+        otherDeduction: formData.otherDeduction || undefined,
+        // Payment tracking
+        purchasePaymentStatus: formData.purchasePaymentStatus,
+        advancePaid: formData.advancePaid || undefined,
+        paymentMode: formData.paymentMode || undefined,
+        totalPaymentMade: formData.totalPaymentMade || undefined,
         notes: formData.notes,
         items,
-        transportCharges: formData.transportCharges ? parseFloat(formData.transportCharges) : undefined,
-        loadingCharges: formData.loadingCharges ? parseFloat(formData.loadingCharges) : undefined,
-        commission: formData.commission ? parseFloat(formData.commission) : undefined,
-        otherCharges: formData.otherCharges ? parseFloat(formData.otherCharges) : undefined,
-        weightShortage: formData.weightShortage ? parseFloat(formData.weightShortage) : undefined,
-        mortalityDeduction: formData.mortalityDeduction ? parseFloat(formData.mortalityDeduction) : undefined,
-        otherDeduction: formData.otherDeduction ? parseFloat(formData.otherDeduction) : undefined,
+        cages: cages.length > 0 && cages[0].numberOfBirds > 0 ? cages : undefined,
       }
 
       if (editingId) {

@@ -164,6 +164,14 @@ export interface PurchaseOrderItem {
   totalPrice: number;
 }
 
+export interface PurchaseOrderCage {
+  id?: string;
+  cageId?: string;
+  birdType?: string;
+  numberOfBirds: number;
+  cageWeight: number;
+}
+
 export interface PurchaseOrder {
   id: string;
   orderNumber: string;
@@ -171,6 +179,17 @@ export interface PurchaseOrder {
   orderDate: string;
   dueDate?: string;
   status: 'pending' | 'received' | 'cancelled';
+  // Farmer integration
+  farmerId?: string;
+  farmerMobile?: string;
+  farmLocation?: string;
+  // Vehicle integration
+  vehicleId?: string;
+  // Bird details
+  birdType?: string;
+  totalWeight?: number;
+  ratePerKg?: number;
+  // Amounts
   totalAmount: number;
   transportCharges?: number;
   loadingCharges?: number;
@@ -181,8 +200,16 @@ export interface PurchaseOrder {
   otherDeduction?: number;
   grossAmount?: number;
   netAmount?: number;
+  // Payment tracking
+  purchasePaymentStatus?: 'paid' | 'pending' | 'partial';
+  advancePaid?: number;
+  outstandingPayment?: number;
+  paymentMode?: string;
+  totalPaymentMade?: number;
+  balanceAmount?: number;
   notes?: string;
   items: PurchaseOrderItem[];
+  cages?: PurchaseOrderCage[];
   createdAt?: string;
   updatedAt?: string;
 }
