@@ -414,6 +414,9 @@ export default function PurchasesPage() {
         cages: cages.length > 0 ? cages : undefined,
       }
 
+      // Debug logging
+      console.log('Purchase data being sent:', JSON.stringify(purchaseData, null, 2))
+
       if (editingId) {
         await purchasesApi.update(editingId, purchaseData)
         toast.success("Purchase order updated successfully")
