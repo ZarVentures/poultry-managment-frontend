@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Edit2, Trash2, X, Users, UserCheck, Shield, Briefcase, Lock, Unlock, Search, Filter } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DatePicker } from "@/components/ui/date-picker"
 import { usersApi, type User as ApiUser } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -29,6 +30,7 @@ export default function UsersPage() {
     password: "",
     role: "staff" as "admin" | "manager" | "staff",
     status: "active" as "active" | "inactive",
+    joinDate: new Date().toISOString().split("T")[0],
     notes: "",
   })
 
@@ -59,6 +61,7 @@ export default function UsersPage() {
       password: "",
       role: "staff",
       status: "active",
+      joinDate: new Date().toISOString().split("T")[0],
       notes: "",
     })
     setEditingId(null)
@@ -72,6 +75,7 @@ export default function UsersPage() {
       password: "",
       role: user.role,
       status: user.status,
+      joinDate: user.joinDate || new Date().toISOString().split("T")[0],
       notes: user.notes || "",
     })
     setEditingId(user.id)
@@ -99,6 +103,7 @@ export default function UsersPage() {
           phone: formData.phone || undefined,
           role: formData.role,
           status: formData.status,
+          joinDate: formData.joinDate,
           notes: formData.notes || undefined,
         })
         toast.success("User updated successfully")
@@ -110,6 +115,7 @@ export default function UsersPage() {
           password: formData.password,
           role: formData.role,
           status: formData.status,
+          joinDate: formData.joinDate,
           notes: formData.notes || undefined,
         })
         toast.success("User created successfully")
@@ -243,12 +249,20 @@ export default function UsersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Phone</Label>
+                  <Label>Phone *</Label>
                   <Input
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="Phone number"
+                    disabled={loading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Join Date</Label>
+                  <DatePicker
+                    value={formData.joinDate}
+                    onChange={(date) => setFormData({ ...formData, joinDate: date })}
                     disabled={loading}
                   />
                 </div>
