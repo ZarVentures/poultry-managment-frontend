@@ -63,7 +63,9 @@ export default function FarmersPage() {
   const fetchFarmers = async () => {
     try {
       setLoading(true)
-      const data = await farmersApi.getAll()
+      const response = await farmersApi.getAll()
+      // Handle wrapped response {data: [...]} or direct array
+      const data = response.data || response
       setFarmers(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Failed to fetch farmers:', error)
