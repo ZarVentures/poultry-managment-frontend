@@ -73,9 +73,17 @@ export default function PurchasesPage() {
     try {
       setLoading(true)
       const data = await purchasesApi.getAll()
-      setPurchases(data)
+      // Ensure data is an array and has proper structure
+      if (Array.isArray(data)) {
+        setPurchases(data)
+      } else {
+        console.error("Invalid purchases data format:", data)
+        setPurchases([])
+        toast.error("Invalid data format received")
+      }
     } catch (error: any) {
       console.error("Failed to fetch purchases:", error)
+      setPurchases([]) // Set to empty array on error
       toast.error("Failed to load purchases")
     } finally {
       setLoading(false)
@@ -85,18 +93,28 @@ export default function PurchasesPage() {
   const fetchFarmers = async () => {
     try {
       const data = await farmersApi.getAll()
-      setFarmers(data)
+      if (Array.isArray(data)) {
+        setFarmers(data)
+      } else {
+        setFarmers([])
+      }
     } catch (error) {
       console.error("Failed to fetch farmers:", error)
+      setFarmers([])
     }
   }
 
   const fetchVehicles = async () => {
     try {
       const data = await vehiclesApi.getAll()
-      setVehicles(data)
+      if (Array.isArray(data)) {
+        setVehicles(data)
+      } else {
+        setVehicles([])
+      }
     } catch (error) {
       console.error("Failed to fetch vehicles:", error)
+      setVehicles([])
     }
   }
 
@@ -213,12 +231,14 @@ export default function PurchasesPage() {
       paymentMode: purchase.paymentMode || "",
       totalPaymentMade: String(purchase.totalPaymentMade || ""),
       notes: purchase.notes || "",
-      items: purchase.items.map(item => ({
-        itemName: item.itemName,
-        quantity: String(item.quantity),
-        unit: item.unit,
-        unitPrice: String(item.unitPrice),
-      })),
+      items: purchase.items && Array.isArray(purchase.items) && purchase.items.length > 0
+        ? purchase.items.map(item => ({
+            itemName: item.itemName,
+            quantity: String(item.quantity),
+            unit: item.unit,
+            unitPrice: String(item.unitPrice),
+          }))
+        : [{ itemName: "", quantity: "", unit: "", unitPrice: "" }],
     })
     setEditingId(purchase.id)
     setShowDialog(true)
@@ -408,6 +428,11 @@ export default function PurchasesPage() {
   }, [purchases])
 
   const filteredPurchases = useMemo(() => {
+    // Ensure purchases is an array
+    if (!Array.isArray(purchases)) {
+      return []
+    }
+    
     let filtered = [...purchases]
 
     // Apply search filter
@@ -570,7 +595,7 @@ export default function PurchasesPage() {
                             <SelectValue placeholder="Select farmer" />
                           </SelectTrigger>
                           <SelectContent>
-                            {farmers.map((farmer) => (
+                            {Array.isArray(farmers) && farmers.map((farmer) => (
                               <SelectItem key={farmer.id} value={farmer.id}>
                                 {farmer.name}
                               </SelectItem>
@@ -610,7 +635,7 @@ export default function PurchasesPage() {
                             <SelectValue placeholder="Select vehicle" />
                           </SelectTrigger>
                           <SelectContent>
-                            {vehicles.map((vehicle) => (
+                            {Array.isArray(vehicles) && vehicles.map((vehicle) => (
                               <SelectItem key={vehicle.id} value={vehicle.id}>
                                 {vehicle.vehicleNumber}
                               </SelectItem>
