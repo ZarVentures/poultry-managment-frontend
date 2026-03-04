@@ -23,6 +23,7 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [currentUser, setCurrentUser] = useState<ApiUser | null>(null)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -37,7 +38,23 @@ export default function UsersPage() {
   useEffect(() => {
     setMounted(true)
     fetchUsers()
+    fetchCurrentUser()
   }, [])
+
+  const fetchCurrentUser = () => {
+    // Get current user from localStorage
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr)
+        setCurrentUser(user)
+      } catch (error) {
+        console.error('Failed to parse user from localStorage:', error)
+      }
+    }
+  }
+
+  const isAdmin = currentUser?.role === 'admin'
 
   const fetchUsers = async () => {
     try {
@@ -133,6 +150,11 @@ export default function UsersPage() {
   }
 
   const handleDelete = async (id: string) => {
+    if (!isAdmin) {
+      toast.error("Only administrators can delete users")
+      return
+    }
+
     if (!confirm("Are you sure you want to delete this user?")) return
 
     try {
@@ -214,13 +236,14 @@ export default function UsersPage() {
             <h1 className="text-3xl font-bold">User Management</h1>
             <p className="text-muted-foreground">Manage staff accounts and permissions</p>
           </div>
-          <Dialog open={showDialog} onOpenChange={setShowDialog}>
-            <DialogTrigger asChild>
-              <Button onClick={resetForm}>
-                <Plus className="mr-2" size={20} />
-                Add New User
-              </Button>
-            </DialogTrigger>
+          {isAdmin && (
+            <Dialog open={showDialog} onOpenChange={setShowDialog}>
+              <DialogTrigger asChild>
+                <Button onClick={resetForm}>
+                  <Plus className="mr-2" size={20} />
+                  Add New User
+                </Button>
+              </DialogTrigger>
             <DialogContent aria-describedby="dialog-description">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Edit User" : "Add New User"}</DialogTitle>
@@ -331,6 +354,7 @@ export default function UsersPage() {
               </div>
             </DialogContent>
           </Dialog>
+          )}
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -486,15 +510,18 @@ export default function UsersPage() {
                               size="sm" 
                               onClick={() => handleToggleStatus(user.id, user.status)}
                               title={user.status === "active" ? "Lock user" : "Unlock user"}
+                              disabled={!isAdmin}
                             >
                               {user.status === "active" ? <Unlock size={16} className="text-green-600" /> : <Lock size={16} className="text-red-600" />}
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(user)}>
                               <Edit2 size={16} />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(user.id)}>
-                              <Trash2 size={16} />
-                            </Button>
+                            {isAdmin && (
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(user.id)}>
+                                <Trash2 size={16} />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
