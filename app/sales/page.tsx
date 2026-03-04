@@ -238,6 +238,11 @@ export default function SalesPage() {
 
   const handleEdit = (sale: ApiSale) => {
     const retailer = retailers.find(r => r.id === sale.retailerId)
+    
+    // Extract bird details from the sale data
+    const quantity = sale.quantity || 0
+    const unitPrice = sale.unitPrice || 0
+    
     setFormData({
       invoiceNumber: sale.invoiceNumber,
       customerName: sale.customerName,
@@ -246,24 +251,24 @@ export default function SalesPage() {
       address: retailer?.address || "",
       saleDate: sale.saleDate,
       saleMode: sale.saleMode || "from_vehicle",
-      vehicleId: sale.vehicleId || "",
+      vehicleId: "",
       paymentStatus: sale.paymentStatus,
       notes: sale.notes || "",
       retailerId: sale.retailerId || "",
-      birdType: sale.birdType || "",
-      numberOfCages: String(sale.numberOfCages || ""),
-      numberOfBirds: String(sale.numberOfBirds || ""),
-      ratePerKg: String(sale.ratePerKg || ""),
-      averageWeight: String(sale.averageWeight || ""),
-      transportCharges: String(sale.transportCharges || ""),
-      loadingCharges: String(sale.loadingCharges || ""),
-      commission: String(sale.commission || ""),
-      otherCharges: String(sale.otherCharges || ""),
-      deductions: String(sale.deductions || ""),
-      advancePaid: String(sale.advancePaid || ""),
-      creditBalance: String(sale.creditBalance || ""),
-      paymentMode: sale.paymentMode || "",
-      totalPaymentReceived: String(sale.totalPaymentReceived || ""),
+      birdType: "",
+      numberOfCages: "",
+      numberOfBirds: "",
+      ratePerKg: String(unitPrice),
+      averageWeight: "",
+      transportCharges: String(sale.transportCharges || 0),
+      loadingCharges: String(sale.loadingCharges || 0),
+      commission: String(sale.commission || 0),
+      otherCharges: String(sale.otherCharges || 0),
+      deductions: String(sale.mortalityDeduction || 0),
+      advancePaid: "",
+      creditBalance: "",
+      paymentMode: "",
+      totalPaymentReceived: String(sale.amountReceived || 0),
     })
     setEditingId(sale.id)
     setShowDialog(true)
@@ -278,32 +283,33 @@ export default function SalesPage() {
     try {
       setLoading(true)
 
+      // Calculate total amount from bird details
+      const totalWeight = calculateTotalWeight()
+      const totalAmount = calculateTotalAmount()
+
       const saleData = {
         invoiceNumber: formData.invoiceNumber,
         customerName: formData.customerName,
         saleDate: formData.saleDate,
         saleMode: formData.saleMode,
-        vehicleId: formData.vehicleId || undefined,
+        productType: "meat" as const, // Default to meat for bird sales
+        quantity: totalWeight, // Total weight as quantity
+        unit: "kg",
+        unitPrice: parseFloat(formData.ratePerKg) || 0,
+        totalAmount: totalAmount,
+        transportCharges: parseFloat(formData.transportCharges) || 0,
+        loadingCharges: parseFloat(formData.loadingCharges) || 0,
+        commission: parseFloat(formData.commission) || 0,
+        otherCharges: parseFloat(formData.otherCharges) || 0,
+        weightShortage: 0,
+        mortalityDeduction: parseFloat(formData.deductions) || 0,
+        otherDeduction: 0,
+        grossAmount: totalAmount,
+        netAmount: calculateTotalInvoice(),
         paymentStatus: formData.paymentStatus,
+        amountReceived: parseFloat(formData.totalPaymentReceived) || 0,
         notes: formData.notes,
         retailerId: formData.retailerId || undefined,
-        birdType: formData.birdType || undefined,
-        numberOfCages: formData.numberOfCages ? parseInt(formData.numberOfCages) : undefined,
-        numberOfBirds: formData.numberOfBirds ? parseInt(formData.numberOfBirds) : undefined,
-        ratePerKg: formData.ratePerKg ? parseFloat(formData.ratePerKg) : undefined,
-        averageWeight: formData.averageWeight ? parseFloat(formData.averageWeight) : undefined,
-        totalWeight: calculateTotalWeight(),
-        totalAmount: calculateTotalAmount(),
-        transportCharges: formData.transportCharges ? parseFloat(formData.transportCharges) : undefined,
-        loadingCharges: formData.loadingCharges ? parseFloat(formData.loadingCharges) : undefined,
-        commission: formData.commission ? parseFloat(formData.commission) : undefined,
-        otherCharges: formData.otherCharges ? parseFloat(formData.otherCharges) : undefined,
-        deductions: formData.deductions ? parseFloat(formData.deductions) : undefined,
-        advancePaid: formData.advancePaid ? parseFloat(formData.advancePaid) : undefined,
-        creditBalance: formData.creditBalance ? parseFloat(formData.creditBalance) : undefined,
-        paymentMode: formData.paymentMode || undefined,
-        totalPaymentReceived: formData.totalPaymentReceived ? parseFloat(formData.totalPaymentReceived) : undefined,
-        balanceAmount: calculateBalanceAmount(),
       }
 
       if (editingId) {
@@ -360,7 +366,7 @@ export default function SalesPage() {
     }, 0)
     
     const totalReceived = sales.reduce((sum, sale) => {
-      const received = typeof sale.totalPaymentReceived === 'number' ? sale.totalPaymentReceived : parseFloat(String(sale.totalPaymentReceived || 0))
+      const received = typeof sale.amountReceived === 'number' ? sale.amountReceived : parseFloat(String(sale.amountReceived || 0))
       return sum + (isNaN(received) ? 0 : received)
     }, 0)
     
@@ -998,7 +1004,7 @@ export default function SalesPage() {
                       <span className="capitalize">{sale.saleMode?.replace('_', ' ')}</span>
                     </TableCell>
                     <TableCell className="text-right">₹{toNumber(sale.totalAmount).toFixed(2)}</TableCell>
-                    <TableCell className="text-right">₹{toNumber(sale.totalPaymentReceived).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">₹{toNumber(sale.amountReceived).toFixed(2)}</TableCell>
                     <TableCell>
                       <span
                         className={`px-2 py-1 rounded-full text-xs ${
