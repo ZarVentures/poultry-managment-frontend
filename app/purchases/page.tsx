@@ -111,7 +111,8 @@ export default function PurchasesPage() {
       const data = await farmersApi.getActive()
       console.log("Fetched farmers:", data)
       if (Array.isArray(data)) {
-        setFarmers(data)
+        // Cast to Farmer[] since getActive returns a subset of Farmer fields
+        setFarmers(data as Farmer[])
       } else {
         console.error("Farmers data is not an array:", data)
         setFarmers([])
