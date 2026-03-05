@@ -411,7 +411,11 @@ export default function PurchasesPage() {
         totalPaymentMade: formData.totalPaymentMade || undefined,
         notes: formData.notes,
         items,
-        cages: cages.length > 0 ? cages : undefined,
+      }
+
+      // Only include cages when creating new orders, not when updating
+      if (!editingId && cages.length > 0) {
+        purchaseData.cages = cages
       }
 
       // Debug logging
