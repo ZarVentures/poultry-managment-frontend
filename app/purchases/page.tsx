@@ -555,7 +555,7 @@ export default function PurchasesPage() {
                   <td>${new Date(purchase.orderDate).toLocaleDateString()}</td>
                   <td>₹${Number(purchase.totalAmount).toFixed(2)}</td>
                   <td>₹${Number(purchase.netAmount || purchase.totalAmount).toFixed(2)}</td>
-                  <td>${purchase.status}</td>
+                  <td>${purchase.purchasePaymentStatus}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -1132,7 +1132,7 @@ export default function PurchasesPage() {
                       <TableHead>Bird Amount</TableHead>
                       <TableHead>Gross Amount</TableHead>
                       <TableHead>Net Amount</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Payment Status</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1153,14 +1153,14 @@ export default function PurchasesPage() {
                         <TableCell>
                           <span
                             className={`px-2 py-1 rounded text-xs ${
-                              purchase.status === "received"
+                              purchase.purchasePaymentStatus === "paid"
                                 ? "bg-green-100 text-green-800"
-                                : purchase.status === "cancelled"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-yellow-100 text-yellow-800"
+                                : purchase.purchasePaymentStatus === "partial"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
                             }`}
                           >
-                            {purchase.status}
+                            {purchase.purchasePaymentStatus}
                           </span>
                         </TableCell>
                         <TableCell>
