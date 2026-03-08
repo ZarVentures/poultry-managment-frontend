@@ -9,8 +9,8 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { Download, Printer, FileText } from "lucide-react"
 
 export default function ReportsPage() {
-  const [startDate, setStartDate] = useState<Date>()
-  const [endDate, setEndDate] = useState<Date>()
+  const [startDate, setStartDate] = useState<string>("")
+  const [endDate, setEndDate] = useState<string>("")
   const [loading, setLoading] = useState(false)
 
   return (
@@ -30,16 +30,16 @@ export default function ReportsPage() {
               <div className="flex-1">
                 <label className="text-sm font-medium mb-2 block">Start Date</label>
                 <DatePicker
-                  date={startDate}
-                  onDateChange={setStartDate}
+                  value={startDate}
+                  onChange={(date) => setStartDate(date)}
                   placeholder="Select start date"
                 />
               </div>
               <div className="flex-1">
                 <label className="text-sm font-medium mb-2 block">End Date</label>
                 <DatePicker
-                  date={endDate}
-                  onDateChange={setEndDate}
+                  value={endDate}
+                  onChange={(date) => setEndDate(date)}
                   placeholder="Select end date"
                 />
               </div>
