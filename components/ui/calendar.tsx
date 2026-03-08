@@ -29,7 +29,7 @@ function Calendar({
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn(
-        'bg-background group/calendar p-3 [--cell-size:2.25rem]',
+        'bg-background group/calendar p-2 [--cell-size:2rem]',
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
         String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
         className,
@@ -46,7 +46,7 @@ function Calendar({
           'flex gap-6 flex-col md:flex-row relative',
           defaultClassNames.months,
         ),
-        month: cn('flex flex-col w-full gap-3', defaultClassNames.month),
+        month: cn('flex flex-col w-full gap-2', defaultClassNames.month),
         nav: cn(
           'flex items-center gap-0.5 w-full absolute top-0 inset-x-0 justify-between',
           defaultClassNames.nav,
@@ -66,7 +66,7 @@ function Calendar({
           defaultClassNames.month_caption,
         ),
         dropdowns: cn(
-          'w-full flex items-center text-sm font-medium justify-center h-(--cell-size) gap-1.5',
+          'w-full flex items-center text-xs font-medium justify-center h-(--cell-size) gap-1',
           defaultClassNames.dropdowns,
         ),
         dropdown_root: cn(
@@ -80,8 +80,8 @@ function Calendar({
         caption_label: cn(
           'select-none font-medium',
           captionLayout === 'label'
-            ? 'text-base'
-            : 'rounded-md pl-2 pr-1 flex items-center gap-1 text-sm h-8 [&>svg]:text-muted-foreground [&>svg]:size-3.5',
+            ? 'text-sm'
+            : 'rounded-md pl-2 pr-1 flex items-center gap-1 text-xs h-7 [&>svg]:text-muted-foreground [&>svg]:size-3',
           defaultClassNames.caption_label,
         ),
         table: 'w-full border-collapse',
