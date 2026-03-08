@@ -2,9 +2,14 @@
 
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { CalendarIcon, X } from "lucide-react"
-import { format } from "date-fns"
+import dayjs from "dayjs"
+import customParseFormat from "dayjs/plugin/customParseFormat"
 import { cn } from "@/lib/utils"
+import * as React from "react"
+
+dayjs.extend(customParseFormat)
 
 interface DateRangeFilterProps {
   startDate?: Date
@@ -13,78 +18,108 @@ interface DateRangeFilterProps {
 }
 
 export function DateRangeFilter({ startDate, endDate, onDateRangeChange }: DateRangeFilterProps) {
+  const [startInput, setStartInput] = React.useState("")
+  const [endInput, setEndInput] = React.useState("")
+
+  React.useEffect(() => {
+    if (startDate) {
+      setStartInput(dayjs(startDate).format("DD-MM-YYYY"))
+    } else {
+      setStartInput("")
+    }
+  }, [startDate])
+
+  React.useEffect(() => {
+    if (endDate) {
+      setEndInput(dayjs(endDate).format("DD-MM-YYYY"))
+    } else {
+      setEndInput("")
+    }
+  }, [endDate])
+
   const handleStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newStart = e.target.value ? new Date(e.target.value) : undefined
-    onDateRangeChange(newStart, endDate)
-  }
+    const input = e.target.value
+    setStartInput(input)
 
-  const handleEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newEnd = e.target.value ? new Date(e.target.value) : undefined
-    onDateRangeChange(startDate, newEnd)
-  }
-
-  const handleClear = () => {
-    onDateRangeChange(undefined, undefined)
-  }
-
-  const formatDateValue = (date: Date | undefined) => {
-    if (!date) return ""
-    try {
-      return format(date, "yyyy-MM-dd")
-    } catch {
-      return ""
+    if (input.length === 10) {
+      const date = dayjs(input, "DD-MM-YYYY", true)
+      if (date.isValid()) {
+        onDateRangeChange(date.toDate(), endDate)
+      }
+    } else if (input === "") {
+      onDateRangeChange(undefined, endDate)
     }
   }
 
-  const displayText = startDate && endDate
-    ? `${format(startDate, "MMM dd, yyyy")} - ${format(endDate, "MMM dd, yyyy")}`
-    : startDate
-      ? `From: ${format(startDate, "MMM dd, yyyy")}`
-      : endDate
-        ? `To: ${format(endDate, "MMM dd, yyyy")}`
-        : "Select date range"
+  const handleEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value
+    setEndInput(input)
+
+    if (input.length === 10) {
+      const date = dayjs(input, "DD-MM-YYYY", true)
+      if (date.isValid()) {
+        onDateRangeChange(startDate, date.toDate())
+      }
+    } else if (input === "") {
+      onDateRangeChange(startDate, undefined)
+    }
+  }
+
+  const handleClear = () => {
+    setStartInput("")
+    setEndInput("")
+    onDateRangeChange(undefined, undefined)
+  }
+
+  const handleThisMonth = () => {
+    const start = dayjs().startOf("month")
+    const end = dayjs().endOf("month")
+    setStartInput(start.format("DD-MM-YYYY"))
+    setEndInput(end.format("DD-MM-YYYY"))
+    onDateRangeChange(start.toDate(), end.toDate())
+  }
+
+  const handleLastMonth = () => {
+    const start = dayjs().subtract(1, "month").startOf("month")
+    const end = dayjs().subtract(1, "month").endOf("month")
+    setStartInput(start.format("DD-MM-YYYY"))
+    setEndInput(end.format("DD-MM-YYYY"))
+    onDateRangeChange(start.toDate(), end.toDate())
+  }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 flex-wrap">
       <Label className="text-sm font-medium whitespace-nowrap">Date Range:</Label>
-      <div className="relative flex items-center gap-2">
+      <div className="flex items-center gap-2">
         <div className="relative">
-          <input
-            type="date"
-            value={formatDateValue(startDate)}
+          <CalendarIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+          <Input
+            type="text"
+            value={startInput}
             onChange={handleStartChange}
-            className="absolute inset-0 opacity-0 cursor-pointer w-[140px] h-full z-10"
+            placeholder="DD-MM-YYYY"
+            className="w-[120px] h-9 pl-7 text-xs"
+            maxLength={10}
           />
-          <Button
-            variant="outline"
-            className={cn(
-              "w-[140px] justify-start text-left font-normal h-9 px-3 pointer-events-none text-xs",
-              !startDate && "text-muted-foreground"
-            )}
-          >
-            <CalendarIcon className="mr-1 h-3 w-3" />
-            {startDate ? format(startDate, "MMM dd, yyyy") : "Start date"}
-          </Button>
         </div>
-        <span className="text-muted-foreground">-</span>
+        <span className="text-muted-foreground text-sm">-</span>
         <div className="relative">
-          <input
-            type="date"
-            value={formatDateValue(endDate)}
+          <CalendarIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+          <Input
+            type="text"
+            value={endInput}
             onChange={handleEndChange}
-            className="absolute inset-0 opacity-0 cursor-pointer w-[140px] h-full z-10"
+            placeholder="DD-MM-YYYY"
+            className="w-[120px] h-9 pl-7 text-xs"
+            maxLength={10}
           />
-          <Button
-            variant="outline"
-            className={cn(
-              "w-[140px] justify-start text-left font-normal h-9 px-3 pointer-events-none text-xs",
-              !endDate && "text-muted-foreground"
-            )}
-          >
-            <CalendarIcon className="mr-1 h-3 w-3" />
-            {endDate ? format(endDate, "MMM dd, yyyy") : "End date"}
-          </Button>
         </div>
+        <Button variant="outline" size="sm" onClick={handleThisMonth} className="h-9 text-xs">
+          This Month
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleLastMonth} className="h-9 text-xs">
+          Last Month
+        </Button>
         {(startDate || endDate) && (
           <Button variant="ghost" size="sm" onClick={handleClear} className="h-9 px-2">
             <X className="h-4 w-4" />
