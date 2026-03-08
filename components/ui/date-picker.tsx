@@ -1,14 +1,12 @@
 "use client"
 
 import * as React from "react"
+import ReactDatePicker from "react-datepicker"
 import { Calendar as CalendarIcon } from "lucide-react"
 import dayjs from "dayjs"
-import customParseFormat from "dayjs/plugin/customParseFormat"
 import { cn } from "@/lib/utils"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-
-dayjs.extend(customParseFormat)
+import "react-datepicker/dist/react-datepicker.css"
 
 interface DatePickerProps {
   value?: string
@@ -22,70 +20,51 @@ export function DatePicker({
   value,
   onChange,
   disabled,
-  placeholder = "DD-MM-YYYY",
+  placeholder = "Select date",
   className,
 }: DatePickerProps) {
-  const [inputValue, setInputValue] = React.useState("")
+  const [selectedDate, setSelectedDate] = React.useState<Date | null>(null)
 
   React.useEffect(() => {
     if (value) {
-      // Convert YYYY-MM-DD to DD-MM-YYYY for display
       const date = dayjs(value)
       if (date.isValid()) {
-        setInputValue(date.format("DD-MM-YYYY"))
+        setSelectedDate(date.toDate())
       }
     } else {
-      setInputValue("")
+      setSelectedDate(null)
     }
   }, [value])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.target.value
-    setInputValue(input)
-
-    // Try to parse the date
-    if (input.length === 10) {
-      const date = dayjs(input, "DD-MM-YYYY", true)
-      if (date.isValid() && onChange) {
-        onChange(date.format("YYYY-MM-DD"))
-      }
-    } else if (input === "" && onChange) {
+  const handleChange = (date: Date | null) => {
+    setSelectedDate(date)
+    if (date && onChange) {
+      onChange(dayjs(date).format("YYYY-MM-DD"))
+    } else if (!date && onChange) {
       onChange("")
     }
   }
 
-  const handleToday = () => {
-    const today = dayjs()
-    setInputValue(today.format("DD-MM-YYYY"))
-    if (onChange) {
-      onChange(today.format("YYYY-MM-DD"))
-    }
-  }
-
   return (
-    <div className="flex gap-2">
-      <div className="relative flex-1">
-        <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-        <Input
-          type="text"
-          value={inputValue}
-          onChange={handleInputChange}
-          placeholder={placeholder}
-          disabled={disabled}
-          className={cn("pl-9", className)}
-          maxLength={10}
-        />
-      </div>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={handleToday}
+    <div className="relative">
+      <ReactDatePicker
+        selected={selectedDate}
+        onChange={handleChange}
         disabled={disabled}
-        className="whitespace-nowrap"
-      >
-        Today
-      </Button>
+        dateFormat="dd-MMM-yyyy"
+        placeholderText={placeholder}
+        showMonthDropdown
+        showYearDropdown
+        dropdownMode="select"
+        todayButton="Today"
+        className={cn(
+          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        )}
+        wrapperClassName="w-full"
+        calendarClassName="shadow-lg border rounded-lg"
+      />
+      <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
     </div>
   )
 }
