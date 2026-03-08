@@ -88,7 +88,6 @@ export default function ReportsPage() {
           <CardHeader><CardTitle>Date Range</CardTitle></CardHeader>
           <CardContent>
             <div className="flex gap-4">
-              <div className="flex gap-4">
               <div className="flex-1">
                 <label className="text-sm font-medium mb-2 block">Start Date</label>
                 <DatePicker value={startDate} onChange={setStartDate} placeholder="Start" />
