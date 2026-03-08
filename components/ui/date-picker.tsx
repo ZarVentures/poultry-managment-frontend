@@ -27,7 +27,14 @@ export function DatePicker({
     }
   }
 
-  const displayValue = value ? format(new Date(value), "dd-MMM-yyyy") : placeholder
+  let displayValue = placeholder
+  if (value) {
+    try {
+      displayValue = format(new Date(value), "dd-MMM-yyyy")
+    } catch (error) {
+      displayValue = value
+    }
+  }
 
   return (
     <div className="relative">

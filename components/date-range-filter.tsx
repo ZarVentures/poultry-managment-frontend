@@ -1,14 +1,10 @@
 "use client"
 
-import { useState } from "react"
-import { Calendar } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Label } from "@/components/ui/label"
 import { CalendarIcon, X } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
-import type { DateRange } from "react-day-picker"
 
 interface DateRangeFilterProps {
   startDate?: Date
@@ -17,83 +13,84 @@ interface DateRangeFilterProps {
 }
 
 export function DateRangeFilter({ startDate, endDate, onDateRangeChange }: DateRangeFilterProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const handleStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newStart = e.target.value ? new Date(e.target.value) : undefined
+    onDateRangeChange(newStart, endDate)
+  }
 
-  const handleSelect = (range: DateRange | undefined) => {
-    if (range?.from && range?.to) {
-      // Both dates selected - update and close
-      onDateRangeChange(range.from, range.to)
-      setIsOpen(false)
-    } else if (range?.from) {
-      // Only start date selected - keep open for end date selection
-      onDateRangeChange(range.from, undefined)
-    } else {
-      // No dates selected - clear
-      onDateRangeChange(undefined, undefined)
-    }
+  const handleEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEnd = e.target.value ? new Date(e.target.value) : undefined
+    onDateRangeChange(startDate, newEnd)
   }
 
   const handleClear = () => {
     onDateRangeChange(undefined, undefined)
-    setIsOpen(false)
   }
+
+  const formatDateValue = (date: Date | undefined) => {
+    if (!date) return ""
+    try {
+      return format(date, "yyyy-MM-dd")
+    } catch {
+      return ""
+    }
+  }
+
+  const displayText = startDate && endDate
+    ? `${format(startDate, "MMM dd, yyyy")} - ${format(endDate, "MMM dd, yyyy")}`
+    : startDate
+      ? `From: ${format(startDate, "MMM dd, yyyy")}`
+      : endDate
+        ? `To: ${format(endDate, "MMM dd, yyyy")}`
+        : "Select date range"
 
   return (
     <div className="flex items-center gap-2">
       <Label className="text-sm font-medium whitespace-nowrap">Date Range:</Label>
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
+      <div className="relative flex items-center gap-2">
+        <div className="relative">
+          <input
+            type="date"
+            value={formatDateValue(startDate)}
+            onChange={handleStartChange}
+            className="absolute inset-0 opacity-0 cursor-pointer w-[140px] h-full z-10"
+          />
           <Button
             variant="outline"
             className={cn(
-              "w-[280px] justify-start text-left font-normal",
-              !startDate && !endDate && "text-muted-foreground"
+              "w-[140px] justify-start text-left font-normal h-9 px-3 pointer-events-none text-xs",
+              !startDate && "text-muted-foreground"
             )}
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {startDate && endDate ? (
-              <>
-                {format(startDate, "MMM dd, yyyy")} - {format(endDate, "MMM dd, yyyy")}
-              </>
-            ) : startDate ? (
-              format(startDate, "MMM dd, yyyy")
-            ) : (
-              "Select date range"
-            )}
+            <CalendarIcon className="mr-1 h-3 w-3" />
+            {startDate ? format(startDate, "MMM dd, yyyy") : "Start date"}
           </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 max-w-none" align="start">
-          <div className="p-3">
-            <Calendar
-              mode="range"
-              defaultMonth={startDate || new Date()}
-              selected={{
-                from: startDate,
-                to: endDate,
-              }}
-              onSelect={handleSelect}
-              numberOfMonths={2}
-              initialFocus
-            />
-            {(startDate || endDate) && (
-              <div className="flex items-center justify-between pt-3 border-t">
-                <div className="text-sm text-muted-foreground">
-                  {startDate && endDate
-                    ? `${format(startDate, "MMM dd, yyyy")} - ${format(endDate, "MMM dd, yyyy")}`
-                    : startDate
-                      ? `From: ${format(startDate, "MMM dd, yyyy")}`
-                      : ""}
-                </div>
-                <Button variant="ghost" size="sm" onClick={handleClear}>
-                  <X className="h-4 w-4 mr-1" />
-                  Clear
-                </Button>
-              </div>
+        </div>
+        <span className="text-muted-foreground">-</span>
+        <div className="relative">
+          <input
+            type="date"
+            value={formatDateValue(endDate)}
+            onChange={handleEndChange}
+            className="absolute inset-0 opacity-0 cursor-pointer w-[140px] h-full z-10"
+          />
+          <Button
+            variant="outline"
+            className={cn(
+              "w-[140px] justify-start text-left font-normal h-9 px-3 pointer-events-none text-xs",
+              !endDate && "text-muted-foreground"
             )}
-          </div>
-        </PopoverContent>
-      </Popover>
+          >
+            <CalendarIcon className="mr-1 h-3 w-3" />
+            {endDate ? format(endDate, "MMM dd, yyyy") : "End date"}
+          </Button>
+        </div>
+        {(startDate || endDate) && (
+          <Button variant="ghost" size="sm" onClick={handleClear} className="h-9 px-2">
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
     </div>
   )
 }
-
