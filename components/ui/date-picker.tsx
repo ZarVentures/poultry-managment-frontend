@@ -52,26 +52,31 @@ export function DatePicker({
         <Button
           variant="outline"
           className={cn(
-            "w-full justify-start text-left font-normal",
+            "w-full justify-start text-left font-normal h-11 px-4",
             !date && "text-muted-foreground",
             className
           )}
           disabled={disabled}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? dayjs(date).format("DD-MMM-YYYY") : <span>{placeholder}</span>}
+          <CalendarIcon className="mr-2 h-5 w-5" />
+          {date ? (
+            <span className="text-base">{dayjs(date).format("DD-MMM-YYYY")}</span>
+          ) : (
+            <span className="text-base">{placeholder}</span>
+          )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0 max-w-none" align="start">
+      <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="single"
           selected={date}
           onSelect={handleSelect}
           initialFocus
           disabled={disabled}
-          className="rounded-md border"
+          className="rounded-md border scale-110"
         />
       </PopoverContent>
     </Popover>
   )
 }
+
