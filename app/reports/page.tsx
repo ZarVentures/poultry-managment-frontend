@@ -1,16 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DatePicker } from "@/components/ui/date-picker"
-import { Download, Printer, Table as TableIcon, BarChart3, PieChart } from "lucide-react"
-import { BarChart, Bar, LineChart, Line, PieChart as RechartsPie, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Download, Table as TableIcon, BarChart3, PieChart as PieChartIcon } from "lucide-react"
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { toast } from "sonner"
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF6B9D']
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D']
+const API_URL = 'https://chickenbackend.onrender.com/api/v1'
 
 type ViewMode = 'table' | 'chart' | 'pie'
 
@@ -20,14 +22,8 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   
-  // Report data states
-  const [purchaseData, setPurchaseData] = useState<any>(null)
-  const [salesData, setSalesData] = useState<any>(null)
-  const [mortalityData, setMortalityData] = useState<any>(null)
   const [profitLossData, setProfitLossData] = useState<any>(null)
-  const [grossProfitData, setGrossProfitData] = useState<any>(null)
-  const [expenseBreakdownData, setExpenseBreakdownData] = useState<any>(null)
-  const [batchWiseData, setBatchWiseData] = useState<any>(null)
+  const [expenseData, setExpenseData] = useState<any>(null)
   const [farmWiseData, setFarmWiseData] = useState<any>(null)
   const [customerWiseData, setCustomerWiseData] = useState<any>(null)
 
@@ -39,12 +35,11 @@ export default function ReportsPage() {
       if (startDate) params.append('startDate', startDate)
       if (endDate) params.append('endDate', endDate)
       
-      const response = await fetch(
-        `https://chickenbackend.onrender.com/api/v1/reports/${endpoint}?${params}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
+      const response = await fetch(`${API_URL}/reports/${endpoint}?${params}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
       
-      if (!response.ok) throw new Error('Failed to fetch report')
+      if (!response.ok) throw new Error('Failed to fetch')
       const data = await response.json()
       setter(data)
     } catch (error: any) {
@@ -55,22 +50,24 @@ export default function ReportsPage() {
   }
 
   const downloadCSV = (data: any[], filename: string) => {
-    if (!data || data.length === 0) {
-      toast.error('No data to export')
-      return
-    }
-
+    if (!data || data.length === 0) return toast.error('No data')
     const headers = Object.keys(data[0]).join(',')
     const rows = data.map(row => Object.values(row).join(',')).join('\n')
     const csv = `${headers}\n${rows}`
-    
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
     a.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`
     a.click()
-    window.URL.revokeObjectURL(url)
+  }
+
+  const generateAllReports = () => {
+    if (!startDate || !endDate) return toast.error('Select date range')
+    fetchReport('profit-loss', setProfitLossData)
+    fetchReport('expense-breakdown', setExpenseData)
+    fetchReport('farm-wise-profit', setFarmWiseData)
+    fetchReport('customer-wise-sales', setCustomerWiseData)
   }
 
   return (
@@ -78,163 +75,88 @@ export default function ReportsPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Reports</h1>
-          <p className="text-muted-foreground">Generate and view comprehensive business reports</p>
+          <p className="text-muted-foreground">Comprehensive business analytics</p>
         </div>
 
-        {/* Date Range Selector */}
         <Card>
-          <CardHeader>
-            <CardTitle>Select Date Range</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Date Range</CardTitle></CardHeader>
           <CardContent>
-            <div className="flex gap-4 items-end">
+            <div className="flex gap-4">
               <div className="flex-1">
                 <label className="text-sm font-medium mb-2 block">Start Date</label>
-                <DatePicker
-                  value={startDate}
-                  onChange={(date) => setStartDate(date)}
-                  placeholder="Select start date"
-                />
+                <DatePicker value={startDate} onChange={setStartDate} placeholder="Start" />
               </div>
               <div className="flex-1">
                 <label className="text-sm font-medium mb-2 block">End Date</label>
-                <DatePicker
-                  value={endDate}
-                  onChange={(date) => setEndDate(date)}
-                  placeholder="Select end date"
-                />
+                <DatePicker value={endDate} onChange={setEndDate} placeholder="End" />
               </div>
-              <Button 
-                onClick={() => {
-                  if (!startDate || !endDate) {
-                    toast.error('Please select both start and end dates')
-                    return
-                  }
-                  // Refresh all reports
-                  fetchReport('purchases', setPurchaseData)
-                  fetchReport('sales', setSalesData)
-                  fetchReport('mortality', setMortalityData)
-                  fetchReport('profit-loss', setProfitLossData)
-                  fetchReport('gross-profit', setGrossProfitData)
-                  fetchReport('expense-breakdown', setExpenseBreakdownData)
-                  fetchReport('batch-wise-profit', setBatchWiseData)
-                  fetchReport('farm-wise-profit', setFarmWiseData)
-                  fetchReport('customer-wise-sales', setCustomerWiseData)
-                }}
-              >
-                Generate Reports
-              </Button>
+              <Button onClick={generateAllReports} className="mt-7">Generate</Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* View Mode Toggle */}
         <div className="flex gap-2">
-          <Button
-            variant={viewMode === 'table' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('table')}
-          >
-            <TableIcon className="mr-2" size={16} />
-            Table
+          <Button variant={viewMode === 'table' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('table')}>
+            <TableIcon className="mr-2" size={16} />Table
           </Button>
-          <Button
-            variant={viewMode === 'chart' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('chart')}
-          >
-            <BarChart3 className="mr-2" size={16} />
-            Chart
+          <Button variant={viewMode === 'chart' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('chart')}>
+            <BarChart3 className="mr-2" size={16} />Chart
           </Button>
-          <Button
-            variant={viewMode === 'pie' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('pie')}
-          >
-            <PieChart className="mr-2" size={16} />
-            Pie Chart
+          <Button variant={viewMode === 'pie' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('pie')}>
+            <PieChartIcon className="mr-2" size={16} />Pie
           </Button>
         </div>
 
-        <Tabs defaultValue="profitloss" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-9">
-            <TabsTrigger value="profitloss">P&L</TabsTrigger>
-            <TabsTrigger value="grossprofit">Gross Profit</TabsTrigger>
-            <TabsTrigger value="expenses">Expenses</TabsTrigger>
-            <TabsTrigger value="purchases">Purchases</TabsTrigger>
-            <TabsTrigger value="sales">Sales</TabsTrigger>
-            <TabsTrigger value="batch">Batch-wise</TabsTrigger>
+        <Tabs defaultValue="profitloss">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="profitloss">Profit & Loss</TabsTrigger>
+            <TabsTrigger value="expenses">Expense Breakdown</TabsTrigger>
             <TabsTrigger value="farm">Farm-wise</TabsTrigger>
             <TabsTrigger value="customer">Customer-wise</TabsTrigger>
-            <TabsTrigger value="mortality">Mortality</TabsTrigger>
           </TabsList>
 
-          {/* Profit & Loss Report */}
+          {/* Profit & Loss */}
           <TabsContent value="profitloss">
             <Card>
               <CardHeader>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between">
                   <CardTitle>Profit & Loss Statement</CardTitle>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => profitLossData && downloadCSV([profitLossData.summary], 'profit_loss')}
-                    >
-                      <Download className="mr-2" size={16} />
-                      CSV
-                    </Button>
-                  </div>
+                  <Button variant="outline" size="sm" onClick={() => profitLossData && downloadCSV([profitLossData.summary], 'pl')}>
+                    <Download className="mr-2" size={16} />CSV
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                {loading ? (
-                  <p className="text-center py-8">Loading...</p>
-                ) : !profitLossData ? (
-                  <p className="text-muted-foreground text-center py-8">
-                    Select a date range and click "Generate Reports"
-                  </p>
+                {loading ? <p className="text-center py-8">Loading...</p> : !profitLossData ? (
+                  <p className="text-center py-8 text-muted-foreground">Select dates and generate</p>
                 ) : (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <div className="p-4 border rounded-lg">
-                        <p className="text-sm text-muted-foreground">Total Revenue</p>
-                        <p className="text-2xl font-bold text-green-600">
-                          ₹{profitLossData.summary.totalRevenue.toFixed(2)}
-                        </p>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Revenue</p>
+                        <p className="text-2xl font-bold text-green-600">₹{profitLossData.summary.totalRevenue.toFixed(2)}</p>
                       </div>
-                      <div className="p-4 border rounded-lg">
-                        <p className="text-sm text-muted-foreground">Total Cost</p>
-                        <p className="text-2xl font-bold text-red-600">
-                          ₹{profitLossData.summary.totalCost.toFixed(2)}
-                        </p>
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Cost</p>
+                        <p className="text-2xl font-bold text-red-600">₹{profitLossData.summary.totalCost.toFixed(2)}</p>
                       </div>
-                      <div className="p-4 border rounded-lg">
+                      <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Gross Profit</p>
-                        <p className="text-2xl font-bold">
-                          ₹{profitLossData.summary.grossProfit.toFixed(2)}
-                        </p>
+                        <p className="text-2xl font-bold">₹{profitLossData.summary.grossProfit.toFixed(2)}</p>
                       </div>
-                      <div className="p-4 border rounded-lg">
-                        <p className="text-sm text-muted-foreground">Total Expenses</p>
-                        <p className="text-2xl font-bold text-orange-600">
-                          ₹{profitLossData.summary.totalExpenses.toFixed(2)}
-                        </p>
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Expenses</p>
+                        <p className="text-2xl font-bold text-orange-600">₹{profitLossData.summary.totalExpenses.toFixed(2)}</p>
                       </div>
-                      <div className="p-4 border rounded-lg">
+                      <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Net Profit</p>
-                        <p className="text-2xl font-bold text-blue-600">
-                          ₹{profitLossData.summary.netProfit.toFixed(2)}
-                        </p>
+                        <p className="text-2xl font-bold text-blue-600">₹{profitLossData.summary.netProfit.toFixed(2)}</p>
                       </div>
-                      <div className="p-4 border rounded-lg">
-                        <p className="text-sm text-muted-foreground">Profit Margin</p>
-                        <p className="text-2xl font-bold">
-                          {profitLossData.summary.profitMargin.toFixed(2)}%
-                        </p>
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Margin</p>
+                        <p className="text-2xl font-bold">{profitLossData.summary.profitMargin.toFixed(2)}%</p>
                       </div>
                     </div>
-
                     {viewMode === 'chart' && (
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={[
@@ -251,13 +173,245 @@ export default function ReportsPage() {
                         </BarChart>
                       </ResponsiveContainer>
                     )}
+                    {viewMode === 'pie' && (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie data={[
+                            { name: 'Revenue', value: profitLossData.summary.totalRevenue },
+                            { name: 'Cost', value: profitLossData.summary.totalCost },
+                            { name: 'Expenses', value: profitLossData.summary.totalExpenses },
+                          ]} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                            {[0,1,2].map((_, index) => <Cell key={index} fill={COLORS[index]} />)}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Add more tab contents here - this is getting long, so I'll create a summary */}
+          {/* Expense Breakdown */}
+          <TabsContent value="expenses">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between">
+                  <CardTitle>Expense Breakdown</CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => expenseData && downloadCSV(expenseData.breakdown, 'expenses')}>
+                    <Download className="mr-2" size={16} />CSV
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!expenseData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Total Expenses</p>
+                        <p className="text-2xl font-bold">₹{expenseData.summary.totalExpenses.toFixed(2)}</p>
+                      </div>
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Categories</p>
+                        <p className="text-2xl font-bold">{expenseData.summary.categoryCount}</p>
+                      </div>
+                    </div>
+                    {viewMode === 'table' && (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Category</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Percentage</TableHead>
+                            <TableHead>Count</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {expenseData.breakdown.map((item: any, i: number) => (
+                            <TableRow key={i}>
+                              <TableCell>{item.category}</TableCell>
+                              <TableCell>₹{item.amount.toFixed(2)}</TableCell>
+                              <TableCell>{item.percentage.toFixed(1)}%</TableCell>
+                              <TableCell>{item.count}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                    {viewMode === 'chart' && (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={expenseData.breakdown}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="category" />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="amount" fill="#82ca9d" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                    {viewMode === 'pie' && (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie data={expenseData.breakdown} dataKey="amount" nameKey="category" cx="50%" cy="50%" outerRadius={100} label>
+                            {expenseData.breakdown.map((_: any, index: number) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Farm-wise */}
+          <TabsContent value="farm">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between">
+                  <CardTitle>Farm-wise Profit</CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => farmWiseData && downloadCSV(farmWiseData.farms, 'farms')}>
+                    <Download className="mr-2" size={16} />CSV
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!farmWiseData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Total Farms</p>
+                        <p className="text-2xl font-bold">{farmWiseData.summary.totalFarms}</p>
+                      </div>
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Total Cost</p>
+                        <p className="text-2xl font-bold">₹{farmWiseData.summary.totalCost.toFixed(2)}</p>
+                      </div>
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Total Orders</p>
+                        <p className="text-2xl font-bold">{farmWiseData.summary.totalOrders}</p>
+                      </div>
+                    </div>
+                    {viewMode === 'table' && (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Farmer</TableHead>
+                            <TableHead>Orders</TableHead>
+                            <TableHead>Total Cost</TableHead>
+                            <TableHead>Weight</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {farmWiseData.farms.map((farm: any, i: number) => (
+                            <TableRow key={i}>
+                              <TableCell>{farm.farmerName}</TableCell>
+                              <TableCell>{farm.totalOrders}</TableCell>
+                              <TableCell>₹{farm.totalCost.toFixed(2)}</TableCell>
+                              <TableCell>{farm.totalWeight.toFixed(2)} kg</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                    {viewMode === 'chart' && (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={farmWiseData.farms.slice(0, 10)}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="farmerName" />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="totalCost" fill="#8884d8" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Customer-wise */}
+          <TabsContent value="customer">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between">
+                  <CardTitle>Customer-wise Sales</CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => customerWiseData && downloadCSV(customerWiseData.customers, 'customers')}>
+                    <Download className="mr-2" size={16} />CSV
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!customerWiseData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Total Customers</p>
+                        <p className="text-2xl font-bold">{customerWiseData.summary.totalCustomers}</p>
+                      </div>
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Total Revenue</p>
+                        <p className="text-2xl font-bold">₹{customerWiseData.summary.totalRevenue.toFixed(2)}</p>
+                      </div>
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Total Sales</p>
+                        <p className="text-2xl font-bold">{customerWiseData.summary.totalSales}</p>
+                      </div>
+                    </div>
+                    {viewMode === 'table' && (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Customer</TableHead>
+                            <TableHead>Sales</TableHead>
+                            <TableHead>Revenue</TableHead>
+                            <TableHead>Quantity</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {customerWiseData.customers.map((customer: any, i: number) => (
+                            <TableRow key={i}>
+                              <TableCell>{customer.customerName}</TableCell>
+                              <TableCell>{customer.totalSales}</TableCell>
+                              <TableCell>₹{customer.totalRevenue.toFixed(2)}</TableCell>
+                              <TableCell>{customer.totalQuantity.toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                    {viewMode === 'chart' && (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={customerWiseData.customers.slice(0, 10)}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="customerName" />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="totalRevenue" fill="#00C49F" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                    {viewMode === 'pie' && (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie data={customerWiseData.customers.slice(0, 6)} dataKey="totalRevenue" nameKey="customerName" cx="50%" cy="50%" outerRadius={100} label>
+                            {customerWiseData.customers.slice(0, 6).map((_: any, index: number) => <Cell key={index} fill={COLORS[index]} />)}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
