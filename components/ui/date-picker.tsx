@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Calendar as CalendarIcon } from "lucide-react"
-import dayjs from "dayjs"
+import { format, parse } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -28,12 +28,12 @@ export function DatePicker({
   className,
 }: DatePickerProps) {
   const [date, setDate] = React.useState<Date | undefined>(
-    value ? dayjs(value).toDate() : undefined
+    value ? parse(value, 'yyyy-MM-dd', new Date()) : undefined
   )
 
   React.useEffect(() => {
     if (value) {
-      setDate(dayjs(value).toDate())
+      setDate(parse(value, 'yyyy-MM-dd', new Date()))
     } else {
       setDate(undefined)
     }
@@ -42,7 +42,7 @@ export function DatePicker({
   const handleSelect = (selectedDate: Date | undefined) => {
     setDate(selectedDate)
     if (selectedDate && onChange) {
-      onChange(dayjs(selectedDate).format("YYYY-MM-DD"))
+      onChange(format(selectedDate, "yyyy-MM-dd"))
     }
   }
 
@@ -60,7 +60,7 @@ export function DatePicker({
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
           {date ? (
-            <span className="text-sm">{dayjs(date).format("DD-MMM-YYYY")}</span>
+            <span className="text-sm">{format(date, "dd-MMM-yyyy")}</span>
           ) : (
             <span className="text-sm">{placeholder}</span>
           )}
@@ -71,7 +71,6 @@ export function DatePicker({
           mode="single"
           selected={date}
           onSelect={handleSelect}
-          initialFocus
           disabled={disabled}
           className="rounded-md border"
         />
