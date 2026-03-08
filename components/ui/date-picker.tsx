@@ -1,12 +1,9 @@
 "use client"
 
 import * as React from "react"
-import ReactDatePicker from "react-datepicker"
-import { Calendar as CalendarIcon } from "lucide-react"
-import dayjs from "dayjs"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import "react-datepicker/dist/react-datepicker.css"
+import { DatePicker as AntDatePicker } from "antd"
+import dayjs, { Dayjs } from "dayjs"
+import "antd/dist/reset.css"
 
 interface DatePickerProps {
   value?: string
@@ -14,6 +11,7 @@ interface DatePickerProps {
   disabled?: boolean
   placeholder?: string
   className?: string
+  format?: string
 }
 
 export function DatePicker({
@@ -21,50 +19,23 @@ export function DatePicker({
   onChange,
   disabled,
   placeholder = "Select date",
-  className,
+  className = "",
+  format = "DD-MMM-YYYY",
 }: DatePickerProps) {
-  const [selectedDate, setSelectedDate] = React.useState<Date | null>(null)
-
-  React.useEffect(() => {
-    if (value) {
-      const date = dayjs(value)
-      if (date.isValid()) {
-        setSelectedDate(date.toDate())
-      }
-    } else {
-      setSelectedDate(null)
-    }
-  }, [value])
-
-  const handleChange = (date: Date | null) => {
-    setSelectedDate(date)
-    if (date && onChange) {
-      onChange(dayjs(date).format("YYYY-MM-DD"))
-    } else if (!date && onChange) {
-      onChange("")
+  const handleChange = (date: Dayjs | null) => {
+    if (onChange) {
+      onChange(date ? date.format("YYYY-MM-DD") : "")
     }
   }
 
   return (
-    <div className="relative">
-      <ReactDatePicker
-        selected={selectedDate}
-        onChange={handleChange}
-        disabled={disabled}
-        dateFormat="dd-MMM-yyyy"
-        placeholderText={placeholder}
-        showMonthDropdown
-        showYearDropdown
-        dropdownMode="select"
-        todayButton="Today"
-        className={cn(
-          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
-        wrapperClassName="w-full"
-        calendarClassName="shadow-lg border rounded-lg"
-      />
-      <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-    </div>
+    <AntDatePicker
+      value={value ? dayjs(value) : null}
+      onChange={handleChange}
+      disabled={disabled}
+      placeholder={placeholder}
+      format={format}
+      className={`premium-datepicker w-full h-10 ${className}`}
+    />
   )
 }
