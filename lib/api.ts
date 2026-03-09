@@ -397,13 +397,17 @@ export interface GodownSummary {
 export interface MortalityRecord {
   id: string;
   recordNumber: string;
-  purchaseInvoiceNo?: string;
+  purchaseInvoiceNo: string;
   purchaseOrderId?: string;
-  vehicleId?: string;
-  mortalityDate: string;
+  purchaseDate: string;
+  farmerName: string;
+  farmLocation: string;
+  cageIdNumber?: string;
+  totalBirdsPurchased: number;
   numberOfBirdsDied: number;
-  reason?: string;
-  notes?: string;
+  cause: string;
+  notes: string;
+  mortalityDate?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -855,12 +859,10 @@ export const permissionsApi = {
 // MORTALITY (TRANSPORT) API
 // ============================================
 export const mortalityApi = {
-  getAll: (startDate?: string, endDate?: string, vehicleId?: string, purchaseOrderId?: string) => {
+  getAll: (startDate?: string, endDate?: string) => {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
-    if (vehicleId) params.append('vehicleId', vehicleId);
-    if (purchaseOrderId) params.append('purchaseOrderId', purchaseOrderId);
     return apiRequest<MortalityRecord[]>(`/mortality?${params.toString()}`);
   },
   
@@ -869,21 +871,22 @@ export const mortalityApi = {
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
     return apiRequest<{
+      totalBirdsPurchased: number;
+      totalBirdsDeath: number;
+      totalValue: number;
       totalRecords: number;
-      totalBirdsDied: number;
-      averagePerRecord: number;
     }>(`/mortality/stats?${params.toString()}`);
   },
   
   getOne: (id: string) => apiRequest<MortalityRecord>(`/mortality/${id}`),
   
-  create: (data: Omit<MortalityRecord, 'id' | 'createdAt' | 'updatedAt'>) =>
+  create: (data: Omit<MortalityRecord, 'id' | 'recordNumber' | 'createdAt' | 'updatedAt'>) =>
     apiRequest<MortalityRecord>('/mortality', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   
-  update: (id: string, data: Partial<MortalityRecord>) =>
+  update: (id: string, data: Partial<Omit<MortalityRecord, 'id' | 'recordNumber' | 'createdAt' | 'updatedAt'>>) =>
     apiRequest<MortalityRecord>(`/mortality/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),

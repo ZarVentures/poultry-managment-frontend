@@ -21,27 +21,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Plus, Edit2, Trash2, Download, Printer, X } from "lucide-react"
 import { DateRangeFilter } from "@/components/date-range-filter"
 import { useDateFilter } from "@/contexts/date-filter-context"
-
-interface Vehicle {
-  id: string
-  vehicleNumber: string
-  vehicleType: string
-  driverName: string
-  phone: string
-  status: "active" | "inactive"
-}
-
-interface PurchaseOrder {
-  id: string
-  purchaseInvoiceNo?: string
-  purchaseDate?: string
-  farmerName?: string
-  farmLocation?: string
-  vehicleNo?: string
-  numberOfBirds?: number
-  birdQuantity?: number
-  cageDetails?: string | Array<{ cageId?: string; numberOfBirds?: string; cageWeight?: string }>
-}
+import { mortalityApi, purchasesApi, type PurchaseOrder } from "@/lib/api"
+import { toast } from "sonner"
 
 interface Mortality {
   id: string
@@ -50,22 +31,18 @@ interface Mortality {
   purchaseDate: string
   farmerName: string
   farmLocation: string
-  vehicleNo?: string
   cageIdNumber?: string
   totalBirdsPurchased: number
   numberOfBirdsDied: number
   cause: string
   notes: string
-  // Legacy fields for backward compatibility
-  date?: string
-  batch?: string
-  numberOfBirds?: number
+  createdAt?: string
+  updatedAt?: string
 }
 
 export default function MortalityPage() {
   const [mortalities, setMortalities] = useState<Mortality[]>([])
   const [purchases, setPurchases] = useState<PurchaseOrder[]>([])
-  const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
@@ -98,73 +75,74 @@ export default function MortalityPage() {
   })
   const { startDate, endDate } = useDateFilter()
 
+  // Fetch data from API
   useEffect(() => {
     setMounted(true)
-    
-    // Load mortalities from localStorage
-    const saved = localStorage.getItem("mortalities")
-    if (saved) {
-      setMortalities(JSON.parse(saved))
-    } else {
-      setMortalities([])
-    }
-    
-    // Fetch purchases from API
-    const fetchPurchases = async () => {
-      try {
-        const response = await fetch("/api/purchases")
-        if (response.ok) {
-          const data = await response.json()
-          setPurchases(data.data || [])
-        }
-      } catch (error) {
-        console.error("Error fetching purchases:", error)
-      }
-    }
-    
+    fetchMortalities()
     fetchPurchases()
-    
-    // Load vehicles from localStorage
-    const savedVehicles = localStorage.getItem("vehicles")
-    if (savedVehicles) {
-      const parsedVehicles = JSON.parse(savedVehicles)
-      setVehicles(parsedVehicles.filter((v: Vehicle) => v.status === "active"))
-    }
   }, [])
+
+  const fetchMortalities = async () => {
+    try {
+      setLoading(true)
+      const data = await mortalityApi.getAll()
+      setMortalities(data)
+    } catch (error: any) {
+      console.error("Error fetching mortalities:", error)
+      toast.error(error.message || "Failed to fetch mortality records")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchPurchases = async () => {
+    try {
+      const response = await purchasesApi.getAll()
+      const data = (response as any).data || response
+      setPurchases(data)
+    } catch (error) {
+      console.error("Error fetching purchases:", error)
+    }
+  }
 
   // Selected purchase (for Cage ID dropdown and auto-fill)
   const selectedPurchase = useMemo(
     () =>
       purchases.find(
-        (p) => (p.purchaseInvoiceNo || "").toLowerCase() === formData.purchaseInvoiceNo.toLowerCase()
+        (p) => (p.orderNumber || "").toLowerCase() === formData.purchaseInvoiceNo.toLowerCase()
       ),
     [purchases, formData.purchaseInvoiceNo]
   )
 
-  // Cage IDs from selected purchase (parse cageDetails JSON if string)
+  // Cage IDs from selected purchase
   const cageIdOptions = useMemo(() => {
-    if (!selectedPurchase?.cageDetails) return []
-    const details = selectedPurchase.cageDetails
-    const arr = typeof details === "string" ? (JSON.parse(details || "[]") as Array<{ cageId?: string }>) : details
-    return (arr || [])
-      .map((row) => row?.cageId?.trim())
+    if (!selectedPurchase?.cages) return []
+    return selectedPurchase.cages
+      .map((cage) => cage.cageId?.trim())
       .filter((id): id is string => !!id)
   }, [selectedPurchase])
+
+  // Calculate total birds from cages
+  const calculateTotalBirds = (purchase: PurchaseOrder): number => {
+    if (!purchase.cages || purchase.cages.length === 0) return 0
+    return purchase.cages.reduce((sum, cage) => sum + (cage.numberOfBirds || 0), 0)
+  }
 
   // Auto-fill fields when Purchase Invoice No is selected
   const handlePurchaseInvoiceChange = (invoiceNo: string) => {
     const purchase = purchases.find(
-      (p) => (p.purchaseInvoiceNo || "").toLowerCase() === invoiceNo.toLowerCase()
+      (p) => (p.orderNumber || "").toLowerCase() === invoiceNo.toLowerCase()
     )
     if (purchase) {
+      const totalBirds = calculateTotalBirds(purchase)
       setFormData({
         ...formData,
         purchaseInvoiceNo: invoiceNo,
-        purchaseDate: purchase.purchaseDate || new Date().toISOString().split("T")[0],
-        farmerName: purchase.farmerName || "",
+        purchaseDate: purchase.orderDate || new Date().toISOString().split("T")[0],
+        farmerName: purchase.supplierName || "",
         farmLocation: purchase.farmLocation || "",
         cageIdNumber: "",
-        totalBirdsPurchased: (purchase.numberOfBirds || 0).toString(),
+        totalBirdsPurchased: totalBirds.toString(),
       })
     } else {
       setFormData({
@@ -179,80 +157,44 @@ export default function MortalityPage() {
     }
   }
 
-  // Auto-fill Farm Location when Farmer Name changes
-  useEffect(() => {
-    if (formData.farmerName && formData.purchaseInvoiceNo) {
-      const purchase = purchases.find(
-        (p) => (p.purchaseInvoiceNo || "").toLowerCase() === formData.purchaseInvoiceNo.toLowerCase()
-      )
-      if (purchase && purchase.farmerName === formData.farmerName) {
-        setFormData((prev) => ({
-          ...prev,
-          farmLocation: purchase.farmLocation || "",
-        }))
-      }
-    }
-  }, [formData.farmerName, formData.purchaseInvoiceNo, purchases])
-
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.purchaseInvoiceNo || !formData.purchaseDate || !formData.numberOfBirdsDied) {
-      alert("Please fill all required fields (Purchase Invoice No, Purchase Date, Number of Birds Died)")
+      toast.error("Please fill all required fields")
       return
     }
 
-    const recordNumber = editingId
-      ? mortalities.find((m) => m.id === editingId)?.recordNumber
-      : `MORT-${String(mortalities.length + 1).padStart(3, "0")}`
+    try {
+      setLoading(true)
+      const mortalityData = {
+        purchaseInvoiceNo: formData.purchaseInvoiceNo,
+        purchaseDate: formData.purchaseDate,
+        farmerName: formData.farmerName,
+        farmLocation: formData.farmLocation,
+        cageIdNumber: formData.cageIdNumber || undefined,
+        totalBirdsPurchased: Number.parseInt(formData.totalBirdsPurchased) || 0,
+        numberOfBirdsDied: Number.parseInt(formData.numberOfBirdsDied),
+        cause: formData.cause,
+        notes: formData.notes,
+        mortalityDate: formData.purchaseDate,
+      }
 
-    let updatedMortalities: Mortality[]
-    if (editingId) {
-      updatedMortalities = mortalities.map((mortality) =>
-        mortality.id === editingId
-          ? {
-              ...mortality,
-              purchaseInvoiceNo: formData.purchaseInvoiceNo,
-              purchaseDate: formData.purchaseDate,
-              farmerName: formData.farmerName,
-              farmLocation: formData.farmLocation,
-              cageIdNumber: formData.cageIdNumber,
-              totalBirdsPurchased: Number.parseInt(formData.totalBirdsPurchased) || 0,
-              numberOfBirdsDied: Number.parseInt(formData.numberOfBirdsDied),
-              cause: formData.cause,
-              notes: formData.notes,
-              // Legacy fields for backward compatibility
-              date: formData.purchaseDate,
-              batch: formData.farmerName,
-              numberOfBirds: Number.parseInt(formData.numberOfBirdsDied),
-            }
-          : mortality,
-      )
-    } else {
-      updatedMortalities = [
-        ...mortalities,
-        {
-          id: Date.now().toString(),
-          recordNumber: recordNumber || "",
-          purchaseInvoiceNo: formData.purchaseInvoiceNo,
-          purchaseDate: formData.purchaseDate,
-          farmerName: formData.farmerName,
-          farmLocation: formData.farmLocation,
-          cageIdNumber: formData.cageIdNumber,
-          totalBirdsPurchased: Number.parseInt(formData.totalBirdsPurchased) || 0,
-          numberOfBirdsDied: Number.parseInt(formData.numberOfBirdsDied),
-          cause: formData.cause,
-          notes: formData.notes,
-          // Legacy fields for backward compatibility
-          date: formData.purchaseDate,
-          batch: formData.farmerName,
-          numberOfBirds: Number.parseInt(formData.numberOfBirdsDied),
-        },
-      ]
+      if (editingId) {
+        await mortalityApi.update(editingId, mortalityData)
+        toast.success("Mortality record updated successfully")
+      } else {
+        await mortalityApi.create(mortalityData)
+        toast.success("Mortality record created successfully")
+      }
+
+      await fetchMortalities()
+      resetForm()
+      setShowDialog(false)
+    } catch (error: any) {
+      console.error("Error saving mortality:", error)
+      toast.error(error.message || "Failed to save mortality record")
+    } finally {
+      setLoading(false)
     }
-
-    setMortalities(updatedMortalities)
-    localStorage.setItem("mortalities", JSON.stringify(updatedMortalities))
-    resetForm()
-    setShowDialog(false)
   }
 
   const resetForm = () => {
@@ -274,23 +216,31 @@ export default function MortalityPage() {
     setEditingId(mortality.id)
     setFormData({
       purchaseInvoiceNo: mortality.purchaseInvoiceNo || "",
-      purchaseDate: mortality.purchaseDate || mortality.date || new Date().toISOString().split("T")[0],
-      farmerName: mortality.farmerName || mortality.batch || "",
+      purchaseDate: mortality.purchaseDate || new Date().toISOString().split("T")[0],
+      farmerName: mortality.farmerName || "",
       farmLocation: mortality.farmLocation || "",
-      cageIdNumber: mortality.cageIdNumber || mortality.vehicleNo || "",
+      cageIdNumber: mortality.cageIdNumber || "",
       totalBirdsPurchased: mortality.totalBirdsPurchased?.toString() || "",
-      numberOfBirdsDied: mortality.numberOfBirdsDied?.toString() || mortality.numberOfBirds?.toString() || "",
+      numberOfBirdsDied: mortality.numberOfBirdsDied?.toString() || "",
       cause: mortality.cause || "",
       notes: mortality.notes || "",
     })
     setShowDialog(true)
   }
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this mortality record?")) {
-      const updated = mortalities.filter((mortality) => mortality.id !== id)
-      setMortalities(updated)
-      localStorage.setItem("mortalities", JSON.stringify(updated))
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this mortality record?")) return
+
+    try {
+      setLoading(true)
+      await mortalityApi.delete(id)
+      toast.success("Mortality record deleted successfully")
+      await fetchMortalities()
+    } catch (error: any) {
+      console.error("Error deleting mortality:", error)
+      toast.error(error.message || "Failed to delete mortality record")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -303,7 +253,7 @@ export default function MortalityPage() {
   const filteredMortalities = useMemo(() => {
     let filtered = mortalities
 
-    // Apply date range filter (from date range picker in Mortality List section)
+    // Apply date range filter
     if (dateRangeStart && dateRangeEnd) {
       const start = new Date(dateRangeStart)
       const end = new Date(dateRangeEnd)
@@ -311,13 +261,13 @@ export default function MortalityPage() {
       end.setHours(23, 59, 59, 999)
 
       filtered = filtered.filter((mortality) => {
-        const mortalityDate = new Date(mortality.purchaseDate || mortality.date || "")
+        const mortalityDate = new Date(mortality.purchaseDate || "")
         mortalityDate.setHours(0, 0, 0, 0)
         return mortalityDate >= start && mortalityDate <= end
       })
     }
 
-    // Also apply global date filter if set (from context)
+    // Apply global date filter if set
     if (startDate && endDate) {
       const start = new Date(startDate)
       const end = new Date(endDate)
@@ -325,7 +275,7 @@ export default function MortalityPage() {
       end.setHours(23, 59, 59, 999)
 
       filtered = filtered.filter((mortality) => {
-        const mortalityDate = new Date(mortality.purchaseDate || mortality.date || "")
+        const mortalityDate = new Date(mortality.purchaseDate || "")
         mortalityDate.setHours(0, 0, 0, 0)
         return mortalityDate >= start && mortalityDate <= end
       })
@@ -337,7 +287,7 @@ export default function MortalityPage() {
       filtered = filtered.filter(
         (mortality) =>
           (mortality.purchaseInvoiceNo || "").toLowerCase().includes(query) ||
-          (mortality.farmerName || mortality.batch || "").toLowerCase().includes(query),
+          (mortality.farmerName || "").toLowerCase().includes(query),
       )
     }
 
@@ -352,7 +302,6 @@ export default function MortalityPage() {
   const handleDownloadPDF = () => {
     const filtered = filteredMortalities
     
-    // Create a printable HTML content
     const printContent = `
       <!DOCTYPE html>
       <html>
@@ -392,12 +341,12 @@ export default function MortalityPage() {
               ${filtered.map(mortality => `
                 <tr>
                   <td>${mortality.purchaseInvoiceNo || "N/A"}</td>
-                  <td>${mortality.purchaseDate || mortality.date || "N/A"}</td>
-                  <td>${mortality.farmerName || mortality.batch || "N/A"}</td>
+                  <td>${mortality.purchaseDate || "N/A"}</td>
+                  <td>${mortality.farmerName || "N/A"}</td>
                   <td>${mortality.farmLocation || "N/A"}</td>
-                  <td>${mortality.cageIdNumber || mortality.vehicleNo || "N/A"}</td>
+                  <td>${mortality.cageIdNumber || "N/A"}</td>
                   <td>${(mortality.totalBirdsPurchased || 0).toLocaleString()}</td>
-                  <td>${(mortality.numberOfBirdsDied || mortality.numberOfBirds || 0).toLocaleString()}</td>
+                  <td>${(mortality.numberOfBirdsDied || 0).toLocaleString()}</td>
                   <td>${mortality.cause || "N/A"}</td>
                 </tr>
               `).join('')}
@@ -407,7 +356,6 @@ export default function MortalityPage() {
       </html>
     `
 
-    // Create blob and download
     const blob = new Blob([printContent], { type: 'text/html' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -422,7 +370,6 @@ export default function MortalityPage() {
   const handlePrintReport = () => {
     const filtered = filteredMortalities
     
-    // Create a printable HTML content
     const printContent = `
       <!DOCTYPE html>
       <html>
@@ -466,12 +413,12 @@ export default function MortalityPage() {
               ${filtered.map(mortality => `
                 <tr>
                   <td>${mortality.purchaseInvoiceNo || "N/A"}</td>
-                  <td>${mortality.purchaseDate || mortality.date || "N/A"}</td>
-                  <td>${mortality.farmerName || mortality.batch || "N/A"}</td>
+                  <td>${mortality.purchaseDate || "N/A"}</td>
+                  <td>${mortality.farmerName || "N/A"}</td>
                   <td>${mortality.farmLocation || "N/A"}</td>
-                  <td>${mortality.cageIdNumber || mortality.vehicleNo || "N/A"}</td>
+                  <td>${mortality.cageIdNumber || "N/A"}</td>
                   <td>${(mortality.totalBirdsPurchased || 0).toLocaleString()}</td>
-                  <td>${(mortality.numberOfBirdsDied || mortality.numberOfBirds || 0).toLocaleString()}</td>
+                  <td>${(mortality.numberOfBirdsDied || 0).toLocaleString()}</td>
                   <td>${mortality.cause || "N/A"}</td>
                 </tr>
               `).join('')}
@@ -481,7 +428,6 @@ export default function MortalityPage() {
       </html>
     `
 
-    // Open new window and print
     const printWindow = window.open('', '_blank')
     if (printWindow) {
       printWindow.document.write(printContent)
@@ -493,7 +439,7 @@ export default function MortalityPage() {
   }
 
   const totalBirdsPurchased = filteredMortalities.reduce((sum, m) => sum + (m.totalBirdsPurchased || 0), 0)
-  const totalBirdsDeath = filteredMortalities.reduce((sum, m) => sum + (m.numberOfBirdsDied || m.numberOfBirds || 0), 0)
+  const totalBirdsDeath = filteredMortalities.reduce((sum, m) => sum + (m.numberOfBirdsDied || 0), 0)
   const totalRecords = filteredMortalities.length
   
   // Calculate Total Value - sum of purchase values for mortalities
@@ -501,10 +447,10 @@ export default function MortalityPage() {
     return filteredMortalities.reduce((sum, m) => {
       if (m.purchaseInvoiceNo) {
         const purchase = purchases.find(
-          (p) => (p.purchaseInvoiceNo || "").toLowerCase() === m.purchaseInvoiceNo.toLowerCase()
+          (p) => (p.orderNumber || "").toLowerCase() === m.purchaseInvoiceNo.toLowerCase()
         )
         if (purchase) {
-          return sum + ((purchase as any).totalAmount || (purchase as any).totalValue || 0)
+          return sum + (purchase.totalAmount || 0)
         }
       }
       return sum
@@ -546,13 +492,13 @@ export default function MortalityPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {purchases
-                          .filter((p) => (p.purchaseInvoiceNo || "").trim() !== "")
+                          .filter((p) => (p.orderNumber || "").trim() !== "")
                           .map((purchase) => (
-                            <SelectItem key={purchase.id} value={purchase.purchaseInvoiceNo || ""}>
-                              {purchase.purchaseInvoiceNo}
+                            <SelectItem key={purchase.id} value={purchase.orderNumber || ""}>
+                              {purchase.orderNumber}
                             </SelectItem>
                           ))}
-                        {purchases.filter((p) => (p.purchaseInvoiceNo || "").trim() !== "").length === 0 && (
+                        {purchases.filter((p) => (p.orderNumber || "").trim() !== "").length === 0 && (
                           <SelectItem value="__none__" disabled>No purchase orders found</SelectItem>
                         )}
                       </SelectContent>
@@ -657,8 +603,8 @@ export default function MortalityPage() {
                   />
                 </div>
 
-                <Button onClick={handleSave} className="w-full">
-                  {editingId ? "Update" : "Add"} Mortality
+                <Button onClick={handleSave} className="w-full" disabled={loading}>
+                  {loading ? "Saving..." : editingId ? "Update" : "Add"} Mortality
                 </Button>
               </div>
             </DialogContent>
@@ -684,7 +630,7 @@ export default function MortalityPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Value (rs)</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Value (₹)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">₹{totalValue.toFixed(2)}</div>
@@ -762,7 +708,13 @@ export default function MortalityPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredMortalities.length === 0 ? (
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                        Loading...
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredMortalities.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                         {searchQuery || (dateRangeStart && dateRangeEnd) ? "No mortality records found matching your filters." : "No mortality records found. Click \"Add New Mortality\" to get started."}
@@ -776,12 +728,12 @@ export default function MortalityPage() {
                         onClick={() => handleView(mortality)}
                       >
                         <TableCell className="font-medium">{mortality.purchaseInvoiceNo || "N/A"}</TableCell>
-                        <TableCell>{mortality.purchaseDate || mortality.date || "N/A"}</TableCell>
-                        <TableCell>{mortality.farmerName || mortality.batch || "N/A"}</TableCell>
+                        <TableCell>{mortality.purchaseDate || "N/A"}</TableCell>
+                        <TableCell>{mortality.farmerName || "N/A"}</TableCell>
                         <TableCell>{mortality.farmLocation || "N/A"}</TableCell>
-                        <TableCell>{mortality.cageIdNumber || mortality.vehicleNo || "N/A"}</TableCell>
+                        <TableCell>{mortality.cageIdNumber || "N/A"}</TableCell>
                         <TableCell>{mortality.totalBirdsPurchased || 0}</TableCell>
-                        <TableCell>{mortality.numberOfBirdsDied || mortality.numberOfBirds || 0}</TableCell>
+                        <TableCell>{mortality.numberOfBirdsDied || 0}</TableCell>
                         <TableCell>{mortality.cause || "N/A"}</TableCell>
                         <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
                           <Button variant="outline" size="icon" onClick={() => handleEdit(mortality)}>
@@ -820,11 +772,11 @@ export default function MortalityPage() {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Purchase Date</Label>
-                    <div className="text-sm font-medium">{viewingMortality.purchaseDate || viewingMortality.date || "N/A"}</div>
+                    <div className="text-sm font-medium">{viewingMortality.purchaseDate || "N/A"}</div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Farmer Name</Label>
-                    <div className="text-sm font-medium">{viewingMortality.farmerName || viewingMortality.batch || "N/A"}</div>
+                    <div className="text-sm font-medium">{viewingMortality.farmerName || "N/A"}</div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Farm Location</Label>
@@ -832,7 +784,7 @@ export default function MortalityPage() {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Cage ID Number</Label>
-                    <div className="text-sm font-medium">{viewingMortality.cageIdNumber || viewingMortality.vehicleNo || "N/A"}</div>
+                    <div className="text-sm font-medium">{viewingMortality.cageIdNumber || "N/A"}</div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Total Birds Purchased</Label>
@@ -840,7 +792,7 @@ export default function MortalityPage() {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Number of Birds Died</Label>
-                    <div className="text-sm font-medium">{viewingMortality.numberOfBirdsDied || viewingMortality.numberOfBirds || 0}</div>
+                    <div className="text-sm font-medium">{viewingMortality.numberOfBirdsDied || 0}</div>
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label className="text-muted-foreground">Cause of Death</Label>
@@ -861,4 +813,3 @@ export default function MortalityPage() {
     </DashboardLayout>
   )
 }
-
