@@ -79,42 +79,44 @@ export default function DashboardPage() {
               id: p.id.toString(),
             }))
             setPurchases(formattedPurchases)
+          } else if (Array.isArray(result)) {
+            setPurchases(result)
           }
         }
       } catch (error) {
         console.error("Error fetching purchases:", error)
-        // Fallback to localStorage if API fails
-        const purchasesData = localStorage.getItem("purchases")
-        if (purchasesData) {
-          try {
-            setPurchases(JSON.parse(purchasesData))
-          } catch (e) {
-            console.error("Error parsing purchases from localStorage:", e)
-          }
+      }
+    }
+
+    const fetchSales = async () => {
+      try {
+        const response = await fetch("/api/sales")
+        if (response.ok) {
+          const result = await response.json()
+          const salesData = (result as any).data || result
+          setSales(salesData)
         }
+      } catch (error) {
+        console.error("Error fetching sales:", error)
+      }
+    }
+
+    const fetchExpenses = async () => {
+      try {
+        const response = await fetch("/api/expenses")
+        if (response.ok) {
+          const result = await response.json()
+          const expensesData = (result as any).data || result
+          setExpenses(expensesData)
+        }
+      } catch (error) {
+        console.error("Error fetching expenses:", error)
       }
     }
 
     fetchPurchases()
-
-    // Load sales and expenses from localStorage (they still use localStorage)
-    const salesData = localStorage.getItem("sales")
-    const expensesData = localStorage.getItem("expenses")
-
-    if (salesData) {
-      try {
-        setSales(JSON.parse(salesData))
-      } catch (e) {
-        console.error("Error parsing sales from localStorage:", e)
-      }
-    }
-    if (expensesData) {
-      try {
-        setExpenses(JSON.parse(expensesData))
-      } catch (e) {
-        console.error("Error parsing expenses from localStorage:", e)
-      }
-    }
+    fetchSales()
+    fetchExpenses()
   }, [])
 
   // Calculate date range: 1st of current month to today

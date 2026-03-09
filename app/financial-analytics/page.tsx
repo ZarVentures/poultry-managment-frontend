@@ -72,46 +72,38 @@ export default function FinancialAnalyticsPage() {
   useEffect(() => {
     setMounted(true)
     
-    // Load sales from localStorage
-    const salesData = localStorage.getItem("sales")
-    if (salesData) {
+    // Fetch all data from API
+    const fetchData = async () => {
       try {
-        setSales(JSON.parse(salesData))
-      } catch (e) {
-        console.error("Error parsing sales:", e)
-      }
-    }
+        // Fetch sales
+        const salesResponse = await fetch("/api/sales")
+        if (salesResponse.ok) {
+          const salesResult = await salesResponse.json()
+          const salesData = (salesResult as any).data || salesResult
+          setSales(salesData)
+        }
 
-    // Load expenses from localStorage
-    const expensesData = localStorage.getItem("expenses")
-    if (expensesData) {
-      try {
-        setExpenses(JSON.parse(expensesData))
-      } catch (e) {
-        console.error("Error parsing expenses:", e)
-      }
-    }
+        // Fetch expenses
+        const expensesResponse = await fetch("/api/expenses")
+        if (expensesResponse.ok) {
+          const expensesResult = await expensesResponse.json()
+          const expensesData = (expensesResult as any).data || expensesResult
+          setExpenses(expensesData)
+        }
 
-    // Fetch purchases from API
-    const fetchPurchases = async () => {
-      try {
-        const response = await fetch("/api/purchases")
-        if (response.ok) {
-          const result = await response.json()
-          if (result.success && result.data) {
-            const formattedPurchases = result.data.map((p: any) => ({
-              ...p,
-              id: p.id.toString(),
-            }))
-            setPurchases(formattedPurchases)
-          }
+        // Fetch purchases
+        const purchasesResponse = await fetch("/api/purchases")
+        if (purchasesResponse.ok) {
+          const purchasesResult = await purchasesResponse.json()
+          const purchasesData = (purchasesResult as any).data || purchasesResult
+          setPurchases(purchasesData)
         }
       } catch (error) {
-        console.error("Error fetching purchases:", error)
+        console.error("Error fetching data:", error)
       }
     }
 
-    fetchPurchases()
+    fetchData()
   }, [])
 
   // Calculate overall financial metrics
