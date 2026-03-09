@@ -175,7 +175,6 @@ export default function MortalityPage() {
         numberOfBirdsDied: Number.parseInt(formData.numberOfBirdsDied),
         cause: formData.cause,
         notes: formData.notes,
-        mortalityDate: formData.purchaseDate,
       }
 
       if (editingId) {
