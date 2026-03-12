@@ -67,6 +67,7 @@ export interface Farmer {
   phone: string;
   email?: string;
   address?: string;
+  farmhouseName?: string;
   status: 'active' | 'inactive';
   notes?: string;
   createdAt?: string;
