@@ -96,6 +96,7 @@ export default function FarmersPage() {
           name: formData.name,
           phone: formData.phone,
           address: formData.address,
+          farmhouseName: formData.farmhouseName,
           status: formData.status,
           notes: formData.note,
         })
@@ -106,6 +107,7 @@ export default function FarmersPage() {
           name: formData.name,
           phone: formData.phone,
           address: formData.address,
+          farmhouseName: formData.farmhouseName,
           status: formData.status,
           notes: formData.note,
         })
