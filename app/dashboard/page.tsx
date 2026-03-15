@@ -4,304 +4,153 @@ import { useState, useEffect, useMemo } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
+  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer, Tooltip,
 } from "recharts"
 import { ChartContainer } from "@/components/ui/chart"
-import { format, startOfMonth, isWithinInterval, parseISO, eachMonthOfInterval, startOfYear } from "date-fns"
+import {
+  TrendingUp, TrendingDown, ShoppingCart, DollarSign,
+  Users, Truck, Package, AlertCircle, ArrowUpRight, ArrowDownRight,
+  Bird, BarChart3,
+} from "lucide-react"
+import { farmersApi, retailersApi, vehiclesApi, purchasesApi, salesApi, mortalityApi } from "@/lib/api"
 
-interface PurchaseOrder {
-  id: string
-  orderNumber: string
-  supplier: string
-  date: string
-  description: string
-  birdQuantity: number
-  cageQuantity: number
-  unitCost: number
-  totalValue: number
-  status: "pending" | "picked up" | "cancel"
-  notes: string
-  // Legacy fields for backward compatibility
-  items?: { description: string; quantity: number; unitCost: number }[]
-  totalAmount?: number
-  dueDate?: string
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://chickenbackend.onrender.com/api/v1"
+
+const EXPENSE_COLORS: Record<string, string> = {
+  feed: "#10b981", labor: "#6366f1", medicine: "#f59e0b",
+  utilities: "#3b82f6", equipment: "#8b5cf6", maintenance: "#ec4899",
+  transportation: "#14b8a6", other: "#94a3b8",
 }
+const CHART_COLORS = ["#10b981", "#6366f1", "#f59e0b", "#3b82f6", "#8b5cf6", "#ec4899"]
 
-interface Sale {
-  id: string
-  invoiceNumber: string
-  customer: string
-  date: string
-  productType: string
-  quantity: number
-  unitPrice: number
-  totalAmount: number
-  paymentStatus: "paid" | "pending" | "partial"
-  notes: string
-}
-
-interface Expense {
-  id: string
-  date: string
-  category: string
-  description: string
-  amount: number
-  paymentMethod: string
-  notes: string
+function StatCard({
+  title, value, sub, icon: Icon, color = "text-foreground", trend,
+}: {
+  title: string; value: string | number; sub?: string
+  icon: React.ElementType; color?: string; trend?: "up" | "down" | null
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        <Icon size={18} className="text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <div className={`text-2xl font-bold ${color}`}>{value}</div>
+        {sub && (
+          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+            {trend === "up" && <ArrowUpRight size={12} className="text-green-500" />}
+            {trend === "down" && <ArrowDownRight size={12} className="text-red-500" />}
+            {sub}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  )
 }
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false)
-  const [purchases, setPurchases] = useState<PurchaseOrder[]>([])
-  const [sales, setSales] = useState<Sale[]>([])
-  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Live counts
+  const [farmerCount, setFarmerCount] = useState(0)
+  const [retailerCount, setRetailerCount] = useState(0)
+  const [vehicleCount, setVehicleCount] = useState(0)
+
+  // Dashboard API data
+  const [kpis, setKpis] = useState<any>(null)
+  const [monthlyTrends, setMonthlyTrends] = useState<any[]>([])
+  const [expensesByCategory, setExpensesByCategory] = useState<any[]>([])
+  const [recentSales, setRecentSales] = useState<any[]>([])
+  const [recentPurchases, setRecentPurchases] = useState<any[]>([])
+  const [purchasesSummary, setPurchasesSummary] = useState<any>(null)
+  const [mortalityStats, setMortalityStats] = useState<any>(null)
+
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null
+
+  const authFetch = (url: string) =>
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json())
 
   useEffect(() => {
     setMounted(true)
-    
-    // Fetch purchases from API
-    const fetchPurchases = async () => {
+    const load = async () => {
       try {
-        const response = await fetch("/api/purchases")
-        if (response.ok) {
-          const result = await response.json()
-          if (result.success && result.data) {
-            // Convert database IDs to strings for compatibility
-            const formattedPurchases = result.data.map((p: any) => ({
-              ...p,
-              id: p.id.toString(),
-            }))
-            setPurchases(formattedPurchases)
-          } else if (Array.isArray(result)) {
-            setPurchases(result)
-          }
+        setLoading(true)
+        const [
+          dashboard,
+          farmers,
+          retailers,
+          vehicles,
+          sales,
+          purchases,
+          mortality,
+        ] = await Promise.all([
+          authFetch(`${API_BASE}/dashboard/comprehensive`),
+          farmersApi.getAll(),
+          retailersApi.getAll(),
+          vehiclesApi.getAll(),
+          salesApi.getAll(),
+          purchasesApi.getAll(),
+          mortalityApi.getStats(),
+        ])
+
+        if (dashboard) {
+          setKpis(dashboard.kpis)
+          setMonthlyTrends(dashboard.monthlyTrends || [])
+          setExpensesByCategory(dashboard.expensesByCategory || [])
+          setPurchasesSummary(dashboard.purchasesSummary)
         }
-      } catch (error) {
-        console.error("Error fetching purchases:", error)
+
+        // Recent 5 sales
+        const salesArr = (sales as any).data || sales
+        const sortedSales = [...(Array.isArray(salesArr) ? salesArr : [])].sort(
+          (a, b) => new Date(b.saleDate || b.createdAt).getTime() - new Date(a.saleDate || a.createdAt).getTime()
+        )
+        setRecentSales(sortedSales.slice(0, 5))
+
+        // Recent 5 purchases
+        const purchasesArr = (purchases as any).data || purchases
+        const sortedPurchases = [...(Array.isArray(purchasesArr) ? purchasesArr : [])].sort(
+          (a, b) => new Date(b.orderDate || b.createdAt).getTime() - new Date(a.orderDate || a.createdAt).getTime()
+        )
+        setRecentPurchases(sortedPurchases.slice(0, 5))
+
+        const farmersArr = (farmers as any).data || farmers
+        const retailersArr = (retailers as any).data || retailers
+        const vehiclesArr = (vehicles as any).data || vehicles
+
+        setFarmerCount(Array.isArray(farmersArr) ? farmersArr.length : 0)
+        setRetailerCount(Array.isArray(retailersArr) ? retailersArr.length : 0)
+        setVehicleCount(Array.isArray(vehiclesArr) ? vehiclesArr.filter((v: any) => v.status === "active").length : 0)
+        setMortalityStats(mortality)
+      } catch (e) {
+        console.error("Dashboard load error:", e)
+      } finally {
+        setLoading(false)
       }
     }
-
-    const fetchSales = async () => {
-      try {
-        const response = await fetch("/api/sales")
-        if (response.ok) {
-          const result = await response.json()
-          const salesData = (result as any).data || result
-          setSales(salesData)
-        }
-      } catch (error) {
-        console.error("Error fetching sales:", error)
-      }
-    }
-
-    const fetchExpenses = async () => {
-      try {
-        const response = await fetch("/api/expenses")
-        if (response.ok) {
-          const result = await response.json()
-          const expensesData = (result as any).data || result
-          setExpenses(expensesData)
-        }
-      } catch (error) {
-        console.error("Error fetching expenses:", error)
-      }
-    }
-
-    fetchPurchases()
-    fetchSales()
-    fetchExpenses()
+    load()
   }, [])
 
-  // Calculate date range: 1st of current month to today
-  const currentMonthStart = useMemo(() => startOfMonth(new Date()), [])
-  const today = useMemo(() => new Date(), [])
+  const netPL = kpis ? kpis.totalRevenue - kpis.totalExpenses : 0
+  const isProfit = netPL >= 0
 
-  // Filter data for current month
-  const currentMonthPurchases = useMemo(() => {
-    if (!purchases || purchases.length === 0) return []
-    return purchases.filter((purchase) => {
-      if (!purchase || !purchase.date) return false
-      try {
-        const purchaseDate = parseISO(purchase.date)
-        return isWithinInterval(purchaseDate, { start: currentMonthStart, end: today })
-      } catch (e) {
-        console.error("Error parsing purchase date:", e)
-        return false
-      }
-    })
-  }, [purchases, currentMonthStart, today])
+  const chartTrends = useMemo(() =>
+    monthlyTrends.map((m: any) => ({
+      month: m.month?.split(" ")[0] ?? m.month,
+      Sale: Math.round(m.revenue || 0),
+      Expense: Math.round(m.expenses || 0),
+      Profit: Math.round(m.profit || 0),
+    })), [monthlyTrends])
 
-  const currentMonthSales = useMemo(() => {
-    if (!sales || sales.length === 0) return []
-    return sales.filter((sale) => {
-      if (!sale || !sale.date) return false
-      try {
-        const saleDate = parseISO(sale.date)
-        return isWithinInterval(saleDate, { start: currentMonthStart, end: today })
-      } catch (e) {
-        console.error("Error parsing sale date:", e)
-        return false
-      }
-    })
-  }, [sales, currentMonthStart, today])
-
-  const currentMonthExpenses = useMemo(() => {
-    if (!expenses || expenses.length === 0) return []
-    return expenses.filter((expense) => {
-      if (!expense || !expense.date) return false
-      try {
-        const expenseDate = parseISO(expense.date)
-        return isWithinInterval(expenseDate, { start: currentMonthStart, end: today })
-      } catch (e) {
-        console.error("Error parsing expense date:", e)
-        return false
-      }
-    })
-  }, [expenses, currentMonthStart, today])
-
-  // Calculate KPIs
-  const totalBirdsPurchases = useMemo(() => {
-    if (!currentMonthPurchases || currentMonthPurchases.length === 0) return 0
-    
-    return currentMonthPurchases.reduce((total, purchase) => {
-      // New structure: use birdQuantity directly
-      if (purchase.birdQuantity !== undefined) {
-        return total + (purchase.birdQuantity || 0)
-      }
-      // Legacy structure: sum quantities from items array
-      if (purchase.items && Array.isArray(purchase.items)) {
-        const birdsInPurchase = purchase.items.reduce((sum, item) => {
-          const desc = (item.description || "").toLowerCase()
-          // Check if item is a bird (chick, chicken, broiler, layer, bird, etc.)
-          if (
-            desc.includes("bird") ||
-            desc.includes("chick") ||
-            desc.includes("chicken") ||
-            desc.includes("broiler") ||
-            desc.includes("layer") ||
-            desc.includes("poultry")
-          ) {
-            return sum + (item.quantity || 0)
-          }
-          return sum
-        }, 0)
-        return total + birdsInPurchase
-      }
-      return total
-    }, 0)
-  }, [currentMonthPurchases])
-
-  const totalBirdsSale = useMemo(() => {
-    if (!currentMonthSales || currentMonthSales.length === 0) return 0
-    return currentMonthSales.reduce((total, sale) => {
-      return total + (sale.quantity || 0)
-    }, 0)
-  }, [currentMonthSales])
-
-  const totalExpenses = useMemo(() => {
-    if (!currentMonthExpenses || currentMonthExpenses.length === 0) return 0
-    return currentMonthExpenses.reduce((total, expense) => {
-      return total + (expense.amount || 0)
-    }, 0)
-  }, [currentMonthExpenses])
-
-  const totalPurchasesAmount = useMemo(() => {
-    if (!currentMonthPurchases || currentMonthPurchases.length === 0) return 0
-    return currentMonthPurchases.reduce((total, purchase) => {
-      // New structure: use totalValue
-      if (purchase.totalValue !== undefined) {
-        return total + (purchase.totalValue || 0)
-      }
-      // Legacy structure: use totalAmount
-      return total + (purchase.totalAmount || 0)
-    }, 0)
-  }, [currentMonthPurchases])
-
-  const totalSalesAmount = useMemo(() => {
-    if (!currentMonthSales || currentMonthSales.length === 0) return 0
-    return currentMonthSales.reduce((total, sale) => {
-      return total + (sale.totalAmount || 0)
-    }, 0)
-  }, [currentMonthSales])
-
-  const currentStatus = useMemo(() => {
-    const profit = totalSalesAmount - totalPurchasesAmount - totalExpenses
-    return {
-      amount: Math.abs(profit),
-      isProfit: profit >= 0,
-    }
-  }, [totalSalesAmount, totalPurchasesAmount, totalExpenses])
-
-  // Generate monthly trend data for the last 6 months
-  const monthlyTrendData = useMemo(() => {
-    const months = eachMonthOfInterval({
-      start: startOfYear(new Date()),
-      end: new Date(),
-    }).slice(-6) // Last 6 months
-
-    return months.map((month) => {
-      const monthStart = startOfMonth(month)
-      const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0)
-
-      // Filter purchases for this month
-      const monthPurchases = (purchases || []).filter((p) => {
-        if (!p || !p.date) return false
-        try {
-          const purchaseDate = parseISO(p.date)
-          return isWithinInterval(purchaseDate, { start: monthStart, end: monthEnd })
-        } catch (e) {
-          return false
-        }
-      })
-
-      // Filter sales for this month
-      const monthSales = (sales || []).filter((s) => {
-        if (!s || !s.date) return false
-        try {
-          const saleDate = parseISO(s.date)
-          return isWithinInterval(saleDate, { start: monthStart, end: monthEnd })
-        } catch (e) {
-          return false
-        }
-      })
-
-      // Filter expenses for this month
-      const monthExpenses = (expenses || []).filter((e) => {
-        if (!e || !e.date) return false
-        try {
-          const expenseDate = parseISO(e.date)
-          return isWithinInterval(expenseDate, { start: monthStart, end: monthEnd })
-        } catch (e) {
-          return false
-        }
-      })
-
-      const purchaseTotal = monthPurchases.reduce((sum, p) => {
-        // New structure: use totalValue
-        if (p.totalValue !== undefined) {
-          return sum + (p.totalValue || 0)
-        }
-        // Legacy structure: use totalAmount
-        return sum + (p.totalAmount || 0)
-      }, 0)
-      const saleTotal = monthSales.reduce((sum, s) => sum + (s.totalAmount || 0), 0)
-      const expenseTotal = monthExpenses.reduce((sum, e) => sum + (e.amount || 0), 0)
-
-      return {
-        month: format(month, "MMM"),
-        Purchase: purchaseTotal,
-        Sale: saleTotal,
-        Expense: expenseTotal,
-      }
-    })
-  }, [purchases, sales, expenses])
+  const expensePieData = useMemo(() =>
+    expensesByCategory.map((e: any) => ({
+      name: e.category,
+      value: Math.round(parseFloat(e.amount) || 0),
+    })).filter((e) => e.value > 0),
+    [expensesByCategory])
 
   if (!mounted) return null
 
@@ -310,151 +159,227 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome to your poultry farm management system</p>
+          <p className="text-muted-foreground">Live overview of your poultry farm</p>
         </div>
 
-        {/* KPI Cards */}
+        {/* Row 1 - Financial KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Birds Purchases</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{totalBirdsPurchases.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                From {format(currentMonthStart, "MMM 1")} to {format(today, "MMM d")}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Birds Sale</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{totalBirdsSale.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                From {format(currentMonthStart, "MMM 1")} to {format(today, "MMM d")}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Expenses</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">₹{totalExpenses.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                From {format(currentMonthStart, "MMM 1")} to {format(today, "MMM d")}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Current Status</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={`text-3xl font-bold ${currentStatus.isProfit ? "text-green-600" : "text-red-600"}`}>
-                {currentStatus.isProfit ? "Profit" : "Loss"}
-              </div>
-              <div className={`text-2xl font-semibold mt-1 ${currentStatus.isProfit ? "text-green-600" : "text-red-600"}`}>
-                ₹{currentStatus.amount.toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Sales: ₹{totalSalesAmount.toLocaleString()} - Purchases: ₹{totalPurchasesAmount.toLocaleString()} - Expenses: ₹{totalExpenses.toLocaleString()}
-              </p>
-            </CardContent>
-          </Card>
+          <StatCard
+            title="Total Sales (This Month)"
+            value={loading ? "..." : `₹${(kpis?.totalRevenue || 0).toLocaleString()}`}
+            sub={`${kpis?.totalSales || 0} transactions`}
+            icon={TrendingUp}
+            color="text-green-600"
+            trend="up"
+          />
+          <StatCard
+            title="Total Purchases (This Month)"
+            value={loading ? "..." : `₹${(purchasesSummary?.totalValue || 0).toLocaleString()}`}
+            sub={`${purchasesSummary?.totalOrders || 0} orders`}
+            icon={ShoppingCart}
+            color="text-red-600"
+          />
+          <StatCard
+            title="Total Expenses (This Month)"
+            value={loading ? "..." : `₹${(kpis?.totalExpenses || 0).toLocaleString()}`}
+            sub="All categories"
+            icon={DollarSign}
+            color="text-yellow-600"
+          />
+          <StatCard
+            title="Net Profit / Loss"
+            value={loading ? "..." : `₹${Math.abs(netPL).toLocaleString()}`}
+            sub={isProfit ? "Profit this month" : "Loss this month"}
+            icon={isProfit ? TrendingUp : TrendingDown}
+            color={isProfit ? "text-green-600" : "text-red-600"}
+            trend={isProfit ? "up" : "down"}
+          />
         </div>
 
-        {/* Charts */}
+        {/* Row 2 - Master Data Counts */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard title="Farmers" value={loading ? "..." : farmerCount} sub="Registered" icon={Users} />
+          <StatCard title="Retailers" value={loading ? "..." : retailerCount} sub="Registered" icon={Users} />
+          <StatCard title="Active Vehicles" value={loading ? "..." : vehicleCount} sub="On fleet" icon={Truck} />
+          <StatCard
+            title="Birds Mortality"
+            value={loading ? "..." : (mortalityStats?.totalBirdsDeath || 0).toLocaleString()}
+            sub="Total recorded deaths"
+            icon={AlertCircle}
+            color="text-red-500"
+          />
+        </div>
+
+        {/* Row 3 - Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Monthly Trends */}
           <Card>
             <CardHeader>
-              <CardTitle>Revenue Trends</CardTitle>
-              <CardDescription>Monthly trends for Purchase, Sale, and Expenses</CardDescription>
+              <CardTitle>Monthly Trends</CardTitle>
+              <CardDescription>Sales, Expenses & Profit over last 6 months</CardDescription>
             </CardHeader>
             <CardContent>
               <ChartContainer
                 config={{
-                  Purchase: { label: "Purchase", color: "#ef4444" },
-                  Sale: { label: "Sale", color: "#10b981" },
-                  Expense: { label: "Expense", color: "#f59e0b" },
+                  Sale: { label: "Sales", color: "#10b981" },
+                  Expense: { label: "Expenses", color: "#f59e0b" },
+                  Profit: { label: "Profit", color: "#6366f1" },
                 }}
-                className="h-80"
+                className="h-72"
               >
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={monthlyTrendData}>
+                  <LineChart data={chartTrends}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: "rgba(0, 0, 0, 0.8)", border: "none", borderRadius: "8px" }}
-                      formatter={(value: number) => `₹${value.toLocaleString()}`}
-                    />
+                    <YAxis tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(v: number) => `₹${v.toLocaleString()}`} />
                     <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="Purchase"
-                      stroke="#ef4444"
-                      name="Purchase"
-                      strokeWidth={2}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="Sale"
-                      stroke="#10b981"
-                      name="Sale"
-                      strokeWidth={2}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="Expense"
-                      stroke="#f59e0b"
-                      name="Expense"
-                      strokeWidth={2}
-                    />
+                    <Line type="monotone" dataKey="Sale" stroke="#10b981" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="Expense" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="Profit" stroke="#6366f1" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </ChartContainer>
             </CardContent>
           </Card>
 
+          {/* Expense Breakdown */}
           <Card>
             <CardHeader>
-              <CardTitle>Monthly Summary</CardTitle>
-              <CardDescription>Current month financial overview</CardDescription>
+              <CardTitle>Expense Breakdown</CardTitle>
+              <CardDescription>By category this month</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                  <span className="text-sm font-medium">Total Purchases</span>
-                  <span className="text-lg font-bold text-red-600">₹{totalPurchasesAmount.toLocaleString()}</span>
+              {expensePieData.length === 0 ? (
+                <div className="h-72 flex items-center justify-center text-muted-foreground text-sm">
+                  No expense data for this month
                 </div>
-                <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <span className="text-sm font-medium">Total Sales</span>
-                  <span className="text-lg font-bold text-green-600">₹{totalSalesAmount.toLocaleString()}</span>
+              ) : (
+                <div className="flex gap-4 items-center h-72">
+                  <ResponsiveContainer width="55%" height="100%">
+                    <PieChart>
+                      <Pie data={expensePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={false}>
+                        {expensePieData.map((entry, i) => (
+                          <Cell key={entry.name} fill={EXPENSE_COLORS[entry.name] || CHART_COLORS[i % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v: number) => `₹${v.toLocaleString()}`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex-1 space-y-2">
+                    {expensePieData.map((e, i) => (
+                      <div key={e.name} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ background: EXPENSE_COLORS[e.name] || CHART_COLORS[i % CHART_COLORS.length] }} />
+                          <span className="capitalize">{e.name}</span>
+                        </div>
+                        <span className="font-medium">₹{e.value.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                  <span className="text-sm font-medium">Total Expenses</span>
-                  <span className="text-lg font-bold text-yellow-600">₹{totalExpenses.toLocaleString()}</span>
-                </div>
-                <div className={`flex justify-between items-center p-4 rounded-lg border-2 ${
-                  currentStatus.isProfit
-                    ? "bg-green-50 dark:bg-green-900/20 border-green-500"
-                    : "bg-red-50 dark:bg-red-900/20 border-red-500"
-                }`}>
-                  <span className="text-base font-semibold">Net {currentStatus.isProfit ? "Profit" : "Loss"}</span>
-                  <span className={`text-2xl font-bold ${currentStatus.isProfit ? "text-green-600" : "text-red-600"}`}>
-                    ₹{currentStatus.amount.toLocaleString()}
-                  </span>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>
+
+        {/* Row 4 - Recent Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Recent Sales */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Sales</CardTitle>
+              <CardDescription>Last 5 transactions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {recentSales.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No sales yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {recentSales.map((sale) => (
+                    <div key={sale.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                      <div>
+                        <p className="text-sm font-medium">{sale.customerName || sale.invoiceNumber}</p>
+                        <p className="text-xs text-muted-foreground">{sale.saleDate?.split("T")[0]} · {sale.productType}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-green-600">₹{(sale.totalAmount || 0).toLocaleString()}</p>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                          sale.paymentStatus === "paid" ? "bg-green-100 text-green-700" :
+                          sale.paymentStatus === "partial" ? "bg-yellow-100 text-yellow-700" :
+                          "bg-red-100 text-red-700"
+                        }`}>{sale.paymentStatus}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recent Purchases */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Purchases</CardTitle>
+              <CardDescription>Last 5 purchase orders</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {recentPurchases.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No purchases yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {recentPurchases.map((po) => (
+                    <div key={po.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                      <div>
+                        <p className="text-sm font-medium">{po.supplierName || po.orderNumber}</p>
+                        <p className="text-xs text-muted-foreground">{po.orderDate?.split("T")[0]} · {po.orderNumber}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-red-600">₹{(po.totalAmount || 0).toLocaleString()}</p>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                          po.status === "received" ? "bg-green-100 text-green-700" :
+                          po.status === "cancelled" ? "bg-red-100 text-red-700" :
+                          "bg-yellow-100 text-yellow-700"
+                        }`}>{po.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Row 5 - Monthly Summary */}
+        <Card>
+          <CardHeader>
+            <CardTitle>This Month Summary</CardTitle>
+            <CardDescription>Financial overview for current month</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <span className="text-sm font-medium">Sales</span>
+                <span className="text-base font-bold text-green-600">₹{(kpis?.totalRevenue || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <span className="text-sm font-medium">Purchases</span>
+                <span className="text-base font-bold text-red-600">₹{(purchasesSummary?.totalValue || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                <span className="text-sm font-medium">Expenses</span>
+                <span className="text-base font-bold text-yellow-600">₹{(kpis?.totalExpenses || 0).toLocaleString()}</span>
+              </div>
+              <div className={`flex justify-between items-center p-3 rounded-lg border-2 ${isProfit ? "bg-green-50 dark:bg-green-900/20 border-green-400" : "bg-red-50 dark:bg-red-900/20 border-red-400"}`}>
+                <span className="text-sm font-semibold">Net P&L</span>
+                <span className={`text-base font-bold ${isProfit ? "text-green-600" : "text-red-600"}`}>
+                  {isProfit ? "+" : "-"}₹{Math.abs(netPL).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
       </div>
     </DashboardLayout>
   )
