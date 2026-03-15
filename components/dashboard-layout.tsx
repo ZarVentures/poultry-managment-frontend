@@ -7,6 +7,7 @@ import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { motion, AnimatePresence } from "framer-motion"
 import {
   BarChart3,
   Users,
@@ -37,6 +38,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [masterEntriesOpen, setMasterEntriesOpen] = useState(false)
   const [godownOpen, setGodownOpen] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
     const userData = localStorage.getItem("user")
@@ -198,7 +200,18 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         {/* Page content */}
         <main className="flex-1 overflow-auto bg-background">
-          <div className="container mx-auto p-6">{children}</div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.18, ease: "easeInOut" }}
+              className="container mx-auto p-6"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>
