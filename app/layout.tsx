@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { DateFilterProvider } from "@/contexts/date-filter-context"
 import { Toaster } from "@/components/ui/sonner"
+import { PageTransition } from "@/components/page-transition"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -41,7 +42,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased`} suppressHydrationWarning>
         <DateFilterProvider>
-        {children}
+          <PageTransition>
+            {children}
+          </PageTransition>
         </DateFilterProvider>
         <Toaster />
         <Analytics />
