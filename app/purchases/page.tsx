@@ -35,6 +35,14 @@ export default function PurchasesPage() {
     orderDate: new Date().toISOString().split("T")[0],
     dueDate: "",
     status: "pending" as "pending" | "received" | "cancelled",
+    // Invoice header fields
+    branch: "",
+    unit: "",
+    gstin: "",
+    liftingTime: "",
+    partyCode: "",
+    prNumber: "",
+    hsnCode: "0105",
     // Farmer integration
     farmerId: "",
     farmerMobile: "",
@@ -146,6 +154,13 @@ export default function PurchasesPage() {
       orderDate: new Date().toISOString().split("T")[0],
       dueDate: "",
       status: "pending",
+      branch: "",
+      unit: "",
+      gstin: "",
+      liftingTime: "",
+      partyCode: "",
+      prNumber: "",
+      hsnCode: "0105",
       farmerId: "",
       farmerMobile: "",
       farmLocation: "",
@@ -246,6 +261,13 @@ export default function PurchasesPage() {
       orderDate: purchase.orderDate,
       dueDate: purchase.dueDate || "",
       status: purchase.status,
+      branch: (purchase as any).branch || "",
+      unit: (purchase as any).unit || "",
+      gstin: (purchase as any).gstin || "",
+      liftingTime: (purchase as any).liftingTime || "",
+      partyCode: (purchase as any).partyCode || "",
+      prNumber: (purchase as any).prNumber || "",
+      hsnCode: (purchase as any).hsnCode || "0105",
       farmerId: purchase.farmerId || "",
       farmerMobile: purchase.farmerMobile || "",
       farmLocation: purchase.farmLocation || "",
@@ -385,6 +407,14 @@ export default function PurchasesPage() {
         orderDate: formData.orderDate,
         dueDate: formData.dueDate || undefined,
         status: formData.status,
+        // Invoice header fields
+        branch: formData.branch || undefined,
+        unit: formData.unit || undefined,
+        gstin: formData.gstin || undefined,
+        liftingTime: formData.liftingTime || undefined,
+        partyCode: formData.partyCode || undefined,
+        prNumber: formData.prNumber || undefined,
+        hsnCode: formData.hsnCode || "0105",
         // Farmer integration
         farmerId: formData.farmerId || undefined,
         farmerMobile: formData.farmerMobile || undefined,
@@ -657,6 +687,78 @@ export default function PurchasesPage() {
                         <DatePicker
                           value={formData.orderDate}
                           onChange={(date) => setFormData({ ...formData, orderDate: date })}
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2.5">
+                        <Label>Branch</Label>
+                        <Input
+                          value={formData.branch}
+                          onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
+                          placeholder="Branch name"
+                          disabled={loading}
+                        />
+                      </div>
+                      <div className="space-y-2.5">
+                        <Label>Unit</Label>
+                        <Input
+                          value={formData.unit}
+                          onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                          placeholder="Unit name"
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2.5">
+                        <Label>GSTIN</Label>
+                        <Input
+                          value={formData.gstin}
+                          onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
+                          placeholder="GSTIN number"
+                          disabled={loading}
+                        />
+                      </div>
+                      <div className="space-y-2.5">
+                        <Label>Lifting Time</Label>
+                        <Input
+                          type="time"
+                          value={formData.liftingTime}
+                          onChange={(e) => setFormData({ ...formData, liftingTime: e.target.value })}
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-6">
+                      <div className="space-y-2.5">
+                        <Label>Party Code</Label>
+                        <Input
+                          value={formData.partyCode}
+                          onChange={(e) => setFormData({ ...formData, partyCode: e.target.value })}
+                          placeholder="Party code"
+                          disabled={loading}
+                        />
+                      </div>
+                      <div className="space-y-2.5">
+                        <Label>P.R. No.</Label>
+                        <Input
+                          value={formData.prNumber}
+                          onChange={(e) => setFormData({ ...formData, prNumber: e.target.value })}
+                          placeholder="PR number"
+                          disabled={loading}
+                        />
+                      </div>
+                      <div className="space-y-2.5">
+                        <Label>HSN Code</Label>
+                        <Input
+                          value={formData.hsnCode}
+                          onChange={(e) => setFormData({ ...formData, hsnCode: e.target.value })}
+                          placeholder="0105"
                           disabled={loading}
                         />
                       </div>
