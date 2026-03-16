@@ -92,23 +92,23 @@ export default function RetailersPage() {
       if (editingId) {
         await retailersApi.update(editingId, {
           name: formData.name,
-          ownerName: formData.ownerName,
+          ownerName: formData.ownerName || undefined,
           phone: formData.phone,
-          email: formData.email,
-          address: formData.address,
+          email: formData.email || undefined,
+          address: formData.address || undefined,
           status: formData.status,
-          notes: formData.notes,
+          notes: formData.notes || undefined,
         })
         toast.success("Retailer updated successfully")
       } else {
         await retailersApi.create({
           name: formData.name,
-          ownerName: formData.ownerName,
+          ownerName: formData.ownerName || undefined,
           phone: formData.phone,
-          email: formData.email,
-          address: formData.address,
+          email: formData.email || undefined,
+          address: formData.address || undefined,
           status: formData.status,
-          notes: formData.notes,
+          notes: formData.notes || undefined,
         })
         toast.success("Retailer created successfully")
       }
