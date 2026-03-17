@@ -289,6 +289,7 @@ export interface PurchaseOrder {
   notes?: string;
   items: PurchaseOrderItem[];
   cages?: PurchaseOrderCage[];
+  invoiceAttachment?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -319,6 +320,7 @@ export interface CreatePurchaseOrderDto {
   advancePaid?: string;
   paymentMode?: string;
   totalPaymentMade?: string;
+  invoiceAttachment?: string;
   items: CreatePurchaseOrderItemDto[];
   cages?: CreatePurchaseOrderCageDto[];
 }
@@ -681,6 +683,22 @@ export const purchasesApi = {
     apiRequest<void>(`/purchases/${id}`, {
       method: 'DELETE',
     }),
+
+  uploadInvoice: async (id: string, file: File): Promise<PurchaseOrder> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${API_BASE_URL}/purchases/${id}/upload-invoice`, {
+      method: 'POST',
+      headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+      body: formData,
+    });
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(err || `HTTP ${response.status}`);
+    }
+    return response.json();
+  },
 };
 
 // ============================================
