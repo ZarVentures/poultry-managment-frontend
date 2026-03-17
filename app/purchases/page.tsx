@@ -379,9 +379,13 @@ export default function PurchasesPage() {
 
   const stats = useMemo(() => {
     const totalPurchases = purchases.length
-    const totalBirds = purchases.reduce((sum, p) => sum + p.items.reduce((s, i) => s + Number(i.quantity), 0), 0)
+    const totalBirds = purchases.reduce((sum, p) => {
+      const fromCages = (p.cages || []).reduce((s, c) => s + Number(c.numberOfBirds || 0), 0)
+      const fromItems = p.items.reduce((s, i) => s + Number(i.quantity || 0), 0)
+      return sum + (fromCages > 0 ? fromCages : fromItems)
+    }, 0)
     const totalValue = purchases.reduce((sum, p) => sum + Number(p.netAmount || p.totalAmount), 0)
-    const totalPaymentMade = purchases.filter(p => p.status === 'received').reduce((sum, p) => sum + Number(p.netAmount || p.totalAmount), 0)
+    const totalPaymentMade = purchases.reduce((sum, p) => sum + Number(p.totalPaymentMade || 0), 0)
     return { totalPurchases, totalBirds, totalValue, totalPaymentMade }
   }, [purchases])
 
