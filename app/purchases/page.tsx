@@ -610,6 +610,48 @@ export default function PurchasesPage() {
 
   if (!mounted) return null
 
+  // Inline searchable farmer picker
+  function FarmerSearch({ farmers, value, onChange, disabled }: {
+    farmers: Farmer[]
+    value: string
+    onChange: (id: string) => void
+    disabled?: boolean
+  }) {
+    const [query, setQuery] = useState("")
+    const [open, setOpen] = useState(false)
+    const selected = farmers.find(f => f.id === value)
+    const filtered = farmers.filter(f => f.name.toLowerCase().includes(query.toLowerCase()))
+    return (
+      <div className="relative">
+        <Input
+          value={open ? query : (selected?.name || "")}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
+          onFocus={() => { setQuery(""); setOpen(true) }}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder={`Search farmer (${farmers.length} available)`}
+          disabled={disabled}
+        />
+        {open && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-muted-foreground">No farmers found</div>
+            ) : (
+              filtered.map(f => (
+                <div
+                  key={f.id}
+                  className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100"
+                  onMouseDown={() => { onChange(f.id); setOpen(false); setQuery("") }}
+                >
+                  {f.name}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -767,28 +809,12 @@ export default function PurchasesPage() {
                     <div className="grid grid-cols-2 gap-6">
                       <div className="space-y-2.5">
                         <Label>Farmer Name *</Label>
-                        <Select
+                        <FarmerSearch
+                          farmers={farmers}
                           value={formData.farmerId}
-                          onValueChange={handleFarmerChange}
+                          onChange={handleFarmerChange}
                           disabled={loading}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder={`Select farmer (${farmers.length} available)`} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Array.isArray(farmers) && farmers.length > 0 ? (
-                              farmers.map((farmer) => (
-                                <SelectItem key={farmer.id} value={farmer.id}>
-                                  {farmer.name}
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="no-farmers" disabled>
-                                No farmers available
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
+                        />
                       </div>
                       <div className="space-y-2.5">
                         <Label>Farmer Mobile</Label>
