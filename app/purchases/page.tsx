@@ -78,6 +78,9 @@ export default function PurchasesPage() {
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null)
   const [uploadingFile, setUploadingFile] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // Draft auto-save
+  const [draftBanner, setDraftBanner] = useState<{ savedAt: string } | null>(null)
+  const DRAFT_KEY = "purchase_form_draft"
 
   const [formData, setFormData] = useState({
     orderNumber: "",
@@ -135,6 +138,31 @@ export default function PurchasesPage() {
     return () => document.removeEventListener("mousedown", handleClick)
   }, [])
 
+  // Auto-save draft while dialog is open for new purchase
+  useEffect(() => {
+    if (!showDialog || editingId) return
+    const timer = setTimeout(() => {
+      const draft = { ...formData, _savedAt: new Date().toLocaleTimeString() }
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [formData, showDialog, editingId])
+
+  // Check for draft when opening new purchase dialog
+  useEffect(() => {
+    if (showDialog && !editingId) {
+      try {
+        const raw = localStorage.getItem(DRAFT_KEY)
+        if (raw) {
+          const draft = JSON.parse(raw)
+          if (draft._savedAt) setDraftBanner({ savedAt: draft._savedAt })
+        }
+      } catch {}
+    } else {
+      setDraftBanner(null)
+    }
+  }, [showDialog, editingId])
+
   const fetchPurchases = async () => {
     try {
       setLoading(true)
@@ -187,6 +215,22 @@ export default function PurchasesPage() {
     })
     setEditingId(null)
     setInvoiceFile(null)
+  }
+
+  const restoreDraft = () => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY)
+      if (!raw) return
+      const { _savedAt, ...draft } = JSON.parse(raw)
+      setFormData(draft)
+      setDraftBanner(null)
+    } catch {}
+  }
+
+  const discardDraft = () => {
+    localStorage.removeItem(DRAFT_KEY)
+    setDraftBanner(null)
+    resetForm()
   }
 
   const handleFarmerChange = (farmerId: string) => {
@@ -338,6 +382,7 @@ export default function PurchasesPage() {
 
       await fetchPurchases()
       resetForm()
+      localStorage.removeItem(DRAFT_KEY)
       setShowDialog(false)
     } catch (error: any) {
       console.error("Failed to save purchase:", error)
@@ -667,6 +712,20 @@ export default function PurchasesPage() {
                 <p id="dialog-description" className="sr-only">{editingId ? "Edit purchase order details" : "Create a new purchase order"}</p>
               </DialogHeader>
               <div className="space-y-5">
+                {/* Draft restore banner */}
+                {draftBanner && (
+                  <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm">
+                    <span className="text-amber-800">📝 Draft restored from {draftBanner.savedAt}. Continue where you left off?</span>
+                    <div className="flex gap-2 ml-4 shrink-0">
+                      <Button size="sm" variant="outline" className="border-amber-400 text-amber-800 hover:bg-amber-100 h-7 text-xs" onClick={restoreDraft}>
+                        Continue with Draft
+                      </Button>
+                      <Button size="sm" variant="ghost" className="text-gray-500 hover:text-red-600 h-7 text-xs" onClick={discardDraft}>
+                        Start Fresh
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 {/* Section 1: Header Information */}
                 <Card className="border-blue-200 shadow-sm">
                   <CardHeader className="bg-blue-50 border-b border-blue-100">
