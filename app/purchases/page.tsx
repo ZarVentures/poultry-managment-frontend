@@ -376,6 +376,65 @@ export default function PurchasesPage() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
   }
 
+  // Bulk cage entry modal
+  const [showBulkModal, setShowBulkModal] = useState(false)
+  const [bulkTab, setBulkTab] = useState<"spreadsheet" | "paste">("spreadsheet")
+  // Spreadsheet rows (local to modal, applied on confirm)
+  const [sheetRows, setSheetRows] = useState<Array<{ cageId: string; numberOfBirds: string; cageWeight: string }>>([])
+  const [pasteText, setPasteText] = useState("")
+  const [pasteError, setPasteError] = useState("")
+
+  const openBulkModal = () => {
+    // Pre-fill spreadsheet with existing cages
+    setSheetRows(formData.cages.map(c => ({ ...c })))
+    setPasteText("")
+    setPasteError("")
+    setBulkTab("spreadsheet")
+    setShowBulkModal(true)
+  }
+
+  const updateSheetRow = (i: number, field: string, value: string) => {
+    const rows = [...sheetRows]
+    rows[i] = { ...rows[i], [field]: value }
+    // Auto-add new row when typing in last row
+    if (i === rows.length - 1 && value !== "") {
+      rows.push({ cageId: "", numberOfBirds: "", cageWeight: "" })
+    }
+    setSheetRows(rows)
+  }
+
+  const removeSheetRow = (i: number) => {
+    if (sheetRows.length <= 1) return
+    setSheetRows(sheetRows.filter((_, idx) => idx !== i))
+  }
+
+  const parsePasteText = () => {
+    setPasteError("")
+    const lines = pasteText.trim().split("\n").filter(l => l.trim())
+    const parsed: Array<{ cageId: string; numberOfBirds: string; cageWeight: string }> = []
+    for (const line of lines) {
+      // Skip header line if it contains text like "CageID"
+      if (/[a-zA-Z]{3,}/.test(line.split(",")[0])) continue
+      const parts = line.split(/[,\t]/).map(p => p.trim())
+      if (parts.length < 2) { setPasteError(`Could not parse line: "${line}"`); return }
+      parsed.push({
+        cageId: parts[0] || "",
+        numberOfBirds: parts[1] || "",
+        cageWeight: parts[2] || "",
+      })
+    }
+    if (parsed.length === 0) { setPasteError("No valid rows found. Format: CageID, Birds, Weight"); return }
+    setSheetRows(parsed)
+    setBulkTab("spreadsheet")
+  }
+
+  const applyBulkCages = () => {
+    const valid = sheetRows.filter(r => r.numberOfBirds || r.cageWeight)
+    if (valid.length === 0) { setShowBulkModal(false); return }
+    setFormData(prev => ({ ...prev, cages: valid.length > 0 ? valid : [{ cageId: "", numberOfBirds: "", cageWeight: "" }] }))
+    setShowBulkModal(false)
+  }
+
 
   const stats = useMemo(() => {
     const totalPurchases = purchases.length
@@ -735,10 +794,15 @@ export default function PurchasesPage() {
                       </Select>
                     </div>
                     <div className="space-y-3">
-                      <div className="grid grid-cols-3 gap-6 mb-2">
-                        <Label className="text-sm font-medium">Cage ID Number</Label>
-                        <Label className="text-sm font-medium">Number of Birds</Label>
-                        <Label className="text-sm font-medium">Cage Weight (Kg)</Label>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="grid grid-cols-3 gap-6 flex-1">
+                          <Label className="text-sm font-medium">Cage ID Number</Label>
+                          <Label className="text-sm font-medium">Number of Birds</Label>
+                          <Label className="text-sm font-medium">Cage Weight (Kg)</Label>
+                        </div>
+                        <Button type="button" variant="outline" size="sm" onClick={openBulkModal} className="ml-4 text-blue-600 border-blue-300 hover:bg-blue-50 whitespace-nowrap">
+                          ⚡ Bulk Entry
+                        </Button>
                       </div>
                       {formData.cages.map((cage, index) => (
                         <div key={index} className="grid grid-cols-3 gap-6">
@@ -972,6 +1036,109 @@ export default function PurchasesPage() {
       {/* Invoice View Modal */}
       {showInvoiceModal && viewingPurchase && (
         <InvoiceViewModal purchase={viewingPurchase} onClose={() => { setShowInvoiceModal(false); setViewingPurchase(null) }} />
+      )}
+
+      {/* Bulk Cage Entry Modal */}
+      {showBulkModal && (
+        <Dialog open={true} onOpenChange={() => setShowBulkModal(false)}>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Bulk Cage Entry</DialogTitle>
+            </DialogHeader>
+
+            {/* Tabs */}
+            <div className="flex border-b mb-4">
+              <button
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${bulkTab === "spreadsheet" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                onClick={() => setBulkTab("spreadsheet")}
+              >
+                📊 Spreadsheet
+              </button>
+              <button
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${bulkTab === "paste" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                onClick={() => setBulkTab("paste")}
+              >
+                📋 Paste Text
+              </button>
+            </div>
+
+            {bulkTab === "spreadsheet" && (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-500 mb-3">Tab through cells to move quickly. A new row appears automatically when you start typing in the last row.</p>
+                <div className="grid grid-cols-[1fr_1fr_1fr_32px] gap-2 mb-1">
+                  <Label className="text-xs font-semibold text-gray-600">Cage ID</Label>
+                  <Label className="text-xs font-semibold text-gray-600">Birds</Label>
+                  <Label className="text-xs font-semibold text-gray-600">Weight (Kg)</Label>
+                  <span />
+                </div>
+                <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
+                  {sheetRows.map((row, i) => (
+                    <div key={i} className="grid grid-cols-[1fr_1fr_1fr_32px] gap-2 items-center">
+                      <Input
+                        value={row.cageId}
+                        onChange={(e) => updateSheetRow(i, "cageId", e.target.value)}
+                        placeholder={`C${i + 1}`}
+                        className="h-8 text-sm"
+                      />
+                      <Input
+                        type="number"
+                        value={row.numberOfBirds}
+                        onChange={(e) => updateSheetRow(i, "numberOfBirds", e.target.value)}
+                        placeholder="Birds"
+                        className="h-8 text-sm"
+                      />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={row.cageWeight}
+                        onChange={(e) => updateSheetRow(i, "cageWeight", e.target.value)}
+                        placeholder="Kg"
+                        className="h-8 text-sm"
+                      />
+                      <button onClick={() => removeSheetRow(i)} className="text-red-400 hover:text-red-600 text-xs" title="Remove row">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={() => setSheetRows(r => [...r, { cageId: "", numberOfBirds: "", cageWeight: "" }])} className="mt-1">
+                  <Plus size={14} className="mr-1" /> Add Row
+                </Button>
+                <p className="text-xs text-gray-400 mt-2">{sheetRows.filter(r => r.numberOfBirds || r.cageWeight).length} cage(s) ready</p>
+              </div>
+            )}
+
+            {bulkTab === "paste" && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">Paste data from Excel, WhatsApp, or type manually. One cage per line.</p>
+                <div className="bg-gray-50 rounded p-2 text-xs text-gray-500 font-mono">
+                  Format: CageID, Birds, Weight<br />
+                  C1, 150, 45.5<br />
+                  C2, 148, 44.2<br />
+                  C3, 152, 46.0
+                </div>
+                <Textarea
+                  value={pasteText}
+                  onChange={(e) => { setPasteText(e.target.value); setPasteError("") }}
+                  placeholder={"C1, 150, 45.5\nC2, 148, 44.2\nC3, 152, 46.0"}
+                  rows={8}
+                  className="font-mono text-sm"
+                />
+                {pasteError && <p className="text-xs text-red-500">{pasteError}</p>}
+                <Button type="button" variant="outline" size="sm" onClick={parsePasteText} className="text-blue-600 border-blue-300">
+                  Parse & Preview →
+                </Button>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+              <Button variant="outline" onClick={() => setShowBulkModal(false)}>Cancel</Button>
+              <Button onClick={applyBulkCages} className="bg-green-600 hover:bg-green-700">
+                Apply {sheetRows.filter(r => r.numberOfBirds || r.cageWeight).length} Cage(s)
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </DashboardLayout>
   )
