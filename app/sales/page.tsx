@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,12 +9,29 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, Download, Printer } from "lucide-react"
+import { Plus, Edit2, Trash2, ClipboardPaste, X } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
 import { salesApi, retailersApi, vehiclesApi, type Sale as ApiSale } from "@/lib/api"
 import { toast } from "sonner"
+
+// ── Types ──────────────────────────────────────────────────────
+interface CustomerRow {
+  id: string // local key only
+  customerName: string
+  numBirds: string
+  weight: string
+  amount: number // auto = weight * rate
+}
+
+const emptyRow = (): CustomerRow => ({
+  id: Math.random().toString(36).slice(2),
+  customerName: "",
+  numBirds: "",
+  weight: "",
+  amount: 0,
+})
 
 export default function SalesPage() {
   const [sales, setSales] = useState<ApiSale[]>([])
@@ -26,249 +43,176 @@ export default function SalesPage() {
   const [showDialog, setShowDialog] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
-  const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
-  const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
-  
+  const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>()
+  const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>()
+  const pasteRef = useRef<HTMLTextAreaElement>(null)
+
+  // ── Form state ─────────────────────────────────────────────
   const [formData, setFormData] = useState({
     invoiceNumber: "",
+    saleDate: new Date().toISOString().split("T")[0],
+    retailerId: "",
     customerName: "",
     ownerName: "",
     phone: "",
     address: "",
-    saleDate: new Date().toISOString().split("T")[0],
     saleMode: "from_vehicle" as "from_vehicle" | "from_godown",
     vehicleId: "",
-    paymentStatus: "pending" as "paid" | "pending" | "partial",
-    notes: "",
-    retailerId: "",
-    // Bird details
-    birdType: "",
-    numberOfCages: "",
-    numberOfBirds: "",
+    productType: "meat" as "meat" | "eggs" | "chicks" | "other",
     ratePerKg: "",
-    averageWeight: "",
-    // Charges
     transportCharges: "",
     loadingCharges: "",
     commission: "",
     otherCharges: "",
-    // Deductions
     deductions: "",
-    // Payment
-    advancePaid: "",
-    creditBalance: "",
-    paymentMode: "",
-    totalPaymentReceived: "",
+    paymentStatus: "pending" as "paid" | "pending" | "partial",
+    amountReceived: "",
+    notes: "",
   })
+
+  const [customerRows, setCustomerRows] = useState<CustomerRow[]>([emptyRow()])
+  const [pasteText, setPasteText] = useState("")
+  const [showPasteBox, setShowPasteBox] = useState(false)
 
   useEffect(() => {
     setMounted(true)
-    fetchSales()
-    fetchInvoiceList()
-    fetchRetailers()
-    fetchVehicles()
+    fetchSales(); fetchInvoiceList(); fetchRetailers(); fetchVehicles()
   }, [])
 
   const fetchSales = async () => {
-    try {
-      setLoading(true)
-      const data = await salesApi.getAll()
-      if (Array.isArray(data)) {
-        setSales(data)
-      } else {
-        setSales([])
-      }
-    } catch (error: any) {
-      console.error("Failed to fetch sales:", error)
-      setSales([])
-      toast.error("Failed to load sales")
-    } finally {
-      setLoading(false)
-    }
+    try { setLoading(true); const d = await salesApi.getAll(); setSales(Array.isArray(d) ? d : []) }
+    catch { setSales([]); toast.error("Failed to load sales") }
+    finally { setLoading(false) }
   }
-
   const fetchInvoiceList = async () => {
-    try {
-      const data = await salesApi.getInvoiceList()
-      if (Array.isArray(data)) {
-        setInvoiceList(data)
-      } else {
-        setInvoiceList([])
-      }
-    } catch (error) {
-      console.error("Failed to fetch invoice list:", error)
-      setInvoiceList([])
-    }
+    try { const d = await salesApi.getInvoiceList(); setInvoiceList(Array.isArray(d) ? d : []) }
+    catch { setInvoiceList([]) }
   }
-
   const fetchRetailers = async () => {
-    try {
-      const data = await retailersApi.getActive()
-      if (Array.isArray(data)) {
-        setRetailers(data)
-      } else {
-        setRetailers([])
-      }
-    } catch (error) {
-      console.error("Failed to fetch retailers:", error)
-      setRetailers([])
-      toast.error("Failed to load retailers")
-    }
+    try { const d = await retailersApi.getActive(); setRetailers(Array.isArray(d) ? d : []) }
+    catch { setRetailers([]) }
   }
-
   const fetchVehicles = async () => {
-    try {
-      const data = await vehiclesApi.getAll()
-      if (Array.isArray(data)) {
-        setVehicles(data)
-      } else {
-        setVehicles([])
+    try { const d = await vehiclesApi.getAll(); setVehicles(Array.isArray(d) ? d : []) }
+    catch { setVehicles([]) }
+  }
+
+  // ── Customer rows helpers ──────────────────────────────────
+  const rate = parseFloat(formData.ratePerKg) || 0
+
+  const updateRow = (id: string, field: keyof CustomerRow, value: string) => {
+    setCustomerRows(rows => rows.map(r => {
+      if (r.id !== id) return r
+      const updated = { ...r, [field]: value }
+      updated.amount = (parseFloat(updated.weight) || 0) * rate
+      return updated
+    }))
+  }
+
+  // Recalculate amounts when rate changes
+  useEffect(() => {
+    setCustomerRows(rows => rows.map(r => ({ ...r, amount: (parseFloat(r.weight) || 0) * rate })))
+  }, [formData.ratePerKg])
+
+  const addRow = () => setCustomerRows(r => [...r, emptyRow()])
+  const removeRow = (id: string) => setCustomerRows(r => r.filter(x => x.id !== id))
+
+  // Totals
+  const totalBirds = customerRows.reduce((s, r) => s + (parseInt(r.numBirds) || 0), 0)
+  const totalWeight = customerRows.reduce((s, r) => s + (parseFloat(r.weight) || 0), 0)
+  const totalAmount = customerRows.reduce((s, r) => s + r.amount, 0)
+  const avgWeight = totalBirds > 0 ? totalWeight / totalBirds : 0
+
+  const charges = (parseFloat(formData.transportCharges) || 0) + (parseFloat(formData.loadingCharges) || 0)
+    + (parseFloat(formData.commission) || 0) + (parseFloat(formData.otherCharges) || 0)
+  const deductions = parseFloat(formData.deductions) || 0
+  const grossAmount = totalAmount + charges
+  const netAmount = grossAmount - deductions
+  const balance = netAmount - (parseFloat(formData.amountReceived) || 0)
+
+  // ── Paste parser ───────────────────────────────────────────
+  const handlePaste = () => {
+    const lines = pasteText.trim().split("\n").filter(l => l.trim())
+    const parsed: CustomerRow[] = []
+    for (const line of lines) {
+      // Support tab, comma, or multiple spaces as delimiter
+      const parts = line.trim().split(/[\t,]+|\s{2,}/).map(p => p.trim()).filter(Boolean)
+      if (parts.length >= 2) {
+        const name = parts[0]
+        // Try to find numeric values
+        const nums = parts.slice(1).map(p => parseFloat(p)).filter(n => !isNaN(n))
+        if (nums.length >= 1) {
+          const numBirds = nums.length >= 2 ? String(Math.round(nums[0])) : ""
+          const weight = nums.length >= 2 ? String(nums[1]) : String(nums[0])
+          const r = emptyRow()
+          r.customerName = name
+          r.numBirds = numBirds
+          r.weight = weight
+          r.amount = (parseFloat(weight) || 0) * rate
+          parsed.push(r)
+        }
       }
-    } catch (error) {
-      console.error("Failed to fetch vehicles:", error)
-      setVehicles([])
+    }
+    if (parsed.length > 0) {
+      setCustomerRows(parsed)
+      setPasteText("")
+      setShowPasteBox(false)
+      toast.success(`Parsed ${parsed.length} rows`)
+    } else {
+      toast.error("Could not parse data. Format: Name  Birds  Weight")
     }
   }
 
+  // ── Reset ──────────────────────────────────────────────────
   const resetForm = () => {
     setFormData({
-      invoiceNumber: "",
-      customerName: "",
-      ownerName: "",
-      phone: "",
-      address: "",
-      saleDate: new Date().toISOString().split("T")[0],
-      saleMode: "from_vehicle",
-      vehicleId: "",
-      paymentStatus: "pending",
-      notes: "",
-      retailerId: "",
-      birdType: "",
-      numberOfCages: "",
-      numberOfBirds: "",
-      ratePerKg: "",
-      averageWeight: "",
-      transportCharges: "",
-      loadingCharges: "",
-      commission: "",
-      otherCharges: "",
-      deductions: "",
-      advancePaid: "",
-      creditBalance: "",
-      paymentMode: "",
-      totalPaymentReceived: "",
+      invoiceNumber: "", saleDate: new Date().toISOString().split("T")[0],
+      retailerId: "", customerName: "", ownerName: "", phone: "", address: "",
+      saleMode: "from_vehicle", vehicleId: "", productType: "meat",
+      ratePerKg: "", transportCharges: "", loadingCharges: "", commission: "",
+      otherCharges: "", deductions: "", paymentStatus: "pending", amountReceived: "", notes: "",
     })
+    setCustomerRows([emptyRow()])
     setEditingId(null)
   }
 
-  // Handle retailer selection
-  const handleRetailerChange = (retailerId: string) => {
-    const selectedRetailer = retailers.find(r => r.id === retailerId)
-    if (selectedRetailer) {
-      setFormData({
-        ...formData,
-        retailerId,
-        customerName: selectedRetailer.name,
-        ownerName: selectedRetailer.ownerName || "",
-        phone: selectedRetailer.phone || "",
-        address: selectedRetailer.address || "",
-      })
-    }
+  const handleRetailerChange = (id: string) => {
+    const r = retailers.find(x => x.id === id)
+    if (r) setFormData(f => ({ ...f, retailerId: id, customerName: r.name, ownerName: r.ownerName || "", phone: r.phone || "", address: r.address || "" }))
   }
 
-  // Handle invoice selection
-  const handleInvoiceSelect = async (invoiceId: string) => {
-    if (!invoiceId) return
-    
+  const handleInvoiceSelect = async (id: string) => {
+    if (!id) return
     try {
       setLoading(true)
-      const sale = await salesApi.getOne(invoiceId)
+      const sale = await salesApi.getOne(id)
       handleEdit(sale)
-    } catch (error) {
-      console.error("Failed to fetch invoice:", error)
-      toast.error("Failed to load invoice")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Calculation functions
-  const calculateTotalWeight = () => {
-    const numberOfBirds = parseFloat(formData.numberOfBirds) || 0
-    const averageWeight = parseFloat(formData.averageWeight) || 0
-    return numberOfBirds * averageWeight
-  }
-
-  const calculateTotalAmount = () => {
-    const totalWeight = calculateTotalWeight()
-    const ratePerKg = parseFloat(formData.ratePerKg) || 0
-    return totalWeight * ratePerKg
-  }
-
-  const calculateCharges = () => {
-    const transport = parseFloat(formData.transportCharges) || 0
-    const loading = parseFloat(formData.loadingCharges) || 0
-    const commission = parseFloat(formData.commission) || 0
-    const other = parseFloat(formData.otherCharges) || 0
-    return transport + loading + commission + other
-  }
-
-  const calculateDeductions = () => {
-    return parseFloat(formData.deductions) || 0
-  }
-
-  const calculateTotalInvoice = () => {
-    const totalAmount = calculateTotalAmount()
-    const charges = calculateCharges()
-    const deductions = calculateDeductions()
-    return totalAmount + charges - deductions
-  }
-
-  const calculateOutstandingPayment = () => {
-    const totalInvoice = calculateTotalInvoice()
-    const advancePaid = parseFloat(formData.advancePaid) || 0
-    return Math.max(0, totalInvoice - advancePaid)
-  }
-
-  const calculateBalanceAmount = () => {
-    const totalInvoice = calculateTotalInvoice()
-    const totalPaymentReceived = parseFloat(formData.totalPaymentReceived) || 0
-    return Math.max(0, totalInvoice - totalPaymentReceived)
+    } catch { toast.error("Failed to load invoice") }
+    finally { setLoading(false) }
   }
 
   const handleEdit = (sale: ApiSale) => {
     const retailer = retailers.find(r => r.id === sale.retailerId)
-    
-    // Extract bird details from the sale data
-    const quantity = sale.quantity || 0
-    const unitPrice = sale.unitPrice || 0
-    
     setFormData({
       invoiceNumber: sale.invoiceNumber,
+      saleDate: sale.saleDate,
+      retailerId: sale.retailerId || "",
       customerName: sale.customerName,
       ownerName: retailer?.ownerName || "",
       phone: retailer?.phone || "",
       address: retailer?.address || "",
-      saleDate: sale.saleDate,
       saleMode: sale.saleMode || "from_vehicle",
       vehicleId: "",
-      paymentStatus: sale.paymentStatus,
-      notes: sale.notes || "",
-      retailerId: sale.retailerId || "",
-      birdType: "",
-      numberOfCages: "",
-      numberOfBirds: "",
-      ratePerKg: String(unitPrice),
-      averageWeight: "",
+      productType: (sale.productType as any) || "meat",
+      ratePerKg: String(sale.unitPrice || 0),
       transportCharges: String(sale.transportCharges || 0),
       loadingCharges: String(sale.loadingCharges || 0),
       commission: String(sale.commission || 0),
       otherCharges: String(sale.otherCharges || 0),
       deductions: String(sale.mortalityDeduction || 0),
-      advancePaid: "",
-      creditBalance: "",
-      paymentMode: "",
-      totalPaymentReceived: String(sale.amountReceived || 0),
+      paymentStatus: sale.paymentStatus,
+      amountReceived: String(sale.amountReceived || 0),
+      notes: sale.notes || "",
     })
     setEditingId(sale.id)
     setShowDialog(true)
@@ -276,23 +220,23 @@ export default function SalesPage() {
 
   const handleSave = async () => {
     if (!formData.invoiceNumber || !formData.customerName) {
-      toast.error("Please fill all required fields")
+      toast.error("Invoice number and customer name are required")
       return
     }
-
+    const validRows = customerRows.filter(r => r.customerName && parseFloat(r.weight) > 0)
+    if (validRows.length === 0) {
+      toast.error("Add at least one customer row with weight")
+      return
+    }
     try {
       setLoading(true)
-
-      // Calculate total weight from bird details
-      const totalWeight = calculateTotalWeight()
-
       const saleData = {
         invoiceNumber: formData.invoiceNumber,
         customerName: formData.customerName,
         saleDate: formData.saleDate,
         saleMode: formData.saleMode,
-        productType: "meat" as const, // Default to meat for bird sales
-        quantity: String(totalWeight), // Total weight as quantity (string)
+        productType: formData.productType,
+        quantity: String(totalWeight),
         unit: "kg",
         unitPrice: formData.ratePerKg || "0",
         transportCharges: formData.transportCharges || "0",
@@ -303,119 +247,62 @@ export default function SalesPage() {
         mortalityDeduction: formData.deductions || "0",
         otherDeduction: "0",
         paymentStatus: formData.paymentStatus,
-        amountReceived: formData.totalPaymentReceived || "0",
+        amountReceived: formData.amountReceived || "0",
         notes: formData.notes,
         retailerId: formData.retailerId || undefined,
+        // Extra fields for bulk entry
+        totalBirds,
+        totalWeight,
+        customerRows: validRows.map(r => ({
+          customerName: r.customerName,
+          numBirds: parseInt(r.numBirds) || 0,
+          weight: parseFloat(r.weight) || 0,
+          ratePerKg: rate,
+        })),
       }
-
       if (editingId) {
         await salesApi.update(editingId, saleData)
-        toast.success("Sale updated successfully")
+        toast.success("Sale updated")
       } else {
         await salesApi.create(saleData)
-        toast.success("Sale created successfully")
+        toast.success("Sale created")
       }
-
-      await fetchSales()
-      await fetchInvoiceList()
-      resetForm()
-      setShowDialog(false)
-    } catch (error: any) {
-      console.error("Failed to save sale:", error)
-      toast.error(error.message || "Failed to save sale")
-    } finally {
-      setLoading(false)
-    }
+      await fetchSales(); await fetchInvoiceList()
+      resetForm(); setShowDialog(false)
+    } catch (e: any) {
+      toast.error(e.message || "Failed to save sale")
+    } finally { setLoading(false) }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this sale?")) return
-
+    if (!confirm("Delete this sale?")) return
     try {
       setLoading(true)
       await salesApi.delete(id)
-      toast.success("Sale deleted successfully")
-      await fetchSales()
-      await fetchInvoiceList()
-    } catch (error: any) {
-      console.error("Failed to delete sale:", error)
-      toast.error("Failed to delete sale")
-    } finally {
-      setLoading(false)
-    }
+      toast.success("Sale deleted")
+      await fetchSales(); await fetchInvoiceList()
+    } catch { toast.error("Failed to delete sale") }
+    finally { setLoading(false) }
   }
 
-  // Stats calculations
   const stats = useMemo(() => {
-    if (!Array.isArray(sales) || sales.length === 0) {
-      return {
-        totalSales: 0,
-        totalAmount: 0,
-        totalReceived: 0,
-        totalPending: 0,
-      }
-    }
-
-    const totalSales = sales.reduce((sum, sale) => {
-      const amount = typeof sale.totalAmount === 'number' ? sale.totalAmount : parseFloat(String(sale.totalAmount || 0))
-      return sum + (isNaN(amount) ? 0 : amount)
-    }, 0)
-    
-    const totalReceived = sales.reduce((sum, sale) => {
-      const received = typeof sale.amountReceived === 'number' ? sale.amountReceived : parseFloat(String(sale.amountReceived || 0))
-      return sum + (isNaN(received) ? 0 : received)
-    }, 0)
-    
-    const totalPending = totalSales - totalReceived
-
-    return {
-      totalSales: sales.length,
-      totalAmount: totalSales,
-      totalReceived,
-      totalPending,
-    }
+    const totalAmt = sales.reduce((s, x) => s + (parseFloat(String(x.totalAmount || 0))), 0)
+    const totalRcv = sales.reduce((s, x) => s + (parseFloat(String(x.amountReceived || 0))), 0)
+    return { count: sales.length, totalAmount: totalAmt, totalReceived: totalRcv, totalPending: totalAmt - totalRcv }
   }, [sales])
 
-  // Helper function to safely convert to number
-  const toNumber = (value: any): number => {
-    if (typeof value === 'number') return value
-    if (typeof value === 'string') {
-      const num = parseFloat(value)
-      return isNaN(num) ? 0 : num
-    }
-    return 0
-  }
-
   const filteredSales = useMemo(() => {
-    if (!Array.isArray(sales)) {
-      return []
-    }
-    
-    let filtered = [...sales]
-
+    let f = [...sales]
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      filtered = filtered.filter(
-        (sale) =>
-          sale.invoiceNumber.toLowerCase().includes(query) ||
-          sale.customerName.toLowerCase().includes(query)
-      )
+      const q = searchQuery.toLowerCase()
+      f = f.filter(s => s.invoiceNumber.toLowerCase().includes(q) || s.customerName.toLowerCase().includes(q))
     }
-
     if (dateRangeStart && dateRangeEnd) {
-      const start = new Date(dateRangeStart)
-      const end = new Date(dateRangeEnd)
-      start.setHours(0, 0, 0, 0)
-      end.setHours(23, 59, 59, 999)
-
-      filtered = filtered.filter((sale) => {
-        const saleDate = new Date(sale.saleDate)
-        saleDate.setHours(0, 0, 0, 0)
-        return saleDate >= start && saleDate <= end
-      })
+      const s = new Date(dateRangeStart); s.setHours(0,0,0,0)
+      const e = new Date(dateRangeEnd); e.setHours(23,59,59,999)
+      f = f.filter(x => { const d = new Date(x.saleDate); return d >= s && d <= e })
     }
-
-    return filtered
+    return f
   }, [sales, searchQuery, dateRangeStart, dateRangeEnd])
 
   if (!mounted) return null
@@ -423,6 +310,7 @@ export default function SalesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Sales Tracking</h1>
@@ -430,598 +318,350 @@ export default function SalesPage() {
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}>
-                <Plus className="mr-2" size={20} />
-                Add New Sale
-              </Button>
+              <Button onClick={resetForm}><Plus className="mr-2" size={20} />Add New Sale</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="dialog-description">
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Edit Sale" : "Add New Sale"}</DialogTitle>
-                <p id="dialog-description" className="sr-only">
-                  {editingId ? "Edit sale details" : "Enter sale details"}
-                </p>
               </DialogHeader>
 
               <div className="space-y-5">
-                {/* Section 1: Header Information */}
-                <Card className="border-blue-200 shadow-sm">
+                {/* Section 1: Header */}
+                <Card className="border-blue-200">
                   <CardHeader className="bg-blue-50 border-b border-blue-100">
                     <CardTitle className="text-blue-900">Section 1: Header Information</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-5 pt-6">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2.5">
-                        <Label>Sale Invoice No. *</Label>
-                        <Select
-                          value={editingId || "new"}
-                          onValueChange={(value) => {
-                            if (value === "new") {
-                              resetForm()
-                            } else {
-                              handleInvoiceSelect(value)
-                            }
-                          }}
-                          disabled={loading}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select existing or create new" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="new">
-                              <span className="font-semibold text-green-600">+ Create New Invoice</span>
-                            </SelectItem>
-                            {Array.isArray(invoiceList) && invoiceList.map((invoice) => (
-                              <SelectItem key={invoice.id} value={invoice.id}>
-                                {invoice.invoiceNumber} - {invoice.customerName} ({invoice.saleDate})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {(!editingId || editingId === "new") && (
-                          <div className="flex mt-2">
-                            <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                              SI-
-                            </span>
-                            <Input
-                              value={formData.invoiceNumber.replace('SI-', '')}
-                              onChange={(e) => setFormData({ ...formData, invoiceNumber: 'SI-' + e.target.value })}
-                              placeholder="e.g. 001, 002"
-                              className="rounded-l-none"
-                              disabled={loading}
-                            />
-                          </div>
-                        )}
+                  <CardContent className="space-y-4 pt-5">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Invoice No. *</Label>
+                        <div className="flex">
+                          <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">SI-</span>
+                          <Input value={formData.invoiceNumber.replace('SI-','')}
+                            onChange={e => setFormData(f => ({ ...f, invoiceNumber: 'SI-' + e.target.value }))}
+                            placeholder="001" className="rounded-l-none" />
+                        </div>
                       </div>
-                      <div className="space-y-2.5">
+                      <div className="space-y-2">
                         <Label>Sale Date *</Label>
-                        <DatePicker
-                          value={formData.saleDate}
-                          onChange={(date) => setFormData({ ...formData, saleDate: date })}
-                          disabled={loading}
-                        />
+                        <DatePicker value={formData.saleDate} onChange={d => setFormData(f => ({ ...f, saleDate: d }))} />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2.5">
-                        <Label>Shop Name *</Label>
-                        <Select
-                          value={formData.retailerId}
-                          onValueChange={handleRetailerChange}
-                          disabled={loading}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder={`Select shop (${retailers.length} available)`} />
-                          </SelectTrigger>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Shop / Retailer *</Label>
+                        <Select value={formData.retailerId} onValueChange={handleRetailerChange}>
+                          <SelectTrigger><SelectValue placeholder="Select shop" /></SelectTrigger>
                           <SelectContent>
-                            {Array.isArray(retailers) && retailers.length > 0 ? (
-                              retailers.map((retailer) => (
-                                <SelectItem key={retailer.id} value={retailer.id}>
-                                  {retailer.name}
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="no-retailers" disabled>
-                                No retailers available
-                              </SelectItem>
-                            )}
+                            {retailers.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2.5">
+                      <div className="space-y-2">
                         <Label>Owner Name</Label>
-                        <Input
-                          value={formData.ownerName}
-                          placeholder="Auto-filled"
-                          disabled
-                          className="bg-gray-50"
-                        />
+                        <Input value={formData.ownerName} disabled className="bg-gray-50" />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2.5">
-                        <Label>Phone</Label>
-                        <Input
-                          value={formData.phone}
-                          placeholder="Auto-filled"
-                          disabled
-                          className="bg-gray-50"
-                        />
-                      </div>
-                      <div className="space-y-2.5">
-                        <Label>Address</Label>
-                        <Input
-                          value={formData.address}
-                          placeholder="Auto-filled"
-                          disabled
-                          className="bg-gray-50"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2.5">
-                        <Label>Sale Mode *</Label>
-                        <Select
-                          value={formData.saleMode}
-                          onValueChange={(value: any) => setFormData({ ...formData, saleMode: value })}
-                          disabled={loading}
-                        >
-                          <SelectTrigger className="w-[250px]">
-                            <SelectValue />
-                          </SelectTrigger>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Sale Mode</Label>
+                        <Select value={formData.saleMode} onValueChange={(v: any) => setFormData(f => ({ ...f, saleMode: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="from_vehicle">From Vehicle</SelectItem>
                             <SelectItem value="from_godown">From Godown</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2.5">
-                        <Label>Vehicle No</Label>
-                        <Select
-                          value={formData.vehicleId}
-                          onValueChange={(value) => setFormData({ ...formData, vehicleId: value })}
-                          disabled={loading}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select vehicle" />
-                          </SelectTrigger>
+                      <div className="space-y-2">
+                        <Label>Vehicle</Label>
+                        <Select value={formData.vehicleId} onValueChange={v => setFormData(f => ({ ...f, vehicleId: v }))}>
+                          <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
                           <SelectContent>
-                            {Array.isArray(vehicles) && vehicles.map((vehicle) => (
-                              <SelectItem key={vehicle.id} value={vehicle.id}>
-                                {vehicle.vehicleNumber}
-                              </SelectItem>
-                            ))}
+                            {vehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.vehicleNumber}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      <Label>Sale Payment *</Label>
-                      <Select
-                        value={formData.paymentStatus}
-                        onValueChange={(value: any) => setFormData({ ...formData, paymentStatus: value })}
-                        disabled={loading}
-                      >
-                        <SelectTrigger className="w-[200px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="paid">Paid</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="partial">Partial</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      <Label>Notes</Label>
-                      <Textarea
-                        value={formData.notes}
-                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                        placeholder="Additional notes"
-                        rows={3}
-                        disabled={loading}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Section 2: Bird Details */}
-                <Card className="border-green-200 shadow-sm">
-                  <CardHeader className="bg-green-50 border-b border-green-100">
-                    <CardTitle className="text-green-900">Section 2: Bird Details</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-5 pt-6">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2.5">
-                        <Label>Bird Type</Label>
-                        <Select
-                          value={formData.birdType}
-                          onValueChange={(value) => setFormData({ ...formData, birdType: value })}
-                          disabled={loading}
-                        >
-                          <SelectTrigger className="w-[250px]">
-                            <SelectValue placeholder="Select bird type" />
-                          </SelectTrigger>
+                      <div className="space-y-2">
+                        <Label>Product Type</Label>
+                        <Select value={formData.productType} onValueChange={(v: any) => setFormData(f => ({ ...f, productType: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="broiler">Broiler</SelectItem>
-                            <SelectItem value="layer">Layer</SelectItem>
-                            <SelectItem value="desi">Desi</SelectItem>
+                            <SelectItem value="meat">Meat</SelectItem>
+                            <SelectItem value="eggs">Eggs</SelectItem>
+                            <SelectItem value="chicks">Chicks</SelectItem>
                             <SelectItem value="other">Other</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2.5">
-                        <Label>Number of Cages *</Label>
-                        <Input
-                          type="number"
-                          value={formData.numberOfCages}
-                          onChange={(e) => setFormData({ ...formData, numberOfCages: e.target.value })}
-                          placeholder="0"
-                          disabled={loading}
-                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Payment Status</Label>
+                        <Select value={formData.paymentStatus} onValueChange={(v: any) => setFormData(f => ({ ...f, paymentStatus: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="paid">Paid</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="partial">Partial</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Notes</Label>
+                        <Input value={formData.notes} onChange={e => setFormData(f => ({ ...f, notes: e.target.value }))} placeholder="Optional" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Section 2: Customer Rows */}
+                <Card className="border-green-200">
+                  <CardHeader className="bg-green-50 border-b border-green-100">
+                    <div className="flex justify-between items-center">
+                      <CardTitle className="text-green-900">Section 2: Customer Details</CardTitle>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setShowPasteBox(v => !v)}>
+                          <ClipboardPaste size={16} className="mr-1" /> Paste from Excel/WhatsApp
+                        </Button>
+                        <Button size="sm" onClick={addRow}><Plus size={16} className="mr-1" /> Add Row</Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-4 space-y-3">
+                    {/* Rate input */}
+                    <div className="flex items-center gap-4">
+                      <div className="space-y-1 w-48">
+                        <Label>Rate per KG *</Label>
+                        <Input type="number" step="0.01" value={formData.ratePerKg}
+                          onChange={e => setFormData(f => ({ ...f, ratePerKg: e.target.value }))}
+                          placeholder="e.g. 146" />
+                      </div>
+                      <div className="text-sm text-muted-foreground mt-5">
+                        All amounts auto-calculate from this rate
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2.5">
-                        <Label>Number of Birds</Label>
-                        <Input
-                          type="number"
-                          value={formData.numberOfBirds}
-                          onChange={(e) => setFormData({ ...formData, numberOfBirds: e.target.value })}
-                          placeholder="0"
-                          disabled={loading}
-                        />
+                    {/* Paste box */}
+                    {showPasteBox && (
+                      <div className="border rounded-lg p-3 bg-yellow-50 space-y-2">
+                        <p className="text-sm font-medium">Paste data below (Name, Birds, Weight per line):</p>
+                        <p className="text-xs text-muted-foreground">Format: <code>Akka  2  3.450</code> or <code>Akka,2,3.450</code></p>
+                        <Textarea ref={pasteRef} value={pasteText} onChange={e => setPasteText(e.target.value)}
+                          placeholder={"Akka\t2\t3.450\nAlim\t24\t51.500\n..."} rows={6} className="font-mono text-sm" />
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={handlePaste}>Parse & Fill Rows</Button>
+                          <Button size="sm" variant="outline" onClick={() => { setShowPasteBox(false); setPasteText("") }}>Cancel</Button>
+                        </div>
                       </div>
-                      <div className="space-y-2.5">
-                        <Label>Rate per Kg *</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.ratePerKg}
-                          onChange={(e) => setFormData({ ...formData, ratePerKg: e.target.value })}
-                          placeholder="0.00"
-                          disabled={loading}
-                        />
-                      </div>
-                    </div>
+                    )}
 
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2.5">
-                        <Label>Average Weight (Kg)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.averageWeight}
-                          onChange={(e) => setFormData({ ...formData, averageWeight: e.target.value })}
-                          placeholder="0.00"
-                          disabled={loading}
-                        />
-                      </div>
-                      <div className="space-y-2.5">
-                        <Label>Total Weight</Label>
-                        <Input
-                          value={calculateTotalWeight().toFixed(2)}
-                          placeholder="Auto-calculated"
-                          disabled
-                          className="bg-gray-50"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      <Label>Total Amount</Label>
-                      <Input
-                        value={`₹${calculateTotalAmount().toFixed(2)}`}
-                        placeholder="Auto-calculated"
-                        disabled
-                        className="bg-gray-50 text-lg font-semibold"
-                      />
+                    {/* Customer table */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-gray-50">
+                            <th className="text-left p-2 w-8">#</th>
+                            <th className="text-left p-2">Customer Name</th>
+                            <th className="text-left p-2 w-24">Birds</th>
+                            <th className="text-left p-2 w-28">Weight (kg)</th>
+                            <th className="text-right p-2 w-28">Amount</th>
+                            <th className="p-2 w-8"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {customerRows.map((row, i) => (
+                            <tr key={row.id} className="border-b hover:bg-gray-50">
+                              <td className="p-1 text-muted-foreground text-xs">{i + 1}</td>
+                              <td className="p-1">
+                                <Input value={row.customerName}
+                                  onChange={e => updateRow(row.id, 'customerName', e.target.value)}
+                                  placeholder="Name" className="h-8 text-sm" />
+                              </td>
+                              <td className="p-1">
+                                <Input type="number" value={row.numBirds}
+                                  onChange={e => updateRow(row.id, 'numBirds', e.target.value)}
+                                  placeholder="0" className="h-8 text-sm" />
+                              </td>
+                              <td className="p-1">
+                                <Input type="number" step="0.001" value={row.weight}
+                                  onChange={e => updateRow(row.id, 'weight', e.target.value)}
+                                  placeholder="0.000" className="h-8 text-sm" />
+                              </td>
+                              <td className="p-1 text-right font-medium">
+                                {row.amount > 0 ? row.amount.toFixed(0) : '-'}
+                              </td>
+                              <td className="p-1">
+                                {customerRows.length > 1 && (
+                                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-500"
+                                    onClick={() => removeRow(row.id)}><X size={14} /></Button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 bg-green-50 font-semibold">
+                            <td className="p-2" colSpan={2}>TOTAL</td>
+                            <td className="p-2">{totalBirds}</td>
+                            <td className="p-2">{totalWeight.toFixed(3)}</td>
+                            <td className="p-2 text-right">{totalAmount.toFixed(0)}</td>
+                            <td></td>
+                          </tr>
+                          <tr className="bg-gray-50 text-xs text-muted-foreground">
+                            <td className="p-2" colSpan={2}>Avg Weight per Bird</td>
+                            <td className="p-2" colSpan={4}>{avgWeight > 0 ? avgWeight.toFixed(3) + ' kg' : '-'} (auto)</td>
+                          </tr>
+                        </tfoot>
+                      </table>
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Section 3: Charges */}
-                <Card className="border-orange-200 shadow-sm">
+                <Card className="border-orange-200">
                   <CardHeader className="bg-orange-50 border-b border-orange-100">
-                    <CardTitle className="text-orange-900">Section 3: Charges</CardTitle>
+                    <CardTitle className="text-orange-900">Section 3: Charges & Deductions</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-5 pt-6">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2.5">
+                  <CardContent className="space-y-4 pt-5">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
                         <Label>Transport Charges</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.transportCharges}
-                          onChange={(e) => setFormData({ ...formData, transportCharges: e.target.value })}
-                          placeholder="0.00"
-                          disabled={loading}
-                        />
+                        <Input type="number" step="0.01" value={formData.transportCharges}
+                          onChange={e => setFormData(f => ({ ...f, transportCharges: e.target.value }))} placeholder="0.00" />
                       </div>
-                      <div className="space-y-2.5">
+                      <div className="space-y-2">
                         <Label>Loading Charges</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.loadingCharges}
-                          onChange={(e) => setFormData({ ...formData, loadingCharges: e.target.value })}
-                          placeholder="0.00"
-                          disabled={loading}
-                        />
+                        <Input type="number" step="0.01" value={formData.loadingCharges}
+                          onChange={e => setFormData(f => ({ ...f, loadingCharges: e.target.value }))} placeholder="0.00" />
                       </div>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2.5">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
                         <Label>Commission</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.commission}
-                          onChange={(e) => setFormData({ ...formData, commission: e.target.value })}
-                          placeholder="0.00"
-                          disabled={loading}
-                        />
+                        <Input type="number" step="0.01" value={formData.commission}
+                          onChange={e => setFormData(f => ({ ...f, commission: e.target.value }))} placeholder="0.00" />
                       </div>
-                      <div className="space-y-2.5">
+                      <div className="space-y-2">
                         <Label>Other Charges</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.otherCharges}
-                          onChange={(e) => setFormData({ ...formData, otherCharges: e.target.value })}
-                          placeholder="0.00"
-                          disabled={loading}
-                        />
+                        <Input type="number" step="0.01" value={formData.otherCharges}
+                          onChange={e => setFormData(f => ({ ...f, otherCharges: e.target.value }))} placeholder="0.00" />
                       </div>
                     </div>
-
-                    <div className="border-t pt-4">
-                      <Label className="text-base font-semibold mb-3 block">Deductions</Label>
-                      <div className="space-y-2.5">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.deductions}
-                          onChange={(e) => setFormData({ ...formData, deductions: e.target.value })}
-                          placeholder="0.00"
-                          disabled={loading}
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label>Deductions</Label>
+                      <Input type="number" step="0.01" value={formData.deductions}
+                        onChange={e => setFormData(f => ({ ...f, deductions: e.target.value }))} placeholder="0.00" />
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Section 4: Payment */}
-                <Card className="border-purple-200 shadow-sm">
+                {/* Section 4: Payment Summary */}
+                <Card className="border-purple-200">
                   <CardHeader className="bg-purple-50 border-b border-purple-100">
-                    <CardTitle className="text-purple-900">Section 4: Payment</CardTitle>
+                    <CardTitle className="text-purple-900">Section 4: Payment Summary</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-5 pt-6">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2.5">
-                        <Label>Total Invoice</Label>
-                        <Input
-                          value={`₹${calculateTotalInvoice().toFixed(2)}`}
-                          placeholder="Auto-calculated"
-                          disabled
-                          className="bg-gray-50"
-                        />
+                  <CardContent className="space-y-4 pt-5">
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="bg-gray-50 rounded p-3">
+                        <div className="text-muted-foreground">Gross Amount</div>
+                        <div className="text-xl font-bold">{grossAmount.toFixed(2)}</div>
                       </div>
-                      <div className="space-y-2.5">
-                        <Label>Advance Paid</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.advancePaid}
-                          onChange={(e) => setFormData({ ...formData, advancePaid: e.target.value })}
-                          placeholder="0.00"
-                          disabled={loading}
-                        />
+                      <div className="bg-gray-50 rounded p-3">
+                        <div className="text-muted-foreground">Net Amount</div>
+                        <div className="text-xl font-bold text-green-700">{netAmount.toFixed(2)}</div>
+                      </div>
+                      <div className="bg-gray-50 rounded p-3">
+                        <div className="text-muted-foreground">Balance</div>
+                        <div className={`text-xl font-bold ${balance > 0 ? 'text-red-600' : 'text-green-600'}`}>{balance.toFixed(2)}</div>
                       </div>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2.5">
-                        <Label>Credit Balance</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.creditBalance}
-                          onChange={(e) => setFormData({ ...formData, creditBalance: e.target.value })}
-                          placeholder="0.00"
-                          disabled={loading}
-                        />
-                      </div>
-                      <div className="space-y-2.5">
-                        <Label>Outstanding Payment</Label>
-                        <Input
-                          value={`₹${calculateOutstandingPayment().toFixed(2)}`}
-                          placeholder="Auto-calculated"
-                          disabled
-                          className="bg-gray-50"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2.5">
-                        <Label>Payment Mode</Label>
-                        <Select
-                          value={formData.paymentMode}
-                          onValueChange={(value) => setFormData({ ...formData, paymentMode: value })}
-                          disabled={loading}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select payment mode" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="cash">Cash</SelectItem>
-                            <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                            <SelectItem value="check">Check</SelectItem>
-                            <SelectItem value="credit_card">Credit Card</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2.5">
-                        <Label>Total Payment Received</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.totalPaymentReceived}
-                          onChange={(e) => setFormData({ ...formData, totalPaymentReceived: e.target.value })}
-                          placeholder="0.00"
-                          disabled={loading}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      <Label>Balance Amount</Label>
-                      <Input
-                        value={`₹${calculateBalanceAmount().toFixed(2)}`}
-                        placeholder="Auto-calculated"
-                        disabled
-                        className="bg-gray-50"
-                      />
+                    <div className="space-y-2">
+                      <Label>Amount Received</Label>
+                      <Input type="number" step="0.01" value={formData.amountReceived}
+                        onChange={e => setFormData(f => ({ ...f, amountReceived: e.target.value }))} placeholder="0.00" />
                     </div>
                   </CardContent>
                 </Card>
 
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleSave} disabled={loading} className="bg-green-600 hover:bg-green-700">
-                    {loading ? "Saving..." : editingId ? "Update Sale" : "Add Sale"}
-                  </Button>
+                <div className="flex justify-end gap-3 pt-2">
+                  <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
+                  <Button onClick={handleSave} disabled={loading}>{loading ? "Saving..." : editingId ? "Update Sale" : "Save Sale"}</Button>
                 </div>
               </div>
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Sales</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalSales}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Amount</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">₹{(stats.totalAmount || 0).toFixed(2)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Received</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">₹{(stats.totalReceived || 0).toFixed(2)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Pending</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">₹{(stats.totalPending || 0).toFixed(2)}</div>
-            </CardContent>
-          </Card>
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-4">
+          {[
+            { label: "Total Sales", value: stats.count, color: "blue" },
+            { label: "Total Amount", value: `₹${stats.totalAmount.toLocaleString()}`, color: "green" },
+            { label: "Received", value: `₹${stats.totalReceived.toLocaleString()}`, color: "purple" },
+            { label: "Pending", value: `₹${stats.totalPending.toLocaleString()}`, color: "red" },
+          ].map(s => (
+            <Card key={s.label}>
+              <CardContent className="pt-4">
+                <div className="text-sm text-muted-foreground">{s.label}</div>
+                <div className="text-2xl font-bold">{s.value}</div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {/* Filters */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <Input
-                  placeholder="Search by invoice number or customer name..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <DateRangeFilter
-                startDate={dateRangeStart}
-                endDate={dateRangeEnd}
-                onDateRangeChange={(start, end) => {
-                  setDateRangeStart(start)
-                  setDateRangeEnd(end)
-                }}
-              />
-              <div className="flex gap-2">
-                <Button variant="outline" size="icon">
-                  <Download size={20} />
-                </Button>
-                <Button variant="outline" size="icon">
-                  <Printer size={20} />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex gap-4 items-center">
+          <Input placeholder="Search by invoice or customer..." value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)} className="max-w-xs" />
+          <DateRangeFilter startDate={dateRangeStart} endDate={dateRangeEnd}
+            onDateRangeChange={(s, e) => { setDateRangeStart(s); setDateRangeEnd(e) }} />
+        </div>
 
-        {/* Sales Table */}
+        {/* Table */}
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Invoice No</TableHead>
-                  <TableHead>Customer</TableHead>
+                  <TableHead>Invoice</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead>Customer</TableHead>
                   <TableHead>Mode</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Received</TableHead>
+                  <TableHead className="text-right">Total Wt</TableHead>
+                  <TableHead className="text-right">Rate</TableHead>
+                  <TableHead className="text-right">Net Amount</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredSales.map((sale) => (
+                {loading ? (
+                  <TableRow><TableCell colSpan={9} className="text-center py-8">Loading...</TableCell></TableRow>
+                ) : filteredSales.length === 0 ? (
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No sales found</TableCell></TableRow>
+                ) : filteredSales.map(sale => (
                   <TableRow key={sale.id}>
                     <TableCell className="font-medium">{sale.invoiceNumber}</TableCell>
+                    <TableCell>{sale.saleDate}</TableCell>
                     <TableCell>{sale.customerName}</TableCell>
-                    <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
+                    <TableCell><span className="text-xs bg-gray-100 px-2 py-1 rounded">{sale.saleMode?.replace('_', ' ')}</span></TableCell>
+                    <TableCell className="text-right">{parseFloat(String(sale.quantity || 0)).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{parseFloat(String(sale.unitPrice || 0)).toFixed(0)}</TableCell>
+                    <TableCell className="text-right font-medium">{parseFloat(String(sale.netAmount || 0)).toLocaleString()}</TableCell>
                     <TableCell>
-                      <span className="capitalize">{sale.saleMode?.replace('_', ' ')}</span>
+                      <span className={`text-xs px-2 py-1 rounded font-medium ${
+                        sale.paymentStatus === 'paid' ? 'bg-green-100 text-green-700' :
+                        sale.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-red-100 text-red-700'}`}>{sale.paymentStatus}</span>
                     </TableCell>
-                    <TableCell className="text-right">₹{toNumber(sale.totalAmount).toFixed(2)}</TableCell>
-                    <TableCell className="text-right">₹{toNumber(sale.amountReceived).toFixed(2)}</TableCell>
                     <TableCell>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs ${
-                          sale.paymentStatus === "paid"
-                            ? "bg-green-100 text-green-800"
-                            : sale.paymentStatus === "partial"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {sale.paymentStatus}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(sale)}>
-                          <Edit2 size={16} />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(sale.id)}>
-                          <Trash2 size={16} />
-                        </Button>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => handleEdit(sale)}><Edit2 size={14} /></Button>
+                        <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDelete(sale.id)}><Trash2 size={14} /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
