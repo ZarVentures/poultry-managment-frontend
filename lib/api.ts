@@ -1,5 +1,5 @@
 // API Configuration and Utilities
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://13.234.140.190:3001/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
 // Get auth token from localStorage
 const getAuthToken = () => {

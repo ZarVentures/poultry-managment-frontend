@@ -15,3 +15,8 @@ frontend:
     paths:
       - node_modules/**/*
       - .next/cache/**/*
+  customHeaders:
+    - pattern: '/api/v1/**'
+      headers:
+        - key: 'Access-Control-Allow-Origin'
+          value: '*'
