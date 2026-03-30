@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, ClipboardPaste, X, Printer } from "lucide-react"
+import { Plus, Edit2, Trash2, ClipboardPaste, X, Printer, Eye, Paperclip } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
@@ -75,6 +75,14 @@ export default function SalesPage() {
   const [showPasteBox, setShowPasteBox] = useState(false)
   const [printSale, setPrintSale] = useState<ApiSale | null>(null)
   const [printRows, setPrintRows] = useState<CustomerRow[]>([])
+  // File upload
+  const [saleFile, setSaleFile] = useState<File | null>(null)
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const saleFileRef = useRef<HTMLInputElement>(null)
+  // Preview modal
+  const [previewSale, setPreviewSale] = useState<ApiSale | null>(null)
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewTab, setPreviewTab] = useState<"invoice" | "attachment">("invoice")
 
   useEffect(() => {
     setMounted(true)
@@ -176,6 +184,7 @@ export default function SalesPage() {
     })
     setCustomerRows([emptyRow()])
     setEditingId(null)
+    setSaleFile(null)
   }
 
   const handleRetailerChange = (id: string) => {
@@ -274,8 +283,18 @@ export default function SalesPage() {
         await salesApi.update(editingId, saleData)
         toast.success("Sale updated")
       } else {
-        await salesApi.create(saleData)
+        const saved = await salesApi.create(saleData)
         toast.success("Sale created")
+        // Upload file if selected
+        if (saleFile && saved?.id) {
+          try {
+            setUploadingFile(true)
+            await salesApi.uploadAttachment(saved.id, saleFile)
+            toast.success("Attachment uploaded")
+          } catch (err: any) {
+            toast.error("Sale saved but file upload failed: " + err.message)
+          } finally { setUploadingFile(false) }
+        }
       }
       await fetchSales(); await fetchInvoiceList()
       resetForm(); setShowDialog(false)
@@ -443,6 +462,28 @@ export default function SalesPage() {
                       <div className="space-y-2">
                         <Label>Notes</Label>
                         <Input value={formData.notes} onChange={e => setFormData(f => ({ ...f, notes: e.target.value }))} placeholder="Optional" />
+                      </div>
+                    </div>
+
+                    {/* File attachment */}
+                    <div className="space-y-2">
+                      <Label>Attach Sales Sheet (PDF/JPG/PNG)</Label>
+                      <div className="flex items-center gap-3">
+                        <input ref={saleFileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
+                          onChange={e => setSaleFile(e.target.files?.[0] || null)} />
+                        <Button type="button" variant="outline" size="sm" onClick={() => saleFileRef.current?.click()} disabled={loading}>
+                          <Paperclip size={14} className="mr-1" /> Choose File
+                        </Button>
+                        {saleFile && (
+                          <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-1 rounded">
+                            <Paperclip size={12} />
+                            <span>{saleFile.name}</span>
+                            <button onClick={() => setSaleFile(null)} className="text-red-500 hover:text-red-700"><X size={12} /></button>
+                          </div>
+                        )}
+                        {editingId && sales.find(s => s.id === editingId)?.saleAttachment && !saleFile && (
+                          <span className="text-xs text-blue-600">✓ Sheet already attached</span>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -690,6 +731,7 @@ export default function SalesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
+                        <Button size="sm" variant="ghost" title="Preview" onClick={() => { setPreviewSale(sale); setPreviewTab("invoice"); setShowPreview(true) }}><Eye size={14} /></Button>
                         <Button size="sm" variant="ghost" onClick={() => handleEdit(sale)}><Edit2 size={14} /></Button>
                         <Button size="sm" variant="ghost" onClick={() => handlePrint(sale)} title="Print Invoice"><Printer size={14} /></Button>
                         <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDelete(sale.id)}><Trash2 size={14} /></Button>
@@ -702,6 +744,139 @@ export default function SalesPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Sale Preview Modal ── */}
+      {showPreview && previewSale && (() => {
+        const backendBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'https://13.234.140.190.nip.io'
+        let rows: CustomerRow[] = []
+        try {
+          const parsed = JSON.parse(previewSale.notes || "")
+          if (Array.isArray(parsed?.customerRows)) {
+            rows = parsed.customerRows.map((r: any) => ({
+              id: Math.random().toString(36).slice(2),
+              customerName: r.customerName || "",
+              numBirds: String(r.numBirds || ""),
+              weight: String(r.weight || ""),
+              amount: (parseFloat(r.weight) || 0) * (parseFloat(r.ratePerKg) || parseFloat(String(previewSale.unitPrice)) || 0),
+            }))
+          }
+        } catch {}
+        const totalW = rows.reduce((s, r) => s + (parseFloat(r.weight) || 0), 0) || parseFloat(String(previewSale.quantity || 0))
+        const totalB = rows.reduce((s, r) => s + (parseInt(r.numBirds) || 0), 0)
+        const isImage = previewSale.saleAttachment && /\.(jpg|jpeg|png)$/i.test(previewSale.saleAttachment)
+        const isPdf = previewSale.saleAttachment && /\.pdf$/i.test(previewSale.saleAttachment)
+        return (
+          <Dialog open={true} onOpenChange={() => setShowPreview(false)}>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Sale Preview — {previewSale.invoiceNumber}</DialogTitle>
+              </DialogHeader>
+              {/* Tabs */}
+              <div className="flex border-b mb-4">
+                <button className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${previewTab === "invoice" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500"}`}
+                  onClick={() => setPreviewTab("invoice")}>📄 System Invoice</button>
+                <button className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${previewTab === "attachment" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500"}`}
+                  onClick={() => setPreviewTab("attachment")}>📎 Attached Sheet</button>
+              </div>
+
+              {previewTab === "invoice" && (
+                <div className="p-4 border rounded bg-white text-sm space-y-4">
+                  <div className="text-center">
+                    <h2 className="text-xl font-bold">AZIZ POULTRY</h2>
+                    <p className="text-xs text-gray-500">Sale Invoice / Challan</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-xs border p-3 rounded">
+                    <div><span className="font-semibold">Invoice No:</span> {previewSale.invoiceNumber}</div>
+                    <div><span className="font-semibold">Date:</span> {previewSale.saleDate}</div>
+                    <div><span className="font-semibold">Customer:</span> {previewSale.customerName}</div>
+                    <div><span className="font-semibold">Mode:</span> {previewSale.saleMode?.replace('_', ' ')}</div>
+                    <div><span className="font-semibold">Product:</span> {previewSale.productType}</div>
+                    <div><span className="font-semibold">Payment:</span> {previewSale.paymentStatus}</div>
+                  </div>
+                  {rows.length > 0 && (
+                    <table className="w-full border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border border-gray-400 px-2 py-1 text-left">S.N.</th>
+                          <th className="border border-gray-400 px-2 py-1 text-left">Customer</th>
+                          <th className="border border-gray-400 px-2 py-1 text-right">Birds</th>
+                          <th className="border border-gray-400 px-2 py-1 text-right">Kgs</th>
+                          <th className="border border-gray-400 px-2 py-1 text-right">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((r, i) => (
+                          <tr key={i}>
+                            <td className="border border-gray-400 px-2 py-1">{i + 1}</td>
+                            <td className="border border-gray-400 px-2 py-1">{r.customerName}</td>
+                            <td className="border border-gray-400 px-2 py-1 text-right">{r.numBirds || "-"}</td>
+                            <td className="border border-gray-400 px-2 py-1 text-right">{parseFloat(r.weight).toFixed(3)}</td>
+                            <td className="border border-gray-400 px-2 py-1 text-right">₹{r.amount.toFixed(0)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                  <div className="border p-3 rounded text-xs space-y-1">
+                    <div className="grid grid-cols-2 gap-x-8">
+                      <div><span className="font-semibold">Total Birds:</span> {totalB || "-"}</div>
+                      <div><span className="font-semibold">Total Kgs:</span> {totalW.toFixed(3)}</div>
+                      <div><span className="font-semibold">Rate/Kg:</span> ₹{parseFloat(String(previewSale.unitPrice || 0)).toFixed(2)}</div>
+                      <div><span className="font-semibold">Total Amount:</span> ₹{parseFloat(String(previewSale.totalAmount || 0)).toFixed(2)}</div>
+                    </div>
+                    <div className="border-t pt-2 mt-2 grid grid-cols-2 gap-x-8">
+                      {parseFloat(String(previewSale.transportCharges)) > 0 && <div><span className="font-semibold">Transport:</span> ₹{parseFloat(String(previewSale.transportCharges)).toFixed(2)}</div>}
+                      {parseFloat(String(previewSale.commission)) > 0 && <div><span className="font-semibold">Commission:</span> ₹{parseFloat(String(previewSale.commission)).toFixed(2)}</div>}
+                      <div className="font-bold text-green-700"><span className="font-semibold">Net Amount:</span> ₹{parseFloat(String(previewSale.netAmount || 0)).toFixed(2)}</div>
+                      <div><span className="font-semibold">Received:</span> ₹{parseFloat(String(previewSale.amountReceived || 0)).toFixed(2)}</div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button size="sm" variant="outline" onClick={() => {
+                      const w = window.open('', '_blank')
+                      if (w) {
+                        w.document.write(`<!DOCTYPE html><html><head><title>Sale ${previewSale.invoiceNumber}</title><style>body{font-family:Arial,sans-serif;margin:20px;font-size:12px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #333;padding:4px 6px}th{background:#f0f0f0}@media print{body{margin:10px}}</style></head><body>${document.querySelector('.bg-white.text-sm')?.innerHTML || ''}</body></html>`)
+                        w.document.close(); w.onload = () => w.print()
+                      }
+                    }}><Printer size={14} className="mr-1" /> Print</Button>
+                  </div>
+                </div>
+              )}
+
+              {previewTab === "attachment" && (
+                <div className="p-4 min-h-48">
+                  {previewSale.saleAttachment ? (
+                    <div className="space-y-3">
+                      {isImage && (
+                        <img src={`${backendBase}${previewSale.saleAttachment}`} alt="Sale attachment"
+                          className="max-w-full rounded border shadow" />
+                      )}
+                      {isPdf && (
+                        <div className="text-center py-8">
+                          <p className="text-sm text-gray-600 mb-3">PDF attachment</p>
+                          <a href={`${backendBase}${previewSale.saleAttachment}`} target="_blank" rel="noreferrer"
+                            className="text-blue-600 underline text-sm">Open PDF in new tab</a>
+                        </div>
+                      )}
+                      <div className="text-xs text-gray-500 text-center">
+                        <a href={`${backendBase}${previewSale.saleAttachment}`} target="_blank" rel="noreferrer" className="text-blue-600 underline">
+                          Download / View Full Size
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-gray-400">
+                      <Paperclip size={32} className="mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">No attachment for this sale.</p>
+                      <p className="text-xs mt-1">Edit the sale to add a sheet.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        )
+      })()}
 
       {/* ── Print Invoice (hidden, shown only on print) ── */}
       {printSale && (

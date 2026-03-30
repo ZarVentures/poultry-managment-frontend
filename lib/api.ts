@@ -162,6 +162,7 @@ export interface Sale {
   amountReceived: number;
   notes?: string;
   retailerId?: string;
+  saleAttachment?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -629,6 +630,22 @@ export const salesApi = {
     apiRequest<void>(`/sales/${id}`, {
       method: 'DELETE',
     }),
+
+  uploadAttachment: async (id: string, file: File): Promise<Sale> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${API_BASE_URL}/sales/${id}/upload-attachment`, {
+      method: 'POST',
+      headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+      body: formData,
+    });
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(err || `HTTP ${response.status}`);
+    }
+    return response.json();
+  },
 };
 
 // ============================================
