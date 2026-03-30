@@ -337,3 +337,8 @@
 .react-datepicker__navigation-icon::before {
   border-color: hsl(var(--foreground));
 }
+
+@media print {
+  body > * { display: none !important; }
+  #print-invoice { display: block !important; }
+}

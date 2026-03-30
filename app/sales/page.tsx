@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, ClipboardPaste, X } from "lucide-react"
+import { Plus, Edit2, Trash2, ClipboardPaste, X, Printer } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
@@ -73,6 +73,8 @@ export default function SalesPage() {
   const [customerRows, setCustomerRows] = useState<CustomerRow[]>([emptyRow()])
   const [pasteText, setPasteText] = useState("")
   const [showPasteBox, setShowPasteBox] = useState(false)
+  const [printSale, setPrintSale] = useState<ApiSale | null>(null)
+  const [printRows, setPrintRows] = useState<CustomerRow[]>([])
 
   useEffect(() => {
     setMounted(true)
@@ -248,7 +250,15 @@ export default function SalesPage() {
         otherDeduction: "0",
         paymentStatus: formData.paymentStatus,
         amountReceived: formData.amountReceived || "0",
-        notes: formData.notes,
+        notes: JSON.stringify({
+          text: formData.notes,
+          customerRows: validRows.map(r => ({
+            customerName: r.customerName,
+            numBirds: parseInt(r.numBirds) || 0,
+            weight: parseFloat(r.weight) || 0,
+            ratePerKg: rate,
+          })),
+        }),
         retailerId: formData.retailerId || undefined,
         // Extra fields for bulk entry
         totalBirds,
@@ -283,6 +293,26 @@ export default function SalesPage() {
       await fetchSales(); await fetchInvoiceList()
     } catch { toast.error("Failed to delete sale") }
     finally { setLoading(false) }
+  }
+
+  const handlePrint = (sale: ApiSale) => {
+    // Try to parse customer rows from notes JSON
+    let rows: CustomerRow[] = []
+    try {
+      const parsed = JSON.parse(sale.notes || "")
+      if (Array.isArray(parsed?.customerRows)) {
+        rows = parsed.customerRows.map((r: any) => ({
+          id: Math.random().toString(36).slice(2),
+          customerName: r.customerName || "",
+          numBirds: String(r.numBirds || ""),
+          weight: String(r.weight || ""),
+          amount: (parseFloat(r.weight) || 0) * (parseFloat(r.ratePerKg) || parseFloat(String(sale.unitPrice)) || 0),
+        }))
+      }
+    } catch { /* no rows stored */ }
+    setPrintRows(rows)
+    setPrintSale(sale)
+    setTimeout(() => window.print(), 100)
   }
 
   const stats = useMemo(() => {
@@ -661,6 +691,7 @@ export default function SalesPage() {
                     <TableCell>
                       <div className="flex gap-1">
                         <Button size="sm" variant="ghost" onClick={() => handleEdit(sale)}><Edit2 size={14} /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => handlePrint(sale)} title="Print Invoice"><Printer size={14} /></Button>
                         <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDelete(sale.id)}><Trash2 size={14} /></Button>
                       </div>
                     </TableCell>
@@ -671,6 +702,68 @@ export default function SalesPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Print Invoice (hidden, shown only on print) ── */}
+      {printSale && (
+        <div id="print-invoice" className="hidden print:block p-6 font-mono text-sm">
+          <div className="flex justify-between mb-2">
+            <div className="text-lg font-bold">{printSale.saleDate}</div>
+            <div className="text-lg font-bold">{printSale.customerName} (Dukan)</div>
+          </div>
+          <table className="w-full border-collapse border border-black text-xs">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-black p-1 text-left">Name</th>
+                <th className="border border-black p-1 text-right">Pcs.</th>
+                <th className="border border-black p-1 text-right">Wt.</th>
+                <th className="border border-black p-1 text-right">Rate</th>
+                <th className="border border-black p-1 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {printRows.length > 0 ? printRows.map((r, i) => (
+                <tr key={i}>
+                  <td className="border border-black p-1">{r.customerName}</td>
+                  <td className="border border-black p-1 text-right">{r.numBirds}</td>
+                  <td className="border border-black p-1 text-right">{parseFloat(r.weight).toFixed(3)}</td>
+                  <td className="border border-black p-1 text-right">{parseFloat(String(printSale.unitPrice)).toFixed(0)}</td>
+                  <td className="border border-black p-1 text-right">{r.amount.toFixed(0)}</td>
+                </tr>
+              )) : (
+                <tr>
+                  <td className="border border-black p-1" colSpan={5}>
+                    Total Weight: {parseFloat(String(printSale.quantity)).toFixed(3)} kg @ {parseFloat(String(printSale.unitPrice)).toFixed(0)}/kg
+                  </td>
+                </tr>
+              )}
+            </tbody>
+            <tfoot>
+              <tr className="font-bold">
+                <td className="border border-black p-1">TOTAL</td>
+                <td className="border border-black p-1 text-right">
+                  {printRows.reduce((s, r) => s + (parseInt(r.numBirds) || 0), 0) || ""}
+                </td>
+                <td className="border border-black p-1 text-right">
+                  {printRows.length > 0
+                    ? printRows.reduce((s, r) => s + (parseFloat(r.weight) || 0), 0).toFixed(3)
+                    : parseFloat(String(printSale.quantity)).toFixed(3)}
+                </td>
+                <td className="border border-black p-1"></td>
+                <td className="border border-black p-1 text-right">
+                  {parseFloat(String(printSale.totalAmount)).toFixed(0)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+          <div className="mt-3 text-xs space-y-1">
+            {parseFloat(String(printSale.transportCharges)) > 0 && <div>Transport: {printSale.transportCharges}</div>}
+            {parseFloat(String(printSale.commission)) > 0 && <div>Commission: {printSale.commission}</div>}
+            <div className="font-bold text-sm mt-2">Net Amount: ₹{parseFloat(String(printSale.netAmount)).toLocaleString()}</div>
+            <div>Payment: {printSale.paymentStatus} | Received: ₹{parseFloat(String(printSale.amountReceived)).toLocaleString()}</div>
+            <div>Invoice: {printSale.invoiceNumber}</div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   )
 }
