@@ -50,9 +50,9 @@ export default function UsersPage() {
     }
   }
 
-  const canCreate = userPermissions?.permissions?.users?.canCreate || false
-  const canDelete = userPermissions?.permissions?.users?.canDelete || false
-  const canUpdate = userPermissions?.permissions?.users?.canUpdate || false
+  const canCreate = userPermissions?.permissions?.users?.canCreate ?? true
+  const canDelete = userPermissions?.permissions?.users?.canDelete ?? true
+  const canUpdate = userPermissions?.permissions?.users?.canUpdate ?? true
 
   const fetchUsers = async () => {
     try {
