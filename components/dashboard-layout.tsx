@@ -193,6 +193,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Top bar */}
         <header className="bg-card border-b border-border px-6 py-4 flex justify-between items-center">
           <h2 className="text-sm text-muted-foreground">Welcome, {user.email}</h2>
+          {/* Staging banner */}
+          {process.env.NEXT_PUBLIC_APP_ENV === 'staging' && (
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 bg-green-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-md tracking-wide">
+              <span className="w-2 h-2 rounded-full bg-white animate-pulse inline-block" />
+              STAGING ENVIRONMENT
+            </div>
+          )}
           <div className="flex items-center gap-4">
             <div className="text-sm text-muted-foreground">Role: {user.role}</div>
           </div>
