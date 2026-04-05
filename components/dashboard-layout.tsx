@@ -8,7 +8,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { motion, AnimatePresence } from "framer-motion"
-import { DevModeProvider, useDevMode } from "@/lib/dev-mode"
+import { useDevMode } from "@/lib/dev-mode"
 import { setDevLogger } from "@/lib/api"
 import {
   BarChart3,
@@ -184,6 +184,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
           <SidebarLink href="/users" icon={Users} label="Users" open={sidebarOpen} />
           <SidebarLink href="/settings" icon={Settings} label="Settings" open={sidebarOpen} />
+          <SidebarLink href="/api-docs" icon={Terminal} label="API Docs" open={sidebarOpen} />
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
