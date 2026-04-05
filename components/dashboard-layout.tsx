@@ -38,11 +38,7 @@ interface User {
 }
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <DevModeProvider>
-      <DashboardLayoutInner>{children}</DashboardLayoutInner>
-    </DevModeProvider>
-  )
+  return <DashboardLayoutInner>{children}</DashboardLayoutInner>
 }
 
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {

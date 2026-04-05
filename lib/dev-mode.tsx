@@ -46,7 +46,7 @@ export function DevModeProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const enableDevMode = useCallback((password: string) => {
-    if (password === DEV_PASSWORD) {
+    if (password.trim() === DEV_PASSWORD) {
       setIsDevMode(true)
       localStorage.setItem(STORAGE_KEY, "true")
       return true
