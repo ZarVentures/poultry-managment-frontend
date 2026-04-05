@@ -8,7 +8,8 @@ import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { motion, AnimatePresence } from "framer-motion"
-import { DevModeProvider, useDevMode, setDevLogger } from "@/lib/dev-mode"
+import { DevModeProvider, useDevMode } from "@/lib/dev-mode"
+import { setDevLogger } from "@/lib/api"
 import {
   BarChart3,
   Users,
