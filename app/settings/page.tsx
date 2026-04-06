@@ -11,7 +11,7 @@ import { AlertCircle, Save, Lock, Bell, Palette } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { settingsApi, type Setting } from "@/lib/api"
 import { toast } from "sonner"
-
+import { useTheme } from "next-themes"
 interface Settings {
   farmName: string
   farmLocation: string
@@ -26,6 +26,7 @@ interface Settings {
 export default function SettingsPage() {
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const { setTheme } = useTheme()
   const [settings, setSettings] = useState<Settings>({
     farmName: "Aziz Poultry Farm",
     farmLocation: "Country, Region",
@@ -86,6 +87,11 @@ export default function SettingsPage() {
       )
       
       await Promise.all(promises)
+      if (formData.theme === "dark") {
+  setTheme("dark")
+} else {
+  setTheme("light")
+}
       
       setSettings(formData)
       setSaved(true)
