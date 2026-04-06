@@ -12,7 +12,7 @@ import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Toolti
 import { toast } from "sonner"
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D']
-const API_URL = 'https://chickenbackend.onrender.com/api/v1'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://13.234.140.190.nip.io/api/v1'
 
 type ViewMode = 'table' | 'chart' | 'pie'
 
