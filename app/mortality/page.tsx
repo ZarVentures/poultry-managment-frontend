@@ -519,9 +519,7 @@ export default function MortalityPage() {
                     <Input
                       value={formData.farmerName}
                       onChange={(e) => setFormData({ ...formData, farmerName: e.target.value })}
-                      placeholder="Auto-fill from purchase invoice"
-                      readOnly
-                      className="bg-muted"
+                      placeholder="Farmer name"
                     />
                   </div>
                   <div className="space-y-2">
@@ -529,9 +527,7 @@ export default function MortalityPage() {
                     <Input
                       value={formData.farmLocation}
                       onChange={(e) => setFormData({ ...formData, farmLocation: e.target.value })}
-                      placeholder="Auto-fill from farmer name"
-                      readOnly
-                      className="bg-muted"
+                      placeholder="Farm location"
                     />
                   </div>
                 </div>
@@ -565,9 +561,7 @@ export default function MortalityPage() {
                       type="number"
                       value={formData.totalBirdsPurchased}
                       onChange={(e) => setFormData({ ...formData, totalBirdsPurchased: e.target.value })}
-                      placeholder="Auto-fill from purchase invoice"
-                      readOnly
-                      className="bg-muted"
+                      placeholder="Total birds purchased"
                     />
                   </div>
                 </div>
