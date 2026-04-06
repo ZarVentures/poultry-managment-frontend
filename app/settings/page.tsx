@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AlertCircle, Save, Lock, Bell, Palette } from "lucide-react"
+import { AlertCircle, Save, Lock, Bell, Palette, Terminal, Eye, EyeOff } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { settingsApi, type Setting } from "@/lib/api"
+import { useDevMode } from "@/lib/dev-mode"
 import { toast } from "sonner"
 import { useTheme } from "next-themes"
 interface Settings {
@@ -40,6 +41,10 @@ export default function SettingsPage() {
 
   const [formData, setFormData] = useState(settings)
   const [saved, setSaved] = useState(false)
+  const { isDevMode, enableDevMode, disableDevMode } = useDevMode()
+  const [devPassword, setDevPassword] = useState("")
+  const [showDevPassword, setShowDevPassword] = useState(false)
+  const [devError, setDevError] = useState("")
 
   useEffect(() => {
     setMounted(true)
@@ -336,6 +341,80 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Developer Mode — Staging only */}
+        <Card className="border-purple-200 mt-6">
+          <CardHeader className="bg-purple-50 border-b border-purple-100">
+            <CardTitle className="flex items-center gap-2 text-purple-900">
+              <Terminal size={20} />
+              Developer Mode
+              {isDevMode && (
+                <span className="ml-2 text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full">ACTIVE</span>
+              )}
+            </CardTitle>
+            <CardDescription>Enable API request logging with curl commands. Staging only.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-5 space-y-4">
+            {!isDevMode ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">Enter the developer password to enable dev mode.</p>
+                <div className="flex gap-2 max-w-sm">
+                  <div className="relative flex-1">
+                    <Input
+                      type={showDevPassword ? "text" : "password"}
+                      value={devPassword}
+                      onChange={e => { setDevPassword(e.target.value); setDevError("") }}
+                      placeholder="Enter password"
+                      onKeyDown={e => {
+                        if (e.key === "Enter") {
+                          const ok = enableDevMode(devPassword)
+                          if (!ok) setDevError("Wrong password")
+                          else { setDevPassword(""); toast.success("Dev mode enabled") }
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowDevPassword(v => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showDevPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      const ok = enableDevMode(devPassword)
+                      if (!ok) setDevError("Wrong password")
+                      else { setDevPassword(""); toast.success("Dev mode enabled") }
+                    }}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    Enable
+                  </Button>
+                </div>
+                {devError && <p className="text-xs text-red-500">{devError}</p>}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                  <Terminal size={16} className="text-purple-600" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-purple-900">Dev Mode is Active</p>
+                    <p className="text-xs text-purple-600">All API requests are being logged. Click the purple button (bottom right) to view logs with curl commands.</p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => { disableDevMode(); toast.success("Dev mode disabled") }}
+                  className="border-red-300 text-red-600 hover:bg-red-50"
+                >
+                  Disable Dev Mode
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
       </div>
     </DashboardLayout>
   )
