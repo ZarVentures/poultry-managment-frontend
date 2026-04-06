@@ -1,4 +1,4 @@
-"use client"
+  "use client"
 
 import type React from "react"
 
@@ -46,23 +46,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       router.push("/")
       return
     }
-    
-    // Check if user is locked
-    const usersData = localStorage.getItem("users")
-    if (usersData) {
-      const users = JSON.parse(usersData)
-      const currentUserData = JSON.parse(userData)
-      const user = users.find((u: any) => u.email.toLowerCase() === currentUserData.email.toLowerCase())
-      
-      if (user && user.locked) {
-        localStorage.removeItem("user")
-        alert("Your account has been locked. You have been logged out.")
-        router.push("/")
-        return
-      }
+    try {
+      const parsed = JSON.parse(userData)
+      setUser(parsed)
+    } catch {
+      localStorage.removeItem("user")
+      router.push("/")
     }
-    
-    setUser(JSON.parse(userData))
   }, [router])
 
   const handleLogout = () => {

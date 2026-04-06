@@ -449,7 +449,7 @@ export default function MortalityPage() {
           (p) => (p.orderNumber || "").toLowerCase() === m.purchaseInvoiceNo.toLowerCase()
         )
         if (purchase) {
-          return sum + (purchase.totalAmount || 0)
+          return sum + (Number(purchase.totalAmount) || 0)
         }
       }
       return sum
