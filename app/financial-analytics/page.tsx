@@ -108,9 +108,9 @@ export default function FinancialAnalyticsPage() {
 
   // Calculate overall financial metrics
   const financialMetrics = useMemo(() => {
-    const totalRevenue = sales.reduce((sum, s) => sum + (s.totalAmount || 0), 0)
-    const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0)
-    const totalPurchases = purchases.reduce((sum, p) => sum + (p.totalValue || p.totalAmount || 0), 0)
+    const totalRevenue = sales.reduce((sum, s) => sum + (Number(s.totalAmount) || 0), 0)
+    const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+    const totalPurchases = purchases.reduce((sum, p) => sum + (Number(p.totalValue) || Number(p.totalAmount) || 0), 0)
     const totalCost = totalExpenses + totalPurchases
     const netProfit = totalRevenue - totalCost
     const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0
@@ -171,9 +171,9 @@ export default function FinancialAnalyticsPage() {
         }
       })
 
-      const revenue = monthSales.reduce((sum, s) => sum + (s.totalAmount || 0), 0)
-      const expensesTotal = monthExpenses.reduce((sum, e) => sum + (e.amount || 0), 0)
-      const purchasesTotal = monthPurchases.reduce((sum, p) => sum + (p.totalValue || p.totalAmount || 0), 0)
+      const revenue = monthSales.reduce((sum, s) => sum + (Number(s.totalAmount) || 0), 0)
+      const expensesTotal = monthExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+      const purchasesTotal = monthPurchases.reduce((sum, p) => sum + (Number(p.totalValue) || Number(p.totalAmount) || 0), 0)
       const profit = revenue - expensesTotal - purchasesTotal
 
       return {
