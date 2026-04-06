@@ -166,7 +166,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="Total Sales (This Month)"
-            value={loading ? "..." : `₹${(kpis?.totalRevenue || 0).toLocaleString()}`}
+            value={loading ? "..." : `₹${Number(kpis?.totalRevenue || 0).toLocaleString()}`}
             sub={`${kpis?.totalSales || 0} transactions`}
             icon={TrendingUp}
             color="text-green-600"
@@ -174,14 +174,14 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Total Purchases (This Month)"
-            value={loading ? "..." : `₹${(purchasesSummary?.totalValue || 0).toLocaleString()}`}
+            value={loading ? "..." : `₹${Number(purchasesSummary?.totalValue || 0).toLocaleString()}`}
             sub={`${purchasesSummary?.totalOrders || 0} orders`}
             icon={ShoppingCart}
             color="text-red-600"
           />
           <StatCard
             title="Total Expenses (This Month)"
-            value={loading ? "..." : `₹${(kpis?.totalExpenses || 0).toLocaleString()}`}
+            value={loading ? "..." : `₹${Number(kpis?.totalExpenses || 0).toLocaleString()}`}
             sub="All categories"
             icon={DollarSign}
             color="text-yellow-600"
@@ -231,7 +231,7 @@ export default function DashboardPage() {
                   <LineChart data={chartTrends}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
-                    <YAxis tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                    <YAxis tickFormatter={(v) => `₹${(Number(v) / 1000).toFixed(0)}k`} />
                     <Tooltip formatter={(v: number) => `₹${v.toLocaleString()}`} />
                     <Legend />
                     <Line type="monotone" dataKey="Sale" stroke="#10b981" strokeWidth={2} dot={false} />
@@ -303,7 +303,7 @@ export default function DashboardPage() {
                         <p className="text-xs text-muted-foreground">{sale.saleDate?.split("T")[0]} · {sale.productType}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-green-600">₹{(sale.totalAmount || 0).toLocaleString()}</p>
+                        <p className="text-sm font-semibold text-green-600">₹{Number(sale.totalAmount || 0).toLocaleString()}</p>
                         <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                           sale.paymentStatus === "paid" ? "bg-green-100 text-green-700" :
                           sale.paymentStatus === "partial" ? "bg-yellow-100 text-yellow-700" :
@@ -335,7 +335,7 @@ export default function DashboardPage() {
                         <p className="text-xs text-muted-foreground">{po.orderDate?.split("T")[0]} · {po.orderNumber}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-red-600">₹{(po.totalAmount || 0).toLocaleString()}</p>
+                        <p className="text-sm font-semibold text-red-600">₹{Number(po.totalAmount || 0).toLocaleString()}</p>
                         <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                           po.status === "received" ? "bg-green-100 text-green-700" :
                           po.status === "cancelled" ? "bg-red-100 text-red-700" :
@@ -360,15 +360,15 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                 <span className="text-sm font-medium">Sales</span>
-                <span className="text-base font-bold text-green-600">₹{(kpis?.totalRevenue || 0).toLocaleString()}</span>
+                <span className="text-base font-bold text-green-600">₹{Number(kpis?.totalRevenue || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
                 <span className="text-sm font-medium">Purchases</span>
-                <span className="text-base font-bold text-red-600">₹{(purchasesSummary?.totalValue || 0).toLocaleString()}</span>
+                <span className="text-base font-bold text-red-600">₹{Number(purchasesSummary?.totalValue || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                 <span className="text-sm font-medium">Expenses</span>
-                <span className="text-base font-bold text-yellow-600">₹{(kpis?.totalExpenses || 0).toLocaleString()}</span>
+                <span className="text-base font-bold text-yellow-600">₹{Number(kpis?.totalExpenses || 0).toLocaleString()}</span>
               </div>
               <div className={`flex justify-between items-center p-3 rounded-lg border-2 ${isProfit ? "bg-green-50 dark:bg-green-900/20 border-green-400" : "bg-red-50 dark:bg-red-900/20 border-red-400"}`}>
                 <span className="text-sm font-semibold">Net P&L</span>
