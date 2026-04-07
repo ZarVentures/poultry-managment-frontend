@@ -9,12 +9,19 @@ const getAuthToken = () => {
   return null;
 };
 
+// Dev mode logger — set by DevModeProvider
+let _devLogger: ((log: any) => void) | null = null
+export function setDevLogger(fn: ((log: any) => void) | null) { _devLogger = fn }
+
 // API request wrapper with auth
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
   const token = getAuthToken();
+  const url = `${API_BASE_URL}${endpoint}`;
+  const method = (options.method || 'GET').toUpperCase();
+  const bodyStr = options.body ? String(options.body) : undefined;
   
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -22,42 +29,64 @@ async function apiRequest<T>(
     ...options.headers,
   };
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const start = Date.now();
+  let status: number | undefined;
 
-  if (!response.ok) {
-    // Try to parse error response, fallback to generic message
-    let errorMessage = `HTTP ${response.status}`;
-    try {
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const error = await response.json();
-        errorMessage = error.message || errorMessage;
-      } else {
-        const text = await response.text();
-        errorMessage = text || errorMessage;
-      }
-    } catch (e) {
-      // If parsing fails, use status code
+  try {
+    const response = await fetch(url, { ...options, headers });
+    status = response.status;
+    const duration = Date.now() - start;
+
+    // Log to dev mode if active
+    if (_devLogger && typeof window !== 'undefined' && localStorage.getItem('dev_mode_enabled') === 'true') {
+      const parts = [`curl -X ${method} '${url}'`, `  -H 'Content-Type: application/json'`];
+      if (token) parts.push(`  -H 'Authorization: Bearer ${token}'`);
+      if (bodyStr && bodyStr !== '{}') parts.push(`  -d '${bodyStr}'`);
+      _devLogger({
+        id: Math.random().toString(36).slice(2),
+        timestamp: new Date().toLocaleTimeString(),
+        method, url, body: bodyStr, status, duration,
+        curl: parts.join(' \\\n'),
+      });
     }
-    throw new Error(errorMessage);
-  }
 
-  // Handle empty responses (like DELETE)
-  const contentType = response.headers.get('content-type');
-  if (!contentType || !contentType.includes('application/json')) {
-    return undefined as T;
-  }
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status}`;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const error = await response.json();
+          errorMessage = error.message || errorMessage;
+        } else {
+          const text = await response.text();
+          errorMessage = text || errorMessage;
+        }
+      } catch (e) {}
+      throw new Error(errorMessage);
+    }
 
-  // Check if response has content
-  const text = await response.text();
-  if (!text || text.trim() === '') {
-    return undefined as T;
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      return undefined as T;
+    }
+    const text = await response.text();
+    if (!text || text.trim() === '') return undefined as T;
+    return JSON.parse(text);
+  } catch (err) {
+    // Log failed requests too
+    if (_devLogger && typeof window !== 'undefined' && localStorage.getItem('dev_mode_enabled') === 'true') {
+      const parts = [`curl -X ${method} '${url}'`, `  -H 'Content-Type: application/json'`];
+      if (token) parts.push(`  -H 'Authorization: Bearer ${token}'`);
+      if (bodyStr && bodyStr !== '{}') parts.push(`  -d '${bodyStr}'`);
+      _devLogger({
+        id: Math.random().toString(36).slice(2),
+        timestamp: new Date().toLocaleTimeString(),
+        method, url, body: bodyStr, status: status || 0, duration: Date.now() - start,
+        curl: parts.join(' \\\n'),
+      });
+    }
+    throw err;
   }
-
-  return JSON.parse(text);
 }
 
 // Farmer Interface
