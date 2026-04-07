@@ -11,6 +11,8 @@ import { AlertCircle, Save, Lock, Bell, Palette } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { settingsApi, type Setting } from "@/lib/api"
 import { toast } from "sonner"
+import { useDispatch } from "react-redux";
+import { setTheme } from "@/app/redux/slices/themeSlice";
 
 interface Settings {
   farmName: string
@@ -25,7 +27,12 @@ interface Settings {
 
 export default function SettingsPage() {
   const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [loading, setLoading] = useState(false)
+  const dispatch = useDispatch(); 
   const [settings, setSettings] = useState<Settings>({
     farmName: "Aziz Poultry Farm",
     farmLocation: "Country, Region",
@@ -40,12 +47,10 @@ export default function SettingsPage() {
   const [formData, setFormData] = useState(settings)
   const [saved, setSaved] = useState(false)
 
-  useEffect(() => {
-    setMounted(true)
-    fetchSettings()
-  }, [])
+
 
   const fetchSettings = async () => {
+    console.log("test")
     try {
       setLoading(true)
       const data = await settingsApi.getAll()
@@ -64,6 +69,9 @@ export default function SettingsPage() {
       const merged = { ...settings, ...settingsObj }
       setSettings(merged)
       setFormData(merged)
+      if (merged.theme) {
+  //dispatch(setTheme(merged.theme));
+}
     } catch (error: any) {
       console.error('Failed to fetch settings:', error)
       toast.error('Failed to load settings')
@@ -88,6 +96,10 @@ export default function SettingsPage() {
       await Promise.all(promises)
       
       setSettings(formData)
+      // Theme yahin par apply karo
+      if (formData.theme) {
+        dispatch(setTheme(formData.theme));
+      }
       setSaved(true)
       toast.success('Settings saved successfully!')
       setTimeout(() => setSaved(false), 3000)
@@ -213,7 +225,9 @@ export default function SettingsPage() {
                   <Label>Theme</Label>
                   <Select
                     value={formData.theme}
-                    onValueChange={(value: any) => setFormData({ ...formData, theme: value })}
+                    onValueChange={(value: "light" | "dark") => {
+                      setFormData({ ...formData, theme: value });
+                    }}
                     disabled={loading}
                   >
                     <SelectTrigger>
