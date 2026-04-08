@@ -386,11 +386,17 @@ export interface GodownInward {
 export interface GodownSale {
   id: string;
   saleDate: string;
+  invoiceNumber?: string;
   customerName: string;
-  quantity: number;
-  unit: string;
-  rate: number;
-  totalAmount: number;
+  retailerId?: string;
+  vehicleId?: string;
+  numberOfBirds: number;
+  averageWeight?: number;
+  totalWeight?: number;
+  ratePerKg?: number;
+  totalAmount?: number;
+  paymentStatus: 'paid' | 'pending' | 'partial';
+  amountReceived: number;
   notes?: string;
   createdAt?: string;
   updatedAt?: string;

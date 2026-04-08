@@ -28,9 +28,13 @@ export default function GodownSalePage() {
   const [formData, setFormData] = useState({
     saleDate: new Date().toISOString().split("T")[0],
     customerName: "",
-    quantity: "",
-    unit: "kg",
-    rate: "",
+    numberOfBirds: "",
+    averageWeight: "",
+    totalWeight: "",
+    ratePerKg: "",
+    totalAmount: "",
+    paymentStatus: "pending" as "paid" | "pending" | "partial",
+    amountReceived: "",
     notes: "",
   })
 
@@ -66,9 +70,13 @@ export default function GodownSalePage() {
     setFormData({
       saleDate: new Date().toISOString().split("T")[0],
       customerName: "",
-      quantity: "",
-      unit: "kg",
-      rate: "",
+      numberOfBirds: "",
+      averageWeight: "",
+      totalWeight: "",
+      ratePerKg: "",
+      totalAmount: "",
+      paymentStatus: "pending",
+      amountReceived: "",
       notes: "",
     })
     setEditingId(null)
@@ -78,9 +86,13 @@ export default function GodownSalePage() {
     setFormData({
       saleDate: sale.saleDate,
       customerName: sale.customerName,
-      quantity: String(sale.quantity),
-      unit: sale.unit,
-      rate: String(sale.rate),
+      numberOfBirds: String(sale.numberOfBirds || ""),
+      averageWeight: String(sale.averageWeight || ""),
+      totalWeight: String(sale.totalWeight || ""),
+      ratePerKg: String(sale.ratePerKg || ""),
+      totalAmount: String(sale.totalAmount || ""),
+      paymentStatus: (sale as any).paymentStatus || "pending",
+      amountReceived: String((sale as any).amountReceived || ""),
       notes: sale.notes || "",
     })
     setEditingId(sale.id)
@@ -88,30 +100,29 @@ export default function GodownSalePage() {
   }
 
   const calculateTotal = () => {
-    const quantity = parseFloat(formData.quantity) || 0
-    const rate = parseFloat(formData.rate) || 0
-    return (quantity * rate).toFixed(2)
+    const weight = parseFloat(formData.totalWeight) || 0
+    const rate = parseFloat(formData.ratePerKg) || 0
+    return (weight * rate).toFixed(2)
   }
 
   const handleSave = async () => {
-    if (!formData.customerName || !formData.quantity || !formData.rate) {
+    if (!formData.customerName || !formData.numberOfBirds || !formData.paymentStatus) {
       toast.error("Please fill all required fields")
       return
     }
 
     try {
       setLoading(true)
-      const quantity = parseFloat(formData.quantity)
-      const rate = parseFloat(formData.rate)
-      const totalAmount = quantity * rate
-
       const saleData = {
         saleDate: formData.saleDate,
         customerName: formData.customerName,
-        quantity,
-        unit: formData.unit,
-        rate,
-        totalAmount,
+        numberOfBirds: parseInt(formData.numberOfBirds) || 0,
+        averageWeight: parseFloat(formData.averageWeight) || undefined,
+        totalWeight: parseFloat(formData.totalWeight) || undefined,
+        ratePerKg: parseFloat(formData.ratePerKg) || undefined,
+        totalAmount: parseFloat(formData.totalAmount) || parseFloat(calculateTotal()) || 0,
+        paymentStatus: formData.paymentStatus,
+        amountReceived: parseFloat(formData.amountReceived) || 0,
         notes: formData.notes,
       }
 
@@ -310,44 +321,100 @@ export default function GodownSalePage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Quantity *</Label>
+                    <Label>Number of Birds *</Label>
                     <Input
                       type="number"
-                      step="0.01"
-                      value={formData.quantity}
-                      onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                      placeholder="0.00"
+                      value={formData.numberOfBirds}
+                      onChange={(e) => setFormData({ ...formData, numberOfBirds: e.target.value })}
+                      placeholder="0"
                       disabled={loading}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Unit</Label>
-                    <Input
-                      value={formData.unit}
-                      onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                      placeholder="kg, pcs"
-                      disabled={loading}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Rate *</Label>
+                    <Label>Rate per Kg (₹)</Label>
                     <Input
                       type="number"
                       step="0.01"
-                      value={formData.rate}
-                      onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
+                      value={formData.ratePerKg}
+                      onChange={(e) => {
+                        const rate = e.target.value
+                        const total = (parseFloat(formData.totalWeight || "0") * parseFloat(rate || "0")).toFixed(2)
+                        setFormData({ ...formData, ratePerKg: rate, totalAmount: total })
+                      }}
                       placeholder="0.00"
                       disabled={loading}
                     />
                   </div>
                 </div>
 
-                <div className="flex justify-end">
-                  <div className="text-lg font-semibold">
-                    Total: ₹{calculateTotal()}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Average Weight (kg)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.averageWeight}
+                      onChange={(e) => setFormData({ ...formData, averageWeight: e.target.value })}
+                      placeholder="0.00"
+                      disabled={loading}
+                    />
                   </div>
+                  <div className="space-y-2">
+                    <Label>Total Weight (kg)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.totalWeight}
+                      onChange={(e) => {
+                        const weight = e.target.value
+                        const total = (parseFloat(weight || "0") * parseFloat(formData.ratePerKg || "0")).toFixed(2)
+                        setFormData({ ...formData, totalWeight: weight, totalAmount: total })
+                      }}
+                      placeholder="0.00"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Total Amount (₹)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.totalAmount}
+                      onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
+                      placeholder="0.00"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Payment Status *</Label>
+                    <select
+                      className="w-full border rounded p-2"
+                      value={formData.paymentStatus}
+                      onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value as any })}
+                      disabled={loading}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="partial">Partial</option>
+                      <option value="paid">Paid</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Amount Received (₹)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={formData.amountReceived}
+                    onChange={(e) => setFormData({ ...formData, amountReceived: e.target.value })}
+                    placeholder="0.00"
+                    disabled={loading}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -434,11 +501,9 @@ export default function GodownSalePage() {
                       <TableRow key={sale.id}>
                         <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
                         <TableCell>{sale.customerName}</TableCell>
-                        <TableCell>
-                          {sale.quantity} {sale.unit}
-                        </TableCell>
-                        <TableCell>₹{Number(sale.rate).toFixed(2)}</TableCell>
-                        <TableCell>₹{Number(sale.totalAmount).toFixed(2)}</TableCell>
+                        <TableCell>{sale.numberOfBirds} birds</TableCell>
+                        <TableCell>₹{Number(sale.ratePerKg || 0).toFixed(2)}/kg</TableCell>
+                        <TableCell>₹{Number(sale.totalAmount || 0).toFixed(2)}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(sale)}>
