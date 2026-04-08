@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { DateFilterProvider } from "@/contexts/date-filter-context"
+import { DevModeProvider } from "@/lib/dev-mode"
 import { Toaster } from "@/components/ui/sonner"
 import Providers from "@/components/providers"
 import "./globals.css"
@@ -33,9 +34,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased`} suppressHydrationWarning>
         <Providers>
-          <DateFilterProvider>
-            {children}
-          </DateFilterProvider>
+          <DevModeProvider>
+            <DateFilterProvider>
+              {children}
+            </DateFilterProvider>
+          </DevModeProvider>
         </Providers>
         <Toaster />
         <Analytics />
