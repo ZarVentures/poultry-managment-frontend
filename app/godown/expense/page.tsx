@@ -26,9 +26,10 @@ export default function GodownExpensePage() {
   const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [formData, setFormData] = useState({
     expenseDate: new Date().toISOString().split("T")[0],
-    category: "",
+    category: "other" as GodownExpense['category'],
     description: "",
     amount: "",
+    paymentMethod: "cash" as GodownExpense['paymentMethod'],
     notes: "",
   })
 
@@ -53,9 +54,10 @@ export default function GodownExpensePage() {
   const resetForm = () => {
     setFormData({
       expenseDate: new Date().toISOString().split("T")[0],
-      category: "",
+      category: "other",
       description: "",
       amount: "",
+      paymentMethod: "cash",
       notes: "",
     })
     setEditingId(null)
@@ -67,6 +69,7 @@ export default function GodownExpensePage() {
       category: expense.category,
       description: expense.description,
       amount: String(expense.amount),
+      paymentMethod: expense.paymentMethod,
       notes: expense.notes || "",
     })
     setEditingId(expense.id)
@@ -86,6 +89,7 @@ export default function GodownExpensePage() {
         category: formData.category,
         description: formData.description,
         amount: parseFloat(formData.amount),
+        paymentMethod: formData.paymentMethod,
         notes: formData.notes,
       }
 
@@ -254,13 +258,22 @@ export default function GodownExpensePage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Category</Label>
-                    <Input
+                    <Label>Category *</Label>
+                    <select
+                      className="w-full border rounded p-2"
                       value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      placeholder="Feed, Labor, Utilities, etc."
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value as GodownExpense['category'] })}
                       disabled={loading}
-                    />
+                    >
+                      <option value="feed">Feed</option>
+                      <option value="labor">Labor</option>
+                      <option value="medicine">Medicine</option>
+                      <option value="utilities">Utilities</option>
+                      <option value="equipment">Equipment</option>
+                      <option value="maintenance">Maintenance</option>
+                      <option value="transportation">Transportation</option>
+                      <option value="other">Other</option>
+                    </select>
                   </div>
                 </div>
 
@@ -284,6 +297,21 @@ export default function GodownExpensePage() {
                     placeholder="0.00"
                     disabled={loading}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Payment Method *</Label>
+                  <select
+                    className="w-full border rounded p-2"
+                    value={formData.paymentMethod}
+                    onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value as GodownExpense['paymentMethod'] })}
+                    disabled={loading}
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="check">Check</option>
+                    <option value="credit_card">Credit Card</option>
+                  </select>
                 </div>
 
                 <div className="space-y-2">

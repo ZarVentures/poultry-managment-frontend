@@ -26,8 +26,7 @@ export default function GodownMortalityPage() {
   const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [formData, setFormData] = useState({
     mortalityDate: new Date().toISOString().split("T")[0],
-    quantity: "",
-    unit: "pcs",
+    numberOfBirdsDied: "",
     reason: "",
     notes: "",
   })
@@ -53,8 +52,7 @@ export default function GodownMortalityPage() {
   const resetForm = () => {
     setFormData({
       mortalityDate: new Date().toISOString().split("T")[0],
-      quantity: "",
-      unit: "pcs",
+      numberOfBirdsDied: "",
       reason: "",
       notes: "",
     })
@@ -64,8 +62,7 @@ export default function GodownMortalityPage() {
   const handleEdit = (mortality: GodownMortality) => {
     setFormData({
       mortalityDate: mortality.mortalityDate,
-      quantity: String(mortality.quantity),
-      unit: mortality.unit,
+      numberOfBirdsDied: String(mortality.numberOfBirdsDied || ""),
       reason: mortality.reason || "",
       notes: mortality.notes || "",
     })
@@ -74,7 +71,7 @@ export default function GodownMortalityPage() {
   }
 
   const handleSave = async () => {
-    if (!formData.quantity) {
+    if (!formData.numberOfBirdsDied) {
       toast.error("Please fill all required fields")
       return
     }
@@ -83,8 +80,7 @@ export default function GodownMortalityPage() {
       setLoading(true)
       const mortalityData = {
         mortalityDate: formData.mortalityDate,
-        quantity: parseFloat(formData.quantity),
-        unit: formData.unit,
+        numberOfBirdsDied: parseInt(formData.numberOfBirdsDied),
         reason: formData.reason,
         notes: formData.notes,
       }
@@ -191,7 +187,7 @@ export default function GodownMortalityPage() {
               ${filteredMortalities.map(mortality => `
                 <tr>
                   <td>${new Date(mortality.mortalityDate).toLocaleDateString()}</td>
-                  <td>${mortality.quantity} ${mortality.unit}</td>
+                  <td>${mortality.numberOfBirdsDied} birds</td>
                   <td>${mortality.reason || "-"}</td>
                   <td>${mortality.notes || "-"}</td>
                 </tr>
@@ -246,27 +242,15 @@ export default function GodownMortalityPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Quantity *</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.quantity}
-                      onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                      placeholder="0"
-                      disabled={loading}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Unit</Label>
-                    <Input
-                      value={formData.unit}
-                      onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                      placeholder="pcs, kg"
-                      disabled={loading}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label>Number of Birds Died *</Label>
+                  <Input
+                    type="number"
+                    value={formData.numberOfBirdsDied}
+                    onChange={(e) => setFormData({ ...formData, numberOfBirdsDied: e.target.value })}
+                    placeholder="0"
+                    disabled={loading}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -351,7 +335,7 @@ export default function GodownMortalityPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
-                      <TableHead>Quantity</TableHead>
+                      <TableHead>Birds Died</TableHead>
                       <TableHead>Reason</TableHead>
                       <TableHead>Notes</TableHead>
                       <TableHead>Actions</TableHead>
@@ -361,9 +345,7 @@ export default function GodownMortalityPage() {
                     {filteredMortalities.map((mortality) => (
                       <TableRow key={mortality.id}>
                         <TableCell>{new Date(mortality.mortalityDate).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          {mortality.quantity} {mortality.unit}
-                        </TableCell>
+                        <TableCell>{mortality.numberOfBirdsDied} birds</TableCell>
                         <TableCell>{mortality.reason || "-"}</TableCell>
                         <TableCell>{mortality.notes || "-"}</TableCell>
                         <TableCell>

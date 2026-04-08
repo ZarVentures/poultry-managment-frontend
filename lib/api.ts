@@ -405,8 +405,7 @@ export interface GodownSale {
 export interface GodownMortality {
   id: string;
   mortalityDate: string;
-  quantity: number;
-  unit: string;
+  numberOfBirdsDied: number;
   reason?: string;
   notes?: string;
   createdAt?: string;
@@ -416,9 +415,10 @@ export interface GodownMortality {
 export interface GodownExpense {
   id: string;
   expenseDate: string;
-  category: string;
+  category: 'feed' | 'labor' | 'medicine' | 'utilities' | 'equipment' | 'maintenance' | 'transportation' | 'other';
   description: string;
   amount: number;
+  paymentMethod: 'cash' | 'bank_transfer' | 'check' | 'credit_card';
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
