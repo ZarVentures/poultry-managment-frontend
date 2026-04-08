@@ -240,9 +240,9 @@ export default function GodownSalePage() {
                 <tr>
                   <td>${new Date(sale.saleDate).toLocaleDateString()}</td>
                   <td>${sale.customerName}</td>
-                  <td>${sale.quantity} ${sale.unit}</td>
-                  <td>₹${Number(sale.rate).toFixed(2)}</td>
-                  <td>₹${Number(sale.totalAmount).toFixed(2)}</td>
+                  <td>${sale.numberOfBirds} birds</td>
+                  <td>₹${Number(sale.ratePerKg || 0).toFixed(2)}/kg</td>
+                  <td>₹${Number(sale.totalAmount || 0).toFixed(2)}</td>
                 </tr>
               `).join('')}
             </tbody>
