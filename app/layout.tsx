@@ -1,7 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
 import { DateFilterProvider } from "@/contexts/date-filter-context"
 import { DevModeProvider } from "@/lib/dev-mode"
 import { Toaster } from "@/components/ui/sonner"
@@ -41,7 +40,6 @@ export default function RootLayout({
           </DevModeProvider>
         </Providers>
         <Toaster />
-        <Analytics />
       </body>
     </html>
   )
