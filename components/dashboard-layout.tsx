@@ -13,6 +13,8 @@ import {
   BarChart3, Users, Package, ShoppingCart, TrendingUp,
   LogOut, Menu, X, Home, Settings, ChevronDown, Users2,
   Calculator, Truck, AlertCircle, Terminal, Copy, Trash2,
+  ChartNoAxesCombined, Tractor, User, PackageOpen, PackagePlus,
+  PackageSearch, PackageX, PackageCheck,
 } from "lucide-react"
 
 // Staging-only features are controlled by this env var.
@@ -90,11 +92,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             </Tooltip>
             {godownOpen && sidebarOpen && (
               <div className="ml-4 space-y-1 border-l border-sidebar-border">
-                <SidebarLink href="/inventory" icon={Package} label="Godown Overview" open={true} isSubItem={true} />
-                <SidebarLink href="/godown/inward-entry" icon={Package} label="Godown Inward Entry" open={true} isSubItem={true} />
-                <SidebarLink href="/godown/sale" icon={Package} label="Godown Sale" open={true} isSubItem={true} />
-                <SidebarLink href="/godown/mortality" icon={Package} label="Godown Mortality" open={true} isSubItem={true} />
-                <SidebarLink href="/godown/expense" icon={Package} label="Godown Expense" open={true} isSubItem={true} />
+                <SidebarLink href="/inventory" icon={PackageOpen} label="Godown Overview" open={true} isSubItem={true} />
+                <SidebarLink href="/godown/inward-entry" icon={PackagePlus} label="Godown Inward Entry" open={true} isSubItem={true} />
+                <SidebarLink href="/godown/sale" icon={PackageCheck} label="Godown Sale" open={true} isSubItem={true} />
+                <SidebarLink href="/godown/mortality" icon={PackageX} label="Godown Mortality" open={true} isSubItem={true} />
+                <SidebarLink href="/godown/expense" icon={PackageSearch} label="Godown Expense" open={true} isSubItem={true} />
               </div>
             )}
           </div>
@@ -103,7 +105,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           <SidebarLink href="/sales" icon={TrendingUp} label="Sales" open={sidebarOpen} />
           <SidebarLink href="/mortality" icon={AlertCircle} label="Mortality" open={sidebarOpen} />
           <SidebarLink href="/expenses" icon={BarChart3} label="Expenses" open={sidebarOpen} />
-          <SidebarLink href="/reports" icon={BarChart3} label="Reports" open={sidebarOpen} />
+          <SidebarLink href="/reports" icon={ChartNoAxesCombined} label="Reports" open={sidebarOpen} />
           <SidebarLink href="/financial-analytics" icon={Calculator} label="Financial Analytics" open={sidebarOpen} />
 
           <div className="space-y-1">
@@ -118,14 +120,14 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             </Tooltip>
             {masterEntriesOpen && sidebarOpen && (
               <div className="ml-4 space-y-1 border-l border-sidebar-border">
-                <SidebarLink href="/farmers" icon={Users} label="Farmers" open={true} isSubItem={true} />
+                <SidebarLink href="/farmers" icon={Tractor} label="Farmers" open={true} isSubItem={true} />
                 <SidebarLink href="/retailers" icon={Users} label="Retailers" open={true} isSubItem={true} />
                 <SidebarLink href="/vehicles" icon={Truck} label="Vehicles" open={true} isSubItem={true} />
               </div>
             )}
           </div>
 
-          <SidebarLink href="/users" icon={Users} label="Users" open={sidebarOpen} />
+          <SidebarLink href="/users" icon={User} label="Users" open={sidebarOpen} />
           <SidebarLink href="/settings" icon={Settings} label="Settings" open={sidebarOpen} />
 
           {/* API Docs — staging only */}

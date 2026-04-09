@@ -11,7 +11,7 @@ import { ChartContainer } from "@/components/ui/chart"
 import {
   TrendingUp, TrendingDown, ShoppingCart, DollarSign,
   Users, Truck, Package, AlertCircle, ArrowUpRight, ArrowDownRight,
-  Bird, BarChart3,
+  Bird, BarChart3, Tractor, Wallet, IndianRupee,
 } from "lucide-react"
 import { farmersApi, retailersApi, vehiclesApi, purchasesApi, salesApi, mortalityApi } from "@/lib/api"
 
@@ -168,7 +168,7 @@ export default function DashboardPage() {
             title="Total Sales (This Month)"
             value={loading ? "..." : `₹${Number(kpis?.totalRevenue || 0).toLocaleString()}`}
             sub={`${kpis?.totalSales || 0} transactions`}
-            icon={TrendingUp}
+            icon={Wallet}
             color="text-green-600"
             trend="up"
           />
@@ -183,7 +183,7 @@ export default function DashboardPage() {
             title="Total Expenses (This Month)"
             value={loading ? "..." : `₹${Number(kpis?.totalExpenses || 0).toLocaleString()}`}
             sub="All categories"
-            icon={DollarSign}
+            icon={IndianRupee}
             color="text-yellow-600"
           />
           <StatCard
@@ -198,7 +198,7 @@ export default function DashboardPage() {
 
         {/* Row 2 - Master Data Counts */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard title="Farmers" value={loading ? "..." : farmerCount} sub="Registered" icon={Users} />
+          <StatCard title="Farmers" value={loading ? "..." : farmerCount} sub="Registered" icon={Tractor} />
           <StatCard title="Retailers" value={loading ? "..." : retailerCount} sub="Registered" icon={Users} />
           <StatCard title="Active Vehicles" value={loading ? "..." : vehicleCount} sub="On fleet" icon={Truck} />
           <StatCard
