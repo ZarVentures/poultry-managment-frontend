@@ -343,10 +343,10 @@ export default function SalesPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Purchase Bill No</Label>
-                        <Select value={formData.purchaseBillNo} onValueChange={v => setFormData(f => ({ ...f, purchaseBillNo: v }))} disabled={loading}>
+                        <Select value={formData.purchaseBillNo || '__none__'} onValueChange={v => setFormData(f => ({ ...f, purchaseBillNo: v === '__none__' ? '' : v }))} disabled={loading}>
                           <SelectTrigger><SelectValue placeholder="Select purchase bill" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">None</SelectItem>
+                            <SelectItem value="__none__">None</SelectItem>
                             {purchaseBills.map(b => <SelectItem key={b.id} value={b.orderNumber}>{b.orderNumber} — {b.supplierName}</SelectItem>)}
                           </SelectContent>
                         </Select>
@@ -592,26 +592,26 @@ export default function SalesPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 <DateRangeFilter startDate={dateRangeStart} endDate={dateRangeEnd} onDateRangeChange={(s, e) => { setDateRangeStart(s); setDateRangeEnd(e) }} />
                 <Input placeholder="Search invoice, customer..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[200px]" />
-                <Select value={filterRetailer} onValueChange={setFilterRetailer}>
+                <Select value={filterRetailer || '__all__'} onValueChange={v => setFilterRetailer(v === '__all__' ? '' : v)}>
                   <SelectTrigger className="w-[160px]"><SelectValue placeholder="All Retailers" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Retailers</SelectItem>
+                    <SelectItem value="__all__">All Retailers</SelectItem>
                     {retailers.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Select value={filterPaymentStatus} onValueChange={setFilterPaymentStatus}>
+                <Select value={filterPaymentStatus || '__all__'} onValueChange={v => setFilterPaymentStatus(v === '__all__' ? '' : v)}>
                   <SelectTrigger className="w-[140px]"><SelectValue placeholder="All Status" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Status</SelectItem>
+                    <SelectItem value="__all__">All Status</SelectItem>
                     <SelectItem value="paid">Paid</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="partial">Partial</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={filterSaleMode} onValueChange={setFilterSaleMode}>
+                <Select value={filterSaleMode || '__all__'} onValueChange={v => setFilterSaleMode(v === '__all__' ? '' : v)}>
                   <SelectTrigger className="w-[150px]"><SelectValue placeholder="All Modes" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Modes</SelectItem>
+                    <SelectItem value="__all__">All Modes</SelectItem>
                     <SelectItem value="from_vehicle">From Vehicle</SelectItem>
                     <SelectItem value="from_godown">From Godown</SelectItem>
                   </SelectContent>
