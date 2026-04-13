@@ -281,6 +281,12 @@ export interface CreatePurchaseOrderCageDto {
   cageWeight: number;
 }
 
+export interface PurchaseOrderPayment {
+  id?: string;
+  paymentMode: string;
+  amount: number;
+}
+
 export interface PurchaseOrder {
   id: string;
   orderNumber: string;
@@ -288,37 +294,24 @@ export interface PurchaseOrder {
   orderDate: string;
   dueDate?: string;
   status: 'pending' | 'received' | 'cancelled';
-  // Farmer integration
   farmerId?: string;
   farmerMobile?: string;
   farmLocation?: string;
-  // Vehicle integration
   vehicleId?: string;
-  // Bird details
-  birdType?: string;
   totalWeight?: number;
   ratePerKg?: number;
-  // Amounts
   totalAmount: number;
   transportCharges?: number;
-  loadingCharges?: number;
-  commission?: number;
   otherCharges?: number;
-  weightShortage?: number;
-  mortalityDeduction?: number;
-  otherDeduction?: number;
   grossAmount?: number;
   netAmount?: number;
-  // Payment tracking
   purchasePaymentStatus?: 'paid' | 'pending' | 'partial';
-  advancePaid?: number;
-  outstandingPayment?: number;
-  paymentMode?: string;
   totalPaymentMade?: number;
   balanceAmount?: number;
   notes?: string;
   items: PurchaseOrderItem[];
   cages?: PurchaseOrderCage[];
+  payments?: PurchaseOrderPayment[];
   invoiceAttachment?: string;
   createdAt?: string;
   updatedAt?: string;
