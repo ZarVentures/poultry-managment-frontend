@@ -379,6 +379,7 @@ export interface GodownInward {
   ratePerKg?: number;
   totalAmount?: number;
   notes?: string;
+  cages?: GodownCage[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -398,8 +399,19 @@ export interface GodownSale {
   paymentStatus: 'paid' | 'pending' | 'partial';
   amountReceived: number;
   notes?: string;
+  cages?: GodownCage[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface GodownCage {
+  id?: string;
+  cageId?: string;
+  birdType?: string;
+  numberOfBirds: number;
+  cageWeight: number;
+  purchaseOrderId?: string;
+  godownInwardId?: string;
 }
 
 export interface GodownMortality {
