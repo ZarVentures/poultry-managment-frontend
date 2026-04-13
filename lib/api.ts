@@ -167,9 +167,18 @@ export interface InventoryItem {
 }
 
 // Sale Interface
+export interface SalePayment {
+  id?: string;
+  paymentMode: string;
+  amount: number;
+}
+
 export interface Sale {
   id: string;
   invoiceNumber: string;
+  saleNo?: string;
+  purchaseBillNo?: string;
+  cageNo?: string;
   customerName: string;
   saleDate: string;
   saleMode: 'from_vehicle' | 'from_godown';
@@ -192,6 +201,7 @@ export interface Sale {
   notes?: string;
   retailerId?: string;
   saleAttachment?: string;
+  payments?: SalePayment[];
   createdAt?: string;
   updatedAt?: string;
 }
