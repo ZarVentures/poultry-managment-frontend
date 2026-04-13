@@ -12,13 +12,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Edit2, Trash2, X } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { godownApi, vehiclesApi, farmersApi, type GodownInward, type Vehicle, type Farmer } from "@/lib/api"
+import { godownApi, vehiclesApi, farmersApi, type GodownInward, type Vehicle } from "@/lib/api"
+
+type ActiveFarmer = { id: string; name: string; phone: string; address?: string }
 import { toast } from "sonner"
 
 export default function GodownInwardPage() {
   const [entries, setEntries] = useState<GodownInward[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  const [farmers, setFarmers] = useState<Farmer[]>([])
+  const [farmers, setFarmers] = useState<ActiveFarmer[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
@@ -68,8 +70,9 @@ export default function GodownInwardPage() {
 
   const fetchFarmers = async () => {
     try {
-      const data = await farmersApi.getAll()
-      setFarmers(data.filter(f => f.status === "active"))
+      // getActive() returns a plain array of active farmers
+      const data = await farmersApi.getActive()
+      setFarmers(data)
     } catch (error) {
       console.error("Failed to fetch farmers:", error)
     }
