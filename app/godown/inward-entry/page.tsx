@@ -27,6 +27,7 @@ export default function GodownInwardPage() {
     entryDate: new Date().toISOString().split("T")[0],
     purchaseInvoiceNo: "",
     supplierName: "",
+    selectedFarmerId: "",
     vehicleId: "",
     numberOfBirds: "",
     averageWeight: "",
@@ -79,6 +80,7 @@ export default function GodownInwardPage() {
       entryDate: new Date().toISOString().split("T")[0],
       purchaseInvoiceNo: "",
       supplierName: "",
+      selectedFarmerId: "",
       vehicleId: "",
       numberOfBirds: "",
       averageWeight: "",
@@ -95,6 +97,7 @@ export default function GodownInwardPage() {
       entryDate: entry.entryDate,
       purchaseInvoiceNo: entry.purchaseInvoiceNo || "",
       supplierName: entry.supplierName || "",
+      selectedFarmerId: "",
       vehicleId: entry.vehicleId || "",
       numberOfBirds: String(entry.numberOfBirds || ""),
       averageWeight: String(entry.averageWeight || ""),
@@ -187,6 +190,7 @@ export default function GodownInwardPage() {
     if (farmer) {
       setFormData({
         ...formData,
+        selectedFarmerId: farmerId,
         supplierName: farmer.name,
       })
     }
@@ -259,7 +263,7 @@ export default function GodownInwardPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Select Farmer (Optional)</Label>
-                    <Select value={formData.supplierName || undefined} onValueChange={handleFarmerChange} disabled={loading}>
+                    <Select value={formData.selectedFarmerId || undefined} onValueChange={handleFarmerChange} disabled={loading}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select farmer" />
                       </SelectTrigger>
