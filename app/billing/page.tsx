@@ -51,24 +51,6 @@ export default function BillingDashboard() {
 
   const modules = [
     {
-      title: 'Party Master',
-      desc: 'Manage retailers & partners',
-      href: '/billing/party-master',
-      icon: Users,
-    },
-    {
-      title: 'Sale Entry',
-      desc: 'Record bird dispatch',
-      href: '/billing/sale-entry',
-      icon: ShoppingCart,
-    },
-    {
-      title: 'Payment Entry',
-      desc: 'Track payments received',
-      href: '/billing/payment-entry',
-      icon: CreditCard,
-    },
-    {
       title: 'Ledger Report',
       desc: 'View running balance',
       href: '/billing/ledger',
@@ -80,9 +62,9 @@ export default function BillingDashboard() {
     <DashboardLayout>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Billing Module</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Billing Dashboard</h1>
           <p className="text-muted-foreground mt-2">
-            Live Bird Trading & Retailer Ledger System
+            Live Bird  Retailer Ledger System
           </p>
         </div>
 
@@ -206,7 +188,7 @@ export default function BillingDashboard() {
         </div>
 
         {/* Info */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle>About This Module</CardTitle>
           </CardHeader>
@@ -228,7 +210,7 @@ export default function BillingDashboard() {
               outstanding balances
             </p>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     </DashboardLayout>
   )
