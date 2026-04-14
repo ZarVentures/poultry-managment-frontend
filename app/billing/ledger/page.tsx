@@ -151,6 +151,148 @@ const LedgerReportPage = () => {
     }
   };
 
+  const downloadCSV = (data: any[], filename: string) => {
+    if (!data || data.length === 0) return;
+    const headers = Object.keys(data[0]).join(',');
+    const rows = data.map(row => 
+      Object.values(row).map(val => 
+        typeof val === 'string' && (val.includes(',') || val.includes('"') || val.includes('\n'))
+          ? `"${val.replace(/"/g, '""')}"`
+          : val
+      ).join(',')
+    ).join('\n');
+    const csv = `${headers}\n${rows}`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleExport = () => {
+    if (!ledgerEntries || ledgerEntries.length === 0) {
+      alert('No data available to export.');
+      return;
+    }
+    try {
+      const exportData = ledgerEntries.map(item => ({
+        Date: new Date(item.date).toLocaleDateString('en-IN'),
+        Remarks: item.remarks,
+        Reference_Type: item.referenceType,
+        Reference_ID: item.referenceId,
+        Debit: item.debit,
+        Credit: item.credit,
+        Balance: item.balance,
+      }));
+      downloadCSV(exportData, 'ledger_report');
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
+  const handlePrint = () => {
+    if (!ledgerEntries || ledgerEntries.length === 0) {
+      alert('No data available to print.');
+      return;
+    }
+    try {
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Ledger Report</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; }
+              h1 { text-align: center; margin-bottom: 20px; }
+              .header { margin-bottom: 20px; }
+              .party-info { margin-bottom: 20px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+              .stats { display: flex; justify-content: space-around; margin-bottom: 20px; flex-wrap: wrap; }
+              .stat { text-align: center; margin: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+              th { background-color: #f2f2f2; font-weight: bold; }
+              .debit { color: #dc2626; }
+              .credit { color: #16a34a; }
+              @media print { body { margin: 0; } .no-print { display: none; } }
+            </style>
+          </head>
+          <body>
+            <h1>Ledger Report</h1>
+            <div class="header">
+              <p><strong>Period:</strong> ${new Date(dateFrom).toLocaleDateString('en-IN')} to ${new Date(dateTo).toLocaleDateString('en-IN')}</p>
+              <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+            </div>
+            ${currentParty ? `
+            <div class="party-info">
+              <h3>Party Information</h3>
+              <p><strong>Name:</strong> ${currentParty.name}</p>
+              <p><strong>Phone:</strong> ${currentParty.phone}</p>
+              <p><strong>Opening Balance:</strong> ₹${currentParty.openingBalance.toLocaleString('en-IN')}</p>
+              <p><strong>Current Balance:</strong> ₹${currentParty.currentBalance.toLocaleString('en-IN')}</p>
+              <p><strong>Credit Limit:</strong> ₹${currentParty.creditLimit.toLocaleString('en-IN')}</p>
+            </div>
+            ` : ''}
+            <div class="stats">
+              <div class="stat">
+                <strong>Total Debit</strong><br>₹${totals.debit.toLocaleString('en-IN')}
+              </div>
+              <div class="stat">
+                <strong>Total Credit</strong><br>₹${totals.credit.toLocaleString('en-IN')}
+              </div>
+              <div class="stat">
+                <strong>Net Balance</strong><br>₹${(totals.debit - totals.credit).toLocaleString('en-IN')}
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Remarks</th>
+                  <th>Reference Type</th>
+                  <th>Reference ID</th>
+                  <th>Debit</th>
+                  <th>Credit</th>
+                  <th>Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${ledgerEntries.map(item => `
+                  <tr>
+                    <td>${new Date(item.date).toLocaleDateString('en-IN')}</td>
+                    <td>${item.remarks}</td>
+                    <td>${item.referenceType}</td>
+                    <td>${item.referenceId}</td>
+                    <td class="debit">${item.debit > 0 ? '₹' + item.debit.toLocaleString('en-IN') : ''}</td>
+                    <td class="credit">${item.credit > 0 ? '₹' + item.credit.toLocaleString('en-IN') : ''}</td>
+                    <td>₹${item.balance.toLocaleString('en-IN')}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </body>
+        </html>
+      `;
+
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(printContent);
+        printWindow.document.close();
+        printWindow.print();
+      } else {
+        alert('Please allow popups for this website to use the print function.');
+      }
+    } catch (error) {
+      console.error('Print failed:', error);
+      alert('Print failed. Please try again.');
+    }
+  };
+
   const getBalanceTextColor = (balance: number) => {
     if (balance < 0) return 'text-red-600';
     if (balance > currentParty!.creditLimit) return 'text-orange-600';
@@ -292,6 +434,8 @@ const LedgerReportPage = () => {
         <Button
           variant="outline"
           className="border-blue-300 text-blue-600 hover:bg-blue-50"
+          onClick={handleExport}
+          type="button"
         >
           <Download className="w-4 h-4 mr-2" />
           Export PDF
@@ -299,6 +443,8 @@ const LedgerReportPage = () => {
         <Button
           variant="outline"
           className="border-gray-300 text-gray-600 hover:bg-gray-50"
+          onClick={handlePrint}
+          type="button"
         >
           <Printer className="w-4 h-4 mr-2" />
           Print
@@ -456,7 +602,7 @@ const LedgerReportPage = () => {
       </div>
 
       {/* Info Section */}
-      <Card className="border border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+      {/* <Card className="border border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
         <div className="p-6">
           <h3 className="font-semibold text-gray-900 mb-3">Ledger System Explanation</h3>
           <ul className="space-y-2 text-sm text-gray-700">
@@ -490,7 +636,7 @@ const LedgerReportPage = () => {
             </li>
           </ul>
         </div>
-      </Card>
+      </Card> */}
       </div>
     </DashboardLayout>
   );

@@ -148,6 +148,159 @@ const OutstandingReportPage = () => {
     return 'Good';
   };
 
+  const downloadCSV = (data: any[], filename: string) => {
+    if (!data || data.length === 0) return;
+    const headers = Object.keys(data[0]).join(',');
+    const rows = data.map(row => 
+      Object.values(row).map(val => 
+        typeof val === 'string' && (val.includes(',') || val.includes('"') || val.includes('\n'))
+          ? `"${val.replace(/"/g, '""')}"`
+          : val
+      ).join(',')
+    ).join('\n');
+    const csv = `${headers}\n${rows}`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleExport = () => {
+    if (!filteredAndSorted || filteredAndSorted.length === 0) {
+      alert('No data available to export.');
+      return;
+    }
+    try {
+      const exportData = filteredAndSorted.map(item => ({
+        ID: item.id,
+        Name: item.name,
+        Party_Type: item.partyType,
+        Phone: item.phone,
+        Opening_Balance: item.openingBalance,
+        Total_Debit: item.totalDebit,
+        Total_Credit: item.totalCredit,
+        Current_Balance: item.currentBalance,
+        Credit_Limit: item.creditLimit,
+        Days_Overdue: item.daysOverdue,
+        Last_Transaction_Date: item.lastTransactionDate,
+        Status: getStatusText(item.currentBalance, item.creditLimit),
+      }));
+      downloadCSV(exportData, 'outstanding_report');
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
+  const handlePrint = () => {
+    if (!filteredAndSorted || filteredAndSorted.length === 0) {
+      alert('No data available to print.');
+      return;
+    }
+    try {
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Outstanding Report</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; }
+              h1 { text-align: center; margin-bottom: 20px; }
+              .header { margin-bottom: 20px; }
+              .stats { display: flex; justify-content: space-around; margin-bottom: 20px; flex-wrap: wrap; }
+              .stat { text-align: center; margin: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+              th { background-color: #f2f2f2; font-weight: bold; }
+              .overdue { background-color: #fef2f2; }
+              .high-balance { background-color: #fffbeb; }
+              .exceeds-limit { background-color: #fef2f2; }
+              .overpaid { background-color: #eff6ff; }
+              .good { background-color: #f0fdf4; }
+              @media print { body { margin: 0; } .no-print { display: none; } }
+            </style>
+          </head>
+          <body>
+            <h1>Outstanding Report</h1>
+            <div class="header">
+              <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+              <p><strong>Filter:</strong> ${typeFilter === 'all' ? 'All Types' : typeFilter}</p>
+              <p><strong>Sort By:</strong> ${sortBy === 'balance' ? 'Balance' : sortBy === 'overdue' ? 'Overdue Days' : 'Name'}</p>
+            </div>
+            <div class="stats">
+              <div class="stat">
+                <strong>Total Outstanding</strong><br>₹${stats.totalOutstanding.toLocaleString('en-IN')}
+              </div>
+              <div class="stat">
+                <strong>Total Overpaid</strong><br>₹${stats.totalOverpaid.toLocaleString('en-IN')}
+              </div>
+              <div class="stat">
+                <strong>Overdue Parties</strong><br>${stats.overdueCount}
+              </div>
+              <div class="stat">
+                <strong>Exceeded Limit</strong><br>${stats.exceededLimitCount}
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Phone</th>
+                  <th>Opening Balance</th>
+                  <th>Total Debit</th>
+                  <th>Total Credit</th>
+                  <th>Current Balance</th>
+                  <th>Credit Limit</th>
+                  <th>Days Overdue</th>
+                  <th>Last Transaction</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredAndSorted.map(item => `
+                  <tr class="${getStatusText(item.currentBalance, item.creditLimit).toLowerCase().replace(' ', '-')}">
+                    <td>${item.id}</td>
+                    <td>${item.name}</td>
+                    <td>${item.partyType}</td>
+                    <td>${item.phone}</td>
+                    <td>₹${item.openingBalance.toLocaleString('en-IN')}</td>
+                    <td>₹${item.totalDebit.toLocaleString('en-IN')}</td>
+                    <td>₹${item.totalCredit.toLocaleString('en-IN')}</td>
+                    <td>₹${item.currentBalance.toLocaleString('en-IN')}</td>
+                    <td>₹${item.creditLimit.toLocaleString('en-IN')}</td>
+                    <td>${item.daysOverdue}</td>
+                    <td>${new Date(item.lastTransactionDate).toLocaleDateString('en-IN')}</td>
+                    <td>${getStatusText(item.currentBalance, item.creditLimit)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </body>
+        </html>
+      `;
+
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(printContent);
+        printWindow.document.close();
+        printWindow.print();
+      } else {
+        alert('Please allow popups for this website to use the print function.');
+      }
+    } catch (error) {
+      console.error('Print failed:', error);
+      alert('Print failed. Please try again.');
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -163,6 +316,8 @@ const OutstandingReportPage = () => {
           <Button
             variant="outline"
             className="border-blue-300 text-blue-600 hover:bg-blue-50"
+            onClick={handleExport}
+            type="button"
           >
             <Download className="w-4 h-4 mr-2" />
             Export
@@ -170,6 +325,8 @@ const OutstandingReportPage = () => {
           <Button
             variant="outline"
             className="border-gray-300 text-gray-600 hover:bg-gray-50"
+            onClick={handlePrint}
+            type="button"
           >
             <Printer className="w-4 h-4 mr-2" />
             Print
@@ -351,7 +508,7 @@ const OutstandingReportPage = () => {
       </Card>
 
       {/* Summary Card */}
-      <Card className="border border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+      {/* <Card className="border border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
         <div className="p-6">
           <h3 className="font-semibold text-gray-900 mb-3">
             Summary & Analysis
@@ -375,7 +532,7 @@ const OutstandingReportPage = () => {
             </p>
           </div>
         </div>
-      </Card>
+      </Card> */}
       </div>
     </DashboardLayout>
   );

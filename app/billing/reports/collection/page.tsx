@@ -141,6 +141,139 @@ const CollectionReportPage = () => {
     return colors[mode] || 'bg-gray-100 text-gray-800';
   };
 
+  const downloadCSV = (data: any[], filename: string) => {
+    if (!data || data.length === 0) return;
+    const headers = Object.keys(data[0]).join(',');
+    const rows = data.map(row =>
+      Object.values(row).map(val =>
+        typeof val === 'string' && (val.includes(',') || val.includes('"') || val.includes('\n'))
+          ? `"${val.replace(/"/g, '""')}"`
+          : val
+      ).join(',')
+    ).join('\n');
+    const csv = `${headers}\n${rows}`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleExport = () => {
+    console.log('Export button clicked');
+    console.log('filteredData:', filteredData);
+    if (!filteredData || filteredData.length === 0) {
+      alert('No data available to export.');
+      return;
+    }
+    try {
+      const exportData = filteredData.map(item => ({
+        Date: new Date(item.date).toLocaleDateString('en-IN'),
+        Party_Name: item.partyName,
+        Mode: item.mode,
+        Amount: item.amount,
+        Reference: item.reference || '',
+        Status: item.status,
+      }));
+      console.log('exportData:', exportData);
+      downloadCSV(exportData, 'collection_report');
+      console.log('CSV download initiated');
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
+  const handlePrint = () => {
+    console.log('Print button clicked');
+    console.log('filteredData:', filteredData);
+    if (!filteredData || filteredData.length === 0) {
+      alert('No data available to print.');
+      return;
+    }
+    try {
+      // Create a print-friendly HTML content
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Collection Report</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; }
+              h1 { text-align: center; margin-bottom: 20px; }
+              .header { margin-bottom: 20px; }
+              .stats { display: flex; justify-content: space-around; margin-bottom: 20px; flex-wrap: wrap; }
+              .stat { text-align: center; margin: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+              th { background-color: #f2f2f2; font-weight: bold; }
+              @media print { body { margin: 0; } .no-print { display: none; } }
+            </style>
+          </head>
+          <body>
+            <h1>Collection Report</h1>
+            <div class="header">
+              <p><strong>Period:</strong> ${new Date(dateFromFilter).toLocaleDateString('en-IN')} to ${new Date(dateToFilter).toLocaleDateString('en-IN')}</p>
+              <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+            </div>
+            <div class="stats">
+              <div class="stat">
+                <strong>Total Collected</strong><br>₹${stats.totalCollected.toLocaleString('en-IN')}
+              </div>
+              <div class="stat">
+                <strong>Pending Collection</strong><br>₹${stats.totalPending.toLocaleString('en-IN')}
+              </div>
+              <div class="stat">
+                <strong>Collection Rate</strong><br>${completedData.length > 0 ? ((completedData.length / (completedData.length + pendingData.length)) * 100).toFixed(1) : 0}%
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Party Name</th>
+                  <th>Mode</th>
+                  <th>Amount</th>
+                  <th>Reference</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredData.map(item => `
+                  <tr>
+                    <td>${new Date(item.date).toLocaleDateString('en-IN')}</td>
+                    <td>${item.partyName}</td>
+                    <td>${item.mode}</td>
+                    <td>₹${item.amount.toLocaleString('en-IN')}</td>
+                    <td>${item.reference || '—'}</td>
+                    <td>${item.status}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </body>
+        </html>
+      `;
+
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(printContent);
+        printWindow.document.close();
+        printWindow.print();
+      } else {
+        alert('Please allow popups for this website to use the print function.');
+      }
+    } catch (error) {
+      console.error('Print failed:', error);
+      alert('Print failed. Please try again.');
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -156,6 +289,8 @@ const CollectionReportPage = () => {
           <Button
             variant="outline"
             className="border-blue-300 text-blue-600 hover:bg-blue-50"
+            onClick={handleExport}
+            type="button"
           >
             <Download className="w-4 h-4 mr-2" />
             Export
@@ -163,6 +298,8 @@ const CollectionReportPage = () => {
           <Button
             variant="outline"
             className="border-gray-300 text-gray-600 hover:bg-gray-50"
+            onClick={handlePrint}
+            type="button"
           >
             <Printer className="w-4 h-4 mr-2" />
             Print
@@ -413,7 +550,7 @@ const CollectionReportPage = () => {
       </Card>
 
       {/* Summary */}
-      <Card className="border border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
+      {/* <Card className="border border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
         <div className="p-6">
           <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-green-600" />
@@ -448,7 +585,7 @@ const CollectionReportPage = () => {
             </p>
           </div>
         </div>
-      </Card>
+      </Card> */}
       </div>
     </DashboardLayout>
   );
