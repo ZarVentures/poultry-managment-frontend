@@ -146,6 +146,7 @@ export default function GodownInwardPage() {
     setFormData({
       entryDate: entry.entryDate,
       purchaseInvoiceNo: entry.purchaseInvoiceNo || "",
+      purchaseBillNo: "",
       supplierName: entry.supplierName || "",
       selectedFarmerId: "",
       vehicleId: entry.vehicleId || "",
