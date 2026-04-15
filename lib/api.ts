@@ -274,6 +274,7 @@ export interface PurchaseOrderCage {
   birdType?: string;
   numberOfBirds: number;
   cageWeight: number;
+  status?: 'pending' | 'sold' | 'in_godown';
 }
 
 // Purchase Order DTO Items (backend expects strings for quantity and unitCost)

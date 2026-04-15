@@ -621,22 +621,40 @@ export default function PurchasesPage() {
                   {(viewingPurchase as any).branch && <div><span className="font-semibold">Branch:</span> {(viewingPurchase as any).branch}</div>}
                 </div>
                 {viewingPurchase.cages && viewingPurchase.cages.length > 0 && (
-                  <table className="w-full border-collapse text-xs">
-                    <thead><tr className="bg-gray-100">
-                      <th className="border px-2 py-1">S.N.</th>
-                      <th className="border px-2 py-1">Cage ID</th>
-                      <th className="border px-2 py-1">Birds</th>
-                      <th className="border px-2 py-1">Weight (Kg)</th>
-                    </tr></thead>
-                    <tbody>{viewingPurchase.cages.map((c, i) => (
-                      <tr key={i}>
-                        <td className="border px-2 py-1 text-center">{i + 1}</td>
-                        <td className="border px-2 py-1">{c.cageId || "-"}</td>
-                        <td className="border px-2 py-1 text-right">{c.numberOfBirds}</td>
-                        <td className="border px-2 py-1 text-right">{Number(c.cageWeight).toFixed(2)}</td>
-                      </tr>
-                    ))}</tbody>
-                  </table>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold">Cage Details</span>
+                      <div className="flex gap-2 text-xs">
+                        <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700">Pending: {viewingPurchase.cages.filter(c => !c.status || c.status === 'pending').length}</span>
+                        <span className="px-2 py-0.5 rounded bg-green-100 text-green-700">Sold: {viewingPurchase.cages.filter(c => c.status === 'sold').length}</span>
+                        <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700">In Godown: {viewingPurchase.cages.filter(c => c.status === 'in_godown').length}</span>
+                      </div>
+                    </div>
+                    <table className="w-full border-collapse text-xs">
+                      <thead><tr className="bg-gray-100">
+                        <th className="border px-2 py-1">S.N.</th>
+                        <th className="border px-2 py-1">Cage ID</th>
+                        <th className="border px-2 py-1">Birds</th>
+                        <th className="border px-2 py-1">Weight (Kg)</th>
+                        <th className="border px-2 py-1">Status</th>
+                      </tr></thead>
+                      <tbody>{viewingPurchase.cages.map((c, i) => (
+                        <tr key={i} className={c.status === 'sold' ? 'bg-green-50' : c.status === 'in_godown' ? 'bg-blue-50' : ''}>
+                          <td className="border px-2 py-1 text-center">{i + 1}</td>
+                          <td className="border px-2 py-1 font-medium">{c.cageId || "-"}</td>
+                          <td className="border px-2 py-1 text-right">{c.numberOfBirds}</td>
+                          <td className="border px-2 py-1 text-right">{Number(c.cageWeight).toFixed(2)}</td>
+                          <td className="border px-2 py-1 text-center">
+                            <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                              c.status === 'sold' ? 'bg-green-100 text-green-800' :
+                              c.status === 'in_godown' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>{c.status || 'pending'}</span>
+                          </td>
+                        </tr>
+                      ))}</tbody>
+                    </table>
+                  </div>
                 )}
                 <div className="border p-3 rounded text-xs space-y-1">
                   <div className="grid grid-cols-2 gap-2">
