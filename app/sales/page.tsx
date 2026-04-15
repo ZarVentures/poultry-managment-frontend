@@ -98,14 +98,25 @@ export default function SalesPage() {
   }
 
   const handlePurchaseBillChange = async (orderNumber: string) => {
-    setFormData(f => ({ ...f, purchaseBillNo: orderNumber === '__none__' ? '' : orderNumber }))
+    const billNo = orderNumber === '__none__' ? '' : orderNumber
+    // Auto-generate Sale No from Purchase Bill No (PO-TEST001 → SL-TEST001)
+    const autoSaleNo = billNo ? 'SL-' + billNo.replace(/^PO-/i, '') : ''
+    setFormData(f => ({
+      ...f,
+      purchaseBillNo: billNo,
+      invoiceNumber: billNo || f.invoiceNumber,
+      saleNo: billNo ? autoSaleNo : f.saleNo,
+    }))
     setPurchaseCages([])
     setSelectedCageIds(new Set())
-    if (!orderNumber || orderNumber === '__none__') return
+    if (!billNo) return
     try {
       setLoadingCages(true)
-      const cages = await purchasesApi.getCagesByOrderNumber(orderNumber, 'pending')
-      setPurchaseCages(Array.isArray(cages) ? cages.map(c => ({ ...c, id: c.id ?? '' })) : [])
+      const cages = await purchasesApi.getCagesByOrderNumber(billNo, 'pending')
+      const mapped = Array.isArray(cages) ? cages.map(c => ({ ...c, id: c.id ?? '' })) : []
+      setPurchaseCages(mapped)
+      // Pre-select all cages by default
+      setSelectedCageIds(new Set(mapped.map(c => c.id)))
     } catch {
       toast.error('Failed to load cages for this purchase bill')
     } finally {
@@ -367,15 +378,18 @@ export default function SalesPage() {
                   <CardContent className="space-y-4 pt-4">
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <Label>Invoice No. *</Label>
-                        <div className="flex">
-                          <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">SI-</span>
-                          <Input value={formData.invoiceNumber.replace('SI-','')} onChange={e => setFormData(f => ({ ...f, invoiceNumber: 'SI-' + e.target.value }))} placeholder="001" className="rounded-l-none" disabled={loading} />
-                        </div>
+                        <Label>Purchase Bill No *</Label>
+                        <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
+                          <SelectTrigger><SelectValue placeholder="Select purchase bill" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">Select purchase bill...</SelectItem>
+                            {purchaseBills.map(b => <SelectItem key={b.id} value={b.orderNumber}>{b.orderNumber} — {b.supplierName}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label>Sale No.</Label>
-                        <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value }))} placeholder="SL-001" disabled={loading} />
+                        <Label>Sale No. (auto)</Label>
+                        <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value }))} placeholder="Auto-filled from Purchase Bill" disabled={loading} className={formData.saleNo ? "bg-green-50 border-green-300" : ""} />
                       </div>
                       <div className="space-y-2">
                         <Label>Sale Date *</Label>
@@ -384,16 +398,6 @@ export default function SalesPage() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Purchase Bill No</Label>
-                        <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
-                          <SelectTrigger><SelectValue placeholder="Select purchase bill" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">None</SelectItem>
-                            {purchaseBills.map(b => <SelectItem key={b.id} value={b.orderNumber}>{b.orderNumber} — {b.supplierName}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
                       <div className="space-y-2">
                         <Label>Cage No.</Label>
                         <Input value={formData.cageNo} onChange={e => setFormData(f => ({ ...f, cageNo: e.target.value }))} placeholder="e.g. C-001, C-002" disabled={loading} />
@@ -404,9 +408,12 @@ export default function SalesPage() {
                     {formData.purchaseBillNo && formData.purchaseBillNo !== '__none__' && (
                       <div className="border rounded-lg p-3 bg-blue-50 space-y-2">
                         <div className="flex items-center justify-between">
-                          <Label className="text-blue-900 font-semibold">
-                            Select Cages Being Sold (from {formData.purchaseBillNo})
-                          </Label>
+                          <div>
+                            <Label className="text-blue-900 font-semibold">
+                              Cages from {formData.purchaseBillNo}
+                            </Label>
+                            <p className="text-xs text-muted-foreground mt-0.5">Checked cages will be marked as <span className="text-green-700 font-medium">SOLD</span> when you create the sale</p>
+                          </div>
                           {loadingCages && <span className="text-xs text-muted-foreground">Loading cages...</span>}
                           {!loadingCages && purchaseCages.length > 0 && (
                             <button type="button" onClick={toggleAllCages} className="text-xs text-blue-700 underline">
