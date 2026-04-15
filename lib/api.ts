@@ -773,18 +773,22 @@ export const purchasesApi = {
     apiRequest<PurchaseOrderCage[]>(`/purchases/by-number/${encodeURIComponent(orderNumber)}/cages${status ? `?status=${status}` : ''}`),
 
   // Mark cage IDs as sold
-  markCagesSold: (cageIds: string[]) =>
+  markCagesSold: (cageIds: string[], saleWeight?: number) =>
     apiRequest<void>('/purchases/cages/mark-sold', {
       method: 'PATCH',
-      body: JSON.stringify({ cageIds }),
+      body: JSON.stringify({ cageIds, saleWeight }),
     }),
 
   // Mark cage IDs as in_godown
-  markCagesInGodown: (cageIds: string[]) =>
+  markCagesInGodown: (cageIds: string[], godownInwardWeight?: number) =>
     apiRequest<void>('/purchases/cages/mark-in-godown', {
       method: 'PATCH',
-      body: JSON.stringify({ cageIds }),
+      body: JSON.stringify({ cageIds, godownInwardWeight }),
     }),
+
+  // Get full cage journey for weight loss tracking
+  getCageJourney: (orderNumber: string) =>
+    apiRequest<any[]>(`/purchases/cage-journey/${encodeURIComponent(orderNumber)}`),
 };
 
 // ============================================

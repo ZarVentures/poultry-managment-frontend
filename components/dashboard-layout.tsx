@@ -14,7 +14,7 @@ import {
   LogOut, Menu, X, Home, Settings, ChevronDown, Users2,
   Calculator, Truck, AlertCircle, Terminal, Copy, Trash2,
   ChartNoAxesCombined, Tractor, User, PackageOpen, PackagePlus,
-  PackageSearch, PackageX, PackageCheck,
+  PackageSearch, PackageX, PackageCheck, GitBranch,
 } from "lucide-react"
 
 // Staging-only features are controlled by this env var.
@@ -102,6 +102,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
 
           <SidebarLink href="/purchases" icon={ShoppingCart} label="Purchases" open={sidebarOpen} />
+          <SidebarLink href="/cage-tracking" icon={GitBranch} label="Cage Tracking" open={sidebarOpen} />
           <SidebarLink href="/sales" icon={TrendingUp} label="Sales" open={sidebarOpen} />
           <SidebarLink href="/mortality" icon={AlertCircle} label="Mortality" open={sidebarOpen} />
           <SidebarLink href="/expenses" icon={BarChart3} label="Expenses" open={sidebarOpen} />
