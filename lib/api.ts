@@ -767,6 +767,24 @@ export const purchasesApi = {
     }
     return response.json();
   },
+
+  // Get cages for a purchase bill by order number, optionally filtered by status
+  getCagesByOrderNumber: (orderNumber: string, status?: string) =>
+    apiRequest<PurchaseOrderCage[]>(`/purchases/by-number/${encodeURIComponent(orderNumber)}/cages${status ? `?status=${status}` : ''}`),
+
+  // Mark cage IDs as sold
+  markCagesSold: (cageIds: string[]) =>
+    apiRequest<void>('/purchases/cages/mark-sold', {
+      method: 'PATCH',
+      body: JSON.stringify({ cageIds }),
+    }),
+
+  // Mark cage IDs as in_godown
+  markCagesInGodown: (cageIds: string[]) =>
+    apiRequest<void>('/purchases/cages/mark-in-godown', {
+      method: 'PATCH',
+      body: JSON.stringify({ cageIds }),
+    }),
 };
 
 // ============================================
