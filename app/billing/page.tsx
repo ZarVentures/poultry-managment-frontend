@@ -127,7 +127,7 @@ export default function BillingDashboard() {
         {/* Reports */}
         <div>
           <h2 className="text-lg font-semibold mb-4">Reports</h2>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             <Link href="/billing/reports/outstanding">
               <Card className="cursor-pointer hover:shadow-md transition-shadow h-full">
                 <CardHeader>
@@ -177,6 +177,25 @@ export default function BillingDashboard() {
                 <CardContent>
                   <p className="text-sm text-muted-foreground mb-4">
                     Payment received analysis
+                  </p>
+                  <Button variant="outline" size="sm">
+                    View
+                  </Button>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href="/billing/reports/pending-purchases">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow h-full">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ShoppingCart className="h-4 w-4" />
+                    Pending Purchases
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    View purchases with outstanding payments
                   </p>
                   <Button variant="outline" size="sm">
                     View
