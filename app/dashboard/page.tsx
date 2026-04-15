@@ -351,7 +351,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Row 5 - Monthly Summary */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle>This Month Summary</CardTitle>
             <CardDescription>Financial overview for current month</CardDescription>
@@ -378,7 +378,7 @@ export default function DashboardPage() {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
       </div>
     </DashboardLayout>
