@@ -51,7 +51,7 @@ export default function BillingDashboard() {
 
   const modules = [
     {
-      title: 'Ledger Report',
+      title: 'Client Ledger Report',
       desc: 'View running balance',
       href: '/billing/ledger',
       icon: BookOpen,

@@ -28,21 +28,26 @@ import {
   TrendingDown,
   AlertCircle,
   Calendar,
+  Building2,
+  Users,
 } from 'lucide-react';
+import Link from 'next/link';
 
 interface LedgerEntry {
   date: string;
   remarks: string;
-  referenceType: 'Opening' | 'Sale' | 'Payment';
+  referenceType: 'Opening' | 'Purchase' | 'Sale' | 'Payment' | 'Receipt';
   referenceId: string;
   debit: number;
   credit: number;
   balance: number;
+  partyId: string;
 }
 
 interface Party {
   id: string;
   name: string;
+  type: 'Farm' | 'Retailer';
   phone: string;
   openingBalance: number;
   currentBalance: number;
@@ -58,6 +63,7 @@ const LedgerReportPage = () => {
     {
       id: '1',
       name: 'Sharma Poultry Shop',
+      type: 'Retailer',
       phone: '9876543210',
       openingBalance: 50000,
       currentBalance: 12500,
@@ -66,6 +72,7 @@ const LedgerReportPage = () => {
     {
       id: '2',
       name: 'Patel Farms',
+      type: 'Farm',
       phone: '9987654321',
       openingBalance: 100000,
       currentBalance: 85000,
@@ -74,6 +81,7 @@ const LedgerReportPage = () => {
     {
       id: '3',
       name: 'Delhi Bird Distributor',
+      type: 'Retailer',
       phone: '9876789012',
       openingBalance: 75000,
       currentBalance: -5000,
@@ -83,16 +91,18 @@ const LedgerReportPage = () => {
 
   const currentParty = parties.find((p) => p.id === selectedParty);
 
-  // Sample ledger data
-  const ledgerEntries: LedgerEntry[] = [
+  // Sample ledger data - different entries for farms vs retailers
+  const allLedgerEntries: LedgerEntry[] = [
+    // For Retailer (Sharma Poultry Shop - Party 1)
     {
       date: '2024-04-01',
-      remarks: 'Opening Balance',
+      remarks: 'Opening Balance - Previous Outstanding',
       referenceType: 'Opening',
       referenceId: 'OPN001',
       debit: 0,
       credit: 0,
       balance: 50000,
+      partyId: '1',
     },
     {
       date: '2024-04-02',
@@ -102,15 +112,17 @@ const LedgerReportPage = () => {
       debit: 105000,
       credit: 0,
       balance: 155000,
+      partyId: '1',
     },
     {
       date: '2024-04-03',
       remarks: 'Payment Received - Cash',
-      referenceType: 'Payment',
-      referenceId: 'PAY001',
+      referenceType: 'Receipt',
+      referenceId: 'REC001',
       debit: 0,
       credit: 100000,
       balance: 55000,
+      partyId: '1',
     },
     {
       date: '2024-04-04',
@@ -120,17 +132,114 @@ const LedgerReportPage = () => {
       debit: 63000,
       credit: 0,
       balance: 118000,
+      partyId: '1',
     },
     {
       date: '2024-04-05',
       remarks: 'Payment Received - Bank Transfer',
-      referenceType: 'Payment',
-      referenceId: 'PAY002',
+      referenceType: 'Receipt',
+      referenceId: 'REC002',
       debit: 0,
       credit: 105500,
       balance: 12500,
+      partyId: '1',
+    },
+    // For Farm (Patel Farms - Party 2)
+    {
+      date: '2024-04-01',
+      remarks: 'Opening Balance - Previous Outstanding',
+      referenceType: 'Opening',
+      referenceId: 'OPN002',
+      debit: 0,
+      credit: 0,
+      balance: 100000,
+      partyId: '2',
+    },
+    {
+      date: '2024-04-02',
+      remarks: 'Purchase - Birds Received (1000 birds)',
+      referenceType: 'Purchase',
+      referenceId: 'PUR001',
+      debit: 210000,
+      credit: 0,
+      balance: 310000,
+      partyId: '2',
+    },
+    {
+      date: '2024-04-04',
+      remarks: 'Payment Made - Bank Transfer',
+      referenceType: 'Payment',
+      referenceId: 'PAY001',
+      debit: 0,
+      credit: 100000,
+      balance: 210000,
+      partyId: '2',
+    },
+    {
+      date: '2024-04-06',
+      remarks: 'Purchase - Birds Received (500 birds)',
+      referenceType: 'Purchase',
+      referenceId: 'PUR002',
+      debit: 105000,
+      credit: 0,
+      balance: 315000,
+      partyId: '2',
+    },
+    {
+      date: '2024-04-08',
+      remarks: 'Payment Made - Cash',
+      referenceType: 'Payment',
+      referenceId: 'PAY002',
+      debit: 0,
+      credit: 230000,
+      balance: 85000,
+      partyId: '2',
+    },
+    // For Retailer (Delhi Bird Distributor - Party 3)
+    {
+      date: '2024-04-01',
+      remarks: 'Opening Balance - Credit Due',
+      referenceType: 'Opening',
+      referenceId: 'OPN003',
+      debit: 0,
+      credit: 0,
+      balance: 75000,
+      partyId: '3',
+    },
+    {
+      date: '2024-04-03',
+      remarks: 'Sale - Birds Dispatch (700 birds)',
+      referenceType: 'Sale',
+      referenceId: 'SAL003',
+      debit: 147000,
+      credit: 0,
+      balance: 222000,
+      partyId: '3',
+    },
+    {
+      date: '2024-04-06',
+      remarks: 'Payment Received - Bank Transfer',
+      referenceType: 'Receipt',
+      referenceId: 'REC003',
+      debit: 0,
+      credit: 125000,
+      balance: 97000,
+      partyId: '3',
+    },
+    {
+      date: '2024-04-09',
+      remarks: 'Sale - Birds Dispatch (400 birds)',
+      referenceType: 'Sale',
+      referenceId: 'SAL004',
+      debit: 84000,
+      credit: 0,
+      balance: 181000,
+      partyId: '3',
     },
   ];
+
+  // Filter entries for selected party
+  const ledgerEntries = allLedgerEntries.filter(entry => entry.partyId === selectedParty);
 
   const totals = ledgerEntries.reduce(
     (acc, entry) => ({
@@ -144,7 +253,11 @@ const LedgerReportPage = () => {
     switch (type) {
       case 'Sale':
         return 'bg-red-50';
+      case 'Purchase':
+        return 'bg-orange-50';
       case 'Payment':
+        return 'bg-blue-50';
+      case 'Receipt':
         return 'bg-green-50';
       default:
         return 'bg-gray-50';
@@ -206,7 +319,7 @@ const LedgerReportPage = () => {
         <!DOCTYPE html>
         <html>
           <head>
-            <title>Ledger Report</title>
+            <title>Client Ledger Report</title>
             <style>
               body { font-family: Arial, sans-serif; margin: 20px; }
               h1 { text-align: center; margin-bottom: 20px; }
@@ -309,6 +422,36 @@ const LedgerReportPage = () => {
         </p>
       </div>
 
+      {/* Ledger Type Navigation */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Link href="/billing/ledger">
+          <Card className="border-2 border-blue-300 bg-blue-50 p-6 cursor-pointer hover:shadow-lg transition-shadow h-full">
+            <div className="flex items-start gap-3">
+              <Users className="w-6 h-6 text-blue-600 mt-1" />
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Party Ledger</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  View individual ledger accounts for farms and retailers
+                </p>
+              </div>
+            </div>
+          </Card>
+        </Link>
+        <Link href="/billing/ledger/company-report">
+          <Card className="border-2 border-purple-300 bg-purple-50 p-6 cursor-pointer hover:shadow-lg transition-shadow h-full">
+            <div className="flex items-start gap-3">
+              <Building2 className="w-6 h-6 text-purple-600 mt-1" />
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Company Ledger</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  View complete company account with all transactions
+                </p>
+              </div>
+            </div>
+          </Card>
+        </Link>
+      </div>
+
       {/* Party Selection */}
       <Card className="border border-gray-200 p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -362,56 +505,92 @@ const LedgerReportPage = () => {
 
       {/* Party Info */}
       {currentParty && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="border border-blue-200 bg-blue-50 p-6">
-            <p className="text-sm text-gray-600 font-medium">Party Name</p>
-            <p className="text-2xl font-bold text-gray-900 mt-2">
-              {currentParty.name}
-            </p>
-            <p className="text-xs text-gray-600 mt-2">📱 {currentParty.phone}</p>
-          </Card>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <Card className="border border-blue-200 bg-blue-50 p-6">
+              <p className="text-sm text-gray-600 font-medium">Party Name</p>
+              <p className="text-2xl font-bold text-gray-900 mt-2">
+                {currentParty.name}
+              </p>
+              <p className="text-xs text-gray-600 mt-2">📱 {currentParty.phone}</p>
+            </Card>
 
-          <Card className="border border-green-200 bg-green-50 p-6">
-            <p className="text-sm text-gray-600 font-medium">
-              Opening Balance
-            </p>
-            <p className="text-2xl font-bold text-gray-900 mt-2">
-              ₹{currentParty.openingBalance.toLocaleString('en-IN')}
-            </p>
-          </Card>
+            <Card className={`border-2 p-6 ${currentParty.type === 'Farm' ? 'border-amber-300 bg-amber-50' : 'border-cyan-300 bg-cyan-50'}`}>
+              <p className="text-sm text-gray-600 font-medium">Party Type</p>
+              <p className={`text-2xl font-bold mt-2 ${currentParty.type === 'Farm' ? 'text-amber-700' : 'text-cyan-700'}`}>
+                {currentParty.type}
+              </p>
+              <p className="text-xs text-gray-600 mt-2">
+                {currentParty.type === 'Farm' 
+                  ? '🚜 We buy from them' 
+                  : '🏪 We sell to them'}
+              </p>
+            </Card>
 
-          <Card className="border border-purple-200 bg-purple-50 p-6">
-            <p className="text-sm text-gray-600 font-medium">Credit Limit</p>
-            <p className="text-2xl font-bold text-gray-900 mt-2">
-              ₹{currentParty.creditLimit.toLocaleString('en-IN')}
-            </p>
-          </Card>
+            <Card className="border border-green-200 bg-green-50 p-6">
+              <p className="text-sm text-gray-600 font-medium">
+                {currentParty.type === 'Farm' ? 'Initial Payment' : 'Initial Purchase'}
+              </p>
+              <p className="text-2xl font-bold text-gray-900 mt-2">
+                ₹{currentParty.openingBalance.toLocaleString('en-IN')}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">From 1st Apr 2024</p>
+            </Card>
 
-          <Card
-            className={`border-2 p-6 ${
-              currentParty.currentBalance < 0
-                ? 'border-red-300 bg-red-50'
-                : currentParty.currentBalance > currentParty.creditLimit
-                  ? 'border-orange-300 bg-orange-50'
-                  : 'border-green-300 bg-green-50'
-            }`}
-          >
-            <p className="text-sm text-gray-600 font-medium">Current Balance</p>
-            <p
-              className={`text-2xl font-bold mt-2 ${getBalanceTextColor(
-                currentParty.currentBalance
-              )}`}
+            <Card className="border border-purple-200 bg-purple-50 p-6">
+              <p className="text-sm text-gray-600 font-medium">Credit Limit</p>
+              <p className="text-2xl font-bold text-gray-900 mt-2">
+                ₹{currentParty.creditLimit.toLocaleString('en-IN')}
+              </p>
+            </Card>
+
+            <Card
+              className={`border-2 p-6 ${
+                currentParty.currentBalance < 0
+                  ? 'border-red-300 bg-red-50'
+                  : currentParty.currentBalance > currentParty.creditLimit
+                    ? 'border-orange-300 bg-orange-50'
+                    : 'border-green-300 bg-green-50'
+              }`}
             >
-              ₹{currentParty.currentBalance.toLocaleString('en-IN')}
-            </p>
-            {currentParty.currentBalance < 0 && (
-              <p className="text-xs text-red-600 mt-1">Overpaid</p>
-            )}
-            {currentParty.currentBalance > currentParty.creditLimit && (
-              <p className="text-xs text-orange-600 mt-1">Exceeds Limit</p>
-            )}
-          </Card>
-        </div>
+              <p className="text-sm text-gray-600 font-medium">Current Balance</p>
+              <p
+                className={`text-2xl font-bold mt-2 ${getBalanceTextColor(
+                  currentParty.currentBalance
+                )}`}
+              >
+                ₹{currentParty.currentBalance.toLocaleString('en-IN')}
+              </p>
+              {currentParty.currentBalance < 0 && (
+                <p className="text-xs text-red-600 mt-1">Overpaid</p>
+              )}
+              {currentParty.currentBalance > currentParty.creditLimit && (
+                <p className="text-xs text-orange-600 mt-1">Exceeds Limit</p>
+              )}
+            </Card>
+          </div>
+
+          {/* Info Alert - Explain transaction types */}
+          <Alert className={`border-2 ${currentParty.type === 'Farm' ? 'border-amber-300 bg-amber-50' : 'border-cyan-300 bg-cyan-50'}`}>
+            <AlertCircle className={`h-4 w-4 ${currentParty.type === 'Farm' ? 'text-amber-700' : 'text-cyan-700'}`} />
+            <AlertDescription className={currentParty.type === 'Farm' ? 'text-amber-900' : 'text-cyan-900'}>
+              <strong>Legend for {currentParty.name}:</strong>
+              {currentParty.type === 'Farm' ? (
+                <div className="mt-2">
+                  <p>🔹 <strong>Purchase:</strong> Birds we bought from this farm (Debit - increases outstanding)</p>
+                  <p>🔹 <strong>Payment:</strong> Payment made to this farm (Credit - decreases outstanding)</p>
+                  <p>🔹 <strong>Opening Balance:</strong> Amount we already owed to this farm on 1st Apr 2024</p>
+                </div>
+              ) : (
+                <div className="mt-2">
+                  <p>🔹 <strong>Sale:</strong> Birds we sold to this retailer (Debit - they owe us)</p>
+                  <p>🔹 <strong>Receipt:</strong> Payment received from this retailer (Credit - decreases their debt)</p>
+                  <p>🔹 <strong>Opening Balance:</strong> Amount they already owed to us on 1st Apr 2024</p>
+                </div>
+              )}
+            </AlertDescription>
+          </Alert>
+        </>
       )}
 
       {/* Alert for Credit Limit */}
@@ -499,9 +678,13 @@ const LedgerReportPage = () => {
                       className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
                         entry.referenceType === 'Sale'
                           ? 'bg-red-100 text-red-800'
-                          : entry.referenceType === 'Payment'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
+                          : entry.referenceType === 'Purchase'
+                            ? 'bg-orange-100 text-orange-800'
+                            : entry.referenceType === 'Payment'
+                              ? 'bg-blue-100 text-blue-800'
+                              : entry.referenceType === 'Receipt'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-gray-100 text-gray-800'
                       }`}
                     >
                       {entry.referenceType}
