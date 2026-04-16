@@ -167,9 +167,18 @@ export interface InventoryItem {
 }
 
 // Sale Interface
+export interface SalePayment {
+  id?: string;
+  paymentMode: string;
+  amount: number;
+}
+
 export interface Sale {
   id: string;
   invoiceNumber: string;
+  saleNo?: string;
+  purchaseBillNo?: string;
+  cageNo?: string;
   customerName: string;
   saleDate: string;
   saleMode: 'from_vehicle' | 'from_godown';
@@ -192,6 +201,7 @@ export interface Sale {
   notes?: string;
   retailerId?: string;
   saleAttachment?: string;
+  payments?: SalePayment[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -264,6 +274,7 @@ export interface PurchaseOrderCage {
   birdType?: string;
   numberOfBirds: number;
   cageWeight: number;
+  status?: 'pending' | 'sold' | 'in_godown';
 }
 
 // Purchase Order DTO Items (backend expects strings for quantity and unitCost)
@@ -281,6 +292,12 @@ export interface CreatePurchaseOrderCageDto {
   cageWeight: number;
 }
 
+export interface PurchaseOrderPayment {
+  id?: string;
+  paymentMode: string;
+  amount: number;
+}
+
 export interface PurchaseOrder {
   id: string;
   orderNumber: string;
@@ -288,37 +305,24 @@ export interface PurchaseOrder {
   orderDate: string;
   dueDate?: string;
   status: 'pending' | 'received' | 'cancelled';
-  // Farmer integration
   farmerId?: string;
   farmerMobile?: string;
   farmLocation?: string;
-  // Vehicle integration
   vehicleId?: string;
-  // Bird details
-  birdType?: string;
   totalWeight?: number;
   ratePerKg?: number;
-  // Amounts
   totalAmount: number;
   transportCharges?: number;
-  loadingCharges?: number;
-  commission?: number;
   otherCharges?: number;
-  weightShortage?: number;
-  mortalityDeduction?: number;
-  otherDeduction?: number;
   grossAmount?: number;
   netAmount?: number;
-  // Payment tracking
   purchasePaymentStatus?: 'paid' | 'pending' | 'partial';
-  advancePaid?: number;
-  outstandingPayment?: number;
-  paymentMode?: string;
   totalPaymentMade?: number;
   balanceAmount?: number;
   notes?: string;
   items: PurchaseOrderItem[];
   cages?: PurchaseOrderCage[];
+  payments?: PurchaseOrderPayment[];
   invoiceAttachment?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -379,6 +383,7 @@ export interface GodownInward {
   ratePerKg?: number;
   totalAmount?: number;
   notes?: string;
+  cages?: GodownCage[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -398,8 +403,19 @@ export interface GodownSale {
   paymentStatus: 'paid' | 'pending' | 'partial';
   amountReceived: number;
   notes?: string;
+  cages?: GodownCage[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface GodownCage {
+  id?: string;
+  cageId?: string;
+  birdType?: string;
+  numberOfBirds: number;
+  cageWeight: number;
+  purchaseOrderId?: string;
+  godownInwardId?: string;
 }
 
 export interface GodownMortality {
@@ -751,6 +767,28 @@ export const purchasesApi = {
     }
     return response.json();
   },
+
+  // Get cages for a purchase bill by order number, optionally filtered by status
+  getCagesByOrderNumber: (orderNumber: string, status?: string) =>
+    apiRequest<PurchaseOrderCage[]>(`/cages/by-purchase/${encodeURIComponent(orderNumber)}${status ? `?status=${status}` : ''}`),
+
+  // Mark cage IDs as sold
+  markCagesSold: (cageIds: string[], saleWeight?: number) =>
+    apiRequest<void>('/cages/mark-sold', {
+      method: 'PATCH',
+      body: JSON.stringify({ cageIds, saleWeight }),
+    }),
+
+  // Mark cage IDs as in_godown
+  markCagesInGodown: (cageIds: string[], godownInwardWeight?: number) =>
+    apiRequest<void>('/cages/mark-in-godown', {
+      method: 'PATCH',
+      body: JSON.stringify({ cageIds, godownInwardWeight }),
+    }),
+
+  // Get full cage journey for weight loss tracking
+  getCageJourney: (orderNumber: string) =>
+    apiRequest<any[]>(`/cages/journey/${encodeURIComponent(orderNumber)}`),
 };
 
 // ============================================

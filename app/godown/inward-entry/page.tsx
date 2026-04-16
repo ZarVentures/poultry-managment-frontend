@@ -12,13 +12,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Edit2, Trash2, X } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { godownApi, vehiclesApi, farmersApi, type GodownInward, type Vehicle, type Farmer } from "@/lib/api"
+import { godownApi, vehiclesApi, farmersApi, purchasesApi, type GodownInward, type GodownCage, type Vehicle } from "@/lib/api"
 import { toast } from "sonner"
+
+type ActiveFarmer = { id: string; name: string; phone: string; address?: string }
+
+const emptyCage = (): GodownCage => ({ cageId: "", birdType: "", numberOfBirds: 0, cageWeight: 0 })
 
 export default function GodownInwardPage() {
   const [entries, setEntries] = useState<GodownInward[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  const [farmers, setFarmers] = useState<Farmer[]>([])
+  const [farmers, setFarmers] = useState<ActiveFarmer[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
@@ -26,7 +30,9 @@ export default function GodownInwardPage() {
   const [formData, setFormData] = useState({
     entryDate: new Date().toISOString().split("T")[0],
     purchaseInvoiceNo: "",
+    purchaseBillNo: "",
     supplierName: "",
+    selectedFarmerId: "",
     vehicleId: "",
     numberOfBirds: "",
     averageWeight: "",
@@ -35,12 +41,18 @@ export default function GodownInwardPage() {
     totalAmount: "",
     notes: "",
   })
+  const [cages, setCages] = useState<GodownCage[]>([emptyCage()])
+  const [purchaseBills, setPurchaseBills] = useState<Array<{ id: string; orderNumber: string; supplierName: string }>>([])
+  const [purchaseCages, setPurchaseCages] = useState<Array<{ id: string; cageId?: string; numberOfBirds: number; cageWeight: number }>>([])
+  const [selectedCageIds, setSelectedCageIds] = useState<Set<string>>(new Set())
+  const [loadingCages, setLoadingCages] = useState(false)
 
   useEffect(() => {
     setMounted(true)
     fetchEntries()
     fetchVehicles()
     fetchFarmers()
+    fetchPurchaseBills()
   }, [])
 
   const fetchEntries = async () => {
@@ -67,18 +79,55 @@ export default function GodownInwardPage() {
 
   const fetchFarmers = async () => {
     try {
-      const data = await farmersApi.getAll()
-      setFarmers(data.filter(f => f.status === "active"))
+      // getActive() returns a plain array of active farmers
+      const data = await farmersApi.getActive()
+      setFarmers(data)
     } catch (error) {
       console.error("Failed to fetch farmers:", error)
     }
+  }
+
+  const fetchPurchaseBills = async () => {
+    try {
+      const data = await purchasesApi.getInvoiceList()
+      setPurchaseBills(Array.isArray(data) ? data : [])
+    } catch { setPurchaseBills([]) }
+  }
+
+  const handlePurchaseBillChange = async (orderNumber: string) => {
+    setFormData(f => ({ ...f, purchaseBillNo: orderNumber === '__none__' ? '' : orderNumber }))
+    setPurchaseCages([])
+    setSelectedCageIds(new Set())
+    if (!orderNumber || orderNumber === '__none__') return
+    try {
+      setLoadingCages(true)
+      const cageData = await purchasesApi.getCagesByOrderNumber(orderNumber, 'pending')
+      setPurchaseCages(Array.isArray(cageData) ? cageData.map(c => ({ ...c, id: c.id ?? '' })) : [])
+    } catch { toast.error('Failed to load cages for this purchase bill') }
+    finally { setLoadingCages(false) }
+  }
+
+  const toggleCage = (id: string) => {
+    setSelectedCageIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleAllCages = () => {
+    if (selectedCageIds.size === purchaseCages.length) setSelectedCageIds(new Set())
+    else setSelectedCageIds(new Set(purchaseCages.map(c => c.id)))
   }
 
   const resetForm = () => {
     setFormData({
       entryDate: new Date().toISOString().split("T")[0],
       purchaseInvoiceNo: "",
+      purchaseBillNo: "",
       supplierName: "",
+      selectedFarmerId: "",
       vehicleId: "",
       numberOfBirds: "",
       averageWeight: "",
@@ -87,6 +136,9 @@ export default function GodownInwardPage() {
       totalAmount: "",
       notes: "",
     })
+    setCages([emptyCage()])
+    setPurchaseCages([])
+    setSelectedCageIds(new Set())
     setEditingId(null)
   }
 
@@ -94,7 +146,9 @@ export default function GodownInwardPage() {
     setFormData({
       entryDate: entry.entryDate,
       purchaseInvoiceNo: entry.purchaseInvoiceNo || "",
+      purchaseBillNo: "",
       supplierName: entry.supplierName || "",
+      selectedFarmerId: "",
       vehicleId: entry.vehicleId || "",
       numberOfBirds: String(entry.numberOfBirds || ""),
       averageWeight: String(entry.averageWeight || ""),
@@ -103,6 +157,7 @@ export default function GodownInwardPage() {
       totalAmount: String(entry.totalAmount || ""),
       notes: entry.notes || "",
     })
+    setCages(entry.cages && entry.cages.length > 0 ? entry.cages : [emptyCage()])
     setEditingId(entry.id)
     setShowDialog(true)
   }
@@ -145,6 +200,14 @@ export default function GodownInwardPage() {
         ratePerKg,
         totalAmount,
         notes: formData.notes || undefined,
+        cages: cages
+          .filter(c => c.numberOfBirds > 0 || c.cageWeight > 0)
+          .map(c => ({
+            cageId: c.cageId || undefined,
+            birdType: c.birdType || undefined,
+            numberOfBirds: Number(c.numberOfBirds) || 0,
+            cageWeight: Number(c.cageWeight) || 0,
+          })),
       }
 
       if (editingId) {
@@ -153,6 +216,12 @@ export default function GodownInwardPage() {
       } else {
         await godownApi.inward.create(entryData)
         toast.success("Entry created successfully")
+      }
+
+      // Mark selected purchase cages as in_godown
+      if (selectedCageIds.size > 0) {
+        try { await purchasesApi.markCagesInGodown(Array.from(selectedCageIds)) }
+        catch { toast.error("Entry saved but failed to update cage status") }
       }
 
       await fetchEntries()
@@ -187,6 +256,7 @@ export default function GodownInwardPage() {
     if (farmer) {
       setFormData({
         ...formData,
+        selectedFarmerId: farmerId,
         supplierName: farmer.name,
       })
     }
@@ -228,14 +298,14 @@ export default function GodownInwardPage() {
                 New Entry
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl" aria-describedby="dialog-description">
+            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col" aria-describedby="dialog-description">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Edit Entry" : "New Entry"}</DialogTitle>
                 <p id="dialog-description" className="sr-only">
                   {editingId ? "Edit godown inward entry details" : "Create a new godown inward entry"}
                 </p>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-4 overflow-y-auto flex-1 pr-1 pb-2">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Entry Date *</Label>
@@ -256,10 +326,76 @@ export default function GodownInwardPage() {
                   </div>
                 </div>
 
+                {/* Purchase Bill linkage */}
+                <div className="space-y-2">
+                  <Label>Link to Purchase Bill (loads remaining cages)</Label>
+                  <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
+                    <SelectTrigger><SelectValue placeholder="Select purchase bill (optional)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {purchaseBills.map(b => <SelectItem key={b.id} value={b.orderNumber}>{b.orderNumber} — {b.supplierName}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Remaining cages from purchase bill */}
+                {formData.purchaseBillNo && formData.purchaseBillNo !== '__none__' && (
+                  <div className="border rounded-lg p-3 bg-blue-50 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-blue-900 font-semibold">
+                        Remaining Cages from {formData.purchaseBillNo}
+                      </Label>
+                      {loadingCages && <span className="text-xs text-muted-foreground">Loading...</span>}
+                      {!loadingCages && purchaseCages.length > 0 && (
+                        <button type="button" onClick={toggleAllCages} className="text-xs text-blue-700 underline">
+                          {selectedCageIds.size === purchaseCages.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                      )}
+                    </div>
+                    {!loadingCages && purchaseCages.length === 0 && (
+                      <p className="text-xs text-muted-foreground">No remaining cages (all sold or already in godown).</p>
+                    )}
+                    {!loadingCages && purchaseCages.length > 0 && (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b bg-blue-100">
+                              <th className="p-1 w-8"></th>
+                              <th className="text-left p-1">Cage ID</th>
+                              <th className="text-right p-1">Birds</th>
+                              <th className="text-right p-1">Morning Wt (kg)</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {purchaseCages.map(cage => (
+                              <tr key={cage.id} className={`border-b cursor-pointer hover:bg-blue-100 ${selectedCageIds.has(cage.id) ? 'bg-green-50' : ''}`}
+                                onClick={() => toggleCage(cage.id)}>
+                                <td className="p-1 text-center">
+                                  <input type="checkbox" checked={selectedCageIds.has(cage.id)} onChange={() => toggleCage(cage.id)} onClick={e => e.stopPropagation()} />
+                                </td>
+                                <td className="p-1 font-medium">{cage.cageId || '-'}</td>
+                                <td className="p-1 text-right">{cage.numberOfBirds}</td>
+                                <td className="p-1 text-right">{Number(cage.cageWeight).toFixed(2)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="border-t font-semibold bg-blue-100">
+                              <td colSpan={2} className="p-1">{selectedCageIds.size} selected / {purchaseCages.length} total</td>
+                              <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id)).reduce((s, c) => s + c.numberOfBirds, 0)}</td>
+                              <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id)).reduce((s, c) => s + Number(c.cageWeight), 0).toFixed(2)}</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Select Farmer (Optional)</Label>
-                    <Select value={formData.supplierName || undefined} onValueChange={handleFarmerChange} disabled={loading}>
+                    <Select value={formData.selectedFarmerId || undefined} onValueChange={handleFarmerChange} disabled={loading}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select farmer" />
                       </SelectTrigger>
@@ -367,6 +503,118 @@ export default function GodownInwardPage() {
                     rows={3}
                     disabled={loading}
                   />
+                </div>
+
+                {/* Section 2: Cage Details */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-semibold">Cage Details</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCages([...cages, emptyCage()])}
+                      disabled={loading}
+                    >
+                      <Plus size={14} className="mr-1" /> Add Cage
+                    </Button>
+                  </div>
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="text-xs">Cage ID</TableHead>
+                          <TableHead className="text-xs">Bird Type</TableHead>
+                          <TableHead className="text-xs">Birds</TableHead>
+                          <TableHead className="text-xs">Weight (kg)</TableHead>
+                          <TableHead className="w-10"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {cages.map((cage, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="p-1">
+                              <Input
+                                value={cage.cageId || ""}
+                                onChange={(e) => {
+                                  const updated = [...cages]
+                                  updated[idx] = { ...updated[idx], cageId: e.target.value }
+                                  setCages(updated)
+                                }}
+                                placeholder="C1"
+                                className="h-8 text-sm"
+                                disabled={loading}
+                              />
+                            </TableCell>
+                            <TableCell className="p-1">
+                              <Input
+                                value={cage.birdType || ""}
+                                onChange={(e) => {
+                                  const updated = [...cages]
+                                  updated[idx] = { ...updated[idx], birdType: e.target.value }
+                                  setCages(updated)
+                                }}
+                                placeholder="broiler"
+                                className="h-8 text-sm"
+                                disabled={loading}
+                              />
+                            </TableCell>
+                            <TableCell className="p-1">
+                              <Input
+                                type="number"
+                                value={cage.numberOfBirds || ""}
+                                onChange={(e) => {
+                                  const updated = [...cages]
+                                  updated[idx] = { ...updated[idx], numberOfBirds: Number(e.target.value) }
+                                  setCages(updated)
+                                  // Auto-update total birds
+                                  const total = updated.reduce((s, c) => s + (Number(c.numberOfBirds) || 0), 0)
+                                  setFormData(f => ({ ...f, numberOfBirds: String(total) }))
+                                }}
+                                placeholder="0"
+                                className="h-8 text-sm"
+                                disabled={loading}
+                              />
+                            </TableCell>
+                            <TableCell className="p-1">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={cage.cageWeight || ""}
+                                onChange={(e) => {
+                                  const updated = [...cages]
+                                  updated[idx] = { ...updated[idx], cageWeight: Number(e.target.value) }
+                                  setCages(updated)
+                                  // Auto-update total weight
+                                  const total = updated.reduce((s, c) => s + (Number(c.cageWeight) || 0), 0)
+                                  setFormData(f => ({ ...f, totalWeight: total.toFixed(2) }))
+                                }}
+                                placeholder="0.00"
+                                className="h-8 text-sm"
+                                disabled={loading}
+                              />
+                            </TableCell>
+                            <TableCell className="p-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setCages(cages.filter((_, i) => i !== idx))}
+                                disabled={loading || cages.length === 1}
+                              >
+                                <X size={14} />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Total: {cages.reduce((s, c) => s + (Number(c.numberOfBirds) || 0), 0)} birds,{" "}
+                    {cages.reduce((s, c) => s + (Number(c.cageWeight) || 0), 0).toFixed(2)} kg
+                  </div>
                 </div>
 
                 <div className="flex gap-2">

@@ -351,34 +351,6 @@ export default function DashboardPage() {
         </div>
 
         {/* Row 5 - Monthly Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle>This Month Summary</CardTitle>
-            <CardDescription>Financial overview for current month</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <span className="text-sm font-medium">Sales</span>
-                <span className="text-base font-bold text-green-600">₹{Number(kpis?.totalRevenue || 0).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                <span className="text-sm font-medium">Purchases</span>
-                <span className="text-base font-bold text-red-600">₹{Number(purchasesSummary?.totalValue || 0).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                <span className="text-sm font-medium">Expenses</span>
-                <span className="text-base font-bold text-yellow-600">₹{Number(kpis?.totalExpenses || 0).toLocaleString()}</span>
-              </div>
-              <div className={`flex justify-between items-center p-3 rounded-lg border-2 ${isProfit ? "bg-green-50 dark:bg-green-900/20 border-green-400" : "bg-red-50 dark:bg-red-900/20 border-red-400"}`}>
-                <span className="text-sm font-semibold">Net P&L</span>
-                <span className={`text-base font-bold ${isProfit ? "text-green-600" : "text-red-600"}`}>
-                  {isProfit ? "+" : "-"}₹{Math.abs(netPL).toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
       </div>
     </DashboardLayout>
