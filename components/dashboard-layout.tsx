@@ -129,7 +129,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 {/* <SidebarLink href="/billing/party-master" icon={Users} label="Party Master" open={true} isSubItem={true} />
                 <SidebarLink href="/billing/sale-entry" icon={ShoppingCart} label="Sale Entry" open={true} isSubItem={true} />
                 <SidebarLink href="/billing/payment-entry" icon={BarChartAlt} label="Payment Entry" open={true} isSubItem={true} /> */}
-                <SidebarLink href="/billing/ledger" icon={BookOpen} label="Ledger Report" open={true} isSubItem={true} />
+                <SidebarLink href="/billing/ledger" icon={BookOpen} label="Client Ledger Report" open={true} isSubItem={true} />
                 <SidebarLink href="/billing/reports/outstanding" icon={TrendingDown} label="Outstanding" open={true} isSubItem={true} />
               </div>
             )}
