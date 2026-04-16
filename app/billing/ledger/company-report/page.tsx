@@ -386,7 +386,7 @@ const CompanyLedgerReportPage = () => {
         {/* Ledger Type Navigation */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Link href="/billing/ledger">
-            <Card className="border-2 border-blue-300 bg-blue-50 p-6 cursor-pointer hover:shadow-lg transition-shadow h-full">
+            {/* <Card className="border-2 border-blue-300 bg-blue-50 p-6 cursor-pointer hover:shadow-lg transition-shadow h-full">
               <div className="flex items-start gap-3">
                 <Users className="w-6 h-6 text-blue-600 mt-1" />
                 <div>
@@ -396,10 +396,10 @@ const CompanyLedgerReportPage = () => {
                   </p>
                 </div>
               </div>
-            </Card>
+            </Card> */}
           </Link>
           <Link href="/billing/ledger/company-report">
-            <Card className="border-2 border-purple-300 bg-purple-50 p-6 cursor-pointer hover:shadow-lg transition-shadow h-full">
+            {/* <Card className="border-2 border-purple-300 bg-purple-50 p-6 cursor-pointer hover:shadow-lg transition-shadow h-full">
               <div className="flex items-start gap-3">
                 <Building2 className="w-6 h-6 text-purple-600 mt-1" />
                 <div>
@@ -409,7 +409,7 @@ const CompanyLedgerReportPage = () => {
                   </p>
                 </div>
               </div>
-            </Card>
+            </Card> */}
           </Link>
         </div>
 
@@ -597,14 +597,14 @@ const CompanyLedgerReportPage = () => {
         </Card>
 
         {/* Info Alert */}
-        <Alert className="border-blue-300 bg-blue-50">
+        {/* <Alert className="border-blue-300 bg-blue-50">
           <AlertCircle className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-900">
             <strong>Note:</strong> This is the company's complete ledger showing all transactions including:
             purchases from farms (Debits), sales to retailers (Credits), operating expenses, payments made, and
             receipts received. Use this for internal accounting and financial tracking.
           </AlertDescription>
-        </Alert>
+        </Alert> */}
       </div>
     </DashboardLayout>
   );

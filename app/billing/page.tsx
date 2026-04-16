@@ -49,14 +49,14 @@ export default function BillingDashboard() {
     totalLedgers: 24,
   })
 
-  const modules = [
-    {
-      title: 'Client Ledger Report',
-      desc: 'View running balance',
-      href: '/billing/ledger',
-      icon: BookOpen,
-    },
-  ]
+  // const modules = [
+  //   {
+  //     title: 'Ledger Report',
+  //     desc: 'View running balance',
+  //     href: '/billing/ledger',
+  //     icon: BookOpen,
+  //   },
+  // ]
 
   return (
     <DashboardLayout>
@@ -93,7 +93,7 @@ export default function BillingDashboard() {
         </div>
 
         {/* Modules */}
-        <div>
+        {/* <div>
           <h2 className="text-lg font-semibold mb-4">Modules</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {modules.map((mod) => {
@@ -122,7 +122,7 @@ export default function BillingDashboard() {
               )
             })}
           </div>
-        </div>
+        </div> */}
 
         {/* Reports */}
         <div>
