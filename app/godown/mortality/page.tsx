@@ -27,6 +27,7 @@ export default function GodownMortalityPage() {
   const [formData, setFormData] = useState({
     mortalityDate: new Date().toISOString().split("T")[0],
     numberOfBirdsDied: "",
+    weightOfDeadBirds: "",
     reason: "",
     notes: "",
   })
@@ -53,6 +54,7 @@ export default function GodownMortalityPage() {
     setFormData({
       mortalityDate: new Date().toISOString().split("T")[0],
       numberOfBirdsDied: "",
+      weightOfDeadBirds: "",
       reason: "",
       notes: "",
     })
@@ -63,6 +65,7 @@ export default function GodownMortalityPage() {
     setFormData({
       mortalityDate: mortality.mortalityDate,
       numberOfBirdsDied: String(mortality.numberOfBirdsDied || ""),
+      weightOfDeadBirds: String((mortality as any).weightOfDeadBirds || ""),
       reason: mortality.reason || "",
       notes: mortality.notes || "",
     })
@@ -81,6 +84,7 @@ export default function GodownMortalityPage() {
       const mortalityData = {
         mortalityDate: formData.mortalityDate,
         numberOfBirdsDied: parseInt(formData.numberOfBirdsDied),
+        weightOfDeadBirds: parseFloat(formData.weightOfDeadBirds) || undefined,
         reason: formData.reason,
         notes: formData.notes,
       }
@@ -242,15 +246,28 @@ export default function GodownMortalityPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Number of Birds Died *</Label>
-                  <Input
-                    type="number"
-                    value={formData.numberOfBirdsDied}
-                    onChange={(e) => setFormData({ ...formData, numberOfBirdsDied: e.target.value })}
-                    placeholder="0"
-                    disabled={loading}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Number of Birds Died *</Label>
+                    <Input
+                      type="number"
+                      value={formData.numberOfBirdsDied}
+                      onChange={(e) => setFormData({ ...formData, numberOfBirdsDied: e.target.value })}
+                      placeholder="0"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Weight of Dead Birds (kg)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.weightOfDeadBirds}
+                      onChange={(e) => setFormData({ ...formData, weightOfDeadBirds: e.target.value })}
+                      placeholder="0.00"
+                      disabled={loading}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
