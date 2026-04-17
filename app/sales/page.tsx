@@ -483,67 +483,63 @@ export default function SalesPage() {
                 {/* Section 2: Customer Details */}
                 <Card className="border-green-200">
                   <CardHeader className="bg-green-50 border-b border-green-100 py-3">
-                    <CardTitle className="text-green-900 text-base">Section 2: Sale Details</CardTitle>
+                    <CardTitle className="text-green-900 text-base">Section 2: Customer Details</CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-4 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                  <CardContent className="pt-4 space-y-3">
+                    <div className="flex items-center gap-4">
+                      <div className="space-y-1 w-48">
                         <Label>Rate per KG *</Label>
                         <Input type="number" step="0.01" value={formData.ratePerKg} onChange={e => setFormData(f => ({ ...f, ratePerKg: e.target.value }))} placeholder="e.g. 146" disabled={loading} />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Cage ID (auto)</Label>
-                        <Input value={formData.cageNo} readOnly placeholder="Auto-filled from cage selection" className={formData.cageNo ? "bg-green-50 border-green-300" : "bg-gray-50"} />
-                      </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Number of Birds</Label>
-                        <Input type="number" value={formData.numBirds} onChange={e => setFormData(f => ({ ...f, numBirds: e.target.value }))} placeholder="0" disabled={loading} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Total Weight (kg) *</Label>
-                        <Input type="number" step="0.001" value={formData.totalWeight} onChange={e => setFormData(f => ({ ...f, totalWeight: e.target.value }))} placeholder="0.000" disabled={loading} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Total Amount</Label>
-                        <div className="flex items-center h-10 px-3 border rounded-md bg-muted">
-                          <span className="font-semibold">₹{totalAmount.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    </div>
-                    {avgWeight > 0 && (
-                      <p className="text-xs text-muted-foreground">Avg Weight/Bird: {avgWeight.toFixed(3)} kg</p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Section 3: Charges */}
-                <Card className="border-orange-200">
-                  <CardHeader className="bg-orange-50 border-b border-orange-100 py-3">
-                    <CardTitle className="text-orange-900 text-base">Section 3: Charges & Deductions</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4 pt-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2"><Label>Transport Charges</Label><Input type="number" step="0.01" value={formData.transportCharges} onChange={e => setFormData(f => ({ ...f, transportCharges: e.target.value }))} placeholder="0.00" disabled={loading} /></div>
-                      <div className="space-y-2"><Label>Loading Charges</Label><Input type="number" step="0.01" value={formData.loadingCharges} onChange={e => setFormData(f => ({ ...f, loadingCharges: e.target.value }))} placeholder="0.00" disabled={loading} /></div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2"><Label>Commission</Label><Input type="number" step="0.01" value={formData.commission} onChange={e => setFormData(f => ({ ...f, commission: e.target.value }))} placeholder="0.00" disabled={loading} /></div>
-                      <div className="space-y-2"><Label>Other Charges</Label><Input type="number" step="0.01" value={formData.otherCharges} onChange={e => setFormData(f => ({ ...f, otherCharges: e.target.value }))} placeholder="0.00" disabled={loading} /></div>
-                    </div>
-                    <div className="space-y-2"><Label>Deductions</Label><Input type="number" step="0.01" value={formData.deductions} onChange={e => setFormData(f => ({ ...f, deductions: e.target.value }))} placeholder="0.00" disabled={loading} /></div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2"><Label>Gross Amount</Label><Input value={`₹${grossAmount.toFixed(2)}`} disabled className="bg-gray-50 font-semibold" /></div>
-                      <div className="space-y-2"><Label>Net Amount</Label><Input value={`₹${netAmount.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-green-700" /></div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-gray-50">
+                            <th className="text-left p-2">Customer Name</th>
+                            <th className="text-left p-2 w-28">Cage ID</th>
+                            <th className="text-left p-2 w-20">Birds</th>
+                            <th className="text-left p-2 w-28">Weight (kg)</th>
+                            <th className="text-right p-2 w-28">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-b">
+                            <td className="p-1">
+                              <Input value={formData.customerName} onChange={e => setFormData(f => ({ ...f, customerName: e.target.value }))} placeholder="Name" className="h-8 text-sm" disabled={loading} />
+                            </td>
+                            <td className="p-1">
+                              <Input value={formData.cageNo} readOnly placeholder="Auto" className={`h-8 text-sm ${formData.cageNo ? "bg-green-50 border-green-300" : "bg-gray-50"}`} />
+                            </td>
+                            <td className="p-1">
+                              <Input type="number" value={formData.numBirds} onChange={e => setFormData(f => ({ ...f, numBirds: e.target.value }))} placeholder="0" className="h-8 text-sm" disabled={loading} />
+                            </td>
+                            <td className="p-1">
+                              <Input type="number" step="0.001" value={formData.totalWeight} onChange={e => setFormData(f => ({ ...f, totalWeight: e.target.value }))} placeholder="0.000" className="h-8 text-sm" disabled={loading} />
+                            </td>
+                            <td className="p-1 text-right font-medium">{totalAmount > 0 ? `₹${totalAmount.toFixed(0)}` : '-'}</td>
+                          </tr>
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 bg-green-50 font-semibold">
+                            <td className="p-2" colSpan={2}>TOTAL</td>
+                            <td className="p-2">{parseInt(formData.numBirds) || 0}</td>
+                            <td className="p-2">{(parseFloat(formData.totalWeight) || 0).toFixed(3)}</td>
+                            <td className="p-2 text-right">{totalAmount.toFixed(0)}</td>
+                          </tr>
+                          <tr className="bg-gray-50 text-xs text-muted-foreground">
+                            <td className="p-2" colSpan={5}>Avg Weight/Bird: {avgWeight > 0 ? avgWeight.toFixed(3) + ' kg' : '-'}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Section 4: Payment */}
+                {/* Section 3: Payment */}
                 <Card className="border-purple-200">
                   <CardHeader className="bg-purple-50 border-b border-purple-100 py-3">
-                    <CardTitle className="text-purple-900 text-base">Section 4: Payment Summary</CardTitle>
+                    <CardTitle className="text-purple-900 text-base">Section 3: Payment Summary</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 pt-4">
                     <div className="space-y-2">
