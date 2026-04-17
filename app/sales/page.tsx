@@ -397,12 +397,6 @@ export default function SalesPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Cage No.</Label>
-                        <Input value={formData.cageNo} onChange={e => setFormData(f => ({ ...f, cageNo: e.target.value }))} placeholder="e.g. C-001, C-002" disabled={loading} />
-                      </div>
-                    </div>
 
                     {/* Cage selection from purchase bill */}
                     {formData.purchaseBillNo && formData.purchaseBillNo !== '__none__' && (
@@ -475,7 +469,7 @@ export default function SalesPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Sale Mode</Label>
                         <Select value={formData.saleMode} onValueChange={(v: any) => setFormData(f => ({ ...f, saleMode: v }))} disabled={loading}>
@@ -491,18 +485,6 @@ export default function SalesPage() {
                         <Select value={formData.vehicleId} onValueChange={v => setFormData(f => ({ ...f, vehicleId: v }))} disabled={loading}>
                           <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
                           <SelectContent>{vehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.vehicleNumber}</SelectItem>)}</SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Product Type</Label>
-                        <Select value={formData.productType} onValueChange={(v: any) => setFormData(f => ({ ...f, productType: v }))} disabled={loading}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="meat">Meat</SelectItem>
-                            <SelectItem value="eggs">Eggs</SelectItem>
-                            <SelectItem value="chicks">Chicks</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
                         </Select>
                       </div>
                     </div>
