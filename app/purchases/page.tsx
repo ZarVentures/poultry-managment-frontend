@@ -436,39 +436,10 @@ export default function PurchasesPage() {
                   </CardContent>
                 </Card>
 
-                {/* Section 3: Charges */}
-                <Card className="border-orange-200">
-                  <CardHeader className="bg-orange-50 border-b border-orange-100 py-3">
-                    <CardTitle className="text-orange-900 text-base">Section 3: Charges</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4 pt-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Transport Charges (₹)</Label>
-                        <Input type="number" step="0.01" value={formData.transportCharges} onChange={e => setFormData(prev => ({ ...prev, transportCharges: e.target.value }))} placeholder="0.00" disabled={loading} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Other Charges (₹)</Label>
-                        <Input type="number" step="0.01" value={formData.otherCharges} onChange={e => setFormData(prev => ({ ...prev, otherCharges: e.target.value }))} placeholder="0.00" disabled={loading} />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Gross Amount (₹)</Label>
-                        <Input value={`₹${grossAmount.toFixed(2)}`} disabled className="bg-gray-50 font-semibold" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Net Amount (₹)</Label>
-                        <Input value={`₹${netAmount.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-green-700" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Section 4: Payment */}
+                {/* Section 3: Payment */}
                 <Card className="border-purple-200">
                   <CardHeader className="bg-purple-50 border-b border-purple-100 py-3">
-                    <CardTitle className="text-purple-900 text-base">Section 4: Payment</CardTitle>
+                    <CardTitle className="text-purple-900 text-base">Section 3: Payment</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 pt-4">
                     <div className="space-y-2">
@@ -483,13 +454,21 @@ export default function PurchasesPage() {
                       </Select>
                     </div>
 
+                    {/* Net Amount display */}
+                    <div className="bg-gray-50 border rounded p-3 flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-700">Net Amount (Total Weight × Rate)</span>
+                      <span className="text-lg font-bold text-green-700">₹{netAmount.toFixed(2)}</span>
+                    </div>
+
                     <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-4">
+                      <Label className="text-sm font-semibold">Payment Breakdown</Label>
+                      <div className="grid grid-cols-3 gap-4">
                         <Label className="text-sm font-medium">Payment Mode</Label>
                         <Label className="text-sm font-medium">Amount (₹)</Label>
+                        <Label className="text-sm font-medium">Type</Label>
                       </div>
                       {payments.map((p, i) => (
-                        <div key={i} className="grid grid-cols-2 gap-4">
+                        <div key={i} className="grid grid-cols-3 gap-4">
                           <Select value={p.mode} onValueChange={v => updatePayment(i, "mode", v)} disabled={loading}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
@@ -504,10 +483,15 @@ export default function PurchasesPage() {
                             <Input type="number" step="0.01" placeholder="0.00" value={p.amount} onChange={e => updatePayment(i, "amount", e.target.value)} disabled={loading} />
                             {payments.length > 1 && <Button type="button" variant="ghost" size="sm" onClick={() => removePayment(i)} className="px-2 text-red-500"><X size={14} /></Button>}
                           </div>
+                          <div className="flex items-center">
+                            <span className="text-xs text-gray-500 bg-blue-50 px-2 py-1 rounded">
+                              {i === 0 ? 'Advance' : 'Payment'}
+                            </span>
+                          </div>
                         </div>
                       ))}
                       <Button type="button" variant="outline" size="sm" onClick={addPayment} disabled={loading}>
-                        <Plus size={14} className="mr-1" /> Add Payment Mode
+                        <Plus size={14} className="mr-1" /> Add Payment
                       </Button>
                     </div>
 
