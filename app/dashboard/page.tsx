@@ -79,14 +79,14 @@ export default function DashboardPage() {
       try {
         setLoading(true)
         const [
-          dashboard,
-          farmers,
-          retailers,
-          vehicles,
-          sales,
-          purchases,
-          mortality,
-        ] = await Promise.all([
+          dashboardResult,
+          farmersResult,
+          retailersResult,
+          vehiclesResult,
+          salesResult,
+          purchasesResult,
+          mortalityResult,
+        ] = await Promise.allSettled([
           authFetch(`${API_BASE}/dashboard/comprehensive`),
           farmersApi.getAll(),
           retailersApi.getAll(),
@@ -95,6 +95,14 @@ export default function DashboardPage() {
           purchasesApi.getAll(),
           mortalityApi.getStats(),
         ])
+
+        const dashboard = dashboardResult.status === 'fulfilled' ? dashboardResult.value : null
+        const farmers = farmersResult.status === 'fulfilled' ? farmersResult.value : []
+        const retailers = retailersResult.status === 'fulfilled' ? retailersResult.value : []
+        const vehicles = vehiclesResult.status === 'fulfilled' ? vehiclesResult.value : []
+        const sales = salesResult.status === 'fulfilled' ? salesResult.value : []
+        const purchases = purchasesResult.status === 'fulfilled' ? purchasesResult.value : []
+        const mortality = mortalityResult.status === 'fulfilled' ? mortalityResult.value : null
 
         if (dashboard) {
           setKpis(dashboard.kpis)

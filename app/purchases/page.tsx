@@ -37,6 +37,7 @@ export default function PurchasesPage() {
   const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>()
   const [viewingPurchase, setViewingPurchase] = useState<ApiPurchaseOrder | null>(null)
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
+  const [loadingPreview, setLoadingPreview] = useState(false)
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null)
   const [uploadingFile, setUploadingFile] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -113,31 +114,37 @@ export default function PurchasesPage() {
     if (f) setFormData(prev => ({ ...prev, farmerId, supplierName: f.name, farmerMobile: f.phone || "", farmLocation: f.address || "" }))
   }
 
-  const handleEdit = (purchase: ApiPurchaseOrder) => {
+  const handleEdit = async (purchase: ApiPurchaseOrder) => {
+    // Fetch full detail to get cages and payments
+    let full: ApiPurchaseOrder = purchase
+    try {
+      full = await purchasesApi.getOne(purchase.id)
+    } catch { /* fallback to list data */ }
+
     setFormData({
-      orderNumber: purchase.orderNumber,
-      supplierName: purchase.supplierName,
-      orderDate: purchase.orderDate,
-      dueDate: purchase.dueDate || "",
-      status: purchase.status,
-      branch: (purchase as any).branch || "",
-      farmerId: purchase.farmerId || "",
-      farmerMobile: purchase.farmerMobile || "",
-      farmLocation: purchase.farmLocation || "",
-      vehicleId: purchase.vehicleId || "",
-      purchasePaymentStatus: purchase.purchasePaymentStatus || "pending",
-      ratePerKg: String(purchase.ratePerKg || ""),
-      transportCharges: String(purchase.transportCharges || ""),
-      otherCharges: String((purchase as any).otherCharges || ""),
-      notes: purchase.notes || "",
+      orderNumber: full.orderNumber,
+      supplierName: full.supplierName,
+      orderDate: full.orderDate,
+      dueDate: full.dueDate || "",
+      status: full.status,
+      branch: (full as any).branch || "",
+      farmerId: full.farmerId || "",
+      farmerMobile: full.farmerMobile || "",
+      farmLocation: full.farmLocation || "",
+      vehicleId: full.vehicleId || "",
+      purchasePaymentStatus: full.purchasePaymentStatus || "pending",
+      ratePerKg: String(full.ratePerKg || ""),
+      transportCharges: String(full.transportCharges || ""),
+      otherCharges: String((full as any).otherCharges || ""),
+      notes: full.notes || "",
     })
-    setCages(purchase.cages && purchase.cages.length > 0
-      ? purchase.cages.map(c => ({ cageId: c.cageId || "", numberOfBirds: String(c.numberOfBirds), cageWeight: String(c.cageWeight) }))
+    setCages(full.cages && full.cages.length > 0
+      ? full.cages.map(c => ({ cageId: c.cageId || "", numberOfBirds: String(c.numberOfBirds), cageWeight: String((c as any).purchaseWeight || c.cageWeight || "") }))
       : [emptyCage()])
-    setPayments((purchase as any).payments && (purchase as any).payments.length > 0
-      ? (purchase as any).payments.map((p: any) => ({ mode: p.paymentMode as PaymentMode, amount: String(p.amount) }))
+    setPayments((full as any).payments && (full as any).payments.length > 0
+      ? (full as any).payments.map((p: any) => ({ mode: p.paymentMode as PaymentMode, amount: String(p.amount) }))
       : [emptyPayment()])
-    setEditingId(purchase.id)
+    setEditingId(full.id)
     setInvoiceFile(null)
     setShowDialog(true)
   }
@@ -590,7 +597,16 @@ export default function PurchasesPage() {
                         <TableCell>₹{Number(p.balanceAmount || 0).toFixed(2)}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => { setViewingPurchase(p); setShowInvoiceModal(true) }}><Eye size={14} /></Button>
+                            <Button variant="ghost" size="sm" onClick={async () => {
+                              setViewingPurchase(p)
+                              setShowInvoiceModal(true)
+                              setLoadingPreview(true)
+                              try {
+                                const full = await purchasesApi.getOne(p.id)
+                                setViewingPurchase(full)
+                              } catch { /* keep list data */ }
+                              finally { setLoadingPreview(false) }
+                            }}><Eye size={14} /></Button>
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(p)}><Edit2 size={14} /></Button>
                             <Button variant="ghost" size="sm" onClick={() => handleDelete(p.id)} className="text-red-500"><Trash2 size={14} /></Button>
                           </div>
@@ -612,6 +628,9 @@ export default function PurchasesPage() {
                 <DialogTitle>Purchase Bill — {viewingPurchase.orderNumber}</DialogTitle>
               </DialogHeader>
               <div className="overflow-y-auto flex-1 space-y-4 text-sm">
+                {loadingPreview && (
+                  <div className="text-center py-4 text-muted-foreground text-sm">Loading full details...</div>
+                )}
                 <div className="grid grid-cols-2 gap-2 border p-3 rounded text-xs">
                   <div><span className="font-semibold">Bill No:</span> {viewingPurchase.orderNumber}</div>
                   <div><span className="font-semibold">Date:</span> {new Date(viewingPurchase.orderDate).toLocaleDateString()}</div>
@@ -643,7 +662,7 @@ export default function PurchasesPage() {
                           <td className="border px-2 py-1 text-center">{i + 1}</td>
                           <td className="border px-2 py-1 font-medium">{c.cageId || "-"}</td>
                           <td className="border px-2 py-1 text-right">{c.numberOfBirds}</td>
-                          <td className="border px-2 py-1 text-right">{Number(c.cageWeight).toFixed(2)}</td>
+                          <td className="border px-2 py-1 text-right">{Number((c as any).purchaseWeight || c.cageWeight || 0).toFixed(2)}</td>
                           <td className="border px-2 py-1 text-center">
                             <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
                               c.status === 'sold' ? 'bg-green-100 text-green-800' :
