@@ -102,7 +102,7 @@ export default function GodownInwardPage() {
     // Auto-fill supplier name from the selected bill
     const bill = purchaseBills.find(b => b.orderNumber === orderNumber)
     if (bill) {
-      setFormData(f => ({ ...f, purchaseBillNo: orderNumber, supplierName: bill.supplierName }))
+      setFormData(f => ({ ...f, purchaseBillNo: orderNumber, purchaseInvoiceNo: orderNumber, supplierName: bill.supplierName }))
     }
     try {
       setLoadingCages(true)
@@ -351,9 +351,9 @@ export default function GodownInwardPage() {
                     <Label>Purchase Bill No</Label>
                     <Input
                       value={formData.purchaseInvoiceNo}
-                      onChange={(e) => setFormData({ ...formData, purchaseInvoiceNo: e.target.value })}
-                      placeholder="PO-2024-001"
-                      disabled={loading}
+                      readOnly
+                      placeholder="Auto-filled from Purchase Bill"
+                      className={formData.purchaseInvoiceNo ? "bg-green-50 border-green-300" : "bg-gray-50"}
                     />
                   </div>
                 </div>
