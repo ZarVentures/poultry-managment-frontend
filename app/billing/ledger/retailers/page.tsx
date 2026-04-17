@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { DashboardLayout } from '@/components/dashboard-layout'
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Download, Printer, ArrowLeft } from 'lucide-react'
 import { salesApi, retailersApi } from '@/lib/api'
 
-const RetailerLedgerPage = () => {
+const RetailerLedgerContent = () => {
   const searchParams = useSearchParams()
   const [retailers, setRetailers] = useState<any[]>([])
   const [selectedId, setSelectedId] = useState('')
@@ -42,7 +42,6 @@ const RetailerLedgerPage = () => {
 
   const selectedRetailer = retailers.find(r => r.id === selectedId)
 
-  // Build ledger: each sale = debit entry, each payment = credit entry
   const ledgerEntries: any[] = []
   let runningBalance = 0
   const sortedSales = [...sales].sort((a, b) => new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime())
@@ -50,26 +49,11 @@ const RetailerLedgerPage = () => {
   for (const sale of sortedSales) {
     const saleAmt = Number(sale.netAmount || sale.totalAmount || 0)
     runningBalance += saleAmt
-    ledgerEntries.push({
-      date: sale.saleDate,
-      type: 'Sale',
-      reference: sale.invoiceNumber,
-      debit: saleAmt,
-      credit: 0,
-      balance: runningBalance,
-    })
-
+    ledgerEntries.push({ date: sale.saleDate, type: 'Sale', reference: sale.invoiceNumber, debit: saleAmt, credit: 0, balance: runningBalance })
     const received = Number(sale.amountReceived || 0)
     if (received > 0) {
       runningBalance -= received
-      ledgerEntries.push({
-        date: sale.saleDate,
-        type: 'Payment',
-        reference: `PMT-${sale.invoiceNumber}`,
-        debit: 0,
-        credit: received,
-        balance: runningBalance,
-      })
+      ledgerEntries.push({ date: sale.saleDate, type: 'Payment', reference: `PMT-${sale.invoiceNumber}`, debit: 0, credit: received, balance: runningBalance })
     }
   }
 
@@ -182,4 +166,10 @@ const RetailerLedgerPage = () => {
   )
 }
 
-export default RetailerLedgerPage
+export default function RetailerLedgerPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading...</div>}>
+      <RetailerLedgerContent />
+    </Suspense>
+  )
+}
