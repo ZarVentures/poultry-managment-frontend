@@ -437,7 +437,7 @@ export default function PurchasesPage() {
                 </Card>
 
                 {/* Section 3: Charges */}
-                <Card className="border-orange-200">
+                {/* <Card className="border-orange-200">
                   <CardHeader className="bg-orange-50 border-b border-orange-100 py-3">
                     <CardTitle className="text-orange-900 text-base">Section 3: Charges</CardTitle>
                   </CardHeader>
@@ -463,12 +463,12 @@ export default function PurchasesPage() {
                       </div>
                     </div>
                   </CardContent>
-                </Card>
+                </Card> */}
 
-                {/* Section 4: Payment */}
+                {/* Section 3: Payment */}
                 <Card className="border-purple-200">
                   <CardHeader className="bg-purple-50 border-b border-purple-100 py-3">
-                    <CardTitle className="text-purple-900 text-base">Section 4: Payment</CardTitle>
+                    <CardTitle className="text-purple-900 text-base">Section 3: Payment</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 pt-4">
                     <div className="space-y-2">

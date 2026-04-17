@@ -376,29 +376,28 @@ export default function SalesPage() {
                     <CardTitle className="text-blue-900 text-base">Section 1: Header Information</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 pt-4">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
+                    <div className="space-y-4">
+                      <div className="space-y-2 min-w-0">
                         <Label>Purchase Bill No *</Label>
                         <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
-                          <SelectTrigger><SelectValue placeholder="Select purchase bill" /></SelectTrigger>
+                          <SelectTrigger className="w-full"><SelectValue placeholder="Select purchase bill" /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="__none__">Select purchase bill...</SelectItem>
                             {purchaseBills.map(b => <SelectItem key={b.id} value={b.orderNumber}>{b.orderNumber} — {b.supplierName}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2">
-                        <Label>Sale No. (auto)</Label>
-                        <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value }))} placeholder="Auto-filled from Purchase Bill" disabled={loading} className={formData.saleNo ? "bg-green-50 border-green-300" : ""} />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2 min-w-0">
+                          <Label>Sale No. (auto)</Label>
+                          <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value }))} placeholder="Auto-filled from Purchase Bill" disabled={loading} className={formData.saleNo ? "bg-green-50 border-green-300" : ""} />
+                        </div>
+                        <div className="space-y-2 min-w-0">
+                          <Label>Sale Date *</Label>
+                          <DatePicker value={formData.saleDate} onChange={d => setFormData(f => ({ ...f, saleDate: d }))} disabled={loading} />
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label>Sale Date *</Label>
-                        <DatePicker value={formData.saleDate} onChange={d => setFormData(f => ({ ...f, saleDate: d }))} disabled={loading} />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                      <div className="space-y-2 min-w-0">
                         <Label>Cage No.</Label>
                         <Input value={formData.cageNo} onChange={e => setFormData(f => ({ ...f, cageNo: e.target.value }))} placeholder="e.g. C-001, C-002" disabled={loading} />
                       </div>
@@ -595,7 +594,7 @@ export default function SalesPage() {
                 </Card>
 
                 {/* Section 3: Charges */}
-                <Card className="border-orange-200">
+                {/* <Card className="border-orange-200">
                   <CardHeader className="bg-orange-50 border-b border-orange-100 py-3">
                     <CardTitle className="text-orange-900 text-base">Section 3: Charges & Deductions</CardTitle>
                   </CardHeader>
@@ -614,12 +613,12 @@ export default function SalesPage() {
                       <div className="space-y-2"><Label>Net Amount</Label><Input value={`₹${netAmount.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-green-700" /></div>
                     </div>
                   </CardContent>
-                </Card>
+                </Card> */}
 
-                {/* Section 4: Payment */}
+                {/* Section 3: Payment */}
                 <Card className="border-purple-200">
                   <CardHeader className="bg-purple-50 border-b border-purple-100 py-3">
-                    <CardTitle className="text-purple-900 text-base">Section 4: Payment Summary</CardTitle>
+                    <CardTitle className="text-purple-900 text-base">Section 3: Payment Summary</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 pt-4">
                     <div className="space-y-2">
