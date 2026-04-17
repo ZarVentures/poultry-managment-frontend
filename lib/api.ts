@@ -1046,3 +1046,32 @@ export const productsApi = {
       method: 'DELETE',
     }),
 };
+
+// ============================================
+// BILLING API
+// ============================================
+export const billingApi = {
+  getSummary: () => apiRequest<any>('/billing/summary'),
+
+  // Parties
+  getParties: () => apiRequest<any[]>('/billing/parties'),
+  getParty: (id: string) => apiRequest<any>(`/billing/parties/${id}`),
+  createParty: (data: any) => apiRequest<any>('/billing/parties', { method: 'POST', body: JSON.stringify(data) }),
+  updateParty: (id: string, data: any) => apiRequest<any>(`/billing/parties/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteParty: (id: string) => apiRequest<void>(`/billing/parties/${id}`, { method: 'DELETE' }),
+
+  // Sales
+  getSales: (partyId?: string) => apiRequest<any[]>(`/billing/sales${partyId ? `?partyId=${partyId}` : ''}`),
+  createSale: (data: any) => apiRequest<any>('/billing/sales', { method: 'POST', body: JSON.stringify(data) }),
+  updateSale: (id: string, data: any) => apiRequest<any>(`/billing/sales/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteSale: (id: string) => apiRequest<void>(`/billing/sales/${id}`, { method: 'DELETE' }),
+
+  // Payments
+  getPayments: (partyId?: string) => apiRequest<any[]>(`/billing/payments${partyId ? `?partyId=${partyId}` : ''}`),
+  createPayment: (data: any) => apiRequest<any>('/billing/payments', { method: 'POST', body: JSON.stringify(data) }),
+  updatePayment: (id: string, data: any) => apiRequest<any>(`/billing/payments/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deletePayment: (id: string) => apiRequest<void>(`/billing/payments/${id}`, { method: 'DELETE' }),
+
+  // Ledger
+  getLedger: (partyId: string) => apiRequest<any[]>(`/billing/ledger/${partyId}`),
+};
