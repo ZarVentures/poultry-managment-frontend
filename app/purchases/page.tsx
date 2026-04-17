@@ -114,31 +114,37 @@ export default function PurchasesPage() {
     if (f) setFormData(prev => ({ ...prev, farmerId, supplierName: f.name, farmerMobile: f.phone || "", farmLocation: f.address || "" }))
   }
 
-  const handleEdit = (purchase: ApiPurchaseOrder) => {
+  const handleEdit = async (purchase: ApiPurchaseOrder) => {
+    // Fetch full detail to get cages and payments
+    let full: ApiPurchaseOrder = purchase
+    try {
+      full = await purchasesApi.getOne(purchase.id)
+    } catch { /* fallback to list data */ }
+
     setFormData({
-      orderNumber: purchase.orderNumber,
-      supplierName: purchase.supplierName,
-      orderDate: purchase.orderDate,
-      dueDate: purchase.dueDate || "",
-      status: purchase.status,
-      branch: (purchase as any).branch || "",
-      farmerId: purchase.farmerId || "",
-      farmerMobile: purchase.farmerMobile || "",
-      farmLocation: purchase.farmLocation || "",
-      vehicleId: purchase.vehicleId || "",
-      purchasePaymentStatus: purchase.purchasePaymentStatus || "pending",
-      ratePerKg: String(purchase.ratePerKg || ""),
-      transportCharges: String(purchase.transportCharges || ""),
-      otherCharges: String((purchase as any).otherCharges || ""),
-      notes: purchase.notes || "",
+      orderNumber: full.orderNumber,
+      supplierName: full.supplierName,
+      orderDate: full.orderDate,
+      dueDate: full.dueDate || "",
+      status: full.status,
+      branch: (full as any).branch || "",
+      farmerId: full.farmerId || "",
+      farmerMobile: full.farmerMobile || "",
+      farmLocation: full.farmLocation || "",
+      vehicleId: full.vehicleId || "",
+      purchasePaymentStatus: full.purchasePaymentStatus || "pending",
+      ratePerKg: String(full.ratePerKg || ""),
+      transportCharges: String(full.transportCharges || ""),
+      otherCharges: String((full as any).otherCharges || ""),
+      notes: full.notes || "",
     })
-    setCages(purchase.cages && purchase.cages.length > 0
-      ? purchase.cages.map(c => ({ cageId: c.cageId || "", numberOfBirds: String(c.numberOfBirds), cageWeight: String(c.cageWeight) }))
+    setCages(full.cages && full.cages.length > 0
+      ? full.cages.map(c => ({ cageId: c.cageId || "", numberOfBirds: String(c.numberOfBirds), cageWeight: String(c.cageWeight) }))
       : [emptyCage()])
-    setPayments((purchase as any).payments && (purchase as any).payments.length > 0
-      ? (purchase as any).payments.map((p: any) => ({ mode: p.paymentMode as PaymentMode, amount: String(p.amount) }))
+    setPayments((full as any).payments && (full as any).payments.length > 0
+      ? (full as any).payments.map((p: any) => ({ mode: p.paymentMode as PaymentMode, amount: String(p.amount) }))
       : [emptyPayment()])
-    setEditingId(purchase.id)
+    setEditingId(full.id)
     setInvoiceFile(null)
     setShowDialog(true)
   }
