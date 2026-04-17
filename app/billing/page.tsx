@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,9 +12,8 @@ import {
   BookOpen,
   TrendingUp,
   BarChart3,
-  ArrowUpRight,
 } from 'lucide-react'
-
+import { billingApi } from '@/lib/api'
 
 function StatCard({
   title,
@@ -42,21 +41,20 @@ function StatCard({
 }
 
 export default function BillingDashboard() {
-  const [stats] = useState({
-    totalParties: 24,
-    totalSales: 156500,
-    pendingPayments: 58300,
-    totalLedgers: 24,
+  const [stats, setStats] = useState({
+    totalParties: 0,
+    totalSales: 0,
+    pendingPayments: 0,
+    totalLedgers: 0,
   })
+  const [loading, setLoading] = useState(true)
 
-  // const modules = [
-  //   {
-  //     title: 'Ledger Report',
-  //     desc: 'View running balance',
-  //     href: '/billing/ledger',
-  //     icon: BookOpen,
-  //   },
-  // ]
+  useEffect(() => {
+    billingApi.getSummary()
+      .then((data) => setStats(data))
+      .catch((err) => console.error('Failed to load billing summary:', err))
+      .finally(() => setLoading(false))
+  }, [])
 
   return (
     <DashboardLayout>
@@ -64,7 +62,7 @@ export default function BillingDashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Billing Dashboard</h1>
           <p className="text-muted-foreground mt-2">
-            Live Bird  Retailer Ledger System
+            Live Bird Retailer Ledger System
           </p>
         </div>
 
@@ -72,57 +70,25 @@ export default function BillingDashboard() {
         <div className="grid gap-4 md:grid-cols-4">
           <StatCard
             title="Total Parties"
-            value={stats.totalParties}
+            value={loading ? '...' : stats.totalParties}
             icon={Users}
           />
           <StatCard
             title="Total Sales"
-            value={`₹${(stats.totalSales / 1000).toFixed(0)}K`}
+            value={loading ? '...' : `₹${(stats.totalSales / 1000).toFixed(0)}K`}
             icon={ShoppingCart}
           />
           <StatCard
             title="Outstanding"
-            value={`₹${(stats.pendingPayments / 1000).toFixed(0)}K`}
+            value={loading ? '...' : `₹${(stats.pendingPayments / 1000).toFixed(0)}K`}
             icon={TrendingUp}
           />
           <StatCard
             title="Ledgers"
-            value={stats.totalLedgers}
+            value={loading ? '...' : stats.totalLedgers}
             icon={BookOpen}
           />
         </div>
-
-        {/* Modules */}
-        {/* <div>
-          <h2 className="text-lg font-semibold mb-4">Modules</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {modules.map((mod) => {
-              const Icon = mod.icon
-              return (
-                <Link key={mod.href} href={mod.href}>
-                  <Card className="cursor-pointer hover:shadow-md transition-shadow h-full">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-base">{mod.title}</CardTitle>
-                        <Icon className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">{mod.desc}</p>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="mt-3 pl-0 h-auto"
-                      >
-                        Open <ArrowUpRight className="ml-1 h-3 w-3" />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </Link>
-              )
-            })}
-          </div>
-        </div> */}
 
         {/* Reports */}
         <div>
@@ -140,9 +106,7 @@ export default function BillingDashboard() {
                   <p className="text-sm text-muted-foreground mb-4">
                     View pending balance for all retailers
                   </p>
-                  <Button variant="outline" size="sm">
-                    View
-                  </Button>
+                  <Button variant="outline" size="sm">View</Button>
                 </CardContent>
               </Card>
             </Link>
@@ -159,9 +123,7 @@ export default function BillingDashboard() {
                   <p className="text-sm text-muted-foreground mb-4">
                     Sales summary by date
                   </p>
-                  <Button variant="outline" size="sm">
-                    View
-                  </Button>
+                  <Button variant="outline" size="sm">View</Button>
                 </CardContent>
               </Card>
             </Link>
@@ -178,9 +140,7 @@ export default function BillingDashboard() {
                   <p className="text-sm text-muted-foreground mb-4">
                     Payment received analysis
                   </p>
-                  <Button variant="outline" size="sm">
-                    View
-                  </Button>
+                  <Button variant="outline" size="sm">View</Button>
                 </CardContent>
               </Card>
             </Link>
@@ -197,39 +157,12 @@ export default function BillingDashboard() {
                   <p className="text-sm text-muted-foreground mb-4">
                     View purchases with outstanding payments
                   </p>
-                  <Button variant="outline" size="sm">
-                    View
-                  </Button>
+                  <Button variant="outline" size="sm">View</Button>
                 </CardContent>
               </Card>
             </Link>
           </div>
         </div>
-
-        {/* Info */}
-        {/* <Card>
-          <CardHeader>
-            <CardTitle>About This Module</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>
-              <strong>Live Bird Trading:</strong> Manage bird dispatch and sales
-              to retailers
-            </p>
-            <p>
-              <strong>Running Ledger:</strong> Automatic balance calculation
-              after each transaction
-            </p>
-            <p>
-              <strong>No GST:</strong> Special billing system for live bird
-              trading
-            </p>
-            <p>
-              <strong>Credit Management:</strong> Track credit limits and
-              outstanding balances
-            </p>
-          </CardContent>
-        </Card> */}
       </div>
     </DashboardLayout>
   )

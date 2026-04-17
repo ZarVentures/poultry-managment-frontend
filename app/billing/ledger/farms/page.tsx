@@ -1,10 +1,10 @@
 ﻿'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -20,164 +20,62 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Download, Printer, ArrowLeft, Tractor, AlertCircle } from 'lucide-react'
-
-interface LedgerEntry {
-  date: string
-  remarks: string
-  referenceType: 'Opening' | 'Purchase' | 'Payment'
-  referenceId: string
-  debit: number
-  credit: number
-  balance: number
-  partyId: string
-}
-
-interface Party {
-  id: string
-  name: string
-  phone: string
-  openingBalance: number
-  currentBalance: number
-  creditLimit: number
-}
-
-const farms: Party[] = [
-  {
-    id: '2',
-    name: 'Patel Farms',
-    phone: '9987654321',
-    openingBalance: 100000,
-    currentBalance: 85000,
-    creditLimit: 200000,
-  },
-  {
-    id: '4',
-    name: 'Siddharth Farms',
-    phone: '9876512340',
-    openingBalance: 120000,
-    currentBalance: 95000,
-    creditLimit: 220000,
-  },
-]
-
-const allLedgerEntries: LedgerEntry[] = [
-  {
-    date: '2024-04-01',
-    remarks: 'Previous Balance',
-    referenceType: 'Opening',
-    referenceId: 'OPN002',
-    debit: 0,
-    credit: 0,
-    balance: 100000,
-    partyId: '2',
-  },
-  {
-    date: '2024-04-02',
-    remarks: 'Purchase - Birds Received (1000 birds)',
-    referenceType: 'Purchase',
-    referenceId: 'PUR001',
-    debit: 210000,
-    credit: 0,
-    balance: 310000,
-    partyId: '2',
-  },
-  {
-    date: '2024-04-04',
-    remarks: 'Payment Made - Bank Transfer',
-    referenceType: 'Payment',
-    referenceId: 'PAY001',
-    debit: 0,
-    credit: 100000,
-    balance: 210000,
-    partyId: '2',
-  },
-  {
-    date: '2024-04-06',
-    remarks: 'Purchase - Birds Received (500 birds)',
-    referenceType: 'Purchase',
-    referenceId: 'PUR002',
-    debit: 105000,
-    credit: 0,
-    balance: 315000,
-    partyId: '2',
-  },
-  {
-    date: '2024-04-08',
-    remarks: 'Payment Made - Cash',
-    referenceType: 'Payment',
-    referenceId: 'PAY002',
-    debit: 0,
-    credit: 230000,
-    balance: 85000,
-    partyId: '2',
-  },
-  {
-    date: '2024-04-01',
-    remarks: 'Opening Balance',
-    referenceType: 'Opening',
-    referenceId: 'OPN005',
-    debit: 0,
-    credit: 0,
-    balance: 120000,
-    partyId: '4',
-  },
-  {
-    date: '2024-04-03',
-    remarks: 'Purchase - Birds Received (800 birds)',
-    referenceType: 'Purchase',
-    referenceId: 'PUR005',
-    debit: 168000,
-    credit: 0,
-    balance: 288000,
-    partyId: '4',
-  },
-  {
-    date: '2024-04-06',
-    remarks: 'Payment Made - Cash',
-    referenceType: 'Payment',
-    referenceId: 'PAY005',
-    debit: 0,
-    credit: 193000,
-    balance: 95000,
-    partyId: '4',
-  },
-]
+import { Download, Printer, ArrowLeft } from 'lucide-react'
+import { billingApi } from '@/lib/api'
 
 const FarmLedgerPage = () => {
-  const [selectedFarm, setSelectedFarm] = useState('2')
-  const farm = farms.find((item) => item.id === selectedFarm) || farms[0]
-  const entries = allLedgerEntries.filter((entry) => entry.partyId === selectedFarm)
+  const [parties, setParties] = useState<any[]>([])
+  const [selectedPartyId, setSelectedPartyId] = useState('')
+  const [ledgerEntries, setLedgerEntries] = useState<any[]>([])
+  const [loadingParties, setLoadingParties] = useState(true)
+  const [loadingLedger, setLoadingLedger] = useState(false)
 
-  const totals = entries.reduce(
+  useEffect(() => {
+    billingApi.getParties()
+      .then((data) => {
+        // Show Farm type parties, or all if none tagged as Farm
+        const farms = data.filter((p: any) => p.type === 'Farm')
+        const list = farms.length > 0 ? farms : data
+        setParties(list)
+        if (list.length > 0) setSelectedPartyId(list[0].id)
+      })
+      .catch((err) => console.error('Failed to load parties:', err))
+      .finally(() => setLoadingParties(false))
+  }, [])
+
+  useEffect(() => {
+    if (!selectedPartyId) return
+    setLoadingLedger(true)
+    billingApi.getLedger(selectedPartyId)
+      .then((data) => setLedgerEntries(data))
+      .catch((err) => console.error('Failed to load ledger:', err))
+      .finally(() => setLoadingLedger(false))
+  }, [selectedPartyId])
+
+  const selectedParty = parties.find((p) => p.id === selectedPartyId)
+
+  const totals = ledgerEntries.reduce(
     (acc, entry) => ({
-      debit: acc.debit + entry.debit,
-      credit: acc.credit + entry.credit,
+      debit: acc.debit + Number(entry.debit || 0),
+      credit: acc.credit + Number(entry.credit || 0),
     }),
     { debit: 0, credit: 0 }
   )
 
   const downloadCSV = (data: any[], filename: string) => {
-    if (!data || data.length === 0) return
+    if (!data.length) return
     const headers = Object.keys(data[0]).join(',')
-    const rows = data
-      .map((row) =>
-        Object.values(row)
-          .map((val) =>
-            typeof val === 'string' && (val.includes(',') || val.includes('"') || val.includes('\n'))
-              ? `"${val.replace(/"/g, '""')}"`
-              : val
-          )
-          .join(',')
-      )
-      .join('\n')
-    const csv = `${headers}\n${rows}`
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const rows = data.map(row =>
+      Object.values(row).map(val =>
+        typeof val === 'string' && val.includes(',') ? `"${val}"` : val
+      ).join(',')
+    ).join('\n')
+    const blob = new Blob([`${headers}\n${rows}`], { type: 'text/csv;charset=utf-8;' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
     a.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`
+    a.style.display = 'none'
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -185,83 +83,30 @@ const FarmLedgerPage = () => {
   }
 
   const handleExport = () => {
-    if (entries.length === 0) {
-      alert('No data available to export.')
-      return
-    }
-    downloadCSV(
-      entries.map((entry) => ({
-        Date: new Date(entry.date).toLocaleDateString('en-IN'),
-        Remarks: entry.remarks,
-        Reference_Type: entry.referenceType,
-        Reference_ID: entry.referenceId,
-        Debit: entry.debit,
-        Credit: entry.credit,
-        Balance: entry.balance,
-      })),
-      'farm_ledger'
-    )
+    if (!ledgerEntries.length) { alert('No data to export.'); return }
+    downloadCSV(ledgerEntries.map(e => ({
+      Date: e.date,
+      Type: e.referenceType,
+      Reference: e.referenceId,
+      Debit: e.debit,
+      Credit: e.credit,
+      Balance: e.balance,
+    })), 'farm_ledger')
   }
 
   const handlePrint = () => {
-    if (entries.length === 0) {
-      alert('No data available to print.')
-      return
-    }
+    if (!ledgerEntries.length) { alert('No data to print.'); return }
     const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Farm Ledger Report</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f7fafc; font-weight: bold; }
-          </style>
-        </head>
-        <body>
-          <h1>Farm Ledger Report</h1>
-          <p><strong>Farm:</strong> ${farm.name}</p>
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Remarks</th>
-                <th>Reference</th>
-                <th>Debit</th>
-                <th>Credit</th>
-                <th>Balance</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${entries
-                .map(
-                  (entry) => `
-                    <tr>
-                      <td>${new Date(entry.date).toLocaleDateString('en-IN')}</td>
-                      <td>${entry.remarks}</td>
-                      <td>${entry.referenceId}</td>
-                      <td>${entry.debit > 0 ? '₹' + entry.debit.toLocaleString('en-IN') : '-'}</td>
-                      <td>${entry.credit > 0 ? '₹' + entry.credit.toLocaleString('en-IN') : '-'}</td>
-                      <td>₹${entry.balance.toLocaleString('en-IN')}</td>
-                    </tr>
-                  `
-                )
-                .join('')}
-            </tbody>
-          </table>
-        </body>
-      </html>
-    `
-    const printWindow = window.open('', '_blank')
-    if (printWindow) {
-      printWindow.document.write(printContent)
-      printWindow.document.close()
-      printWindow.print()
-    } else {
-      alert('Please allow popups for this website to use the print function.')
-    }
+      <!DOCTYPE html><html><head><title>Farm Ledger</title>
+      <style>body{font-family:Arial,sans-serif;margin:20px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f7fafc;font-weight:bold}</style>
+      </head><body>
+      <h1>Farm Ledger Report</h1>
+      <p><strong>Party:</strong> ${selectedParty?.name || ''}</p>
+      <table><thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
+      <tbody>${ledgerEntries.map(e => `<tr><td>${e.date}</td><td>${e.referenceType}</td><td>${e.referenceId}</td><td>${Number(e.debit) > 0 ? '₹' + Number(e.debit).toLocaleString('en-IN') : '-'}</td><td>${Number(e.credit) > 0 ? '₹' + Number(e.credit).toLocaleString('en-IN') : '-'}</td><td>₹${Number(e.balance).toLocaleString('en-IN')}</td></tr>`).join('')}
+      </tbody></table></body></html>`
+    const w = window.open('', '_blank')
+    if (w) { w.document.write(printContent); w.document.close(); w.print() }
   }
 
   return (
@@ -270,44 +115,42 @@ const FarmLedgerPage = () => {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Farm Ledger</h1>
-            <p className="text-gray-600 mt-2">
-              Separate ledger page for farm transactions only.
-            </p>
+            <p className="text-gray-600 mt-2">Individual ledger for farm transactions</p>
           </div>
           <Link href="/billing/ledger" className="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Ledger Home
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Link>
         </div>
 
         <Card className="border border-gray-200 p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                Select Farm
-              </label>
-              <Select value={selectedFarm} onValueChange={setSelectedFarm}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {farms.map((farmItem) => (
-                    <SelectItem key={farmItem.id} value={farmItem.id}>
-                      {farmItem.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Select Farm</label>
+              {loadingParties ? (
+                <p className="text-sm text-gray-500">Loading farms...</p>
+              ) : parties.length === 0 ? (
+                <p className="text-sm text-gray-500">No farm parties found. Add parties with type "Farm" in billing.</p>
+              ) : (
+                <Select value={selectedPartyId} onValueChange={setSelectedPartyId}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {parties.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div>
               <p className="text-sm font-medium text-gray-700">Current Balance</p>
               <p className="text-2xl font-bold text-gray-900 mt-2">
-                ₹{farm.currentBalance.toLocaleString('en-IN')}
+                ₹{Number(selectedParty?.currentBalance || 0).toLocaleString('en-IN')}
               </p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-700">Credit Limit</p>
               <p className="text-2xl font-bold text-gray-900 mt-2">
-                ₹{farm.creditLimit.toLocaleString('en-IN')}
+                ₹{Number(selectedParty?.creditLimit || 0).toLocaleString('en-IN')}
               </p>
             </div>
           </div>
@@ -326,59 +169,56 @@ const FarmLedgerPage = () => {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50 border-b border-gray-200">
+                <TableRow className="bg-gray-50">
                   <TableHead>Date</TableHead>
-                  <TableHead>Remarks</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Reference</TableHead>
-                  <TableHead className="text-right">Unpaid (₹)</TableHead>
-                  <TableHead className="text-right">paid (₹)</TableHead>
+                  <TableHead className="text-right">Debit (₹)</TableHead>
+                  <TableHead className="text-right">Credit (₹)</TableHead>
                   <TableHead className="text-right">Balance (₹)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {entries.map((entry, idx) => (
-                  <TableRow key={idx} className="border-b border-gray-200">
-                    <TableCell>{new Date(entry.date).toLocaleDateString('en-IN')}</TableCell>
-                    <TableCell>{entry.remarks}</TableCell>
-                    <TableCell>{entry.referenceType}</TableCell>
-                    <TableCell>{entry.referenceId}</TableCell>
-                    <TableCell className="text-right">
-                      {entry.debit > 0 ? `₹${entry.debit.toLocaleString('en-IN')}` : '–'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {entry.credit > 0 ? `₹${entry.credit.toLocaleString('en-IN')}` : '–'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      ₹{entry.balance.toLocaleString('en-IN')}
-                    </TableCell>
+                {loadingLedger ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">Loading...</TableCell>
                   </TableRow>
-                ))}
-                <TableRow className="bg-gray-100 border-t-2 border-gray-300">
-                  <TableCell colSpan={4} className="text-right font-bold">
-                    Total
-                  </TableCell>
-                  <TableCell className="text-right font-bold text-red-600">
-                    ₹{totals.debit.toLocaleString('en-IN')}
-                  </TableCell>
-                  <TableCell className="text-right font-bold text-green-600">
-                    ₹{totals.credit.toLocaleString('en-IN')}
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                    ₹{farm.currentBalance.toLocaleString('en-IN')}
-                  </TableCell>
-                </TableRow>
+                ) : ledgerEntries.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">No ledger entries found</TableCell>
+                  </TableRow>
+                ) : (
+                  <>
+                    {ledgerEntries.map((entry, idx) => (
+                      <TableRow key={idx} className="border-b border-gray-200">
+                        <TableCell>{new Date(entry.date).toLocaleDateString('en-IN')}</TableCell>
+                        <TableCell>{entry.referenceType}</TableCell>
+                        <TableCell className="font-mono text-sm">{entry.referenceId}</TableCell>
+                        <TableCell className="text-right text-red-600">
+                          {Number(entry.debit) > 0 ? `₹${Number(entry.debit).toLocaleString('en-IN')}` : '–'}
+                        </TableCell>
+                        <TableCell className="text-right text-green-600">
+                          {Number(entry.credit) > 0 ? `₹${Number(entry.credit).toLocaleString('en-IN')}` : '–'}
+                        </TableCell>
+                        <TableCell className="text-right font-bold">
+                          ₹{Number(entry.balance).toLocaleString('en-IN')}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="bg-gray-100 border-t-2 border-gray-300">
+                      <TableCell colSpan={3} className="text-right font-bold">Total</TableCell>
+                      <TableCell className="text-right font-bold text-red-600">₹{totals.debit.toLocaleString('en-IN')}</TableCell>
+                      <TableCell className="text-right font-bold text-green-600">₹{totals.credit.toLocaleString('en-IN')}</TableCell>
+                      <TableCell className="text-right font-bold">
+                        ₹{Number(selectedParty?.currentBalance || 0).toLocaleString('en-IN')}
+                      </TableCell>
+                    </TableRow>
+                  </>
+                )}
               </TableBody>
             </Table>
           </div>
         </Card>
-
-        {/* <Alert className="border border-amber-200 bg-amber-50">
-          <AlertCircle className="h-4 w-4 text-amber-700" />
-          <AlertDescription>
-            This page is dedicated to farm ledger entries only. Do not mix farms with retailer ledger data.
-          </AlertDescription>
-        </Alert> */}
       </div>
     </DashboardLayout>
   )
