@@ -37,6 +37,7 @@ export default function PurchasesPage() {
   const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>()
   const [viewingPurchase, setViewingPurchase] = useState<ApiPurchaseOrder | null>(null)
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
+  const [loadingPreview, setLoadingPreview] = useState(false)
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null)
   const [uploadingFile, setUploadingFile] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -590,7 +591,16 @@ export default function PurchasesPage() {
                         <TableCell>₹{Number(p.balanceAmount || 0).toFixed(2)}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => { setViewingPurchase(p); setShowInvoiceModal(true) }}><Eye size={14} /></Button>
+                            <Button variant="ghost" size="sm" onClick={async () => {
+                              setViewingPurchase(p)
+                              setShowInvoiceModal(true)
+                              setLoadingPreview(true)
+                              try {
+                                const full = await purchasesApi.getOne(p.id)
+                                setViewingPurchase(full)
+                              } catch { /* keep list data */ }
+                              finally { setLoadingPreview(false) }
+                            }}><Eye size={14} /></Button>
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(p)}><Edit2 size={14} /></Button>
                             <Button variant="ghost" size="sm" onClick={() => handleDelete(p.id)} className="text-red-500"><Trash2 size={14} /></Button>
                           </div>
@@ -612,6 +622,9 @@ export default function PurchasesPage() {
                 <DialogTitle>Purchase Bill — {viewingPurchase.orderNumber}</DialogTitle>
               </DialogHeader>
               <div className="overflow-y-auto flex-1 space-y-4 text-sm">
+                {loadingPreview && (
+                  <div className="text-center py-4 text-muted-foreground text-sm">Loading full details...</div>
+                )}
                 <div className="grid grid-cols-2 gap-2 border p-3 rounded text-xs">
                   <div><span className="font-semibold">Bill No:</span> {viewingPurchase.orderNumber}</div>
                   <div><span className="font-semibold">Date:</span> {new Date(viewingPurchase.orderDate).toLocaleDateString()}</div>
