@@ -326,7 +326,7 @@ export default function MortalityPage() {
           <table>
             <thead>
               <tr>
-                <th>Purchase Invoice No.</th>
+                <th>Purchase Bill No.</th>
                 <th>Purchase Date</th>
                 <th>Farmer Name</th>
                 <th>Farm Location</th>
@@ -398,7 +398,7 @@ export default function MortalityPage() {
           <table>
             <thead>
               <tr>
-                <th>Purchase Invoice No.</th>
+                <th>Purchase Bill No.</th>
                 <th>Purchase Date</th>
                 <th>Farmer Name</th>
                 <th>Farm Location</th>
@@ -481,13 +481,13 @@ export default function MortalityPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Purchase Invoice No. <span className="text-red-500">*</span></Label>
+                    <Label>Purchase Bill No. <span className="text-red-500">*</span></Label>
                     <Select
                       value={formData.purchaseInvoiceNo || "__none__"}
                       onValueChange={(value) => handlePurchaseInvoiceChange(value === "__none__" ? "" : value)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select purchase invoice" />
+                        <SelectValue placeholder="Select purchase bill" />
                       </SelectTrigger>
                       <SelectContent>
                         {purchases
@@ -689,7 +689,7 @@ export default function MortalityPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Purchase Invoice No.</TableHead>
+                    <TableHead>Purchase Bill No.</TableHead>
                     <TableHead>Purchase Date</TableHead>
                     <TableHead>Farmer Name</TableHead>
                     <TableHead>Farm Location</TableHead>
@@ -760,7 +760,7 @@ export default function MortalityPage() {
                     <div className="text-sm font-medium">{viewingMortality.recordNumber}</div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Purchase Invoice No.</Label>
+                    <Label className="text-muted-foreground">Purchase Bill No.</Label>
                     <div className="text-sm font-medium">{viewingMortality.purchaseInvoiceNo || "N/A"}</div>
                   </div>
                   <div className="space-y-2">

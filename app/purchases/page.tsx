@@ -369,7 +369,7 @@ export default function PurchasesPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Attach Invoice (PDF/JPG/PNG)</Label>
+                      <Label>Attach Bill (PDF/JPG/PNG)</Label>
                       <div className="flex items-center gap-3">
                         <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
                           onChange={e => setInvoiceFile(e.target.files?.[0] || null)} />

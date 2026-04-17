@@ -348,7 +348,7 @@ export default function GodownInwardPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Purchase Invoice No</Label>
+                    <Label>Purchase Bill No</Label>
                     <Input
                       value={formData.purchaseInvoiceNo}
                       onChange={(e) => setFormData({ ...formData, purchaseInvoiceNo: e.target.value })}

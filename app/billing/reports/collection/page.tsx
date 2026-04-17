@@ -148,7 +148,7 @@ const CollectionReportPage = () => {
               <TableHeader>
                 <TableRow className="bg-gray-50">
                   <TableHead className="font-semibold">Date</TableHead>
-                  <TableHead className="font-semibold">Invoice #</TableHead>
+                  <TableHead className="font-semibold">Bill No</TableHead>
                   <TableHead className="font-semibold">Customer</TableHead>
                   <TableHead className="font-semibold">Mode</TableHead>
                   <TableHead className="text-right font-semibold">Amount</TableHead>

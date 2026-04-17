@@ -232,9 +232,9 @@ export default function InventoryPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5" />
-                  Purchase Invoice No. wise stock
+                  Purchase Bill No. wise stock
                 </CardTitle>
-                <CardDescription>Birds received per purchase invoice (from godown inward entries)</CardDescription>
+                <CardDescription>Birds received per purchase bill (from godown inward entries)</CardDescription>
               </CardHeader>
               <CardContent>
                 {stockByInvoice.length === 0 ? (

@@ -339,7 +339,7 @@ export default function ReportsPage() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Invoice #</TableHead>
+                            <TableHead>Bill No</TableHead>
                             <TableHead>Date</TableHead>
                             <TableHead>Customer</TableHead>
                             <TableHead>Amount</TableHead>

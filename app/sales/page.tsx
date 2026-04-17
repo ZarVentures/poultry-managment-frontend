@@ -267,7 +267,7 @@ export default function SalesPage() {
 
   const handleSave = async () => {
     if (!formData.invoiceNumber || !formData.customerName) {
-      toast.error("Invoice number and customer name are required"); return
+      toast.error("Bill number and customer name are required"); return
     }
     const validRows = customerRows.filter(r => r.customerName && parseFloat(r.weight) > 0)
     if (validRows.length === 0) { toast.error("Add at least one customer row with weight"); return }
@@ -695,7 +695,7 @@ export default function SalesPage() {
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <DateRangeFilter startDate={dateRangeStart} endDate={dateRangeEnd} onDateRangeChange={(s, e) => { setDateRangeStart(s); setDateRangeEnd(e) }} />
-                <Input placeholder="Search invoice, customer..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[200px]" />
+                <Input placeholder="Search bill no, customer..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[200px]" />
                 <Select value={filterRetailer || '__all__'} onValueChange={v => setFilterRetailer(v === '__all__' ? '' : v)}>
                   <SelectTrigger className="w-[160px]"><SelectValue placeholder="All Retailers" /></SelectTrigger>
                   <SelectContent>
@@ -734,7 +734,7 @@ export default function SalesPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Sale No</TableHead>
-                      <TableHead>Invoice No</TableHead>
+                      <TableHead>Bill No</TableHead>
                       <TableHead>Purchase Bill</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Customer</TableHead>
