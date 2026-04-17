@@ -10,9 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Edit2, Trash2, X, Printer } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
-import { godownApi, retailersApi, type GodownSale, type GodownCage, type Retailer } from "@/lib/api"
+import { godownApi, retailersApi, purchasesApi, type GodownSale, type GodownCage, type Retailer } from "@/lib/api"
 
 const emptyCage = (): GodownCage => ({ cageId: "", birdType: "", numberOfBirds: 0, cageWeight: 0 })
 import { toast } from "sonner"
@@ -20,6 +21,7 @@ import { toast } from "sonner"
 export default function GodownSalePage() {
   const [sales, setSales] = useState<GodownSale[]>([])
   const [retailers, setRetailers] = useState<Retailer[]>([])
+  const [purchaseBills, setPurchaseBills] = useState<Array<{ id: string; orderNumber: string; supplierName: string }>>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
@@ -29,6 +31,7 @@ export default function GodownSalePage() {
   const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [formData, setFormData] = useState({
     saleDate: new Date().toISOString().split("T")[0],
+    purchaseBillNo: "",
     invoiceNumber: "",
     customerName: "",
     numberOfBirds: "",
@@ -46,6 +49,7 @@ export default function GodownSalePage() {
     setMounted(true)
     fetchSales()
     fetchRetailers()
+    fetchPurchaseBills()
   }, [])
 
   const fetchSales = async () => {
@@ -70,9 +74,28 @@ export default function GodownSalePage() {
     }
   }
 
+  const fetchPurchaseBills = async () => {
+    try {
+      const data = await purchasesApi.getInvoiceList()
+      setPurchaseBills(Array.isArray(data) ? data : [])
+    } catch { setPurchaseBills([]) }
+  }
+
+  const handlePurchaseBillChange = (orderNumber: string) => {
+    const billNo = orderNumber === '__none__' ? '' : orderNumber
+    // Auto-generate Godown Sale No: GDS-TEST001 from PO-TEST001
+    const autoGdsNo = billNo ? 'GDS-' + billNo.replace(/^PO-/i, '') : ''
+    setFormData(f => ({
+      ...f,
+      purchaseBillNo: billNo,
+      invoiceNumber: autoGdsNo,
+    }))
+  }
+
   const resetForm = () => {
     setFormData({
       saleDate: new Date().toISOString().split("T")[0],
+      purchaseBillNo: "",
       invoiceNumber: "",
       customerName: "",
       numberOfBirds: "",
@@ -91,6 +114,7 @@ export default function GodownSalePage() {
   const handleEdit = (sale: GodownSale) => {
     setFormData({
       saleDate: sale.saleDate,
+      purchaseBillNo: (sale as any).purchaseBillNo || "",
       invoiceNumber: (sale as any).invoiceNumber || "",
       customerName: sale.customerName,
       numberOfBirds: String(sale.numberOfBirds || ""),
@@ -312,14 +336,27 @@ export default function GodownSalePage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Godown Bill No</Label>
+                    <Label>Godown Sale No (auto)</Label>
                     <Input
                       value={formData.invoiceNumber}
-                      onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
-                      placeholder="GS-001"
-                      disabled={loading}
+                      readOnly
+                      placeholder="Auto-filled from Purchase Bill"
+                      className={formData.invoiceNumber ? "bg-green-50 border-green-300" : "bg-gray-50"}
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Link to Purchase Bill</Label>
+                  <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
+                    <SelectTrigger><SelectValue placeholder="Select purchase bill (optional)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {purchaseBills.map(b => (
+                        <SelectItem key={b.id} value={b.orderNumber}>{b.orderNumber} — {b.supplierName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -641,6 +678,8 @@ export default function GodownSalePage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>GDS No</TableHead>
+                      <TableHead>Purchase Bill</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Customer</TableHead>
                       <TableHead>Quantity</TableHead>
@@ -652,6 +691,8 @@ export default function GodownSalePage() {
                   <TableBody>
                     {filteredSales.map((sale) => (
                       <TableRow key={sale.id}>
+                        <TableCell className="font-medium">{(sale as any).invoiceNumber || '-'}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{(sale as any).purchaseBillNo || '-'}</TableCell>
                         <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
                         <TableCell>{sale.customerName}</TableCell>
                         <TableCell>{sale.numberOfBirds} birds</TableCell>
