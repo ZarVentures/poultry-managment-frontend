@@ -127,38 +127,44 @@ export default function SalesPage() {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
-      // Auto-fill from selected cages
-      const selected = purchaseCages.filter(c => next.has(c.id!))
-      const totalBirds = selected.reduce((s, c) => s + c.numberOfBirds, 0)
-      const totalWt = selected.reduce((s, c) => s + Number(c.purchaseWeight), 0)
-      const cageIds = selected.map(c => c.cageId).filter(Boolean).join(', ')
-      setFormData(f => ({
-        ...f,
-        cageNo: cageIds,
-        ...(totalBirds > 0 ? { numBirds: String(totalBirds) } : {}),
-        ...(totalWt > 0 ? { totalWeight: totalWt.toFixed(2) } : {}),
-      }))
+      syncFormFromCages(next)
       return next
     })
   }
 
   const toggleAllCages = () => {
     if (selectedCageIds.size === purchaseCages.length) {
-      setSelectedCageIds(new Set())
-      setFormData(f => ({ ...f, cageNo: '', numBirds: '', totalWeight: '' }))
+      const empty = new Set<string>()
+      setSelectedCageIds(empty)
+      syncFormFromCages(empty)
     } else {
       const allIds = new Set(purchaseCages.map(c => c.id!))
-      const totalBirds = purchaseCages.reduce((s, c) => s + c.numberOfBirds, 0)
-      const totalWt = purchaseCages.reduce((s, c) => s + Number(c.purchaseWeight), 0)
-      const cageIds = purchaseCages.map(c => c.cageId).filter(Boolean).join(', ')
       setSelectedCageIds(allIds)
-      setFormData(f => ({ ...f, cageNo: cageIds, numBirds: String(totalBirds), totalWeight: totalWt.toFixed(2) }))
+      syncFormFromCages(allIds)
     }
   }
 
+  const syncFormFromCages = (ids: Set<string>) => {
+    const selected = purchaseCages.filter(c => ids.has(c.id!))
+    const totalBirds = selected.reduce((s, c) => s + c.numberOfBirds, 0)
+    const totalWt = selected.reduce((s, c) => s + Number(c.purchaseWeight), 0)
+    const cageIds = selected.map(c => c.cageId).filter(Boolean).join(', ')
+    setFormData(f => ({
+      ...f,
+      cageNo: cageIds,
+      numBirds: totalBirds > 0 ? String(totalBirds) : f.numBirds,
+      totalWeight: totalWt > 0 ? totalWt.toFixed(2) : f.totalWeight,
+    }))
+  }
+
   const rate = parseFloat(formData.ratePerKg) || 0
-  const totalBirds = parseInt(formData.numBirds) || 0
-  const totalWeight = parseFloat(formData.totalWeight) || 0
+  const selectedCageList = purchaseCages.filter(c => selectedCageIds.has(c.id!))
+  const totalBirds = selectedCageList.length > 0
+    ? selectedCageList.reduce((s, c) => s + c.numberOfBirds, 0)
+    : (parseInt(formData.numBirds) || 0)
+  const totalWeight = selectedCageList.length > 0
+    ? selectedCageList.reduce((s, c) => s + Number(c.purchaseWeight), 0)
+    : (parseFloat(formData.totalWeight) || 0)
   const totalAmount = totalWeight * rate
   const avgWeight = totalBirds > 0 ? totalWeight / totalBirds : 0
 
@@ -497,34 +503,63 @@ export default function SalesPage() {
                         <thead>
                           <tr className="border-b bg-gray-50">
                             <th className="text-left p-2">Customer Name</th>
-                            <th className="text-left p-2 w-28">Cage ID</th>
+                            <th className="text-left p-2 w-24">Cage ID</th>
                             <th className="text-left p-2 w-20">Birds</th>
                             <th className="text-left p-2 w-28">Weight (kg)</th>
                             <th className="text-right p-2 w-28">Amount</th>
                           </tr>
                         </thead>
                         <tbody>
-                          <tr className="border-b">
-                            <td className="p-1">
-                              <Input value={formData.customerName} onChange={e => setFormData(f => ({ ...f, customerName: e.target.value }))} placeholder="Name" className="h-8 text-sm" disabled={loading} />
-                            </td>
-                            <td className="p-1">
-                              <Input value={formData.cageNo} readOnly placeholder="Auto" className={`h-8 text-sm ${formData.cageNo ? "bg-green-50 border-green-300" : "bg-gray-50"}`} />
-                            </td>
-                            <td className="p-1">
-                              <Input type="number" value={formData.numBirds} onChange={e => setFormData(f => ({ ...f, numBirds: e.target.value }))} placeholder="0" className="h-8 text-sm" disabled={loading} />
-                            </td>
-                            <td className="p-1">
-                              <Input type="number" step="0.001" value={formData.totalWeight} onChange={e => setFormData(f => ({ ...f, totalWeight: e.target.value }))} placeholder="0.000" className="h-8 text-sm" disabled={loading} />
-                            </td>
-                            <td className="p-1 text-right font-medium">{totalAmount > 0 ? `₹${totalAmount.toFixed(0)}` : '-'}</td>
-                          </tr>
+                          {selectedCageIds.size > 0 ? (
+                            purchaseCages.filter(c => selectedCageIds.has(c.id!)).map((cage, i) => {
+                              const wt = Number(cage.purchaseWeight)
+                              const amt = wt * rate
+                              return (
+                                <tr key={cage.id} className="border-b hover:bg-gray-50">
+                                  <td className="p-1">
+                                    {i === 0 ? (
+                                      <Input value={formData.customerName} onChange={e => setFormData(f => ({ ...f, customerName: e.target.value }))} placeholder="Name" className="h-8 text-sm" disabled={loading} />
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground px-2">{formData.customerName || '-'}</span>
+                                    )}
+                                  </td>
+                                  <td className="p-1 font-medium text-xs">{cage.cageId || '-'}</td>
+                                  <td className="p-1 text-center">{cage.numberOfBirds}</td>
+                                  <td className="p-1">
+                                    <Input type="number" step="0.001" defaultValue={wt.toFixed(3)}
+                                      onChange={e => {
+                                        // update totalWeight when individual cage weight changes
+                                        const newWt = parseFloat(e.target.value) || 0
+                                        const others = purchaseCages.filter(c => selectedCageIds.has(c.id!) && c.id !== cage.id).reduce((s, c) => s + Number(c.purchaseWeight), 0)
+                                        setFormData(f => ({ ...f, totalWeight: (others + newWt).toFixed(3) }))
+                                      }}
+                                      className="h-8 text-sm" disabled={loading} />
+                                  </td>
+                                  <td className="p-1 text-right font-medium">{amt > 0 ? `₹${amt.toFixed(0)}` : '-'}</td>
+                                </tr>
+                              )
+                            })
+                          ) : (
+                            <tr className="border-b">
+                              <td className="p-1">
+                                <Input value={formData.customerName} onChange={e => setFormData(f => ({ ...f, customerName: e.target.value }))} placeholder="Name" className="h-8 text-sm" disabled={loading} />
+                              </td>
+                              <td className="p-1 text-xs text-muted-foreground">-</td>
+                              <td className="p-1">
+                                <Input type="number" value={formData.numBirds} onChange={e => setFormData(f => ({ ...f, numBirds: e.target.value }))} placeholder="0" className="h-8 text-sm" disabled={loading} />
+                              </td>
+                              <td className="p-1">
+                                <Input type="number" step="0.001" value={formData.totalWeight} onChange={e => setFormData(f => ({ ...f, totalWeight: e.target.value }))} placeholder="0.000" className="h-8 text-sm" disabled={loading} />
+                              </td>
+                              <td className="p-1 text-right font-medium">{totalAmount > 0 ? `₹${totalAmount.toFixed(0)}` : '-'}</td>
+                            </tr>
+                          )}
                         </tbody>
                         <tfoot>
                           <tr className="border-t-2 bg-green-50 font-semibold">
                             <td className="p-2" colSpan={2}>TOTAL</td>
-                            <td className="p-2">{parseInt(formData.numBirds) || 0}</td>
-                            <td className="p-2">{(parseFloat(formData.totalWeight) || 0).toFixed(3)}</td>
+                            <td className="p-2">{totalBirds}</td>
+                            <td className="p-2">{totalWeight.toFixed(3)}</td>
                             <td className="p-2 text-right">{totalAmount.toFixed(0)}</td>
                           </tr>
                           <tr className="bg-gray-50 text-xs text-muted-foreground">
