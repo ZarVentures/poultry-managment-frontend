@@ -273,7 +273,8 @@ export interface PurchaseOrderCage {
   cageId?: string;
   birdType?: string;
   numberOfBirds: number;
-  cageWeight: number;
+  cageWeight: number;       // legacy alias
+  purchaseWeight: number;   // actual field from backend
   status?: 'pending' | 'sold' | 'in_godown';
 }
 
