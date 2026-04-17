@@ -535,7 +535,6 @@ export default function GodownInwardPage() {
                       <TableHeader>
                         <TableRow className="bg-muted/50">
                           <TableHead className="text-xs">Cage ID</TableHead>
-                          <TableHead className="text-xs">Bird Type</TableHead>
                           <TableHead className="text-xs">Birds</TableHead>
                           <TableHead className="text-xs">Weight (kg)</TableHead>
                           <TableHead className="w-10"></TableHead>
@@ -553,19 +552,6 @@ export default function GodownInwardPage() {
                                   setCages(updated)
                                 }}
                                 placeholder="C1"
-                                className="h-8 text-sm"
-                                disabled={loading}
-                              />
-                            </TableCell>
-                            <TableCell className="p-1">
-                              <Input
-                                value={cage.birdType || ""}
-                                onChange={(e) => {
-                                  const updated = [...cages]
-                                  updated[idx] = { ...updated[idx], birdType: e.target.value }
-                                  setCages(updated)
-                                }}
-                                placeholder="broiler"
                                 className="h-8 text-sm"
                                 disabled={loading}
                               />

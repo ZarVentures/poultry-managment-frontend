@@ -29,13 +29,14 @@ export default function GodownSalePage() {
   const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [formData, setFormData] = useState({
     saleDate: new Date().toISOString().split("T")[0],
+    invoiceNumber: "",
     customerName: "",
     numberOfBirds: "",
-    averageWeight: "",
     totalWeight: "",
     ratePerKg: "",
     totalAmount: "",
     paymentStatus: "pending" as "paid" | "pending" | "partial",
+    paymentMode: "cash",
     amountReceived: "",
     notes: "",
   })
@@ -72,13 +73,14 @@ export default function GodownSalePage() {
   const resetForm = () => {
     setFormData({
       saleDate: new Date().toISOString().split("T")[0],
+      invoiceNumber: "",
       customerName: "",
       numberOfBirds: "",
-      averageWeight: "",
       totalWeight: "",
       ratePerKg: "",
       totalAmount: "",
       paymentStatus: "pending",
+      paymentMode: "cash",
       amountReceived: "",
       notes: "",
     })
@@ -89,13 +91,14 @@ export default function GodownSalePage() {
   const handleEdit = (sale: GodownSale) => {
     setFormData({
       saleDate: sale.saleDate,
+      invoiceNumber: (sale as any).invoiceNumber || "",
       customerName: sale.customerName,
       numberOfBirds: String(sale.numberOfBirds || ""),
-      averageWeight: String(sale.averageWeight || ""),
       totalWeight: String(sale.totalWeight || ""),
       ratePerKg: String(sale.ratePerKg || ""),
       totalAmount: String(sale.totalAmount || ""),
       paymentStatus: (sale as any).paymentStatus || "pending",
+      paymentMode: (sale as any).paymentMode || "cash",
       amountReceived: String((sale as any).amountReceived || ""),
       notes: sale.notes || "",
     })
@@ -120,20 +123,20 @@ export default function GodownSalePage() {
       setLoading(true)
       const saleData = {
         saleDate: formData.saleDate,
+        invoiceNumber: formData.invoiceNumber || undefined,
         customerName: formData.customerName,
         numberOfBirds: parseInt(formData.numberOfBirds) || 0,
-        averageWeight: parseFloat(formData.averageWeight) || undefined,
         totalWeight: parseFloat(formData.totalWeight) || undefined,
         ratePerKg: parseFloat(formData.ratePerKg) || undefined,
         totalAmount: parseFloat(formData.totalAmount) || parseFloat(calculateTotal()) || 0,
         paymentStatus: formData.paymentStatus,
+        paymentMode: formData.paymentMode || undefined,
         amountReceived: parseFloat(formData.amountReceived) || 0,
         notes: formData.notes,
         cages: cages
           .filter(c => c.numberOfBirds > 0 || c.cageWeight > 0)
           .map(c => ({
             cageId: c.cageId || undefined,
-            birdType: c.birdType || undefined,
             numberOfBirds: Number(c.numberOfBirds) || 0,
             cageWeight: Number(c.cageWeight) || 0,
           })),
@@ -299,13 +302,24 @@ export default function GodownSalePage() {
                 </p>
               </DialogHeader>
               <div className="space-y-4 overflow-y-auto flex-1 pr-1 pb-2">
-                <div className="space-y-2">
-                  <Label>Sale Date *</Label>
-                  <DatePicker
-                    value={formData.saleDate}
-                    onChange={(date) => setFormData({ ...formData, saleDate: date })}
-                    disabled={loading}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Sale Date *</Label>
+                    <DatePicker
+                      value={formData.saleDate}
+                      onChange={(date) => setFormData({ ...formData, saleDate: date })}
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Godown Bill No</Label>
+                    <Input
+                      value={formData.invoiceNumber}
+                      onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
+                      placeholder="GS-001"
+                      disabled={loading}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -364,17 +378,6 @@ export default function GodownSalePage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Average Weight (kg)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.averageWeight}
-                      onChange={(e) => setFormData({ ...formData, averageWeight: e.target.value })}
-                      placeholder="0.00"
-                      disabled={loading}
-                    />
-                  </div>
-                  <div className="space-y-2">
                     <Label>Total Weight (kg)</Label>
                     <Input
                       type="number"
@@ -384,6 +387,21 @@ export default function GodownSalePage() {
                         const weight = e.target.value
                         const total = (parseFloat(weight || "0") * parseFloat(formData.ratePerKg || "0")).toFixed(2)
                         setFormData({ ...formData, totalWeight: weight, totalAmount: total })
+                      }}
+                      placeholder="0.00"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Rate per Kg (₹)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.ratePerKg}
+                      onChange={(e) => {
+                        const rate = e.target.value
+                        const total = (parseFloat(formData.totalWeight || "0") * parseFloat(rate || "0")).toFixed(2)
+                        setFormData({ ...formData, ratePerKg: rate, totalAmount: total })
                       }}
                       placeholder="0.00"
                       disabled={loading}
@@ -418,17 +436,43 @@ export default function GodownSalePage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Amount Received (₹)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.amountReceived}
-                    onChange={(e) => setFormData({ ...formData, amountReceived: e.target.value })}
-                    placeholder="0.00"
-                    disabled={loading}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Amount Received (₹)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.amountReceived}
+                      onChange={(e) => setFormData({ ...formData, amountReceived: e.target.value })}
+                      placeholder="0.00"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Payment Mode</Label>
+                    <select
+                      className="w-full border rounded p-2"
+                      value={formData.paymentMode}
+                      onChange={(e) => setFormData({ ...formData, paymentMode: e.target.value })}
+                      disabled={loading}
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="upi">UPI</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                      <option value="cheque">Cheque</option>
+                    </select>
+                  </div>
                 </div>
+
+                {/* Balance display */}
+                {formData.totalAmount && (
+                  <div className="bg-gray-50 border rounded p-3 flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">Balance Amount</span>
+                    <span className={`text-lg font-bold ${(parseFloat(formData.totalAmount) - parseFloat(formData.amountReceived || '0')) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      ₹{Math.max(0, parseFloat(formData.totalAmount) - parseFloat(formData.amountReceived || '0')).toFixed(2)}
+                    </span>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label>Notes</Label>
@@ -460,7 +504,6 @@ export default function GodownSalePage() {
                       <TableHeader>
                         <TableRow className="bg-muted/50">
                           <TableHead className="text-xs">Cage ID</TableHead>
-                          <TableHead className="text-xs">Bird Type</TableHead>
                           <TableHead className="text-xs">Birds</TableHead>
                           <TableHead className="text-xs">Weight (kg)</TableHead>
                           <TableHead className="w-10"></TableHead>
@@ -478,19 +521,6 @@ export default function GodownSalePage() {
                                   setCages(updated)
                                 }}
                                 placeholder="C1"
-                                className="h-8 text-sm"
-                                disabled={loading}
-                              />
-                            </TableCell>
-                            <TableCell className="p-1">
-                              <Input
-                                value={cage.birdType || ""}
-                                onChange={(e) => {
-                                  const updated = [...cages]
-                                  updated[idx] = { ...updated[idx], birdType: e.target.value }
-                                  setCages(updated)
-                                }}
-                                placeholder="broiler"
                                 className="h-8 text-sm"
                                 disabled={loading}
                               />
