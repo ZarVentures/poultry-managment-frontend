@@ -139,7 +139,7 @@ export default function PurchasesPage() {
       notes: full.notes || "",
     })
     setCages(full.cages && full.cages.length > 0
-      ? full.cages.map(c => ({ cageId: c.cageId || "", numberOfBirds: String(c.numberOfBirds), cageWeight: String(c.cageWeight) }))
+      ? full.cages.map(c => ({ cageId: c.cageId || "", numberOfBirds: String(c.numberOfBirds), cageWeight: String((c as any).purchaseWeight || c.cageWeight || "") }))
       : [emptyCage()])
     setPayments((full as any).payments && (full as any).payments.length > 0
       ? (full as any).payments.map((p: any) => ({ mode: p.paymentMode as PaymentMode, amount: String(p.amount) }))
@@ -662,7 +662,7 @@ export default function PurchasesPage() {
                           <td className="border px-2 py-1 text-center">{i + 1}</td>
                           <td className="border px-2 py-1 font-medium">{c.cageId || "-"}</td>
                           <td className="border px-2 py-1 text-right">{c.numberOfBirds}</td>
-                          <td className="border px-2 py-1 text-right">{Number(c.cageWeight).toFixed(2)}</td>
+                          <td className="border px-2 py-1 text-right">{Number((c as any).purchaseWeight || c.cageWeight || 0).toFixed(2)}</td>
                           <td className="border px-2 py-1 text-center">
                             <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
                               c.status === 'sold' ? 'bg-green-100 text-green-800' :
