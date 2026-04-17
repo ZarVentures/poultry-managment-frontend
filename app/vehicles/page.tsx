@@ -35,6 +35,7 @@ export default function VehiclesPage() {
     address: "",
     totalCapacity: "",
     petrolTankCapacity: "",
+    fuelType: "diesel",
     mileage: "",
     joinDate: new Date().toISOString().split("T")[0],
     status: "active" as "active" | "inactive",
@@ -69,6 +70,7 @@ export default function VehiclesPage() {
       address: "",
       totalCapacity: "",
       petrolTankCapacity: "",
+      fuelType: "diesel",
       mileage: "",
       joinDate: new Date().toISOString().split("T")[0],
       status: "active",
@@ -87,6 +89,7 @@ export default function VehiclesPage() {
       address: vehicle.address || "",
       totalCapacity: vehicle.totalCapacity || "",
       petrolTankCapacity: vehicle.petrolTankCapacity || "",
+      fuelType: (vehicle as any).fuelType || "diesel",
       mileage: vehicle.mileage || "",
       joinDate: vehicle.joinDate,
       status: vehicle.status,
@@ -395,31 +398,52 @@ export default function VehiclesPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Total Capacity</Label>
+                    <Label>Total Capacity (Load)</Label>
                     <Input
                       value={formData.totalCapacity}
                       onChange={(e) => setFormData({ ...formData, totalCapacity: e.target.value })}
-                      placeholder="Capacity"
+                      placeholder="e.g. 5000 kg"
                       disabled={loading}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Petrol Tank</Label>
+                    <Label>Fuel Tank Capacity</Label>
                     <Input
                       value={formData.petrolTankCapacity}
                       onChange={(e) => setFormData({ ...formData, petrolTankCapacity: e.target.value })}
-                      placeholder="Tank capacity"
+                      placeholder="e.g. 80 L"
                       disabled={loading}
                     />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Fuel Type</Label>
+                    <Select
+                      value={formData.fuelType}
+                      onValueChange={(value) => setFormData({ ...formData, fuelType: value })}
+                      disabled={loading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select fuel type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="diesel">Diesel</SelectItem>
+                        <SelectItem value="petrol">Petrol</SelectItem>
+                        <SelectItem value="cng">CNG</SelectItem>
+                        <SelectItem value="electric">Electric</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Mileage</Label>
                     <Input
                       value={formData.mileage}
                       onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
-                      placeholder="Mileage"
+                      placeholder="km/L"
                       disabled={loading}
                     />
                   </div>
