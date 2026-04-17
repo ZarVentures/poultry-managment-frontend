@@ -43,7 +43,7 @@ export default function GodownInwardPage() {
   })
   const [cages, setCages] = useState<GodownCage[]>([emptyCage()])
   const [purchaseBills, setPurchaseBills] = useState<Array<{ id: string; orderNumber: string; supplierName: string }>>([])
-  const [purchaseCages, setPurchaseCages] = useState<Array<{ id: string; cageId?: string; numberOfBirds: number; cageWeight: number }>>([])
+  const [purchaseCages, setPurchaseCages] = useState<Array<{ id: string; cageId?: string; numberOfBirds: number; cageWeight: number; godownWeight: string }>>([])
   const [selectedCageIds, setSelectedCageIds] = useState<Set<string>>(new Set())
   const [loadingCages, setLoadingCages] = useState(false)
 
@@ -102,7 +102,7 @@ export default function GodownInwardPage() {
     try {
       setLoadingCages(true)
       const cageData = await purchasesApi.getCagesByOrderNumber(orderNumber, 'pending')
-      setPurchaseCages(Array.isArray(cageData) ? cageData.map(c => ({ ...c, id: c.id ?? '' })) : [])
+      setPurchaseCages(Array.isArray(cageData) ? cageData.map(c => ({ ...c, id: c.id ?? '', godownWeight: '' })) : [])
     } catch { toast.error('Failed to load cages for this purchase bill') }
     finally { setLoadingCages(false) }
   }
@@ -218,10 +218,16 @@ export default function GodownInwardPage() {
         toast.success("Entry created successfully")
       }
 
-      // Mark selected purchase cages as in_godown
+      // Mark selected purchase cages as in_godown with their godown inward weights
       if (selectedCageIds.size > 0) {
-        try { await purchasesApi.markCagesInGodown(Array.from(selectedCageIds)) }
-        catch { toast.error("Entry saved but failed to update cage status") }
+        try {
+          const selectedCages = purchaseCages.filter(c => selectedCageIds.has(c.id))
+          // Group by weight for batch update — pass individual weights
+          for (const cage of selectedCages) {
+            const godownWeight = Number(cage.godownWeight) || undefined
+            await purchasesApi.markCagesInGodown([cage.id], godownWeight)
+          }
+        } catch { toast.error("Entry saved but failed to update cage status") }
       }
 
       await fetchEntries()
@@ -363,7 +369,8 @@ export default function GodownInwardPage() {
                               <th className="p-1 w-8"></th>
                               <th className="text-left p-1">Cage ID</th>
                               <th className="text-right p-1">Birds</th>
-                              <th className="text-right p-1">Morning Wt (kg)</th>
+                              <th className="text-right p-1">Purchase Wt (kg)</th>
+                              <th className="text-right p-1">Godown Wt (kg) *</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -376,6 +383,20 @@ export default function GodownInwardPage() {
                                 <td className="p-1 font-medium">{cage.cageId || '-'}</td>
                                 <td className="p-1 text-right">{cage.numberOfBirds}</td>
                                 <td className="p-1 text-right">{Number(cage.cageWeight).toFixed(2)}</td>
+                                <td className="p-1 text-right" onClick={e => e.stopPropagation()}>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={cage.godownWeight}
+                                    onChange={e => {
+                                      setPurchaseCages(prev => prev.map(c => c.id === cage.id ? { ...c, godownWeight: e.target.value } : c))
+                                      // auto-select when weight entered
+                                      if (e.target.value) setSelectedCageIds(prev => new Set([...prev, cage.id]))
+                                    }}
+                                    className="w-20 text-right border rounded px-1 py-0.5 text-xs"
+                                  />
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -384,6 +405,7 @@ export default function GodownInwardPage() {
                               <td colSpan={2} className="p-1">{selectedCageIds.size} selected / {purchaseCages.length} total</td>
                               <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id)).reduce((s, c) => s + c.numberOfBirds, 0)}</td>
                               <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id)).reduce((s, c) => s + Number(c.cageWeight), 0).toFixed(2)}</td>
+                              <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id)).reduce((s, c) => s + (Number(c.godownWeight) || 0), 0).toFixed(2)}</td>
                             </tr>
                           </tfoot>
                         </table>
@@ -447,17 +469,6 @@ export default function GodownInwardPage() {
                       value={formData.numberOfBirds}
                       onChange={(e) => setFormData({ ...formData, numberOfBirds: e.target.value })}
                       placeholder="1000"
-                      disabled={loading}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Average Weight (Kg)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.averageWeight}
-                      onChange={(e) => setFormData({ ...formData, averageWeight: e.target.value })}
-                      placeholder="1.5"
                       disabled={loading}
                     />
                   </div>
