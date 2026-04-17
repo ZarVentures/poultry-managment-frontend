@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X, Printer, Eye, Paperclip, ClipboardPaste, Wallet, TrendingUp, ShoppingCart, Clock } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Paperclip, Wallet, TrendingUp, ShoppingCart, Clock } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
@@ -22,14 +22,13 @@ interface PaymentRow { mode: PaymentMode; amount: string }
 const emptyPayment = (): PaymentRow => ({ mode: "cash", amount: "" })
 
 interface CustomerRow { id: string; customerName: string; cageId: string; numBirds: string; weight: string; amount: number }
-const emptyRow = (): CustomerRow => ({ id: Math.random().toString(36).slice(2), customerName: "", cageId: "", numBirds: "", weight: "", amount: 0 })
 
 export default function SalesPage() {
   const [sales, setSales] = useState<ApiSale[]>([])
   const [retailers, setRetailers] = useState<any[]>([])
   const [vehicles, setVehicles] = useState<any[]>([])
   const [purchaseBills, setPurchaseBills] = useState<Array<{ id: string; orderNumber: string; supplierName: string }>>([])
-  const [purchaseCages, setPurchaseCages] = useState<Array<{ id: string; cageId?: string; numberOfBirds: number; cageWeight: number; status?: string }>>([])
+  const [purchaseCages, setPurchaseCages] = useState<Array<{ id: string; cageId?: string; numberOfBirds: number; purchaseWeight: number; status?: string }>>([])
   const [selectedCageIds, setSelectedCageIds] = useState<Set<string>>(new Set())
   const [loadingCages, setLoadingCages] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -42,8 +41,6 @@ export default function SalesPage() {
   const [filterRetailer, setFilterRetailer] = useState("")
   const [filterPaymentStatus, setFilterPaymentStatus] = useState("")
   const [filterSaleMode, setFilterSaleMode] = useState("")
-  const [showPasteBox, setShowPasteBox] = useState(false)
-  const [pasteText, setPasteText] = useState("")
   const [saleFile, setSaleFile] = useState<File | null>(null)
   const [uploadingFile, setUploadingFile] = useState(false)
   const saleFileRef = useRef<HTMLInputElement>(null)
@@ -53,6 +50,8 @@ export default function SalesPage() {
     saleNo: "",
     purchaseBillNo: "",
     cageNo: "",
+    numBirds: "",
+    totalWeight: "",
     saleDate: new Date().toISOString().split("T")[0],
     retailerId: "",
     customerName: "",
@@ -71,7 +70,6 @@ export default function SalesPage() {
     paymentStatus: "pending" as "paid" | "pending" | "partial",
     notes: "",
   })
-  const [customerRows, setCustomerRows] = useState<CustomerRow[]>([emptyRow()])
   const [payments, setPayments] = useState<PaymentRow[]>([emptyPayment()])
 
   useEffect(() => {
@@ -113,7 +111,7 @@ export default function SalesPage() {
     try {
       setLoadingCages(true)
       const cages = await purchasesApi.getCagesByOrderNumber(billNo, 'pending')
-      const mapped = Array.isArray(cages) ? cages.map(c => ({ ...c, id: c.id ?? '' })) : []
+      const mapped = Array.isArray(cages) ? cages.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) })) : []
       setPurchaseCages(mapped)
       // Pre-select all cages by default
       setSelectedCageIds(new Set(mapped.map(c => c.id)))
@@ -129,6 +127,17 @@ export default function SalesPage() {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
+      // Auto-fill from selected cages
+      const selected = purchaseCages.filter(c => next.has(c.id!))
+      const totalBirds = selected.reduce((s, c) => s + c.numberOfBirds, 0)
+      const totalWt = selected.reduce((s, c) => s + Number(c.purchaseWeight), 0)
+      const cageIds = selected.map(c => c.cageId).filter(Boolean).join(', ')
+      setFormData(f => ({
+        ...f,
+        cageNo: cageIds,
+        ...(totalBirds > 0 ? { numBirds: String(totalBirds) } : {}),
+        ...(totalWt > 0 ? { totalWeight: totalWt.toFixed(2) } : {}),
+      }))
       return next
     })
   }
@@ -136,38 +145,27 @@ export default function SalesPage() {
   const toggleAllCages = () => {
     if (selectedCageIds.size === purchaseCages.length) {
       setSelectedCageIds(new Set())
+      setFormData(f => ({ ...f, cageNo: '', numBirds: '', totalWeight: '' }))
     } else {
-      setSelectedCageIds(new Set(purchaseCages.map(c => c.id!)))
+      const allIds = new Set(purchaseCages.map(c => c.id!))
+      const totalBirds = purchaseCages.reduce((s, c) => s + c.numberOfBirds, 0)
+      const totalWt = purchaseCages.reduce((s, c) => s + Number(c.purchaseWeight), 0)
+      const cageIds = purchaseCages.map(c => c.cageId).filter(Boolean).join(', ')
+      setSelectedCageIds(allIds)
+      setFormData(f => ({ ...f, cageNo: cageIds, numBirds: String(totalBirds), totalWeight: totalWt.toFixed(2) }))
     }
   }
 
   const rate = parseFloat(formData.ratePerKg) || 0
-
-  const updateRow = (id: string, field: keyof CustomerRow, value: string) => {
-    setCustomerRows(rows => rows.map(r => {
-      if (r.id !== id) return r
-      const updated = { ...r, [field]: value }
-      updated.amount = (parseFloat(updated.weight) || 0) * rate
-      return updated
-    }))
-  }
-
-  useEffect(() => {
-    setCustomerRows(rows => rows.map(r => ({ ...r, amount: (parseFloat(r.weight) || 0) * rate })))
-  }, [formData.ratePerKg])
-
-  const addRow = () => setCustomerRows(r => [...r, emptyRow()])
-  const removeRow = (id: string) => setCustomerRows(r => r.filter(x => x.id !== id))
+  const totalBirds = parseInt(formData.numBirds) || 0
+  const totalWeight = parseFloat(formData.totalWeight) || 0
+  const totalAmount = totalWeight * rate
+  const avgWeight = totalBirds > 0 ? totalWeight / totalBirds : 0
 
   const addPayment = () => setPayments(p => [...p, emptyPayment()])
   const removePayment = (i: number) => setPayments(p => p.filter((_, idx) => idx !== i))
   const updatePayment = (i: number, field: keyof PaymentRow, value: string) =>
     setPayments(p => p.map((x, idx) => idx === i ? { ...x, [field]: value } : x))
-
-  const totalBirds = customerRows.reduce((s, r) => s + (parseInt(r.numBirds) || 0), 0)
-  const totalWeight = customerRows.reduce((s, r) => s + (parseFloat(r.weight) || 0), 0)
-  const totalAmount = customerRows.reduce((s, r) => s + r.amount, 0)
-  const avgWeight = totalBirds > 0 ? totalWeight / totalBirds : 0
   const charges = (parseFloat(formData.transportCharges) || 0) + (parseFloat(formData.loadingCharges) || 0) + (parseFloat(formData.commission) || 0) + (parseFloat(formData.otherCharges) || 0)
   const deductions = parseFloat(formData.deductions) || 0
   const grossAmount = totalAmount + charges
@@ -175,38 +173,16 @@ export default function SalesPage() {
   const totalPaymentMade = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
   const balance = Math.max(0, netAmount - totalPaymentMade)
 
-  const handlePaste = () => {
-    const lines = pasteText.trim().split("\n").filter(l => l.trim())
-    const parsed: CustomerRow[] = []
-    for (const line of lines) {
-      const parts = line.trim().split(/[\t,]+|\s{2,}/).map(p => p.trim()).filter(Boolean)
-      if (parts.length >= 2) {
-        const name = parts[0]
-        const nums = parts.slice(1).map(p => parseFloat(p)).filter(n => !isNaN(n))
-        if (nums.length >= 1) {
-          const numBirds = nums.length >= 2 ? String(Math.round(nums[0])) : ""
-          const weight = nums.length >= 2 ? String(nums[1]) : String(nums[0])
-          const r = emptyRow()
-          r.customerName = name; r.numBirds = numBirds; r.weight = weight
-          r.amount = (parseFloat(weight) || 0) * rate
-          parsed.push(r)
-        }
-      }
-    }
-    if (parsed.length > 0) { setCustomerRows(parsed); setPasteText(""); setShowPasteBox(false); toast.success(`Parsed ${parsed.length} rows`) }
-    else toast.error("Could not parse. Format: Name  Birds  Weight")
-  }
-
   const resetForm = () => {
     setFormData({
       invoiceNumber: "", saleNo: "", purchaseBillNo: "", cageNo: "",
+      numBirds: "", totalWeight: "",
       saleDate: new Date().toISOString().split("T")[0],
       retailerId: "", customerName: "", ownerName: "", phone: "", address: "",
       saleMode: "from_vehicle", vehicleId: "", productType: "meat",
       ratePerKg: "", transportCharges: "", loadingCharges: "", commission: "",
       otherCharges: "", deductions: "", paymentStatus: "pending", notes: "",
     })
-    setCustomerRows([emptyRow()])
     setPayments([emptyPayment()])
     setPurchaseCages([])
     setSelectedCageIds(new Set())
@@ -220,11 +196,23 @@ export default function SalesPage() {
 
   const handleEdit = (sale: ApiSale) => {
     const retailer = retailers.find(r => r.id === sale.retailerId)
+    // Try to restore numBirds/totalWeight from notes
+    let numBirds = ""
+    let totalWeightVal = ""
+    try {
+      const parsed = JSON.parse(sale.notes || "")
+      if (parsed?.customerRows?.[0]) {
+        numBirds = String(parsed.customerRows[0].numBirds || "")
+        totalWeightVal = String(parsed.customerRows[0].weight || "")
+      }
+    } catch {}
     setFormData({
       invoiceNumber: sale.invoiceNumber,
       saleNo: (sale as any).saleNo || "",
       purchaseBillNo: (sale as any).purchaseBillNo || "",
       cageNo: (sale as any).cageNo || "",
+      numBirds,
+      totalWeight: totalWeightVal || String(sale.quantity || ""),
       saleDate: sale.saleDate,
       retailerId: sale.retailerId || "",
       customerName: sale.customerName,
@@ -241,21 +229,8 @@ export default function SalesPage() {
       otherCharges: String(sale.otherCharges || 0),
       deductions: String(sale.mortalityDeduction || 0),
       paymentStatus: sale.paymentStatus,
-      notes: sale.notes || "",
+      notes: "",
     })
-    // Restore customer rows from notes
-    try {
-      const parsed = JSON.parse(sale.notes || "")
-      if (Array.isArray(parsed?.customerRows)) {
-        setCustomerRows(parsed.customerRows.map((r: any) => ({
-          id: Math.random().toString(36).slice(2),
-          customerName: r.customerName || "", cageId: r.cageId || "",
-          numBirds: String(r.numBirds || ""), weight: String(r.weight || ""),
-          amount: (parseFloat(r.weight) || 0) * (parseFloat(r.ratePerKg) || parseFloat(String(sale.unitPrice)) || 0),
-        })))
-      }
-    } catch { setCustomerRows([emptyRow()]) }
-    // Restore payments
     const salePayments = (sale as any).payments
     if (salePayments && salePayments.length > 0) {
       setPayments(salePayments.map((p: any) => ({ mode: p.paymentMode as PaymentMode, amount: String(p.amount) })))
@@ -269,8 +244,9 @@ export default function SalesPage() {
     if (!formData.invoiceNumber || !formData.customerName) {
       toast.error("Bill number and customer name are required"); return
     }
-    const validRows = customerRows.filter(r => r.customerName && parseFloat(r.weight) > 0)
-    if (validRows.length === 0) { toast.error("Add at least one customer row with weight"); return }
+    if (!formData.totalWeight || parseFloat(formData.totalWeight) <= 0) {
+      toast.error("Enter total weight"); return
+    }
     try {
       setLoading(true)
       const validPayments = payments.filter(p => parseFloat(p.amount) > 0).map(p => ({ paymentMode: p.mode, amount: p.amount }))
@@ -283,7 +259,7 @@ export default function SalesPage() {
         saleDate: formData.saleDate,
         saleMode: formData.saleMode,
         productType: formData.productType,
-        quantity: String(totalWeight),
+        quantity: formData.totalWeight,
         unit: "kg",
         unitPrice: formData.ratePerKg || "0",
         transportCharges: formData.transportCharges || "0",
@@ -295,7 +271,7 @@ export default function SalesPage() {
         otherDeduction: "0",
         paymentStatus: formData.paymentStatus,
         amountReceived: String(totalPaymentMade),
-        notes: JSON.stringify({ text: formData.notes, customerRows: validRows.map(r => ({ customerName: r.customerName, cageId: r.cageId, numBirds: parseInt(r.numBirds) || 0, weight: parseFloat(r.weight) || 0, ratePerKg: rate })) }),
+        notes: formData.notes || undefined,
         retailerId: formData.retailerId || undefined,
         payments: validPayments,
       }
@@ -307,7 +283,6 @@ export default function SalesPage() {
         catch { toast.error("Sale saved but file upload failed") }
         finally { setUploadingFile(false) }
       }
-      // Mark selected cages as sold
       if (selectedCageIds.size > 0) {
         try { await purchasesApi.markCagesSold(Array.from(selectedCageIds)) }
         catch { toast.error("Sale saved but failed to update cage status") }
@@ -438,7 +413,7 @@ export default function SalesPage() {
                                     </td>
                                     <td className="p-1 font-medium">{cage.cageId || '-'}</td>
                                     <td className="p-1 text-right">{cage.numberOfBirds}</td>
-                                    <td className="p-1 text-right">{Number(cage.cageWeight).toFixed(2)}</td>
+                                    <td className="p-1 text-right">{Number(cage.purchaseWeight).toFixed(2)}</td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -446,7 +421,7 @@ export default function SalesPage() {
                                 <tr className="border-t font-semibold bg-blue-100">
                                   <td colSpan={2} className="p-1">{selectedCageIds.size} selected / {purchaseCages.length} total</td>
                                   <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id!)).reduce((s, c) => s + c.numberOfBirds, 0)}</td>
-                                  <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id!)).reduce((s, c) => s + Number(c.cageWeight), 0).toFixed(2)}</td>
+                                  <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id!)).reduce((s, c) => s + Number(c.purchaseWeight), 0).toFixed(2)}</td>
                                 </tr>
                               </tfoot>
                             </table>
@@ -508,71 +483,38 @@ export default function SalesPage() {
                 {/* Section 2: Customer Details */}
                 <Card className="border-green-200">
                   <CardHeader className="bg-green-50 border-b border-green-100 py-3">
-                    <div className="flex justify-between items-center">
-                      <CardTitle className="text-green-900 text-base">Section 2: Customer Details</CardTitle>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => setShowPasteBox(v => !v)}><ClipboardPaste size={14} className="mr-1" /> Paste</Button>
-                        <Button size="sm" onClick={addRow}><Plus size={14} className="mr-1" /> Add Row</Button>
-                      </div>
-                    </div>
+                    <CardTitle className="text-green-900 text-base">Section 2: Sale Details</CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-4 space-y-3">
-                    <div className="flex items-center gap-4">
-                      <div className="space-y-1 w-48">
+                  <CardContent className="pt-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
                         <Label>Rate per KG *</Label>
                         <Input type="number" step="0.01" value={formData.ratePerKg} onChange={e => setFormData(f => ({ ...f, ratePerKg: e.target.value }))} placeholder="e.g. 146" disabled={loading} />
                       </div>
+                      <div className="space-y-2">
+                        <Label>Cage ID (auto)</Label>
+                        <Input value={formData.cageNo} readOnly placeholder="Auto-filled from cage selection" className={formData.cageNo ? "bg-green-50 border-green-300" : "bg-gray-50"} />
+                      </div>
                     </div>
-                    {showPasteBox && (
-                      <div className="border rounded-lg p-3 bg-yellow-50 space-y-2">
-                        <p className="text-sm font-medium">Paste data (Name, Birds, Weight per line):</p>
-                        <Textarea value={pasteText} onChange={e => setPasteText(e.target.value)} placeholder={"Akka\t2\t3.450\nAlim\t24\t51.500"} rows={5} className="font-mono text-sm" />
-                        <div className="flex gap-2">
-                          <Button size="sm" onClick={handlePaste}>Parse & Fill</Button>
-                          <Button size="sm" variant="outline" onClick={() => { setShowPasteBox(false); setPasteText("") }}>Cancel</Button>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Number of Birds</Label>
+                        <Input type="number" value={formData.numBirds} onChange={e => setFormData(f => ({ ...f, numBirds: e.target.value }))} placeholder="0" disabled={loading} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Total Weight (kg) *</Label>
+                        <Input type="number" step="0.001" value={formData.totalWeight} onChange={e => setFormData(f => ({ ...f, totalWeight: e.target.value }))} placeholder="0.000" disabled={loading} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Total Amount</Label>
+                        <div className="flex items-center h-10 px-3 border rounded-md bg-muted">
+                          <span className="font-semibold">₹{totalAmount.toFixed(2)}</span>
                         </div>
                       </div>
-                    )}
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b bg-gray-50">
-                            <th className="text-left p-2 w-8">#</th>
-                            <th className="text-left p-2">Customer Name</th>
-                            <th className="text-left p-2 w-28">Cage ID</th>
-                            <th className="text-left p-2 w-20">Birds</th>
-                            <th className="text-left p-2 w-28">Weight (kg)</th>
-                            <th className="text-right p-2 w-28">Amount</th>
-                            <th className="p-2 w-8"></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {customerRows.map((row, i) => (
-                            <tr key={row.id} className="border-b hover:bg-gray-50">
-                              <td className="p-1 text-muted-foreground text-xs">{i + 1}</td>
-                              <td className="p-1"><Input value={row.customerName} onChange={e => updateRow(row.id, 'customerName', e.target.value)} placeholder="Name" className="h-8 text-sm" /></td>
-                              <td className="p-1"><Input value={row.cageId} onChange={e => updateRow(row.id, 'cageId', e.target.value)} placeholder="C-001" className="h-8 text-sm" /></td>
-                              <td className="p-1"><Input type="number" value={row.numBirds} onChange={e => updateRow(row.id, 'numBirds', e.target.value)} placeholder="0" className="h-8 text-sm" /></td>
-                              <td className="p-1"><Input type="number" step="0.001" value={row.weight} onChange={e => updateRow(row.id, 'weight', e.target.value)} placeholder="0.000" className="h-8 text-sm" /></td>
-                              <td className="p-1 text-right font-medium">{row.amount > 0 ? row.amount.toFixed(0) : '-'}</td>
-                              <td className="p-1">{customerRows.length > 1 && <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-500" onClick={() => removeRow(row.id)}><X size={14} /></Button>}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr className="border-t-2 bg-green-50 font-semibold">
-                            <td className="p-2" colSpan={3}>TOTAL</td>
-                            <td className="p-2">{totalBirds}</td>
-                            <td className="p-2">{totalWeight.toFixed(3)}</td>
-                            <td className="p-2 text-right">{totalAmount.toFixed(0)}</td>
-                            <td></td>
-                          </tr>
-                          <tr className="bg-gray-50 text-xs text-muted-foreground">
-                            <td className="p-2" colSpan={7}>Avg Weight/Bird: {avgWeight > 0 ? avgWeight.toFixed(3) + ' kg' : '-'}</td>
-                          </tr>
-                        </tfoot>
-                      </table>
                     </div>
+                    {avgWeight > 0 && (
+                      <p className="text-xs text-muted-foreground">Avg Weight/Bird: {avgWeight.toFixed(3)} kg</p>
+                    )}
                   </CardContent>
                 </Card>
 
