@@ -378,6 +378,11 @@ export default function SalesPage() {
                       </div>
                     </div>
 
+                    <div className="space-y-2">
+                      <Label>Cage No (auto)</Label>
+                      <Input value={formData.cageNo} readOnly placeholder="Auto-filled from cage selection" className={formData.cageNo ? "bg-green-50 border-green-300 text-sm" : "bg-gray-50 text-sm"} />
+                    </div>
+
 
                     {/* Cage selection from purchase bill */}
                     {formData.purchaseBillNo && formData.purchaseBillNo !== '__none__' && (
