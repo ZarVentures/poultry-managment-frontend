@@ -353,6 +353,7 @@ export default function GodownMortalityPage() {
                     <TableRow>
                       <TableHead>Date</TableHead>
                       <TableHead>Birds Died</TableHead>
+                      <TableHead>Weight (kg)</TableHead>
                       <TableHead>Reason</TableHead>
                       <TableHead>Notes</TableHead>
                       <TableHead>Actions</TableHead>
@@ -363,6 +364,7 @@ export default function GodownMortalityPage() {
                       <TableRow key={mortality.id}>
                         <TableCell>{new Date(mortality.mortalityDate).toLocaleDateString()}</TableCell>
                         <TableCell>{mortality.numberOfBirdsDied} birds</TableCell>
+                        <TableCell>{(mortality as any).weightOfDeadBirds ? `${Number((mortality as any).weightOfDeadBirds).toFixed(2)} kg` : '-'}</TableCell>
                         <TableCell>{mortality.reason || "-"}</TableCell>
                         <TableCell>{mortality.notes || "-"}</TableCell>
                         <TableCell>
