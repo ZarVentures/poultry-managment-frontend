@@ -83,12 +83,9 @@ export default function GodownSalePage() {
 
   const handlePurchaseBillChange = (orderNumber: string) => {
     const billNo = orderNumber === '__none__' ? '' : orderNumber
-    // Auto-generate Godown Sale No: GDS-TEST001 from PO-TEST001
-    const autoGdsNo = billNo ? 'GDS-' + billNo.replace(/^PO-/i, '') : ''
     setFormData(f => ({
       ...f,
       purchaseBillNo: billNo,
-      invoiceNumber: autoGdsNo,
     }))
   }
 
@@ -336,12 +333,12 @@ export default function GodownSalePage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Godown Sale No (auto)</Label>
+                    <Label>Godown Sale No</Label>
                     <Input
                       value={formData.invoiceNumber}
-                      readOnly
-                      placeholder="Auto-filled from Purchase Bill"
-                      className={formData.invoiceNumber ? "bg-green-50 border-green-300" : "bg-gray-50"}
+                      onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
+                      placeholder="e.g. GDS-001"
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -493,6 +490,7 @@ export default function GodownSalePage() {
                       onChange={(e) => setFormData({ ...formData, paymentMode: e.target.value })}
                       disabled={loading}
                     >
+                      <option value="advance">Advance</option>
                       <option value="cash">Cash</option>
                       <option value="upi">UPI</option>
                       <option value="bank_transfer">Bank Transfer</option>
@@ -520,102 +518,6 @@ export default function GodownSalePage() {
                     rows={3}
                     disabled={loading}
                   />
-                </div>
-
-                {/* Cage Details Section */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-base font-semibold">Cage Details</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCages([...cages, emptyCage()])}
-                      disabled={loading}
-                    >
-                      <Plus size={14} className="mr-1" /> Add Cage
-                    </Button>
-                  </div>
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead className="text-xs">Cage ID</TableHead>
-                          <TableHead className="text-xs">Birds</TableHead>
-                          <TableHead className="text-xs">Weight (kg)</TableHead>
-                          <TableHead className="w-10"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {cages.map((cage, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell className="p-1">
-                              <Input
-                                value={cage.cageId || ""}
-                                onChange={(e) => {
-                                  const updated = [...cages]
-                                  updated[idx] = { ...updated[idx], cageId: e.target.value }
-                                  setCages(updated)
-                                }}
-                                placeholder="C1"
-                                className="h-8 text-sm"
-                                disabled={loading}
-                              />
-                            </TableCell>
-                            <TableCell className="p-1">
-                              <Input
-                                type="number"
-                                value={cage.numberOfBirds || ""}
-                                onChange={(e) => {
-                                  const updated = [...cages]
-                                  updated[idx] = { ...updated[idx], numberOfBirds: Number(e.target.value) }
-                                  setCages(updated)
-                                  const total = updated.reduce((s, c) => s + (Number(c.numberOfBirds) || 0), 0)
-                                  setFormData(f => ({ ...f, numberOfBirds: String(total) }))
-                                }}
-                                placeholder="0"
-                                className="h-8 text-sm"
-                                disabled={loading}
-                              />
-                            </TableCell>
-                            <TableCell className="p-1">
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={cage.cageWeight || ""}
-                                onChange={(e) => {
-                                  const updated = [...cages]
-                                  updated[idx] = { ...updated[idx], cageWeight: Number(e.target.value) }
-                                  setCages(updated)
-                                  const total = updated.reduce((s, c) => s + (Number(c.cageWeight) || 0), 0)
-                                  setFormData(f => ({ ...f, totalWeight: total.toFixed(2) }))
-                                }}
-                                placeholder="0.00"
-                                className="h-8 text-sm"
-                                disabled={loading}
-                              />
-                            </TableCell>
-                            <TableCell className="p-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => setCages(cages.filter((_, i) => i !== idx))}
-                                disabled={loading || cages.length === 1}
-                              >
-                                <X size={14} />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Total: {cages.reduce((s, c) => s + (Number(c.numberOfBirds) || 0), 0)} birds,{" "}
-                    {cages.reduce((s, c) => s + (Number(c.cageWeight) || 0), 0).toFixed(2)} kg
-                  </div>
                 </div>
 
                 <div className="flex gap-2">
