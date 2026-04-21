@@ -426,7 +426,7 @@ export default function GodownSalePage() {
                       disabled={loading}
                     />
                   </div>
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label>Rate per Kg (₹)</Label>
                     <Input
                       type="number"
@@ -440,7 +440,7 @@ export default function GodownSalePage() {
                       placeholder="0.00"
                       disabled={loading}
                     />
-                  </div>
+                  </div> */}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

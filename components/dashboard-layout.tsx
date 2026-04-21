@@ -75,7 +75,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-between">
             {sidebarOpen && <h1 className="text-xl font-bold text-sidebar-foreground">🐔 Aziz Poultry</h1>}
             <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)} className="text-sidebar-foreground">
-              {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+              <Menu size={20} />
             </Button>
           </div>
         </div>
@@ -176,9 +176,14 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-card border-b border-border px-6 py-4 flex justify-between items-center relative">
-          <h2 className="text-sm text-muted-foreground">Welcome, {user.email}</h2>
+      <div
+        className="flex-1 flex flex-col overflow-hidden"
+        onClick={() => {
+          if (sidebarOpen) setSidebarOpen(false)
+        }}
+      >
+        <header className=" bg-blue-600 bg-card border-b border-border px-6 py-4 flex justify-between items-center relative ">
+          <h2 className="text-lg font-semibold text-foreground  px-4 py-2 rounded-md">Welcome, {user.email}</h2>
 
           {/* Staging banner — only shown when NEXT_PUBLIC_IS_STAGING=true */}
           {IS_STAGING && (
