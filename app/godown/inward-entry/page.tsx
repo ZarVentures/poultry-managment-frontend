@@ -417,6 +417,12 @@ export default function GodownInwardPage() {
                                     value={cage.godownWeight}
                                     onChange={e => {
                                       const val = e.target.value
+                                      const enteredWt = parseFloat(val) || 0
+                                      const purchaseWt = Number(cage.purchaseWeight)
+                                      if (enteredWt > purchaseWt && purchaseWt > 0) {
+                                        toast.error(`Godown weight (${enteredWt} kg) cannot exceed purchase weight (${purchaseWt.toFixed(2)} kg) for cage ${cage.cageId || cage.id}`)
+                                        return
+                                      }
                                       setPurchaseCages(prev => prev.map(c => c.id === cage.id ? { ...c, godownWeight: val } : c))
                                       // auto-select when weight entered, and update totals
                                       if (val) {
