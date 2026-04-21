@@ -41,6 +41,7 @@ export default function SalesPage() {
   const [filterRetailer, setFilterRetailer] = useState("")
   const [filterPaymentStatus, setFilterPaymentStatus] = useState("")
   const [filterSaleMode, setFilterSaleMode] = useState("")
+  const [filterLocation, setFilterLocation] = useState("")
   const [saleFile, setSaleFile] = useState<File | null>(null)
   const [uploadingFile, setUploadingFile] = useState(false)
   const saleFileRef = useRef<HTMLInputElement>(null)
@@ -327,8 +328,15 @@ export default function SalesPage() {
     if (filterRetailer) f = f.filter(s => s.retailerId === filterRetailer)
     if (filterPaymentStatus) f = f.filter(s => s.paymentStatus === filterPaymentStatus)
     if (filterSaleMode) f = f.filter(s => s.saleMode === filterSaleMode)
+    if (filterLocation.trim()) {
+      const loc = filterLocation.toLowerCase().trim()
+      f = f.filter(s => {
+        const retailer = retailers.find(r => r.id === s.retailerId)
+        return retailer?.address?.toLowerCase().includes(loc) || retailer?.name?.toLowerCase().includes(loc)
+      })
+    }
     return f
-  }, [sales, searchQuery, dateRangeStart, dateRangeEnd, filterRetailer, filterPaymentStatus, filterSaleMode])
+  }, [sales, searchQuery, dateRangeStart, dateRangeEnd, filterRetailer, filterPaymentStatus, filterSaleMode, filterLocation, retailers])
 
   if (!mounted) return null
 
@@ -600,6 +608,7 @@ export default function SalesPage() {
                           <Select value={p.mode} onValueChange={v => updatePayment(i, "mode", v)} disabled={loading}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
+                              <SelectItem value="advance">Advance</SelectItem>
                               <SelectItem value="cash">Cash</SelectItem>
                               <SelectItem value="upi">UPI</SelectItem>
                               <SelectItem value="card">Card</SelectItem>
@@ -652,7 +661,8 @@ export default function SalesPage() {
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <DateRangeFilter startDate={dateRangeStart} endDate={dateRangeEnd} onDateRangeChange={(s, e) => { setDateRangeStart(s); setDateRangeEnd(e) }} />
-                <Input placeholder="Search bill no, customer..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[200px]" />
+                <Input placeholder="Search bill no, customer..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[180px]" />
+                <Input placeholder="Filter by location..." value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="w-[160px]" />
                 <Select value={filterRetailer || '__all__'} onValueChange={v => setFilterRetailer(v === '__all__' ? '' : v)}>
                   <SelectTrigger className="w-[160px]"><SelectValue placeholder="All Retailers" /></SelectTrigger>
                   <SelectContent>
