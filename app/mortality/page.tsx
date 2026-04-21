@@ -173,6 +173,7 @@ export default function MortalityPage() {
         cageIdNumber: formData.cageIdNumber || undefined,
         totalBirdsPurchased: Number.parseInt(formData.totalBirdsPurchased) || 0,
         numberOfBirdsDied: Number.parseInt(formData.numberOfBirdsDied),
+        weightOfDeadBirds: parseFloat((formData as any).weightOfDeadBirds) || undefined,
         cause: formData.cause,
         notes: formData.notes,
       }
@@ -223,7 +224,8 @@ export default function MortalityPage() {
       numberOfBirdsDied: mortality.numberOfBirdsDied?.toString() || "",
       cause: mortality.cause || "",
       notes: mortality.notes || "",
-    })
+      weightOfDeadBirds: (mortality as any).weightOfDeadBirds?.toString() || "",
+    } as any)
     setShowDialog(true)
   }
 
@@ -577,13 +579,24 @@ export default function MortalityPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Cause of Death</Label>
+                    <Label>Total Weight of Dead Birds (kg)</Label>
                     <Input
-                      value={formData.cause}
-                      onChange={(e) => setFormData({ ...formData, cause: e.target.value })}
-                      placeholder="Cause of death"
+                      type="number"
+                      step="0.01"
+                      value={(formData as any).weightOfDeadBirds || ""}
+                      onChange={(e) => setFormData({ ...formData, weightOfDeadBirds: e.target.value } as any)}
+                      placeholder="0.00"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Cause of Death</Label>
+                  <Input
+                    value={formData.cause}
+                    onChange={(e) => setFormData({ ...formData, cause: e.target.value })}
+                    placeholder="Cause of death"
+                  />
                 </div>
 
                 <div className="space-y-2">
