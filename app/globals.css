@@ -336,9 +336,27 @@
 
 .react-datepicker__navigation-icon::before {
   border-color: hsl(var(--foreground));
+  border-width: 2px;
 }
 
 @media print {
   body > * { display: none !important; }
   #print-invoice { display: block !important; }
+}
+
+/* Chrome, Safari, Edge */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+.ant-picker-dropdown {
+  border-radius: 12px !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid hsl(var(--border)) !important;
 }

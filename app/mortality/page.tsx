@@ -576,6 +576,7 @@ export default function MortalityPage() {
                       value={formData.numberOfBirdsDied}
                       onChange={(e) => setFormData({ ...formData, numberOfBirdsDied: e.target.value })}
                       placeholder="0"
+                      onWheel={(e) => e.currentTarget.blur()}
                     />
                   </div>
                   <div className="space-y-2">
@@ -586,6 +587,7 @@ export default function MortalityPage() {
                       value={(formData as any).weightOfDeadBirds || ""}
                       onChange={(e) => setFormData({ ...formData, weightOfDeadBirds: e.target.value } as any)}
                       placeholder="0.00"
+                      onWheel={(e) => e.currentTarget.blur()}
                     />
                   </div>
                 </div>
@@ -596,6 +598,7 @@ export default function MortalityPage() {
                     value={formData.cause}
                     onChange={(e) => setFormData({ ...formData, cause: e.target.value })}
                     placeholder="Cause of death"
+                    onWheel={(e) => e.currentTarget.blur()}
                   />
                 </div>
 
