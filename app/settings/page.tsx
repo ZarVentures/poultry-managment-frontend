@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AlertCircle, Save, Lock, Bell, Palette, Terminal, Eye, EyeOff } from "lucide-react"
+import { AlertCircle, Save, Lock, Bell, Palette, Terminal, Eye, EyeOff, Shield, ShieldCheck, ShieldOff } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { settingsApi, type Setting } from "@/lib/api"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { settingsApi, authApi, type Setting } from "@/lib/api"
 import { useDevMode } from "@/lib/dev-mode"
 import { toast } from "sonner"
 import { useDispatch } from "react-redux";
@@ -31,7 +32,52 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setMounted(true);
+    fetch2FAStatus();
   }, []);
+
+  const fetch2FAStatus = async () => {
+    try {
+      const data = await authApi.get2FAStatus()
+      setIs2FAEnabled(data.isTwoFactorEnabled)
+    } catch { /* ignore */ }
+  }
+
+  const handle2FAEnable = async () => {
+    try {
+      setTwoFALoading(true)
+      const data = await authApi.generate2FA()
+      setQrCodeDataUrl(data.qrCodeDataUrl)
+      setTwoFASecret(data.secret)
+      setSetupCode("")
+      setShowSetupModal(true)
+    } catch (e: any) { toast.error(e.message || "Failed to generate 2FA") }
+    finally { setTwoFALoading(false) }
+  }
+
+  const handle2FAConfirm = async () => {
+    if (setupCode.length !== 6) { toast.error("Enter a 6-digit code"); return }
+    try {
+      setTwoFALoading(true)
+      await authApi.turnOn2FA(setupCode)
+      setIs2FAEnabled(true)
+      setShowSetupModal(false)
+      toast.success("2FA enabled!")
+    } catch (e: any) { toast.error(e.message || "Invalid code") }
+    finally { setTwoFALoading(false) }
+  }
+
+  const handle2FADisable = async () => {
+    if (disableCode.length !== 6) { toast.error("Enter a 6-digit code"); return }
+    try {
+      setTwoFALoading(true)
+      await authApi.turnOff2FA(disableCode)
+      setIs2FAEnabled(false)
+      setShowDisableModal(false)
+      setDisableCode("")
+      toast.success("2FA disabled")
+    } catch (e: any) { toast.error(e.message || "Invalid code") }
+    finally { setTwoFALoading(false) }
+  }
   const [loading, setLoading] = useState(false)
   const dispatch = useDispatch(); 
   const [settings, setSettings] = useState<Settings>({
@@ -51,6 +97,16 @@ export default function SettingsPage() {
   const [devPassword, setDevPassword] = useState("")
   const [showDevPassword, setShowDevPassword] = useState(false)
   const [devError, setDevError] = useState("")
+
+  // 2FA state
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false)
+  const [showSetupModal, setShowSetupModal] = useState(false)
+  const [showDisableModal, setShowDisableModal] = useState(false)
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState("")
+  const [twoFASecret, setTwoFASecret] = useState("")
+  const [setupCode, setSetupCode] = useState("")
+  const [disableCode, setDisableCode] = useState("")
+  const [twoFALoading, setTwoFALoading] = useState(false)
 
 
 
@@ -318,21 +374,37 @@ export default function SettingsPage() {
                 </CardTitle>
                 <CardDescription>Manage your account security</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg flex gap-2">
-                  <AlertCircle size={20} className="text-green-700 dark:text-green-200 flex-shrink-0" />
-                  <p className="text-sm text-green-800 dark:text-green-200">
-                    This application now uses a secure PostgreSQL database for data persistence.
-                  </p>
+              <CardContent className="space-y-6">
+                {/* 2FA Section */}
+                <div className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {is2FAEnabled
+                        ? <ShieldCheck size={22} className="text-green-600" />
+                        : <Shield size={22} className="text-muted-foreground" />}
+                      <div>
+                        <p className="font-medium">Two-Factor Authentication (2FA)</p>
+                        <p className="text-sm text-muted-foreground">
+                          {is2FAEnabled
+                            ? "Your account is protected with an authenticator app."
+                            : "Add extra security using Google or Microsoft Authenticator."}
+                        </p>
+                      </div>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${is2FAEnabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {is2FAEnabled ? "Enabled" : "Disabled"}
+                    </span>
+                  </div>
+                  {is2FAEnabled ? (
+                    <Button variant="destructive" size="sm" onClick={() => { setDisableCode(""); setShowDisableModal(true) }} disabled={twoFALoading}>
+                      <ShieldOff size={14} className="mr-1" /> Disable 2FA
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={handle2FAEnable} disabled={twoFALoading}>
+                      <ShieldCheck size={14} className="mr-1" /> Enable 2FA
+                    </Button>
+                  )}
                 </div>
-
-                <Button variant="outline" className="w-full bg-transparent">
-                  Change Password
-                </Button>
-
-                <Button variant="outline" className="w-full bg-transparent">
-                  Two-Factor Authentication
-                </Button>
 
                 <div className="border-t pt-4">
                   <h3 className="font-semibold mb-3">Data Management</h3>
@@ -347,6 +419,39 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* 2FA Setup Modal */}
+            <Dialog open={showSetupModal} onOpenChange={setShowSetupModal}>
+              <DialogContent className="max-w-md">
+                <DialogHeader><DialogTitle>Set Up Two-Factor Authentication</DialogTitle></DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Scan this QR code with <strong>Google Authenticator</strong> or <strong>Microsoft Authenticator</strong>.</p>
+                  {qrCodeDataUrl && <div className="flex justify-center"><img src={qrCodeDataUrl} alt="2FA QR Code" className="w-48 h-48 border rounded" /></div>}
+                  <div className="bg-gray-50 rounded p-3 text-xs font-mono text-center break-all text-muted-foreground">Manual key: {twoFASecret}</div>
+                  <div className="space-y-2">
+                    <Label>Enter the 6-digit code from your app to confirm</Label>
+                    <Input type="text" inputMode="numeric" maxLength={6} placeholder="000000" value={setupCode} onChange={e => setSetupCode(e.target.value.replace(/\D/g, ''))} className="text-center text-xl tracking-widest" autoFocus />
+                  </div>
+                  <Button className="w-full" onClick={handle2FAConfirm} disabled={twoFALoading || setupCode.length !== 6}>
+                    {twoFALoading ? "Verifying..." : "Confirm & Enable 2FA"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* 2FA Disable Modal */}
+            <Dialog open={showDisableModal} onOpenChange={setShowDisableModal}>
+              <DialogContent className="max-w-sm">
+                <DialogHeader><DialogTitle>Disable Two-Factor Authentication</DialogTitle></DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Enter your current 6-digit authenticator code to disable 2FA.</p>
+                  <Input type="text" inputMode="numeric" maxLength={6} placeholder="000000" value={disableCode} onChange={e => setDisableCode(e.target.value.replace(/\D/g, ''))} className="text-center text-xl tracking-widest" autoFocus />
+                  <Button variant="destructive" className="w-full" onClick={handle2FADisable} disabled={twoFALoading || disableCode.length !== 6}>
+                    {twoFALoading ? "Disabling..." : "Disable 2FA"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
         </Tabs>
 

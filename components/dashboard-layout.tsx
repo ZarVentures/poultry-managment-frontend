@@ -156,7 +156,6 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
           <SidebarLink href="/users" icon={User} label="Users" open={sidebarOpen} />
           <SidebarLink href="/settings" icon={Settings} label="Settings" open={sidebarOpen} />
-          <SidebarLink href="/settings/security" icon={Shield} label="Security" open={sidebarOpen} />
 
           {/* API Docs — staging only */}
           {IS_STAGING && (
