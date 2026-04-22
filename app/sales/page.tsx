@@ -365,17 +365,17 @@ export default function SalesPage() {
                     <CardTitle className="text-blue-900 text-base">Section 1: Header Information</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 pt-4">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Purchase Bill No *</Label>
-                        <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
-                          <SelectTrigger><SelectValue placeholder="Select purchase bill" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">Select purchase bill...</SelectItem>
-                            {purchaseBills.map(b => <SelectItem key={b.id} value={b.orderNumber}>{b.orderNumber} — {b.supplierName}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div className="space-y-2">
+                      <Label>Purchase Bill No *</Label>
+                      <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
+                        <SelectTrigger><SelectValue placeholder="Select purchase bill" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Select purchase bill...</SelectItem>
+                          {purchaseBills.map(b => <SelectItem key={b.id} value={b.orderNumber}>{b.orderNumber} — {b.supplierName}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Sale No. (auto)</Label>
                         <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value }))} placeholder="Auto-filled from Purchase Bill" disabled={loading} className={formData.saleNo ? "bg-green-50 border-green-300" : ""} />
