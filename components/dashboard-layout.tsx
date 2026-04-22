@@ -16,7 +16,7 @@ import {
   ChartNoAxesCombined, Tractor, User, PackageOpen, PackagePlus,
   PackageSearch, PackageX, PackageCheck, CreditCard, BookOpen,
   TrendingDown, BarChart3 as BarChartAlt,
-  GitBranch,
+  GitBranch, Shield,
 } from "lucide-react"
 
 // Staging-only features are controlled by this env var.
@@ -156,6 +156,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
           <SidebarLink href="/users" icon={User} label="Users" open={sidebarOpen} />
           <SidebarLink href="/settings" icon={Settings} label="Settings" open={sidebarOpen} />
+          <SidebarLink href="/settings/security" icon={Shield} label="Security" open={sidebarOpen} />
 
           {/* API Docs — staging only */}
           {IS_STAGING && (
