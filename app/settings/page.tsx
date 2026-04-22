@@ -58,10 +58,11 @@ export default function SettingsPage() {
     if (setupCode.length !== 6) { toast.error("Enter a 6-digit code"); return }
     try {
       setTwoFALoading(true)
-      await authApi.turnOn2FA(setupCode)
+      const result = await authApi.turnOn2FA(setupCode)
       setIs2FAEnabled(true)
       setShowSetupModal(false)
-      toast.success("2FA enabled!")
+      setBackupCodes((result as any).backupCodes || [])
+      setShowBackupCodesModal(true)
     } catch (e: any) { toast.error(e.message || "Invalid code") }
     finally { setTwoFALoading(false) }
   }
@@ -102,6 +103,8 @@ export default function SettingsPage() {
   const [is2FAEnabled, setIs2FAEnabled] = useState(false)
   const [showSetupModal, setShowSetupModal] = useState(false)
   const [showDisableModal, setShowDisableModal] = useState(false)
+  const [showBackupCodesModal, setShowBackupCodesModal] = useState(false)
+  const [backupCodes, setBackupCodes] = useState<string[]>([])
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState("")
   const [twoFASecret, setTwoFASecret] = useState("")
   const [setupCode, setSetupCode] = useState("")
@@ -448,6 +451,30 @@ export default function SettingsPage() {
                   <Input type="text" inputMode="numeric" maxLength={6} placeholder="000000" value={disableCode} onChange={e => setDisableCode(e.target.value.replace(/\D/g, ''))} className="text-center text-xl tracking-widest" autoFocus />
                   <Button variant="destructive" className="w-full" onClick={handle2FADisable} disabled={twoFALoading || disableCode.length !== 6}>
                     {twoFALoading ? "Disabling..." : "Disable 2FA"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Backup Codes Modal — shown ONCE after enabling */}
+            <Dialog open={showBackupCodesModal} onOpenChange={() => {}}>
+              <DialogContent className="max-w-md" onInteractOutside={e => e.preventDefault()}>
+                <DialogHeader><DialogTitle>🔐 Save Your Recovery Codes</DialogTitle></DialogHeader>
+                <div className="space-y-4">
+                  <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
+                    <strong>Save these codes now.</strong> They will never be shown again. Each code can only be used once.
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {backupCodes.map((code, i) => (
+                      <div key={i} className="font-mono text-sm bg-gray-100 rounded px-3 py-2 text-center tracking-wider">{code}</div>
+                    ))}
+                  </div>
+                  <Button className="w-full" onClick={() => {
+                    navigator.clipboard?.writeText(backupCodes.join('\n'))
+                    toast.success("Codes copied to clipboard")
+                  }} variant="outline">Copy All Codes</Button>
+                  <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => { setShowBackupCodesModal(false); toast.success("2FA enabled successfully!") }}>
+                    I've saved my codes — Done
                   </Button>
                 </div>
               </DialogContent>
