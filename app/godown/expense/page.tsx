@@ -296,6 +296,7 @@ export default function GodownExpensePage() {
                     onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                     placeholder="0.00"
                     disabled={loading}
+                    onWheel={(e) => e.currentTarget.blur()} 
                   />
                 </div>
 
