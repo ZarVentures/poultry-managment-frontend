@@ -255,6 +255,7 @@ export default function GodownMortalityPage() {
                       onChange={(e) => setFormData({ ...formData, numberOfBirdsDied: e.target.value })}
                       placeholder="0"
                       disabled={loading}
+                      onWheel={(e) => e.currentTarget.blur()}
                     />
                   </div>
                   <div className="space-y-2">
@@ -266,6 +267,7 @@ export default function GodownMortalityPage() {
                       onChange={(e) => setFormData({ ...formData, weightOfDeadBirds: e.target.value })}
                       placeholder="0.00"
                       disabled={loading}
+                      onWheel={(e) => e.currentTarget.blur()}
                     />
                   </div>
                 </div>

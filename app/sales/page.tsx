@@ -365,25 +365,25 @@ export default function SalesPage() {
                     <CardTitle className="text-blue-900 text-base">Section 1: Header Information</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 pt-4">
-                    <div className="space-y-2">
-                      <Label>Purchase Bill No *</Label>
-                      <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
-                        <SelectTrigger><SelectValue placeholder="Select purchase bill" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none__">Select purchase bill...</SelectItem>
-                          {purchaseBills.map(b => <SelectItem key={b.id} value={b.orderNumber}>{b.orderNumber} — {b.supplierName}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Sale No. (auto)</Label>
-                        <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value }))} placeholder="Auto-filled from Purchase Bill" disabled={loading} className={formData.saleNo ? "bg-green-50 border-green-300" : ""} />
+                        <Label>Purchase Bill No *</Label>
+                        <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
+                          <SelectTrigger><SelectValue placeholder="Select purchase bill" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">Select purchase bill...</SelectItem>
+                            {purchaseBills.map(b => <SelectItem key={b.id} value={b.orderNumber}>{b.orderNumber} — {b.supplierName}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-2">
                         <Label>Sale Date *</Label>
                         <DatePicker value={formData.saleDate} onChange={d => setFormData(f => ({ ...f, saleDate: d }))} disabled={loading} />
                       </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Sale No. (auto)</Label>
+                      <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value }))} placeholder="Auto-filled from Purchase Bill" disabled={loading} className={formData.saleNo ? "bg-green-50 border-green-300" : ""} />
                     </div>
 
                     <div className="space-y-2">
@@ -512,7 +512,7 @@ export default function SalesPage() {
                       </div>
                       <div className="space-y-1">
                         <Label>Rate per KG *</Label>
-                        <Input type="number" step="0.01" value={formData.ratePerKg} onChange={e => setFormData(f => ({ ...f, ratePerKg: e.target.value }))} placeholder="e.g. 146" disabled={loading} />
+                        <Input type="number" step="0.01" value={formData.ratePerKg} onChange={e => setFormData(f => ({ ...f, ratePerKg: e.target.value }))} placeholder="e.g. 146" disabled={loading}  onWheel={(e) => e.currentTarget.blur()}/>
                       </div>
                     </div>
                     <div className="overflow-x-auto">
@@ -551,10 +551,10 @@ export default function SalesPage() {
                             <tr className="border-b">
                               <td className="p-1 text-xs text-muted-foreground">-</td>
                               <td className="p-1">
-                                <Input type="number" value={formData.numBirds} onChange={e => setFormData(f => ({ ...f, numBirds: e.target.value }))} placeholder="0" className="h-8 text-sm" disabled={loading} />
+                                <Input type="number" value={formData.numBirds} onChange={e => setFormData(f => ({ ...f, numBirds: e.target.value }))} placeholder="0" className="h-8 text-sm" disabled={loading} onWheel={(e) => e.currentTarget.blur()} />
                               </td>
                               <td className="p-1">
-                                <Input type="number" step="0.001" value={formData.totalWeight} onChange={e => setFormData(f => ({ ...f, totalWeight: e.target.value }))} placeholder="0.000" className="h-8 text-sm" disabled={loading} />
+                                <Input type="number" step="0.001" value={formData.totalWeight} onChange={e => setFormData(f => ({ ...f, totalWeight: e.target.value }))} placeholder="0.000" className="h-8 text-sm" disabled={loading} onWheel={(e) => e.currentTarget.blur()} />
                               </td>
                               <td className="p-1 text-right font-medium">{totalAmount > 0 ? `₹${totalAmount.toFixed(0)}` : '-'}</td>
                             </tr>
@@ -617,7 +617,7 @@ export default function SalesPage() {
                             </SelectContent>
                           </Select>
                           <div className="flex gap-1">
-                            <Input type="number" step="0.01" placeholder="0.00" value={p.amount} onChange={e => updatePayment(i, "amount", e.target.value)} disabled={loading} />
+                            <Input type="number" step="0.01" placeholder="0.00" value={p.amount} onChange={e => updatePayment(i, "amount", e.target.value)} disabled={loading}  onWheel={(e) => e.currentTarget.blur()}/>
                             {payments.length > 1 && <Button type="button" variant="ghost" size="sm" onClick={() => removePayment(i)} className="px-2 text-red-500"><X size={14} /></Button>}
                           </div>
                         </div>

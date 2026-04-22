@@ -391,6 +391,7 @@ export default function GodownSalePage() {
                       onChange={(e) => setFormData({ ...formData, numberOfBirds: e.target.value })}
                       placeholder="0"
                       disabled={loading}
+                      onWheel={(e) => e.currentTarget.blur()}
                     />
                   </div>
                   <div className="space-y-2">
@@ -406,6 +407,7 @@ export default function GodownSalePage() {
                       }}
                       placeholder="0.00"
                       disabled={loading}
+                      onWheel={(e) => e.currentTarget.blur()} 
                     />
                   </div>
                 </div>
@@ -424,9 +426,10 @@ export default function GodownSalePage() {
                       }}
                       placeholder="0.00"
                       disabled={loading}
+                      onWheel={(e) => e.currentTarget.blur()} 
                     />
                   </div>
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label>Rate per Kg (₹)</Label>
                     <Input
                       type="number"
@@ -440,7 +443,7 @@ export default function GodownSalePage() {
                       placeholder="0.00"
                       disabled={loading}
                     />
-                  </div>
+                  </div> */}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -453,6 +456,7 @@ export default function GodownSalePage() {
                       onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
                       placeholder="0.00"
                       disabled={loading}
+                      onWheel={(e) => e.currentTarget.blur()} 
                     />
                   </div>
                   <div className="space-y-2">
@@ -480,6 +484,7 @@ export default function GodownSalePage() {
                       onChange={(e) => setFormData({ ...formData, amountReceived: e.target.value })}
                       placeholder="0.00"
                       disabled={loading}
+                      onWheel={(e) => e.currentTarget.blur()} 
                     />
                   </div>
                   <div className="space-y-2">
@@ -517,6 +522,7 @@ export default function GodownSalePage() {
                     placeholder="Additional notes"
                     rows={3}
                     disabled={loading}
+                    onWheel={(e) => e.currentTarget.blur()} 
                   />
                 </div>
 

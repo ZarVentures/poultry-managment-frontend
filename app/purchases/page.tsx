@@ -407,9 +407,9 @@ export default function PurchasesPage() {
                       {cages.map((cage, i) => (
                         <div key={i} className="grid grid-cols-3 gap-4">
                           <Input placeholder="Cage ID" value={cage.cageId} onChange={e => updateCage(i, "cageId", e.target.value)} disabled={loading} />
-                          <Input type="number" placeholder="Birds" value={cage.numberOfBirds} onChange={e => updateCage(i, "numberOfBirds", e.target.value)} disabled={loading} />
+                          <Input type="number" placeholder="Birds" value={cage.numberOfBirds} onChange={e => updateCage(i, "numberOfBirds", e.target.value)} disabled={loading} onWheel={(e) => e.currentTarget.blur()}  />
                           <div className="flex gap-1">
-                            <Input type="number" step="0.01" placeholder="Weight" value={cage.cageWeight} onChange={e => updateCage(i, "cageWeight", e.target.value)} disabled={loading} />
+                            <Input type="number" step="0.01" placeholder="Weight" value={cage.cageWeight} onChange={e => updateCage(i, "cageWeight", e.target.value)} disabled={loading} onWheel={(e) => e.currentTarget.blur()}  />
                             {cages.length > 1 && <Button type="button" variant="ghost" size="sm" onClick={() => removeCage(i)} className="px-2 text-red-500"><X size={14} /></Button>}
                           </div>
                         </div>
@@ -426,7 +426,7 @@ export default function PurchasesPage() {
                       </div>
                       <div className="space-y-2">
                         <Label>Rate per Kg (₹)</Label>
-                        <Input type="number" step="0.01" value={formData.ratePerKg} onChange={e => setFormData(prev => ({ ...prev, ratePerKg: e.target.value }))} placeholder="0.00" disabled={loading} />
+                        <Input type="number" step="0.01" value={formData.ratePerKg} onChange={e => setFormData(prev => ({ ...prev, ratePerKg: e.target.value }))} placeholder="0.00" disabled={loading} onWheel={(e) => e.currentTarget.blur()}  />
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -480,7 +480,7 @@ export default function PurchasesPage() {
                             </SelectContent>
                           </Select>
                           <div className="flex gap-1">
-                            <Input type="number" step="0.01" placeholder="0.00" value={p.amount} onChange={e => updatePayment(i, "amount", e.target.value)} disabled={loading} />
+                            <Input type="number" step="0.01" placeholder="0.00" value={p.amount} onChange={e => updatePayment(i, "amount", e.target.value)} disabled={loading} onWheel={(e) => e.currentTarget.blur()} />
                             {payments.length > 1 && <Button type="button" variant="ghost" size="sm" onClick={() => removePayment(i)} className="px-2 text-red-500"><X size={14} /></Button>}
                           </div>
                           <div className="flex items-center">

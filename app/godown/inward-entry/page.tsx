@@ -516,6 +516,7 @@ export default function GodownInwardPage() {
                       onChange={(e) => setFormData({ ...formData, numberOfBirds: e.target.value })}
                       placeholder="1000"
                       disabled={loading}
+                      onWheel={(e) => e.currentTarget.blur()} 
                     />
                   </div>
                   <div className="space-y-2">
@@ -527,6 +528,7 @@ export default function GodownInwardPage() {
                       onChange={(e) => setFormData({ ...formData, totalWeight: e.target.value })}
                       placeholder="Auto-calculated"
                       disabled={loading}
+                      onWheel={(e) => e.currentTarget.blur()} 
                     />
                   </div>
                 </div>
@@ -541,6 +543,7 @@ export default function GodownInwardPage() {
                       onChange={(e) => setFormData({ ...formData, ratePerKg: e.target.value })}
                       placeholder="125.00"
                       disabled={loading}
+                      onWheel={(e) => e.currentTarget.blur()} 
                     />
                   </div>
                   <div className="space-y-2">
