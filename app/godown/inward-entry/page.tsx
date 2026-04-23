@@ -397,10 +397,16 @@ export default function GodownInwardPage() {
                               <th className="text-right p-1">Birds</th>
                               <th className="text-right p-1">Purchase Wt (kg)</th>
                               <th className="text-right p-1">Godown Wt (kg) *</th>
+                              <th className="text-right p-1 text-orange-700">Wt Loss %</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {purchaseCages.map(cage => (
+                            {purchaseCages.map(cage => {
+                              const purchaseWt = Number(cage.purchaseWeight)
+                              const godownWt = Number(cage.godownWeight) || 0
+                              const lossKg = purchaseWt - godownWt
+                              const lossPct = purchaseWt > 0 && godownWt > 0 ? (lossKg / purchaseWt) * 100 : null
+                              return (
                               <tr key={cage.id} className={`border-b cursor-pointer hover:bg-blue-100 ${selectedCageIds.has(cage.id) ? 'bg-green-50' : ''}`}
                                 onClick={() => toggleCage(cage.id)}>
                                 <td className="p-1 text-center">
@@ -408,7 +414,7 @@ export default function GodownInwardPage() {
                                 </td>
                                 <td className="p-1 font-medium">{cage.cageId || '-'}</td>
                                 <td className="p-1 text-right">{cage.numberOfBirds}</td>
-                                <td className="p-1 text-right">{Number(cage.purchaseWeight).toFixed(2)}</td>
+                                <td className="p-1 text-right">{purchaseWt.toFixed(2)}</td>
                                 <td className="p-1 text-right" onClick={e => e.stopPropagation()}>
                                   <input
                                     type="number"
@@ -418,14 +424,12 @@ export default function GodownInwardPage() {
                                     onChange={e => {
                                       const val = e.target.value
                                       const enteredWt = parseFloat(val) || 0
-                                      const purchaseWt = Number(cage.purchaseWeight)
                                       if (enteredWt > purchaseWt && purchaseWt > 0) {
                                         toast.error(`Godown weight (${enteredWt} kg) cannot exceed purchase weight (${purchaseWt.toFixed(2)} kg) for cage ${cage.cageId || cage.id}`)
                                         return
                                       }
                                       const updatedCages = purchaseCages.map(c => c.id === cage.id ? { ...c, godownWeight: val } : c)
                                       setPurchaseCages(updatedCages)
-                                      // auto-select when weight entered, and update total from godown weights
                                       if (val) {
                                         setSelectedCageIds(prev => {
                                           const next = new Set([...prev, cage.id])
@@ -444,16 +448,41 @@ export default function GodownInwardPage() {
                                     className="w-20 text-right border rounded px-1 py-0.5 text-xs"
                                   />
                                 </td>
+                                <td className="p-1 text-right">
+                                  {lossPct !== null ? (
+                                    <span className={`font-medium ${lossPct > 5 ? 'text-red-600' : 'text-green-600'}`}>
+                                      {lossPct.toFixed(1)}%
+                                    </span>
+                                  ) : <span className="text-muted-foreground">-</span>}
+                                </td>
                               </tr>
-                            ))}
+                              )
+                            })}
                           </tbody>
                           <tfoot>
-                            <tr className="border-t font-semibold bg-blue-100">
-                              <td colSpan={2} className="p-1">{selectedCageIds.size} selected / {purchaseCages.length} total</td>
-                              <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id)).reduce((s, c) => s + c.numberOfBirds, 0)}</td>
-                              <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id)).reduce((s, c) => s + Number(c.purchaseWeight), 0).toFixed(2)}</td>
-                              <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id)).reduce((s, c) => s + (Number(c.godownWeight) || 0), 0).toFixed(2)}</td>
-                            </tr>
+                            {(() => {
+                              const selCages = purchaseCages.filter(c => selectedCageIds.has(c.id))
+                              const totalPurchaseWt = selCages.reduce((s, c) => s + Number(c.purchaseWeight), 0)
+                              const totalGodownWt = selCages.reduce((s, c) => s + (Number(c.godownWeight) || 0), 0)
+                              const totalLossPct = totalPurchaseWt > 0 && totalGodownWt > 0
+                                ? ((totalPurchaseWt - totalGodownWt) / totalPurchaseWt) * 100
+                                : null
+                              return (
+                                <tr className="border-t font-semibold bg-blue-100">
+                                  <td colSpan={2} className="p-1">{selectedCageIds.size} selected / {purchaseCages.length} total</td>
+                                  <td className="p-1 text-right">{selCages.reduce((s, c) => s + c.numberOfBirds, 0)}</td>
+                                  <td className="p-1 text-right">{totalPurchaseWt.toFixed(2)}</td>
+                                  <td className="p-1 text-right">{totalGodownWt.toFixed(2)}</td>
+                                  <td className="p-1 text-right">
+                                    {totalLossPct !== null ? (
+                                      <span className={totalLossPct > 5 ? 'text-red-600' : 'text-green-600'}>
+                                        {totalLossPct.toFixed(1)}%
+                                      </span>
+                                    ) : '-'}
+                                  </td>
+                                </tr>
+                              )
+                            })()}
                           </tfoot>
                         </table>
                       </div>
