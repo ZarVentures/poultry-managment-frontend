@@ -117,14 +117,14 @@ export default function GodownInwardPage() {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
-      // Auto-fill birds and weight from selected cages
+      // Auto-fill birds from selected cages; weight comes from godownWeight entries
       const selected = purchaseCages.filter(c => next.has(c.id))
       const totalBirds = selected.reduce((s, c) => s + c.numberOfBirds, 0)
-      const totalWeight = selected.reduce((s, c) => s + Number(c.purchaseWeight), 0)
+      const totalGodownWt = selected.reduce((s, c) => s + (Number(c.godownWeight) || 0), 0)
       setFormData(f => ({
         ...f,
         numberOfBirds: totalBirds > 0 ? String(totalBirds) : f.numberOfBirds,
-        totalWeight: totalWeight > 0 ? totalWeight.toFixed(2) : f.totalWeight,
+        totalWeight: totalGodownWt > 0 ? totalGodownWt.toFixed(2) : f.totalWeight,
       }))
       return next
     })
@@ -137,12 +137,12 @@ export default function GodownInwardPage() {
     } else {
       const allIds = new Set(purchaseCages.map(c => c.id))
       const totalBirds = purchaseCages.reduce((s, c) => s + c.numberOfBirds, 0)
-      const totalWeight = purchaseCages.reduce((s, c) => s + Number(c.purchaseWeight), 0)
+      const totalGodownWt = purchaseCages.reduce((s, c) => s + (Number(c.godownWeight) || 0), 0)
       setSelectedCageIds(allIds)
       setFormData(f => ({
         ...f,
         numberOfBirds: String(totalBirds),
-        totalWeight: totalWeight.toFixed(2),
+        totalWeight: totalGodownWt.toFixed(2),
       }))
     }
   }
@@ -423,18 +423,19 @@ export default function GodownInwardPage() {
                                         toast.error(`Godown weight (${enteredWt} kg) cannot exceed purchase weight (${purchaseWt.toFixed(2)} kg) for cage ${cage.cageId || cage.id}`)
                                         return
                                       }
-                                      setPurchaseCages(prev => prev.map(c => c.id === cage.id ? { ...c, godownWeight: val } : c))
-                                      // auto-select when weight entered, and update totals
+                                      const updatedCages = purchaseCages.map(c => c.id === cage.id ? { ...c, godownWeight: val } : c)
+                                      setPurchaseCages(updatedCages)
+                                      // auto-select when weight entered, and update total from godown weights
                                       if (val) {
                                         setSelectedCageIds(prev => {
                                           const next = new Set([...prev, cage.id])
-                                          const selected = purchaseCages.map(c => c.id === cage.id ? { ...c, godownWeight: val } : c).filter(c => next.has(c.id))
+                                          const selected = updatedCages.filter(c => next.has(c.id))
                                           const totalBirds = selected.reduce((s, c) => s + c.numberOfBirds, 0)
-                                          const totalWeight = selected.reduce((s, c) => s + Number(c.purchaseWeight), 0)
+                                          const totalGodownWt = selected.reduce((s, c) => s + (Number(c.godownWeight) || 0), 0)
                                           setFormData(f => ({
                                             ...f,
                                             numberOfBirds: String(totalBirds),
-                                            totalWeight: totalWeight.toFixed(2),
+                                            totalWeight: totalGodownWt.toFixed(2),
                                           }))
                                           return next
                                         })
