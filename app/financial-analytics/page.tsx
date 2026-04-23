@@ -5,25 +5,13 @@ import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Legend,
-  Tooltip,
-  ResponsiveContainer,
+  LineChart, Line, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Legend, Tooltip, ResponsiveContainer,
 } from "recharts"
 import { ChartContainer } from "@/components/ui/chart"
 import { Download, TrendingUp, TrendingDown, DollarSign, ArrowUpRight, ArrowDownRight } from "lucide-react"
-import { format, startOfMonth, eachMonthOfInterval, startOfYear, parseISO, isWithinInterval, subMonths } from "date-fns"
+import { format, startOfMonth, eachMonthOfInterval, parseISO, isWithinInterval, subMonths } from "date-fns"
+import { salesApi, expensesApi, purchasesApi } from "@/lib/api"
 
 interface Sale {
   id: string
@@ -74,14 +62,14 @@ export default function FinancialAnalyticsPage() {
     
     const fetchData = async () => {
       try {
-        const [salesData, expensesData, purchasesData] = await Promise.allSettled([
-          import("@/lib/api").then(m => m.salesApi.getAll()),
-          import("@/lib/api").then(m => m.expensesApi.getAll()),
-          import("@/lib/api").then(m => m.purchasesApi.getAll()),
+        const [salesResult, expensesResult, purchasesResult] = await Promise.allSettled([
+          salesApi.getAll(),
+          expensesApi.getAll(),
+          purchasesApi.getAll(),
         ])
 
-        if (salesData.status === 'fulfilled') {
-          const raw = salesData.value as any[]
+        if (salesResult.status === 'fulfilled') {
+          const raw = salesResult.value as any[]
           setSales(raw.map(s => ({
             id: s.id,
             invoiceNumber: s.invoiceNumber || s.saleNo || '',
@@ -96,8 +84,8 @@ export default function FinancialAnalyticsPage() {
           })))
         }
 
-        if (expensesData.status === 'fulfilled') {
-          const raw = expensesData.value as any[]
+        if (expensesResult.status === 'fulfilled') {
+          const raw = expensesResult.value as any[]
           setExpenses(raw.map(e => ({
             id: e.id,
             date: e.expenseDate || e.date || e.createdAt || '',
@@ -109,8 +97,8 @@ export default function FinancialAnalyticsPage() {
           })))
         }
 
-        if (purchasesData.status === 'fulfilled') {
-          const raw = purchasesData.value as any[]
+        if (purchasesResult.status === 'fulfilled') {
+          const raw = purchasesResult.value as any[]
           setPurchases(raw.map(p => ({
             id: p.id,
             orderNumber: p.orderNumber || '',
