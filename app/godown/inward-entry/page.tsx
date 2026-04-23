@@ -99,11 +99,35 @@ export default function GodownInwardPage() {
     setPurchaseCages([])
     setSelectedCageIds(new Set())
     if (!orderNumber || orderNumber === '__none__') return
-    // Auto-fill supplier name from the selected bill
+
+    // Find the bill in the list to get its ID
     const bill = purchaseBills.find(b => b.orderNumber === orderNumber)
     if (bill) {
+      // Auto-fill supplier name immediately
       setFormData(f => ({ ...f, purchaseBillNo: orderNumber, purchaseInvoiceNo: orderNumber, supplierName: bill.supplierName }))
+
+      // Fetch full purchase order to get farmer, vehicle, rate
+      try {
+        const fullOrder = await purchasesApi.getOne(bill.id)
+        setFormData(f => ({
+          ...f,
+          purchaseBillNo: orderNumber,
+          purchaseInvoiceNo: orderNumber,
+          supplierName: fullOrder.supplierName || bill.supplierName,
+          selectedFarmerId: fullOrder.farmerId || f.selectedFarmerId,
+          vehicleId: fullOrder.vehicleId || f.vehicleId,
+          ratePerKg: fullOrder.ratePerKg ? String(fullOrder.ratePerKg) : f.ratePerKg,
+        }))
+        // Also auto-select the farmer in the dropdown
+        if (fullOrder.farmerId) {
+          const farmer = farmers.find(fa => fa.id === fullOrder.farmerId)
+          if (farmer) {
+            setFormData(f => ({ ...f, supplierName: farmer.name }))
+          }
+        }
+      } catch { /* ignore — supplier name already set */ }
     }
+
     try {
       setLoadingCages(true)
       const cageData = await purchasesApi.getCagesByOrderNumber(orderNumber, 'pending')
