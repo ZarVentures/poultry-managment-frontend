@@ -72,34 +72,62 @@ export default function FinancialAnalyticsPage() {
   useEffect(() => {
     setMounted(true)
     
-    // Fetch all data from API
     const fetchData = async () => {
       try {
-        // Fetch sales
-        const salesResponse = await fetch("/api/sales")
-        if (salesResponse.ok) {
-          const salesResult = await salesResponse.json()
-          const salesData = (salesResult as any).data || salesResult
-          setSales(salesData)
+        const [salesData, expensesData, purchasesData] = await Promise.allSettled([
+          import("@/lib/api").then(m => m.salesApi.getAll()),
+          import("@/lib/api").then(m => m.expensesApi.getAll()),
+          import("@/lib/api").then(m => m.purchasesApi.getAll()),
+        ])
+
+        if (salesData.status === 'fulfilled') {
+          const raw = salesData.value as any[]
+          setSales(raw.map(s => ({
+            id: s.id,
+            invoiceNumber: s.invoiceNumber || s.saleNo || '',
+            customer: s.customerName || '',
+            date: s.saleDate || s.createdAt || '',
+            productType: s.productType || 'meat',
+            quantity: parseFloat(s.quantity || 0),
+            unitPrice: parseFloat(s.unitPrice || 0),
+            totalAmount: parseFloat(s.netAmount || s.totalAmount || 0),
+            paymentStatus: s.paymentStatus || 'pending',
+            notes: s.notes || '',
+          })))
         }
 
-        // Fetch expenses
-        const expensesResponse = await fetch("/api/expenses")
-        if (expensesResponse.ok) {
-          const expensesResult = await expensesResponse.json()
-          const expensesData = (expensesResult as any).data || expensesResult
-          setExpenses(expensesData)
+        if (expensesData.status === 'fulfilled') {
+          const raw = expensesData.value as any[]
+          setExpenses(raw.map(e => ({
+            id: e.id,
+            date: e.expenseDate || e.date || e.createdAt || '',
+            category: e.category || 'other',
+            description: e.description || '',
+            amount: parseFloat(e.amount || 0),
+            paymentMethod: e.paymentMethod || '',
+            notes: e.notes || '',
+          })))
         }
 
-        // Fetch purchases
-        const purchasesResponse = await fetch("/api/purchases")
-        if (purchasesResponse.ok) {
-          const purchasesResult = await purchasesResponse.json()
-          const purchasesData = (purchasesResult as any).data || purchasesResult
-          setPurchases(purchasesData)
+        if (purchasesData.status === 'fulfilled') {
+          const raw = purchasesData.value as any[]
+          setPurchases(raw.map(p => ({
+            id: p.id,
+            orderNumber: p.orderNumber || '',
+            supplier: p.supplierName || '',
+            date: p.orderDate || p.createdAt || '',
+            description: '',
+            birdQuantity: 0,
+            cageQuantity: 0,
+            unitCost: parseFloat(p.ratePerKg || 0),
+            totalValue: parseFloat(p.netAmount || p.totalAmount || 0),
+            status: p.status || 'pending',
+            notes: p.notes || '',
+            totalAmount: parseFloat(p.netAmount || p.totalAmount || 0),
+          })))
         }
       } catch (error) {
-        console.error("Error fetching data:", error)
+        console.error("Error fetching financial data:", error)
       }
     }
 
