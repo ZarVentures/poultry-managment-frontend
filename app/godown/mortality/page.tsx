@@ -12,11 +12,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Edit2, Trash2, X, Printer } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
-import { godownApi, type GodownMortality } from "@/lib/api"
+import { godownApi, type GodownMortality, type GodownInward } from "@/lib/api"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 
 export default function GodownMortalityPage() {
   const [mortalities, setMortalities] = useState<GodownMortality[]>([])
+  const [inwardEntries, setInwardEntries] = useState<GodownInward[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
@@ -26,6 +28,7 @@ export default function GodownMortalityPage() {
   const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [formData, setFormData] = useState({
     mortalityDate: new Date().toISOString().split("T")[0],
+    godownInwardId: "",
     numberOfBirdsDied: "",
     weightOfDeadBirds: "",
     reason: "",
@@ -35,6 +38,7 @@ export default function GodownMortalityPage() {
   useEffect(() => {
     setMounted(true)
     fetchMortalities()
+    godownApi.inward.getAll().then(d => setInwardEntries(Array.isArray(d) ? d : [])).catch(() => {})
   }, [])
 
   const fetchMortalities = async () => {
@@ -53,6 +57,7 @@ export default function GodownMortalityPage() {
   const resetForm = () => {
     setFormData({
       mortalityDate: new Date().toISOString().split("T")[0],
+      godownInwardId: "",
       numberOfBirdsDied: "",
       weightOfDeadBirds: "",
       reason: "",
@@ -64,6 +69,7 @@ export default function GodownMortalityPage() {
   const handleEdit = (mortality: GodownMortality) => {
     setFormData({
       mortalityDate: mortality.mortalityDate,
+      godownInwardId: (mortality as any).godownInwardId || "",
       numberOfBirdsDied: String(mortality.numberOfBirdsDied || ""),
       weightOfDeadBirds: String((mortality as any).weightOfDeadBirds || ""),
       reason: mortality.reason || "",
@@ -83,6 +89,7 @@ export default function GodownMortalityPage() {
       setLoading(true)
       const mortalityData = {
         mortalityDate: formData.mortalityDate,
+        godownInwardId: formData.godownInwardId || undefined,
         numberOfBirdsDied: parseInt(formData.numberOfBirdsDied),
         weightOfDeadBirds: parseFloat(formData.weightOfDeadBirds) || undefined,
         reason: formData.reason,
@@ -246,6 +253,27 @@ export default function GodownMortalityPage() {
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <Label>Link to Godown Inward Entry</Label>
+                  <Select
+                    value={formData.godownInwardId || "__none__"}
+                    onValueChange={v => setFormData({ ...formData, godownInwardId: v === "__none__" ? "" : v })}
+                    disabled={loading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select inward entry (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {inwardEntries.map(e => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.purchaseInvoiceNo || `Entry #${e.id}`} — {e.supplierName || "Unknown"} ({new Date(e.entryDate).toLocaleDateString()})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Number of Birds Died *</Label>
@@ -354,10 +382,10 @@ export default function GodownMortalityPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
+                      <TableHead>Inward Entry</TableHead>
                       <TableHead>Birds Died</TableHead>
                       <TableHead>Weight (kg)</TableHead>
                       <TableHead>Reason</TableHead>
-                      <TableHead>Notes</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -365,10 +393,14 @@ export default function GodownMortalityPage() {
                     {filteredMortalities.map((mortality) => (
                       <TableRow key={mortality.id}>
                         <TableCell>{new Date(mortality.mortalityDate).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {(mortality as any).godownInward
+                            ? `${(mortality as any).godownInward.purchaseInvoiceNo || `#${(mortality as any).godownInwardId}`} — ${(mortality as any).godownInward.supplierName || ''}`
+                            : '-'}
+                        </TableCell>
                         <TableCell>{mortality.numberOfBirdsDied} birds</TableCell>
                         <TableCell>{(mortality as any).weightOfDeadBirds ? `${Number((mortality as any).weightOfDeadBirds).toFixed(2)} kg` : '-'}</TableCell>
                         <TableCell>{mortality.reason || "-"}</TableCell>
-                        <TableCell>{mortality.notes || "-"}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(mortality)}>
