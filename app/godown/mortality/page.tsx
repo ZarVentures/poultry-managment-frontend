@@ -337,10 +337,10 @@ export default function GodownMortalityPage() {
         <Card>
           <CardHeader>
             <div className="flex justify-between items-start">
-              <div>
+              {/* <div>
                 <CardTitle>Mortality Records</CardTitle>
                 <p className="text-sm text-muted-foreground">View and manage mortality records</p>
-              </div>
+              </div> */}
               <div className="flex items-center gap-2 flex-wrap">
                 <DateRangeFilter
                   startDate={dateRangeStart}

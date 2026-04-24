@@ -34,6 +34,7 @@ export default function PurchasesPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>()
+  const [filterPaymentStatus, setFilterPaymentStatus] = useState("")
   const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>()
   const [viewingPurchase, setViewingPurchase] = useState<ApiPurchaseOrder | null>(null)
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
@@ -252,13 +253,17 @@ export default function PurchasesPage() {
       const q = searchQuery.toLowerCase()
       list = list.filter(p => p.orderNumber.toLowerCase().includes(q) || p.supplierName.toLowerCase().includes(q))
     }
+
+    if (filterPaymentStatus) {
+      list = list.filter(p => p.purchasePaymentStatus === filterPaymentStatus)
+    }
     if (dateRangeStart && dateRangeEnd) {
       const s = new Date(dateRangeStart); s.setHours(0,0,0,0)
       const e = new Date(dateRangeEnd); e.setHours(23,59,59,999)
       list = list.filter(p => { const d = new Date(p.orderDate); return d >= s && d <= e })
     }
     return list
-  }, [purchases, searchQuery, dateRangeStart, dateRangeEnd])
+  }, [purchases, searchQuery, dateRangeStart,filterPaymentStatus, dateRangeEnd])
 
   function FarmerSearch({ value, onChange, disabled }: { value: string; onChange: (id: string) => void; disabled?: boolean }) {
     const [query, setQuery] = useState("")
@@ -521,23 +526,81 @@ export default function PurchasesPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Purchases</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{stats.total}</div></CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Birds</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{stats.totalBirds}</div></CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Value (₹)</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">₹{stats.totalValue.toFixed(2)}</div></CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Paid (₹)</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-green-600">₹{stats.totalPaid.toFixed(2)}</div></CardContent></Card>
-        </div>
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-sm font-medium text-muted-foreground">
+        Total Purchases
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-3xl font-bold text-blue-600">
+        {stats.total}
+      </div>
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-sm font-medium text-muted-foreground">
+        Total Birds
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-3xl font-bold text-purple-600">
+        {stats.totalBirds}
+      </div>
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-sm font-medium text-muted-foreground">
+        Total Value (₹)
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-3xl font-bold text-orange-600">
+        ₹{stats.totalValue.toFixed(2)}
+      </div>
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-sm font-medium text-muted-foreground">
+        Total Paid (₹)
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-3xl font-bold text-green-600">
+        ₹{stats.totalPaid.toFixed(2)}
+      </div>
+    </CardContent>
+  </Card>
+</div>
 
         {/* Table */}
         <Card>
           <CardHeader>
             <div className="flex justify-between items-start flex-wrap gap-3">
-              <div>
+              {/* <div>
                 <CardTitle>Purchase Orders List</CardTitle>
                 <p className="text-sm text-muted-foreground">View and manage all purchase orders</p>
-              </div>
+              </div> */}
               <div className="flex items-center gap-2 flex-wrap">
                 <DateRangeFilter startDate={dateRangeStart} endDate={dateRangeEnd} onDateRangeChange={(s, e) => { setDateRangeStart(s); setDateRangeEnd(e) }} />
                 <Input placeholder="Search by bill no, farmer..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[220px]" />
+                <Select value={filterPaymentStatus || '__all__'} onValueChange={v => setFilterPaymentStatus(v === '__all__' ? '' : v)}>
+    <SelectTrigger className="w-[160px]">
+      <SelectValue placeholder="All Status" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="__all__">All Status</SelectItem>
+      <SelectItem value="paid">Paid</SelectItem>
+      <SelectItem value="pending">Pending</SelectItem>
+      <SelectItem value="partial">Partial</SelectItem>
+    </SelectContent>
+  </Select>
               </div>
             </div>
           </CardHeader>
