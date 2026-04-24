@@ -517,10 +517,10 @@ export default function FarmersPage() {
         <Card>
           <CardHeader>
             <div className="flex justify-between items-start">
-              <div>
+              {/* <div>
                 <CardTitle>Farmers List</CardTitle>
                 <CardDescription>View and manage all farmers</CardDescription>
-              </div>
+              </div> */}
               <div className="flex items-center gap-2 flex-wrap">
                 <DateRangeFilter
                   startDate={dateRangeStart}
@@ -548,14 +548,14 @@ export default function FarmersPage() {
                     )}
                   </div>
                 </div>
-                <Button
+                {/* <Button
                   variant="outline"
                   size="sm"
                   onClick={handleDownloadPDF}
                 >
                   <Download className="mr-2" size={16} />
                   Download PDF
-                </Button>
+                </Button> */}
                 <Button
                   variant="outline"
                   size="sm"
@@ -586,11 +586,11 @@ export default function FarmersPage() {
                         {sortOrder === "desc" && <ArrowDown className="ml-2 h-4 w-4" />}
                       </Button>
                     </TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Address</TableHead>
-                    <TableHead>Join Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="font-bold">Phone</TableHead>
+                    <TableHead className="font-bold">Address</TableHead>
+                    <TableHead className="font-bold">Join Date</TableHead>
+                    <TableHead className="font-bold">Status</TableHead>
+                    <TableHead className="font-bold text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

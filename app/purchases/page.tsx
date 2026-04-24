@@ -614,15 +614,15 @@ export default function PurchasesPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Purchase Bill No</TableHead>
-                      <TableHead>Supplier</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Total Weight</TableHead>
-                      <TableHead>Rate/Kg</TableHead>
-                      <TableHead>Net Amount</TableHead>
-                      <TableHead>Payment Status</TableHead>
-                      <TableHead>Balance</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="font-bold">Purchase Bill No</TableHead>
+                      <TableHead className="font-bold">Supplier</TableHead>
+                      <TableHead className="font-bold">Date</TableHead>
+                      <TableHead className="font-bold">Total Weight</TableHead>
+                      <TableHead className="font-bold">Rate/Kg</TableHead>
+                      <TableHead className="font-bold">Net Amount</TableHead>
+                      <TableHead className="font-bold">Payment Status</TableHead>
+                      <TableHead className="font-bold">Balance</TableHead>
+                      <TableHead className="font-bold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
