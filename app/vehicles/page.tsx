@@ -491,54 +491,70 @@ export default function VehiclesPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Vehicles</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats.total.count}</div>
-              <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                <div>Truck: {stats.total.truck}</div>
-                <div>Mini Truck: {stats.total.miniTruck}</div>
-                <div>Pickup Van: {stats.total.pickupVan}</div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Active Vehicles</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats.active.count}</div>
-              <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                <div>Truck: {stats.active.truck}</div>
-                <div>Mini Truck: {stats.active.miniTruck}</div>
-                <div>Pickup Van: {stats.active.pickupVan}</div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Inactive Vehicles</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats.inactive.count}</div>
-              <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                <div>Truck: {stats.inactive.truck}</div>
-                <div>Mini Truck: {stats.inactive.miniTruck}</div>
-                <div>Pickup Van: {stats.inactive.pickupVan}</div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+  
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-sm font-medium text-muted-foreground">
+        Total Vehicles
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-3xl font-bold text-blue-600">
+        {stats.total.count}
+      </div>
+      <div className="mt-2 space-y-1 text-sm text-blue-500">
+        <div>Truck: {stats.total.truck}</div>
+        <div>Mini Truck: {stats.total.miniTruck}</div>
+        <div>Pickup Van: {stats.total.pickupVan}</div>
+      </div>
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-sm font-medium text-muted-foreground">
+        Active Vehicles
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-3xl font-bold text-green-600">
+        {stats.active.count}
+      </div>
+      <div className="mt-2 space-y-1 text-sm text-green-500">
+        <div>Truck: {stats.active.truck}</div>
+        <div>Mini Truck: {stats.active.miniTruck}</div>
+        <div>Pickup Van: {stats.active.pickupVan}</div>
+      </div>
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-sm font-medium text-muted-foreground">
+        Inactive Vehicles
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-3xl font-bold text-red-600">
+        {stats.inactive.count}
+      </div>
+      <div className="mt-2 space-y-1 text-sm text-red-500">
+        <div>Truck: {stats.inactive.truck}</div>
+        <div>Mini Truck: {stats.inactive.miniTruck}</div>
+        <div>Pickup Van: {stats.inactive.pickupVan}</div>
+      </div>
+    </CardContent>
+  </Card>
+
+</div>
 
         <Card>
           <CardHeader>
             <div className="flex justify-between items-start">
-              <div>
+              {/* <div>
                 <CardTitle>Vehicles List</CardTitle>
                 <p className="text-sm text-muted-foreground">View and manage all vehicles</p>
-              </div>
+              </div> */}
               <div className="flex items-center gap-2 flex-wrap">
                 <DateRangeFilter
                   startDate={dateRangeStart}
@@ -554,14 +570,14 @@ export default function VehiclesPage() {
                     className="w-[250px]"
                   />
                 </div>
-                <Button
+                {/* <Button
                   variant="outline"
                   size="sm"
                   onClick={handleDownloadPDF}
                 >
                   <Download className="mr-2" size={16} />
                   Download PDF
-                </Button>
+                </Button> */}
                 <Button
                   variant="outline"
                   size="sm"
@@ -587,10 +603,10 @@ export default function VehiclesPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Vehicle No</TableHead>
-                      <TableHead>Vehicle Type</TableHead>
-                      <TableHead>Owner Name</TableHead>
-                      <TableHead>
+                      <TableHead className="font-bold">Vehicle No</TableHead>
+                      <TableHead className="font-bold">Vehicle Type</TableHead>
+                      <TableHead className="font-bold">Owner Name</TableHead>
+                      <TableHead className="font-bold">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -603,10 +619,10 @@ export default function VehiclesPage() {
                           {sortOrder === "desc" && <ArrowDown className="ml-2 h-4 w-4" />}
                         </Button>
                       </TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Join Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="font-bold">Phone</TableHead>
+                      <TableHead className="font-bold">Join Date</TableHead>
+                      <TableHead className="font-bold">Status</TableHead>
+                      <TableHead className="font-bold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

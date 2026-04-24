@@ -763,21 +763,23 @@ export default function SalesPage() {
             ) : (
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Sale No</TableHead>
-                      <TableHead>Bill No</TableHead>
-                      <TableHead>Purchase Bill</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Mode</TableHead>
-                      <TableHead>Weight</TableHead>
-                      <TableHead>Net Amount</TableHead>
-                      <TableHead>Payment</TableHead>
-                      <TableHead>Balance</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                  
+                     <TableHeader>
+                     <TableRow>
+                       <TableHead className="font-bold">Sale No</TableHead>
+                       <TableHead className="font-bold">Bill No</TableHead>
+                       <TableHead className="font-bold">Purchase Bill</TableHead>
+                       <TableHead className="font-bold">Date</TableHead>
+                       <TableHead className="font-bold">Customer</TableHead>
+                       <TableHead className="font-bold">Mode</TableHead>
+                       <TableHead className="font-bold">Weight</TableHead>
+                       <TableHead className="font-bold">Net Amount</TableHead>
+                       <TableHead className="font-bold">Payment</TableHead>
+                       <TableHead className="font-bold">Balance</TableHead>
+                       <TableHead className="font-bold">Actions</TableHead>
+                     </TableRow>
+                   </TableHeader>
+                  
                   <TableBody>
                     {filtered.map(s => (
                       <TableRow key={s.id}>

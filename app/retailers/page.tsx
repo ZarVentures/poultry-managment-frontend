@@ -390,39 +390,55 @@ export default function RetailersPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Retailers</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats.total}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Active Retailers</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats.active}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Inactive Retailers</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats.inactive}</div>
-            </CardContent>
-          </Card>
-        </div>
+  
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-sm font-medium text-muted-foreground">
+        Total Retailers
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-3xl font-bold text-blue-600">
+        {stats.total}
+      </div>
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-sm font-medium text-muted-foreground">
+        Active Retailers
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-3xl font-bold text-green-600">
+        {stats.active}
+      </div>
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-sm font-medium text-muted-foreground">
+        Inactive Retailers
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-3xl font-bold text-red-600">
+        {stats.inactive}
+      </div>
+    </CardContent>
+  </Card>
+
+</div>
 
         <Card>
           <CardHeader>
             <div className="flex justify-between items-start">
-              <div>
+              {/* <div>
                 <CardTitle>Retailers List</CardTitle>
                 <p className="text-sm text-muted-foreground">View and manage all retailers</p>
-              </div>
+              </div> */}
               <div className="flex items-center gap-2 flex-wrap">
                 <DateRangeFilter
                   startDate={dateRangeStart}
@@ -438,14 +454,14 @@ export default function RetailersPage() {
                     className="w-[250px]"
                   />
                 </div>
-                <Button
+                {/* <Button
                   variant="outline"
                   size="sm"
                   onClick={handleDownloadPDF}
                 >
                   <Download className="mr-2" size={16} />
                   Download PDF
-                </Button>
+                </Button> */}
                 <Button
                   variant="outline"
                   size="sm"

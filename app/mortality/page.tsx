@@ -705,15 +705,15 @@ export default function MortalityPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Purchase Bill No.</TableHead>
-                    <TableHead>Purchase Date</TableHead>
-                    <TableHead>Farmer Name</TableHead>
-                    <TableHead>Farm Location</TableHead>
-                    <TableHead>Cage ID Number</TableHead>
-                    <TableHead>Total Birds Purchased</TableHead>
-                    <TableHead>Number of Birds Died</TableHead>
-                    <TableHead>Cause of Death</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="font-bold">Purchase Bill No.</TableHead>
+                    <TableHead className="font-bold">Purchase Date</TableHead>
+                    <TableHead className="font-bold">Farmer Name</TableHead>
+                    <TableHead className="font-bold">Farm Location</TableHead>
+                    <TableHead className="font-bold">Cage ID Number</TableHead>
+                    <TableHead className="font-bold">Total Birds Purchased</TableHead>
+                    <TableHead className="font-bold">Number of Birds Died</TableHead>
+                    <TableHead className="font-bold">Cause of Death</TableHead>
+                    <TableHead className="font-bold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

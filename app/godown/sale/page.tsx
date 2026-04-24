@@ -343,7 +343,7 @@ export default function GodownSalePage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label>Link to Purchase Bill</Label>
                   <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
                     <SelectTrigger><SelectValue placeholder="Select purchase bill (optional)" /></SelectTrigger>
@@ -354,7 +354,7 @@ export default function GodownSalePage() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                </div> */}
 
                 <div className="space-y-2">
                   <Label>Retailer (Optional)</Label>
@@ -586,14 +586,14 @@ export default function GodownSalePage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>GDS No</TableHead>
-                      <TableHead>Purchase Bill</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Rate</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="font-bold">GDS No</TableHead>
+                      <TableHead className="font-bold">Purchase Bill</TableHead>
+                      <TableHead className="font-bold">Date</TableHead>
+                      <TableHead className="font-bold">Customer</TableHead>
+                      <TableHead className="font-bold">Quantity</TableHead>
+                      <TableHead className="font-bold">Rate</TableHead>
+                      <TableHead className="font-bold">Total</TableHead>
+                      <TableHead className="font-bold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
