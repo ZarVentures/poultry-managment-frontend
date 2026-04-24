@@ -175,12 +175,34 @@
 /* Ant Design Calendar Popup Styling */
 .ant-picker-dropdown {
   border-radius: 16px !important;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1) !important;
+  box-shadow: none !important;
 }
 
 .ant-picker-panel-container {
   border-radius: 16px !important;
   overflow: hidden;
+  box-shadow: none !important;
+}
+
+.ant-picker-dropdown .ant-picker-panel-container {
+  box-shadow: none !important;
+}
+
+.no-calendar-shadow,
+.no-calendar-shadow .ant-picker-panel-container,
+.no-calendar-shadow .ant-picker-panel,
+.no-calendar-shadow .ant-picker-date-panel,
+.no-calendar-shadow .ant-picker-week-panel,
+.no-calendar-shadow .ant-picker-month-panel,
+.no-calendar-shadow .ant-picker-year-panel,
+.no-calendar-shadow .ant-picker-decade-panel,
+.no-calendar-shadow .ant-picker-body,
+.no-calendar-shadow .ant-picker-content,
+.no-calendar-shadow table,
+.no-calendar-shadow td,
+.no-calendar-shadow th {
+  box-shadow: none !important;
+  filter: none !important;
 }
 
 .ant-picker-header {
@@ -357,6 +379,30 @@ input[type="number"] {
 }
 .ant-picker-dropdown {
   border-radius: 12px !important;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: none !important;
   border: 1px solid hsl(var(--border)) !important;
+}
+
+/* Selected date ka font normal karo */
+.ant-picker-cell-selected .ant-picker-cell-inner {
+  font-weight: normal !important;
+}
+.ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner {
+  background-color: #8b5cf6 !important;
+  border-radius: 8px !important;
+  font-weight: 400 !important;
+}
+/* Range picker + normal datepicker dono ka shadow remove */
+.ant-picker-dropdown,
+.ant-picker-dropdown .ant-picker-panel-container,
+.ant-picker-dropdown .ant-picker-panel {
+  box-shadow: none !important;
+}
+/* Calendar ko sabke upar lao */
+.ant-picker-dropdown {
+  z-index: 9999 !important;
+  position: absolute !important;
+}
+.ant-picker-dropdown {
+  position: fixed !important;
 }

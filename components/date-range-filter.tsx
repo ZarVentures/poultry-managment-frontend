@@ -53,6 +53,7 @@ export function DateRangeFilter({ startDate, endDate, onDateRangeChange }: DateR
           value={value}
           onChange={handleChange}
           format="DD-MMM-YYYY"
+          popupClassName="no-calendar-shadow"
           className="premium-datepicker h-9"
         />
         <Button variant="outline" size="sm" onClick={handleThisMonth} className="h-9 text-xs">

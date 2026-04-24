@@ -643,22 +643,87 @@ export default function SalesPage() {
         </div>
 
         {/* Mini Dashboard */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card><CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1"><ShoppingCart size={14} />Total Sales</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats.count}</div></CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Total Birds</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats.totalBirds.toFixed(0)} kg</div></CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1"><TrendingUp size={14} />Revenue</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">₹{stats.totalRevenue.toFixed(0)}</div></CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Wallet size={14} />Received</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-600">₹{stats.totalReceived.toFixed(0)}</div></CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Clock size={14} />Pending</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-600">₹{stats.totalPending.toFixed(0)}</div></CardContent></Card>
-        </div>
+       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+  
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+        <ShoppingCart size={14} className="text-blue-600" />
+        Total Sales
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold text-blue-600">
+        {stats.count}
+      </div>
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-xs font-medium text-muted-foreground">
+        Total Birds
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold text-purple-600">
+        {stats.totalBirds.toFixed(0)} kg
+      </div>
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+        <TrendingUp size={14} className="text-orange-600" />
+        Revenue
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold text-orange-600">
+        ₹{stats.totalRevenue.toFixed(0)}
+      </div>
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+        <Wallet size={14} className="text-green-600" />
+        Received
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold text-green-600">
+        ₹{stats.totalReceived.toFixed(0)}
+      </div>
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+        <Clock size={14} className="text-red-600" />
+        Pending
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold text-red-600">
+        ₹{stats.totalPending.toFixed(0)}
+      </div>
+    </CardContent>
+  </Card>
+
+</div>
 
         {/* Table */}
         <Card>
           <CardHeader>
             <div className="flex justify-between items-start flex-wrap gap-3">
-              <div>
+              {/* <div>
                 <CardTitle>Sales List</CardTitle>
                 <p className="text-sm text-muted-foreground">View and manage all sales</p>
-              </div>
+              </div> */}
               <div className="flex items-center gap-2 flex-wrap">
                 <DateRangeFilter startDate={dateRangeStart} endDate={dateRangeEnd} onDateRangeChange={(s, e) => { setDateRangeStart(s); setDateRangeEnd(e) }} />
                 <Input placeholder="Search bill no, customer..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[180px]" />
@@ -679,14 +744,14 @@ export default function SalesPage() {
                     <SelectItem value="partial">Partial</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={filterSaleMode || '__all__'} onValueChange={v => setFilterSaleMode(v === '__all__' ? '' : v)}>
+                {/* <Select value={filterSaleMode || '__all__'} onValueChange={v => setFilterSaleMode(v === '__all__' ? '' : v)}>
                   <SelectTrigger className="w-[150px]"><SelectValue placeholder="All Modes" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__all__">All Modes</SelectItem>
                     <SelectItem value="from_vehicle">From Vehicle</SelectItem>
                     <SelectItem value="from_godown">From Godown</SelectItem>
                   </SelectContent>
-                </Select>
+                </Select> */}
               </div>
             </div>
           </CardHeader>

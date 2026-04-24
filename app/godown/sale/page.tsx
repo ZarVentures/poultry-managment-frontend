@@ -542,10 +542,10 @@ export default function GodownSalePage() {
         <Card>
           <CardHeader>
             <div className="flex justify-between items-start">
-              <div>
+              {/* <div>
                 <CardTitle>Sales List</CardTitle>
                 <p className="text-sm text-muted-foreground">View and manage godown sales</p>
-              </div>
+              </div> */}
               <div className="flex items-center gap-2 flex-wrap">
                 <DateRangeFilter
                   startDate={dateRangeStart}

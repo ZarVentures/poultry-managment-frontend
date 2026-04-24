@@ -460,10 +460,10 @@ export default function ExpensesPage() {
         <Card>
           <CardHeader>
             <div className="flex justify-between items-start">
-              <div>
+              {/* <div>
                 <CardTitle>All Expenses</CardTitle>
                 <p className="text-sm text-muted-foreground">Complete list of all expenses</p>
-              </div>
+              </div> */}
               <div className="flex items-center gap-2 flex-wrap">
                 <DateRangeFilter
                   startDate={dateRangeStart}
@@ -479,14 +479,14 @@ export default function ExpensesPage() {
                     className="w-[250px]"
                   />
                 </div>
-                <Button
+                {/* <Button
                   variant="outline"
                   size="sm"
                   onClick={handleDownloadPDF}
                 >
                   <Download className="mr-2" size={16} />
                   Download PDF
-                </Button>
+                </Button> */}
                 <Button
                   variant="outline"
                   size="sm"

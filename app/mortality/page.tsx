@@ -634,7 +634,7 @@ export default function MortalityPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Birds Death (Qty)</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{totalBirdsDeath}</div>
+              <div className="  text-red-700 text-3xl font-bold">{totalBirdsDeath}</div>
             </CardContent>
           </Card>
           <Card>
@@ -650,10 +650,10 @@ export default function MortalityPage() {
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
+              {/* <div>
                 <CardTitle>Mortality List</CardTitle>
                 <CardDescription>View and manage all mortality records</CardDescription>
-              </div>
+              </div> */}
               <div className="flex items-center gap-2 flex-wrap">
                 <DateRangeFilter
                   startDate={dateRangeStart}
@@ -681,14 +681,14 @@ export default function MortalityPage() {
                     )}
                   </div>
                 </div>
-                <Button
+                {/* <Button
                   variant="outline"
                   size="sm"
                   onClick={handleDownloadPDF}
                 >
                   <Download className="mr-2" size={16} />
                   Download PDF
-                </Button>
+                </Button> */}
                 <Button
                   variant="outline"
                   size="sm"
