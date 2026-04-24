@@ -93,7 +93,7 @@ const RetailerLedgerContent = () => {
               {loadingRetailers ? <p className="text-sm text-gray-500">Loading...</p> : (
                 <Select value={selectedId} onValueChange={setSelectedId}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-60 overflow-y-auto">
                     {retailers.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
