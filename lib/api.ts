@@ -617,17 +617,42 @@ export const usersApi = {
 // ============================================
 export const authApi = {
   login: (email: string, password: string) =>
-    apiRequest<{ accessToken: string; user: User }>('/auth/login', {
+    apiRequest<{ accessToken: string; user: User } | { status: '2FA_REQUIRED'; tempToken: string }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
-  
+
   logout: () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     }
   },
+
+  // 2FA
+  get2FAStatus: () =>
+    apiRequest<{ isTwoFactorEnabled: boolean }>('/auth/2fa/status'),
+
+  generate2FA: () =>
+    apiRequest<{ otpauthUrl: string; qrCodeDataUrl: string; secret: string }>('/auth/2fa/generate', { method: 'POST' }),
+
+  turnOn2FA: (code: string) =>
+    apiRequest<{ message: string }>('/auth/2fa/turn-on', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
+
+  turnOff2FA: (code: string) =>
+    apiRequest<{ message: string }>('/auth/2fa/turn-off', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
+
+  authenticate2FA: (tempToken: string, code: string) =>
+    apiRequest<{ accessToken: string; user: User }>('/auth/2fa/authenticate', {
+      method: 'POST',
+      body: JSON.stringify({ tempToken, code }),
+    }),
 };
 
 // ============================================

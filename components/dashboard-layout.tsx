@@ -16,7 +16,7 @@ import {
   ChartNoAxesCombined, Tractor, User, PackageOpen, PackagePlus,
   PackageSearch, PackageX, PackageCheck, CreditCard, BookOpen,
   TrendingDown, BarChart3 as BarChartAlt,
-  GitBranch,
+  GitBranch, Shield,
 } from "lucide-react"
 
 // Staging-only features are controlled by this env var.
