@@ -39,6 +39,7 @@ export default function SettingsPage() {
     farmEmail: "info@azizpoultry.com",
     farmPhone: "+1-234-567-8900",
     currency: "INR",
+    countryCode: "+91",
     theme: "light" as "light" | "dark",
     notifications: true,
     emailAlerts: true,
@@ -182,17 +183,47 @@ export default function SettingsPage() {
                     <Input value={formData.farmPhone} onChange={e => setFormData(f => ({ ...f, farmPhone: e.target.value }))} disabled={loading} />
                   </div>
                 </div>
-                <div className="space-y-1.5 max-w-xs">
-                  <Label>Currency</Label>
-                  <Select value={formData.currency} onValueChange={v => setFormData(f => ({ ...f, currency: v }))} disabled={loading}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="INR">INR (₹)</SelectItem>
-                      <SelectItem value="USD">USD ($)</SelectItem>
-                      <SelectItem value="EUR">EUR (€)</SelectItem>
-                      <SelectItem value="GBP">GBP (£)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5 max-w-xs">
+                    <Label>Currency</Label>
+                    <Select value={formData.currency} onValueChange={v => setFormData(f => ({ ...f, currency: v }))} disabled={loading}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="INR">INR (₹)</SelectItem>
+                        <SelectItem value="USD">USD ($)</SelectItem>
+                        <SelectItem value="EUR">EUR (€)</SelectItem>
+                        <SelectItem value="GBP">GBP (£)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5 max-w-xs">
+                    <Label>Country Code (Phone)</Label>
+                    <Select value={formData.countryCode} onValueChange={v => setFormData(f => ({ ...f, countryCode: v }))} disabled={loading}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent className="max-h-60 overflow-y-auto">
+                        <SelectItem value="+91">🇮🇳 +91 India</SelectItem>
+                        <SelectItem value="+1">🇺🇸 +1 USA / Canada</SelectItem>
+                        <SelectItem value="+44">🇬🇧 +44 UK</SelectItem>
+                        <SelectItem value="+971">🇦🇪 +971 UAE</SelectItem>
+                        <SelectItem value="+966">🇸🇦 +966 Saudi Arabia</SelectItem>
+                        <SelectItem value="+92">🇵🇰 +92 Pakistan</SelectItem>
+                        <SelectItem value="+880">🇧🇩 +880 Bangladesh</SelectItem>
+                        <SelectItem value="+94">🇱🇰 +94 Sri Lanka</SelectItem>
+                        <SelectItem value="+977">🇳🇵 +977 Nepal</SelectItem>
+                        <SelectItem value="+60">🇲🇾 +60 Malaysia</SelectItem>
+                        <SelectItem value="+65">🇸🇬 +65 Singapore</SelectItem>
+                        <SelectItem value="+61">🇦🇺 +61 Australia</SelectItem>
+                        <SelectItem value="+49">🇩🇪 +49 Germany</SelectItem>
+                        <SelectItem value="+33">🇫🇷 +33 France</SelectItem>
+                        <SelectItem value="+86">🇨🇳 +86 China</SelectItem>
+                        <SelectItem value="+81">🇯🇵 +81 Japan</SelectItem>
+                        <SelectItem value="+234">🇳🇬 +234 Nigeria</SelectItem>
+                        <SelectItem value="+27">🇿🇦 +27 South Africa</SelectItem>
+                        <SelectItem value="+55">🇧🇷 +55 Brazil</SelectItem>
+                        <SelectItem value="+7">🇷🇺 +7 Russia</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <Button onClick={handleSave} disabled={loading} className="mt-2">
                   <Save size={16} className="mr-2" />{loading ? "Saving..." : "Save Changes"}
