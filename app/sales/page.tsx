@@ -98,13 +98,10 @@ export default function SalesPage() {
 
   const handlePurchaseBillChange = async (orderNumber: string) => {
     const billNo = orderNumber === '__none__' ? '' : orderNumber
-    // Auto-generate Sale No from Purchase Bill No (PO-TEST001 → SL-TEST001)
-    const autoSaleNo = billNo ? 'SL-' + billNo.replace(/^PO-/i, '') : ''
     setFormData(f => ({
       ...f,
       purchaseBillNo: billNo,
       invoiceNumber: billNo || f.invoiceNumber,
-      saleNo: billNo ? autoSaleNo : f.saleNo,
     }))
     setPurchaseCages([])
     setSelectedCageIds(new Set())
@@ -365,25 +362,27 @@ export default function SalesPage() {
                     <CardTitle className="text-blue-900 text-base">Section 1: Header Information</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 pt-4">
+                    {/* Purchase Bill No — full width */}
+                    <div className="space-y-2">
+                      <Label>Purchase Bill No *</Label>
+                      <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
+                        <SelectTrigger><SelectValue placeholder="Select purchase bill" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Select purchase bill...</SelectItem>
+                          {purchaseBills.map(b => <SelectItem key={b.id} value={b.orderNumber}>{b.orderNumber} — {b.supplierName}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* Sale No + Sale Date — 2 col */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Purchase Bill No *</Label>
-                        <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
-                          <SelectTrigger><SelectValue placeholder="Select purchase bill" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">Select purchase bill...</SelectItem>
-                            {purchaseBills.map(b => <SelectItem key={b.id} value={b.orderNumber}>{b.orderNumber} — {b.supplierName}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <Label>Sale No. *</Label>
+                        <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value }))} placeholder="Enter sale number" disabled={loading} />
                       </div>
                       <div className="space-y-2">
                         <Label>Sale Date *</Label>
                         <DatePicker value={formData.saleDate} onChange={d => setFormData(f => ({ ...f, saleDate: d }))} disabled={loading} />
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Sale No. (auto)</Label>
-                      <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value }))} placeholder="Auto-filled from Purchase Bill" disabled={loading} className={formData.saleNo ? "bg-green-50 border-green-300" : ""} />
                     </div>
 
                     <div className="space-y-2">

@@ -73,18 +73,24 @@ export default function FinancialAnalyticsPage() {
 
         if (salesResult.status === 'fulfilled') {
           const raw = salesResult.value as any[]
-          setSales(raw.map(s => ({
-            id: s.id,
-            invoiceNumber: s.invoiceNumber || s.saleNo || '',
-            customer: s.customerName || '',
-            date: s.saleDate || s.createdAt || '',
-            productType: s.productType || 'meat',
-            quantity: parseFloat(s.quantity || 0),
-            unitPrice: parseFloat(s.unitPrice || 0),
-            totalAmount: parseFloat(s.netAmount || s.totalAmount || 0),
-            paymentStatus: s.paymentStatus || 'pending',
-            notes: s.notes || '',
-          })))
+          setSales(raw.map(s => {
+            const qty = parseFloat(s.quantity || 0)
+            const price = parseFloat(s.unitPrice || 0)
+            const computed = qty * price
+            const amount = parseFloat(s.netAmount || 0) || parseFloat(s.totalAmount || 0) || computed
+            return {
+              id: s.id,
+              invoiceNumber: s.invoiceNumber || s.saleNo || '',
+              customer: s.customerName || '',
+              date: s.saleDate || s.createdAt || '',
+              productType: s.productType || 'meat',
+              quantity: qty,
+              unitPrice: price,
+              totalAmount: amount,
+              paymentStatus: s.paymentStatus || 'pending',
+              notes: s.notes || '',
+            }
+          }))
         }
 
         if (expensesResult.status === 'fulfilled') {

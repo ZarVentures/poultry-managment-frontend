@@ -105,6 +105,8 @@ export default function MortalityPage() {
     }
   }
 
+  const [selectedPurchaseFull, setSelectedPurchaseFull] = useState<PurchaseOrder | null>(null)
+
   // Selected purchase (for Cage ID dropdown and auto-fill)
   const selectedPurchase = useMemo(
     () =>
@@ -114,13 +116,14 @@ export default function MortalityPage() {
     [purchases, formData.purchaseInvoiceNo]
   )
 
-  // Cage IDs from selected purchase
+  // Cage IDs from selected purchase (use full order with cages)
   const cageIdOptions = useMemo(() => {
-    if (!selectedPurchase?.cages) return []
-    return selectedPurchase.cages
+    const src = selectedPurchaseFull || selectedPurchase
+    if (!src?.cages) return []
+    return src.cages
       .map((cage) => cage.cageId?.trim())
       .filter((id): id is string => !!id)
-  }, [selectedPurchase])
+  }, [selectedPurchaseFull, selectedPurchase])
 
   // Calculate total birds from cages
   const calculateTotalBirds = (purchase: PurchaseOrder): number => {
@@ -129,31 +132,50 @@ export default function MortalityPage() {
   }
 
   // Auto-fill fields when Purchase Invoice No is selected
-  const handlePurchaseInvoiceChange = (invoiceNo: string) => {
+  const handlePurchaseInvoiceChange = async (invoiceNo: string) => {
+    setSelectedPurchaseFull(null)
     const purchase = purchases.find(
       (p) => (p.orderNumber || "").toLowerCase() === invoiceNo.toLowerCase()
     )
     if (purchase) {
-      const totalBirds = calculateTotalBirds(purchase)
-      setFormData({
-        ...formData,
-        purchaseInvoiceNo: invoiceNo,
-        purchaseDate: purchase.orderDate || new Date().toISOString().split("T")[0],
-        farmerName: purchase.supplierName || "",
-        farmLocation: purchase.farmLocation || "",
-        cageIdNumber: "",
-        totalBirdsPurchased: totalBirds.toString(),
-      })
+      // Fetch full order to get cages
+      try {
+        const full = await purchasesApi.getOne(purchase.id)
+        setSelectedPurchaseFull(full)
+        const totalBirds = full.cages
+          ? full.cages.reduce((sum, cage) => sum + (cage.numberOfBirds || 0), 0)
+          : calculateTotalBirds(purchase)
+        setFormData(prev => ({
+          ...prev,
+          purchaseInvoiceNo: invoiceNo,
+          purchaseDate: full.orderDate || new Date().toISOString().split("T")[0],
+          farmerName: full.supplierName || "",
+          farmLocation: full.farmLocation || "",
+          cageIdNumber: "",
+          totalBirdsPurchased: totalBirds.toString(),
+        }))
+      } catch {
+        const totalBirds = calculateTotalBirds(purchase)
+        setFormData(prev => ({
+          ...prev,
+          purchaseInvoiceNo: invoiceNo,
+          purchaseDate: purchase.orderDate || new Date().toISOString().split("T")[0],
+          farmerName: purchase.supplierName || "",
+          farmLocation: purchase.farmLocation || "",
+          cageIdNumber: "",
+          totalBirdsPurchased: totalBirds.toString(),
+        }))
+      }
     } else {
-      setFormData({
-        ...formData,
+      setFormData(prev => ({
+        ...prev,
         purchaseInvoiceNo: invoiceNo,
         purchaseDate: new Date().toISOString().split("T")[0],
         farmerName: "",
         farmLocation: "",
         cageIdNumber: "",
         totalBirdsPurchased: "",
-      })
+      }))
     }
   }
 
@@ -209,6 +231,7 @@ export default function MortalityPage() {
       cause: "",
       notes: "",
     })
+    setSelectedPurchaseFull(null)
     setEditingId(null)
   }
 
@@ -634,7 +657,7 @@ export default function MortalityPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Birds Death (Qty)</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="  text-red-700 text-3xl font-bold">{totalBirdsDeath}</div>
+              <div className="text-3xl font-bold text-red-600">{totalBirdsDeath}</div>
             </CardContent>
           </Card>
           <Card>

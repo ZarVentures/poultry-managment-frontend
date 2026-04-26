@@ -21,7 +21,6 @@ import { toast } from "sonner"
 export default function GodownSalePage() {
   const [sales, setSales] = useState<GodownSale[]>([])
   const [retailers, setRetailers] = useState<Retailer[]>([])
-  const [purchaseBills, setPurchaseBills] = useState<Array<{ id: string; orderNumber: string; supplierName: string }>>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
@@ -33,6 +32,7 @@ export default function GodownSalePage() {
     saleDate: new Date().toISOString().split("T")[0],
     purchaseBillNo: "",
     invoiceNumber: "",
+    retailerId: "",
     customerName: "",
     numberOfBirds: "",
     totalWeight: "",
@@ -49,7 +49,6 @@ export default function GodownSalePage() {
     setMounted(true)
     fetchSales()
     fetchRetailers()
-    fetchPurchaseBills()
   }, [])
 
   const fetchSales = async () => {
@@ -74,26 +73,12 @@ export default function GodownSalePage() {
     }
   }
 
-  const fetchPurchaseBills = async () => {
-    try {
-      const data = await purchasesApi.getInvoiceList()
-      setPurchaseBills(Array.isArray(data) ? data : [])
-    } catch { setPurchaseBills([]) }
-  }
-
-  const handlePurchaseBillChange = (orderNumber: string) => {
-    const billNo = orderNumber === '__none__' ? '' : orderNumber
-    setFormData(f => ({
-      ...f,
-      purchaseBillNo: billNo,
-    }))
-  }
-
   const resetForm = () => {
     setFormData({
       saleDate: new Date().toISOString().split("T")[0],
       purchaseBillNo: "",
       invoiceNumber: "",
+      retailerId: "",
       customerName: "",
       numberOfBirds: "",
       totalWeight: "",
@@ -113,6 +98,7 @@ export default function GodownSalePage() {
       saleDate: sale.saleDate,
       purchaseBillNo: (sale as any).purchaseBillNo || "",
       invoiceNumber: (sale as any).invoiceNumber || "",
+      retailerId: (sale as any).retailerId || "",
       customerName: sale.customerName,
       numberOfBirds: String(sale.numberOfBirds || ""),
       totalWeight: String(sale.totalWeight || ""),
@@ -203,8 +189,11 @@ export default function GodownSalePage() {
     if (retailer) {
       setFormData({
         ...formData,
+        retailerId,
         customerName: retailer.name,
       })
+    } else {
+      setFormData({ ...formData, retailerId: '', customerName: '' })
     }
   }
 
@@ -358,18 +347,23 @@ export default function GodownSalePage() {
 
                 <div className="space-y-2">
                   <Label>Retailer (Optional)</Label>
-                  <select
-                    className="w-full border rounded p-2"
-                    onChange={(e) => handleRetailerChange(e.target.value)}
+                  <Select
+                    value={formData.retailerId || '__none__'}
+                    onValueChange={(v) => handleRetailerChange(v === '__none__' ? '' : v)}
                     disabled={loading}
                   >
-                    <option value="">Select retailer</option>
-                    {retailers.map((retailer) => (
-                      <option key={retailer.id} value={retailer.id}>
-                        {retailer.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select retailer" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                      <SelectItem value="__none__">Select retailer...</SelectItem>
+                      {retailers.map((retailer) => (
+                        <SelectItem key={retailer.id} value={retailer.id}>
+                          {retailer.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -587,8 +581,7 @@ export default function GodownSalePage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="font-bold">GDS No</TableHead>
-                      <TableHead className="font-bold">Purchase Bill</TableHead>
-                      <TableHead className="font-bold">Date</TableHead>
+                      <TableHead className="font-bold">Date</TableHead>                      <TableHead className="font-bold">Date</TableHead>
                       <TableHead className="font-bold">Customer</TableHead>
                       <TableHead className="font-bold">Quantity</TableHead>
                       <TableHead className="font-bold">Rate</TableHead>
@@ -600,8 +593,7 @@ export default function GodownSalePage() {
                     {filteredSales.map((sale) => (
                       <TableRow key={sale.id}>
                         <TableCell className="font-medium">{(sale as any).invoiceNumber || '-'}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{(sale as any).purchaseBillNo || '-'}</TableCell>
-                        <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
+                        <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>                        <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
                         <TableCell>{sale.customerName}</TableCell>
                         <TableCell>{sale.numberOfBirds} birds</TableCell>
                         <TableCell>₹{Number(sale.ratePerKg || 0).toFixed(2)}/kg</TableCell>

@@ -30,16 +30,16 @@ export default function InventoryPage() {
     try {
       setLoading(true)
       
-      // Fetch godown data
+      // Fetch godown data in parallel
       const [inwardData, salesData, mortalityData] = await Promise.all([
         godownApi.inward.getAll(),
         godownApi.sales.getAll(),
-        godownApi.mortality.getAll()
+        godownApi.mortality.getAll(),
       ])
       
-      setInwardEntries(inwardData)
-      setSales(salesData)
-      setMortalities(mortalityData)
+      setInwardEntries(Array.isArray(inwardData) ? inwardData : [])
+      setSales(Array.isArray(salesData) ? salesData : [])
+      setMortalities(Array.isArray(mortalityData) ? mortalityData : [])
       
       // Fetch capacity from settings
       try {
@@ -51,8 +51,7 @@ export default function InventoryPage() {
         } else {
           setCapacityInput(String(DEFAULT_CAPACITY))
         }
-      } catch (error) {
-        // Setting doesn't exist yet, use default
+      } catch {
         setCapacityInput(String(DEFAULT_CAPACITY))
       }
     } catch (error: any) {
@@ -103,19 +102,46 @@ export default function InventoryPage() {
     [mortalities]
   )
 
+  const totalInwardWeight = useMemo(
+    () => inwardEntries.reduce((sum, e) => sum + (Number(e.totalWeight) || 0), 0),
+    [inwardEntries]
+  )
+
+  const totalSoldWeight = useMemo(
+    () => sales.reduce((sum, s) => sum + (Number(s.totalWeight) || 0), 0),
+    [sales]
+  )
+
   const totalBirdsAvailable = useMemo(
     () => Math.max(0, totalInwardBirds - totalSoldBirds - totalMortality),
     [totalInwardBirds, totalSoldBirds, totalMortality]
   )
 
   const stockByInvoice = useMemo(() => {
-    const map: Record<string, number> = {}
+    // Birds received per invoice
+    const inwardMap: Record<string, { birds: number; weight: number }> = {}
     inwardEntries.forEach((e) => {
       const inv = e.purchaseInvoiceNo?.trim() || "—"
-      map[inv] = (map[inv] || 0) + (Number(e.numberOfBirds) || 0)
+      if (!inwardMap[inv]) inwardMap[inv] = { birds: 0, weight: 0 }
+      inwardMap[inv].birds += Number(e.numberOfBirds) || 0
+      inwardMap[inv].weight += Number(e.totalWeight) || 0
     })
-    return Object.entries(map).sort((a, b) => b[1] - a[1])
-  }, [inwardEntries])
+    // Birds sold per invoice
+    const soldMap: Record<string, number> = {}
+    sales.forEach((s) => {
+      const inv = s.purchaseInvoiceNo?.trim() || s.invoiceNumber?.trim() || "—"
+      soldMap[inv] = (soldMap[inv] || 0) + (Number(s.numberOfBirds) || 0)
+    })
+    return Object.entries(inwardMap)
+      .map(([inv, data]) => ({
+        invoiceNo: inv,
+        inwardBirds: data.birds,
+        inwardWeight: data.weight,
+        soldBirds: soldMap[inv] || 0,
+        remaining: Math.max(0, data.birds - (soldMap[inv] || 0)),
+      }))
+      .sort((a, b) => b.remaining - a.remaining)
+  }, [inwardEntries, sales])
 
   const ageOfBirdsDays = useMemo(() => {
     if (inwardEntries.length === 0) return null
@@ -186,7 +212,9 @@ export default function InventoryPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{totalBirdsAvailable.toLocaleString()}</div>
-                  <p className="text-xs text-muted-foreground">Inward − Sales − Mortality</p>
+                  <p className="text-xs text-muted-foreground">
+                    In: {totalInwardBirds.toLocaleString()} | Sold: {totalSoldBirds.toLocaleString()} | Dead: {totalMortality.toLocaleString()}
+                  </p>
                 </CardContent>
               </Card>
 
@@ -240,18 +268,36 @@ export default function InventoryPage() {
                 {stockByInvoice.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-4">No inward entries yet. Add entries from Godown Inward Entry.</p>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {stockByInvoice.map(([invoiceNo, birds]) => (
-                      <div
-                        key={invoiceNo}
-                        className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm"
-                      >
-                        <div className="text-xs font-medium text-muted-foreground truncate" title={invoiceNo}>
-                          {invoiceNo || "—"}
-                        </div>
-                        <div className="text-xl font-bold mt-1">{Number(birds).toLocaleString()} birds</div>
-                      </div>
-                    ))}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-gray-50">
+                          <th className="text-left p-2 font-semibold">Purchase Bill No.</th>
+                          <th className="text-right p-2 font-semibold">Inward Birds</th>
+                          <th className="text-right p-2 font-semibold">Inward Wt (kg)</th>
+                          <th className="text-right p-2 font-semibold">Sold Birds</th>
+                          <th className="text-right p-2 font-semibold text-green-700">Remaining</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {stockByInvoice.map(({ invoiceNo, inwardBirds, inwardWeight, soldBirds, remaining }) => (
+                          <tr key={invoiceNo} className="border-b hover:bg-gray-50">
+                            <td className="p-2 font-medium">{invoiceNo}</td>
+                            <td className="p-2 text-right">{inwardBirds.toLocaleString()}</td>
+                            <td className="p-2 text-right">{inwardWeight.toFixed(2)}</td>
+                            <td className="p-2 text-right text-red-600">{soldBirds.toLocaleString()}</td>
+                            <td className="p-2 text-right font-bold text-green-700">{remaining.toLocaleString()}</td>
+                          </tr>
+                        ))}
+                        <tr className="border-t-2 bg-gray-100 font-semibold">
+                          <td className="p-2">TOTAL</td>
+                          <td className="p-2 text-right">{totalInwardBirds.toLocaleString()}</td>
+                          <td className="p-2 text-right">{totalInwardWeight.toFixed(2)}</td>
+                          <td className="p-2 text-right text-red-600">{totalSoldBirds.toLocaleString()}</td>
+                          <td className="p-2 text-right text-green-700">{totalBirdsAvailable.toLocaleString()}</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </CardContent>

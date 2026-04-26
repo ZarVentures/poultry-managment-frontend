@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Edit2, Trash2, X } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { DateRangeFilter } from "@/components/date-range-filter"
 import { godownApi, vehiclesApi, farmersApi, purchasesApi, type GodownInward, type GodownCage, type Vehicle } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -23,6 +24,9 @@ export default function GodownInwardPage() {
   const [entries, setEntries] = useState<GodownInward[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [farmers, setFarmers] = useState<ActiveFarmer[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
+  const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
@@ -337,6 +341,27 @@ export default function GodownInwardPage() {
     }
   }, [formData.numberOfBirds, formData.averageWeight])
 
+  const filteredEntries = useMemo(() => {
+    let f = [...entries]
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      f = f.filter(e =>
+        (e.purchaseInvoiceNo || '').toLowerCase().includes(q) ||
+        (e.supplierName || '').toLowerCase().includes(q)
+      )
+    }
+    if (dateRangeStart && dateRangeEnd) {
+      const start = new Date(dateRangeStart); start.setHours(0,0,0,0)
+      const end = new Date(dateRangeEnd); end.setHours(23,59,59,999)
+      f = f.filter(e => {
+        if (!e.entryDate) return false
+        const d = new Date(e.entryDate); d.setHours(0,0,0,0)
+        return d >= start && d <= end
+      })
+    }
+    return f
+  }, [entries, searchQuery, dateRangeStart, dateRangeEnd])
+
   if (!mounted) return null
 
   return (
@@ -521,7 +546,7 @@ export default function GodownInwardPage() {
                       <SelectTrigger>
                         <SelectValue placeholder="Select farmer" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-60 overflow-y-auto">
                         {farmers.map((farmer) => (
                           <SelectItem key={farmer.id} value={farmer.id}>
                             {farmer.name}
@@ -551,7 +576,7 @@ export default function GodownInwardPage() {
                     <SelectTrigger>
                       <SelectValue placeholder="Select vehicle" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-60 overflow-y-auto">
                       {vehicles.map((vehicle) => (
                         <SelectItem key={vehicle.id} value={vehicle.id}>
                           {vehicle.vehicleNumber} - {vehicle.driverName}
@@ -634,13 +659,35 @@ export default function GodownInwardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Inward Entries</CardTitle>
+            <div className="flex flex-wrap items-center gap-3">
+              <CardTitle>Inward Entries</CardTitle>
+              <div className="flex items-center gap-2 flex-wrap ml-auto">
+                <DateRangeFilter
+                  startDate={dateRangeStart}
+                  endDate={dateRangeEnd}
+                  onDateRangeChange={(s, e) => { setDateRangeStart(s); setDateRangeEnd(e) }}
+                />
+                <Input
+                  placeholder="Search by bill no or supplier..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-[220px]"
+                />
+                {(searchQuery || dateRangeStart) && (
+                  <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(''); setDateRangeStart(undefined); setDateRangeEnd(undefined) }}>
+                    <X size={14} className="mr-1" /> Clear
+                  </Button>
+                )}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {loading && entries.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">Loading...</p>
-            ) : entries.length === 0 ? (
-              <p className="text-center py-8 text-muted-foreground">No entries found</p>
+            ) : filteredEntries.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">
+                {entries.length === 0 ? 'No entries found' : 'No entries match your filters'}
+              </p>
             ) : (
               <Table>
                 <TableHeader>
@@ -656,7 +703,7 @@ export default function GodownInwardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {entries.map((entry) => (
+                  {filteredEntries.map((entry) => (
                     <TableRow key={entry.id}>
                       <TableCell>{new Date(entry.entryDate).toLocaleDateString()}</TableCell>
                       <TableCell>{entry.purchaseInvoiceNo || "-"}</TableCell>

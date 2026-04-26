@@ -347,6 +347,7 @@ export default function ExpensesPage() {
                       onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                       placeholder="0.00"
                       disabled={loading}
+                      className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
                   <div className="space-y-2">
@@ -361,9 +362,10 @@ export default function ExpensesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="upi">UPI</SelectItem>
                         <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                         <SelectItem value="check">Check</SelectItem>
-                        <SelectItem value="credit_card">Credit Card</SelectItem>
+                        <SelectItem value="credit_card">Card</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -457,13 +459,11 @@ export default function ExpensesPage() {
           </Card>
         </div>
 
+        <h2 className="text-xl font-semibold">All Expenses</h2>
+
         <Card>
           <CardHeader>
             <div className="flex justify-between items-start">
-              {/* <div>
-                <CardTitle>All Expenses</CardTitle>
-                <p className="text-sm text-muted-foreground">Complete list of all expenses</p>
-              </div> */}
               <div className="flex items-center gap-2 flex-wrap">
                 <DateRangeFilter
                   startDate={dateRangeStart}

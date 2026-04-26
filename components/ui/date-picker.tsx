@@ -56,6 +56,7 @@ export function DatePicker({
           hover:border-green-500 
           focus-within:border-green-600 
           transition-all duration-200
+          [&_input]:font-normal [&_input]:text-sm
           ${className}
         `}
       />
