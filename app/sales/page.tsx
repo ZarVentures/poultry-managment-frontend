@@ -248,7 +248,7 @@ export default function SalesPage() {
     if (!formData.invoiceNumber || !formData.customerName) {
       toast.error("Bill number and customer name are required"); return
     }
-    if (!formData.totalWeight || parseFloat(formData.totalWeight) <= 0) {
+    if (totalWeight <= 0) {
       toast.error("Enter total weight"); return
     }
     try {
@@ -263,7 +263,7 @@ export default function SalesPage() {
         saleDate: formData.saleDate,
         saleMode: formData.saleMode,
         productType: formData.productType,
-        quantity: formData.totalWeight,
+        quantity: String(totalWeight),
         unit: "kg",
         unitPrice: formData.ratePerKg || "0",
         transportCharges: formData.transportCharges || "0",

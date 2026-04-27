@@ -488,13 +488,13 @@ export default function FinancialAnalyticsPage() {
                   totalCost: { label: "Total Costs", color: "#ef4444" },
                   profit: { label: "Profit", color: "#3b82f6" },
                 }}
-                className="h-80"
+                className="h-72 w-full"
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={monthlyTrends}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="monthShort" />
-                    <YAxis />
+                    <XAxis dataKey="monthShort" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} width={60} tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} />
                     <Tooltip formatter={(value: number) => `₹${value.toLocaleString()}`} />
                     <Legend />
                     <Area type="monotone" dataKey="revenue" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
@@ -516,13 +516,13 @@ export default function FinancialAnalyticsPage() {
                 config={{
                   profitMargin: { label: "Profit Margin %", color: "#10b981" },
                 }}
-                className="h-80"
+                className="h-72 w-full"
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={monthlyTrends}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="monthShort" />
-                    <YAxis />
+                    <XAxis dataKey="monthShort" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} width={45} />
                     <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
                     <Legend />
                     <Line
