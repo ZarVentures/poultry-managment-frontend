@@ -20,9 +20,15 @@ const FarmLedgerPage = () => {
   useEffect(() => {
     Promise.all([farmersApi.getAll(), purchasesApi.getAll()])
       .then(([farmerList, allPurchases]) => {
-        // Only show farmers that have purchase orders
+        // Match farmers by farmerId OR by supplierName matching farmer name
         const farmerIdsWithPO = new Set(allPurchases.map((p: any) => p.farmerId).filter(Boolean))
-        const activeFarmers = farmerList.filter(f => farmerIdsWithPO.has(f.id))
+        const farmerNamesWithPO = new Set(
+          allPurchases.map((p: any) => (p.supplierName || '').toLowerCase().trim()).filter(Boolean)
+        )
+        const activeFarmers = farmerList.filter(f =>
+          farmerIdsWithPO.has(f.id) ||
+          farmerNamesWithPO.has((f.name || '').toLowerCase().trim())
+        )
         const list = activeFarmers.length > 0 ? activeFarmers : farmerList
         setFarmers(list)
         if (list.length > 0) setSelectedId(list[0].id)
@@ -33,7 +39,10 @@ const FarmLedgerPage = () => {
   }, [])
 
   const selectedFarmer = farmers.find(f => f.id === selectedId)
-  const farmerPurchases = purchases.filter(p => p.farmerId === selectedId)
+  const farmerPurchases = purchases.filter(p =>
+    p.farmerId === selectedId ||
+    (selectedFarmer && (p.supplierName || '').toLowerCase().trim() === (selectedFarmer.name || '').toLowerCase().trim())
+  )
     .sort((a: any, b: any) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime())
 
   // Build ledger entries
