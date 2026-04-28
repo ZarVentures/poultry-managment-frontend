@@ -101,7 +101,6 @@ export default function SalesPage() {
     setFormData(f => ({
       ...f,
       purchaseBillNo: billNo,
-      invoiceNumber: billNo || f.invoiceNumber,
     }))
     setPurchaseCages([])
     setSelectedCageIds(new Set())
@@ -377,12 +376,16 @@ export default function SalesPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Sale No. *</Label>
-                        <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value }))} placeholder="Enter sale number" disabled={loading} />
+                        <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value }))} placeholder="e.g. 416" disabled={loading} />
                       </div>
                       <div className="space-y-2">
-                        <Label>Sale Date *</Label>
-                        <DatePicker value={formData.saleDate} onChange={d => setFormData(f => ({ ...f, saleDate: d }))} disabled={loading} />
+                        <Label>Bill No (unique) *</Label>
+                        <Input value={formData.invoiceNumber} onChange={e => setFormData(f => ({ ...f, invoiceNumber: e.target.value }))} placeholder="e.g. SI-416" disabled={loading} />
                       </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Sale Date *</Label>
+                      <DatePicker value={formData.saleDate} onChange={d => setFormData(f => ({ ...f, saleDate: d }))} disabled={loading} />
                     </div>
 
                     <div className="space-y-2">
