@@ -375,17 +375,13 @@ export default function SalesPage() {
                     {/* Sale No + Sale Date — 2 col */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Sale No. *</Label>
-                        <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value }))} placeholder="e.g. 416" disabled={loading} />
+                        <Label>Sale No. * (unique per sale)</Label>
+                        <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value, invoiceNumber: e.target.value }))} placeholder="e.g. SI-416" disabled={loading} />
                       </div>
                       <div className="space-y-2">
-                        <Label>Bill No (unique) *</Label>
-                        <Input value={formData.invoiceNumber} onChange={e => setFormData(f => ({ ...f, invoiceNumber: e.target.value }))} placeholder="e.g. SI-416" disabled={loading} />
+                        <Label>Sale Date *</Label>
+                        <DatePicker value={formData.saleDate} onChange={d => setFormData(f => ({ ...f, saleDate: d }))} disabled={loading} />
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Sale Date *</Label>
-                      <DatePicker value={formData.saleDate} onChange={d => setFormData(f => ({ ...f, saleDate: d }))} disabled={loading} />
                     </div>
 
                     <div className="space-y-2">
