@@ -34,6 +34,22 @@ const FarmLedgerPage = () => {
         if (list.length > 0) setSelectedId(list[0].id)
         setPurchases(allPurchases)
       })
+      .then(([farmerList, allPurchases]: any) => {
+         const safeFarmers = Array.isArray(farmerList) ? farmerList : farmerList?.data || []
+        const safePurchases = Array.isArray(allPurchases) ? allPurchases : allPurchases?.data || []
+
+        const farmerIdsWithPO = new Set(
+       safePurchases.map((p: any) => p.farmerId).filter(Boolean)
+     )
+
+    const activeFarmers = safeFarmers.filter((f: any) => farmerIdsWithPO.has(f.id))
+    const list = activeFarmers.length > 0 ? activeFarmers : safeFarmers
+
+    setFarmers(list)
+    if (list.length > 0) setSelectedId(list[0].id)
+
+     setPurchases(safePurchases)
+})
       .catch(err => console.error('Farm ledger error:', err))
       .finally(() => setLoadingFarmers(false))
   }, [])
