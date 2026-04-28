@@ -18,41 +18,45 @@ const FarmLedgerPage = () => {
   const [loadingPurchases, setLoadingPurchases] = useState(false)
 
   useEffect(() => {
-    Promise.all([farmersApi.getAll(), purchasesApi.getAll()])
-      .then(([farmerList, allPurchases]) => {
-        // Match farmers by farmerId OR by supplierName matching farmer name
-        const farmerIdsWithPO = new Set(allPurchases.map((p: any) => p.farmerId).filter(Boolean))
-        const farmerNamesWithPO = new Set(
-          allPurchases.map((p: any) => (p.supplierName || '').toLowerCase().trim()).filter(Boolean)
-        )
-        const activeFarmers = farmerList.filter(f =>
-          farmerIdsWithPO.has(f.id) ||
-          farmerNamesWithPO.has((f.name || '').toLowerCase().trim())
-        )
-        const list = activeFarmers.length > 0 ? activeFarmers : farmerList
-        setFarmers(list)
-        if (list.length > 0) setSelectedId(list[0].id)
-        setPurchases(allPurchases)
-      })
-      .then(([farmerList, allPurchases]: any) => {
-         const safeFarmers = Array.isArray(farmerList) ? farmerList : farmerList?.data || []
-        const safePurchases = Array.isArray(allPurchases) ? allPurchases : allPurchases?.data || []
+  Promise.all([farmersApi.getAll(), purchasesApi.getAll()])
+    .then(([farmerList, allPurchases]: any) => {
 
-        const farmerIdsWithPO = new Set(
-       safePurchases.map((p: any) => p.farmerId).filter(Boolean)
-     )
+      // ✅ safe data extraction
+      const safeFarmers = Array.isArray(farmerList)
+        ? farmerList
+        : farmerList?.data || []
 
-    const activeFarmers = safeFarmers.filter((f: any) => farmerIdsWithPO.has(f.id))
-    const list = activeFarmers.length > 0 ? activeFarmers : safeFarmers
+      const safePurchases = Array.isArray(allPurchases)
+        ? allPurchases
+        : allPurchases?.data || []
 
-    setFarmers(list)
-    if (list.length > 0) setSelectedId(list[0].id)
+      // ✅ active farmers filter
+      const farmerIdsWithPO = new Set(
+        safePurchases.map((p: any) => p.farmerId).filter(Boolean)
+      )
 
-     setPurchases(safePurchases)
-})
-      .catch(err => console.error('Farm ledger error:', err))
-      .finally(() => setLoadingFarmers(false))
-  }, [])
+      const farmerNamesWithPO = new Set(
+        safePurchases.map((p: any) => (p.supplierName || '').toLowerCase().trim())
+      )
+
+      const activeFarmers = safeFarmers.filter((f: any) =>
+        farmerIdsWithPO.has(f.id) ||
+        farmerNamesWithPO.has((f.name || '').toLowerCase().trim())
+      )
+
+      const list = activeFarmers.length > 0 ? activeFarmers : safeFarmers
+
+      setFarmers(list)
+
+      if (list.length > 0) {
+        setSelectedId(String(list[0].id)) // 🔥 string fix
+      }
+
+      setPurchases(safePurchases)
+    })
+    .catch(err => console.error('Farm ledger error:', err))
+    .finally(() => setLoadingFarmers(false))
+}, [])
 
   const selectedFarmer = farmers.find(f => f.id === selectedId)
   const farmerPurchases = purchases.filter(p =>
