@@ -450,10 +450,22 @@ export default function SalesPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Shop / Retailer *</Label>
-                        <Select value={formData.retailerId} onValueChange={handleRetailerChange} disabled={loading}>
-                          <SelectTrigger><SelectValue placeholder="Select shop" /></SelectTrigger>
-                          <SelectContent>{retailers.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
-                        </Select>
+                        <Select value={String(formData.retailerId || "")} onValueChange={handleRetailerChange}>
+                         <SelectTrigger>
+                           <SelectValue placeholder="Select shop" />
+                         </SelectTrigger>
+                       
+                         <SelectContent
+                           className="max-h-60 overflow-y-auto z-50"
+                           position="popper"
+                         >
+                           {retailers.map(r => (
+                             <SelectItem key={r.id} value={String(r.id)}>
+                               {r.name}
+                             </SelectItem>
+                           ))}
+                         </SelectContent>
+                       </Select>
                       </div>
                       <div className="space-y-2">
                         <Label>Owner Name</Label>
