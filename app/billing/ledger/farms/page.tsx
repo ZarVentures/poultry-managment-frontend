@@ -111,7 +111,7 @@ const FarmLedgerPage = () => {
               ) : (
                 <Select value={selectedId} onValueChange={setSelectedId}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-60 overflow-y-auto">
                     {farmers.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
                   </SelectContent>
                 </Select>

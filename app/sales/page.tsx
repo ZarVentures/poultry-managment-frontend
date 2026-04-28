@@ -366,7 +366,7 @@ export default function SalesPage() {
                       <Label>Purchase Bill No *</Label>
                       <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
                         <SelectTrigger><SelectValue placeholder="Select purchase bill" /></SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="max-h-60 overflow-y-auto">
                           <SelectItem value="__none__">Select purchase bill...</SelectItem>
                           {purchaseBills.map(b => <SelectItem key={b.id} value={b.orderNumber}>{b.orderNumber} — {b.supplierName}</SelectItem>)}
                         </SelectContent>
