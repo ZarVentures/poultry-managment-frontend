@@ -400,45 +400,45 @@ export default function SalesPage() {
                             </Label>
                             <p className="text-xs text-muted-foreground mt-0.5">Checked cages will be marked as <span className="text-green-700 font-medium">SOLD</span> when you create the sale</p>
                           </div>
-                          {loadingCages && <span className="text-xs text-muted-foreground">Loading cages...</span>}
+                          {loadingCages && <span className="text-sm text-muted-foreground">Loading cages...</span>}
                           {!loadingCages && purchaseCages.length > 0 && (
-                            <button type="button" onClick={toggleAllCages} className="text-xs text-blue-700 underline">
+                            <button type="button" onClick={toggleAllCages} className="text-sm text-blue-700 underline">
                               {selectedCageIds.size === purchaseCages.length ? 'Deselect All' : 'Select All'}
                             </button>
                           )}
                         </div>
                         {!loadingCages && purchaseCages.length === 0 && (
-                          <p className="text-xs text-muted-foreground">No pending cages found for this purchase bill.</p>
+                          <p className="text-sm text-muted-foreground">No pending cages found for this purchase bill.</p>
                         )}
                         {!loadingCages && purchaseCages.length > 0 && (
                           <div className="overflow-x-auto">
-                            <table className="w-full text-xs">
+                            <table className="w-full text-sm">
                               <thead>
                                 <tr className="border-b bg-blue-100">
-                                  <th className="p-1 w-8"></th>
-                                  <th className="text-left p-1">Cage ID</th>
-                                  <th className="text-right p-1">Birds</th>
-                                  <th className="text-right p-1">Weight (kg)</th>
+                                  <th className="p-2 w-8"></th>
+                                  <th className="text-left p-2">Cage ID</th>
+                                  <th className="text-right p-2">Birds</th>
+                                  <th className="text-right p-2">Weight (kg)</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {purchaseCages.map(cage => (
                                   <tr key={cage.id} className={`border-b cursor-pointer hover:bg-blue-100 ${selectedCageIds.has(cage.id!) ? 'bg-green-50' : ''}`}
                                     onClick={() => toggleCage(cage.id!)}>
-                                    <td className="p-1 text-center">
-                                      <input type="checkbox" checked={selectedCageIds.has(cage.id!)} onChange={() => toggleCage(cage.id!)} onClick={e => e.stopPropagation()} />
+                                    <td className="p-2 text-center">
+                                      <input type="checkbox" checked={selectedCageIds.has(cage.id!)} onChange={() => toggleCage(cage.id!)} onClick={e => e.stopPropagation()} className="w-4 h-4" />
                                     </td>
-                                    <td className="p-1 font-medium">{cage.cageId || '-'}</td>
-                                    <td className="p-1 text-right">{cage.numberOfBirds}</td>
-                                    <td className="p-1 text-right">{Number(cage.purchaseWeight).toFixed(2)}</td>
+                                    <td className="p-2 font-medium">{cage.cageId || '-'}</td>
+                                    <td className="p-2 text-right">{cage.numberOfBirds}</td>
+                                    <td className="p-2 text-right">{Number(cage.purchaseWeight).toFixed(2)}</td>
                                   </tr>
                                 ))}
                               </tbody>
                               <tfoot>
                                 <tr className="border-t font-semibold bg-blue-100">
-                                  <td colSpan={2} className="p-1">{selectedCageIds.size} selected / {purchaseCages.length} total</td>
-                                  <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id!)).reduce((s, c) => s + c.numberOfBirds, 0)}</td>
-                                  <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id!)).reduce((s, c) => s + Number(c.purchaseWeight), 0).toFixed(2)}</td>
+                                  <td colSpan={2} className="p-2">{selectedCageIds.size} selected / {purchaseCages.length} total</td>
+                                  <td className="p-2 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id!)).reduce((s, c) => s + c.numberOfBirds, 0)}</td>
+                                  <td className="p-2 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id!)).reduce((s, c) => s + Number(c.purchaseWeight), 0).toFixed(2)}</td>
                                 </tr>
                               </tfoot>
                             </table>
@@ -793,9 +793,9 @@ export default function SalesPage() {
                   <TableBody>
                     {filtered.map(s => (
                       <TableRow key={s.id}>
-                        <TableCell className="font-medium">{(s as any).saleNo || '-'}</TableCell>
+                        <TableCell>{(s as any).saleNo || '-'}</TableCell>
                         <TableCell>{s.invoiceNumber}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{(s as any).purchaseBillNo || '-'}</TableCell>
+                        <TableCell>{(s as any).purchaseBillNo || '-'}</TableCell>
                         <TableCell>{new Date(s.saleDate).toLocaleDateString()}</TableCell>
                         <TableCell>{s.customerName}</TableCell>
                         <TableCell><span className="text-xs px-2 py-0.5 rounded bg-gray-100">{s.saleMode === 'from_vehicle' ? 'Vehicle' : 'Godown'}</span></TableCell>

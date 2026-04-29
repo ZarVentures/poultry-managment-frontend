@@ -628,7 +628,7 @@ export default function PurchasesPage() {
                   <TableBody>
                     {filtered.map(p => (
                       <TableRow key={p.id}>
-                        <TableCell className="font-medium">{p.orderNumber}</TableCell>
+                        <TableCell>{p.orderNumber}</TableCell>
                         <TableCell>{p.supplierName}</TableCell>
                         <TableCell>{new Date(p.orderDate).toLocaleDateString()}</TableCell>
                         <TableCell>{Number(p.totalWeight || 0).toFixed(2)} kg</TableCell>
