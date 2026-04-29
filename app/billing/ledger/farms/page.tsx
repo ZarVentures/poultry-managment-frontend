@@ -163,9 +163,9 @@ const FarmLedgerPage = () => {
                   <TableHead>Date</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Reference</TableHead>
-                  <TableHead className="text-right">Debit (₹)</TableHead>
-                  <TableHead className="text-right">Credit (₹)</TableHead>
-                  <TableHead className="text-right">Balance (₹)</TableHead>
+                  <TableHead className="text-right">Purchase Amount (₹)</TableHead>
+                  <TableHead className="text-right">Payment Given (₹)</TableHead>
+                  <TableHead className="text-right">Pending Amount (₹)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

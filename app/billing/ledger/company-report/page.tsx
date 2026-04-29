@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Download, Printer, TrendingUp, TrendingDown, Calendar, Building2 } from 'lucide-react'
-import { salesApi, retailersApi, purchasesApi } from '@/lib/api'
+import { salesApi, retailersApi, purchasesApi, expensesApi, mortalityApi } from '@/lib/api'
 
 interface LedgerEntry {
   date: string
@@ -16,6 +16,8 @@ interface LedgerEntry {
   reference: string
   debit: number
   credit: number
+  category: 'sale' | 'purchase' | 'expense' | 'mortality' | 'payment'
+  count?: number
 }
 
 const CompanyLedgerReportPage = () => {
@@ -25,15 +27,15 @@ const CompanyLedgerReportPage = () => {
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0])
 
   useEffect(() => {
-    Promise.all([salesApi.getAll(), retailersApi.getAll(), purchasesApi.getAll()])
-      .then(([sales, retailers, purchases]) => {
+    Promise.all([salesApi.getAll(), retailersApi.getAll(), purchasesApi.getAll(), expensesApi.getAll(), mortalityApi.getAll()])
+      .then(([sales, retailers, purchases, expenses, mortalities]) => {
         const retailerMap: Record<string, string> = {}
         retailers.forEach(r => { retailerMap[r.id] = r.name })
 
         const all: LedgerEntry[] = []
 
         // Sales as debit entries
-        for (const sale of sales) {
+        for (const sale of (Array.isArray(sales) ? sales : [])) {
           const partyName = sale.retailerId ? (retailerMap[sale.retailerId] || sale.customerName) : sale.customerName
           all.push({
             date: sale.saleDate,
@@ -42,6 +44,7 @@ const CompanyLedgerReportPage = () => {
             reference: sale.invoiceNumber,
             debit: Number(sale.netAmount || sale.totalAmount || 0),
             credit: 0,
+            category: 'sale'
           })
           // Payment received as credit
           const received = Number(sale.amountReceived || 0)
@@ -53,12 +56,13 @@ const CompanyLedgerReportPage = () => {
               reference: `PMT-${sale.invoiceNumber}`,
               debit: 0,
               credit: received,
+              category: 'payment'
             })
           }
         }
 
         // Purchases as credit entries (money going out)
-        for (const po of purchases) {
+        for (const po of (Array.isArray(purchases) ? purchases : [])) {
           all.push({
             date: po.orderDate,
             type: 'Purchase',
@@ -66,6 +70,7 @@ const CompanyLedgerReportPage = () => {
             reference: po.orderNumber,
             debit: 0,
             credit: Number(po.netAmount || po.totalAmount || 0),
+            category: 'purchase'
           })
           const paid = Number(po.totalPaymentMade || 0)
           if (paid > 0) {
@@ -76,8 +81,37 @@ const CompanyLedgerReportPage = () => {
               reference: `PAY-${po.orderNumber}`,
               debit: paid,
               credit: 0,
+              category: 'payment'
             })
           }
+        }
+
+        // Expenses
+        for (const exp of (Array.isArray(expenses) ? expenses : [])) {
+          all.push({
+            date: exp.expenseDate,
+            type: 'Expense',
+            party: exp.category,
+            reference: exp.description || 'Expense',
+            debit: 0,
+            credit: Number(exp.amount || 0),
+            category: 'expense'
+          })
+        }
+
+        // Mortality
+        for (const m of (Array.isArray(mortalities) ? mortalities : [])) {
+          const mDate = (m as any).mortalityDate || m.purchaseDate || m.createdAt?.split('T')[0] || new Date().toISOString().split('T')[0]
+          all.push({
+            date: mDate,
+            type: 'Mortality',
+            party: m.farmerName || 'Farm',
+            reference: `Died: ${m.numberOfBirdsDied} birds`,
+            debit: 0,
+            credit: 0,
+            category: 'mortality',
+            count: Number(m.numberOfBirdsDied || 0)
+          })
         }
 
         all.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -93,12 +127,21 @@ const CompanyLedgerReportPage = () => {
   })
 
   const totals = filtered.reduce((acc, e) => ({ debit: acc.debit + e.debit, credit: acc.credit + e.credit }), { debit: 0, credit: 0 })
+  
+  const stats = {
+    totalSales: filtered.filter(e => e.category === 'sale').reduce((sum, e) => sum + e.debit, 0),
+    totalPurchase: filtered.filter(e => e.category === 'purchase').reduce((sum, e) => sum + e.credit, 0),
+    totalExpense: filtered.filter(e => e.category === 'expense').reduce((sum, e) => sum + e.credit, 0),
+    totalMortality: filtered.filter(e => e.category === 'mortality').reduce((sum, e) => sum + (e.count || 0), 0)
+  }
 
   const getTypeColor = (type: string) => {
     if (type === 'Sale') return 'border-l-4 border-l-orange-400 bg-orange-50'
     if (type === 'Payment Received') return 'border-l-4 border-l-green-500 bg-green-50'
     if (type === 'Purchase') return 'border-l-4 border-l-red-400 bg-red-50'
     if (type === 'Purchase Payment') return 'border-l-4 border-l-blue-400 bg-blue-50'
+    if (type === 'Expense') return 'border-l-4 border-l-purple-400 bg-purple-50'
+    if (type === 'Mortality') return 'border-l-4 border-l-gray-400 bg-gray-50'
     return ''
   }
 
@@ -139,15 +182,15 @@ const CompanyLedgerReportPage = () => {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <Card className="border border-orange-200 bg-orange-50 p-6">
             <TrendingUp className="w-5 h-5 text-orange-600 mb-2" />
-            <p className="text-sm text-gray-600 font-medium">Total Sales (Debit)</p>
+            <p className="text-sm text-gray-600 font-medium"> Total Money Out</p>
             <p className="text-2xl font-bold text-orange-600 mt-2">₹{totals.debit.toLocaleString('en-IN')}</p>
           </Card>
           <Card className="border border-green-200 bg-green-50 p-6">
             <TrendingDown className="w-5 h-5 text-green-600 mb-2" />
-            <p className="text-sm text-gray-600 font-medium">Total Payments (Credit)</p>
+            <p className="text-sm text-gray-600 font-medium">Total Money In</p>
             <p className="text-2xl font-bold text-green-600 mt-2">₹{totals.credit.toLocaleString('en-IN')}</p>
           </Card>
           <Card className="border border-gray-300 bg-gray-50 p-6">
@@ -155,6 +198,29 @@ const CompanyLedgerReportPage = () => {
             <p className={`text-2xl font-bold mt-2 ${(totals.debit - totals.credit) > 0 ? 'text-red-600' : 'text-green-600'}`}>
               ₹{(totals.debit - totals.credit).toLocaleString('en-IN')}
             </p>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="border border-orange-200 bg-orange-50 p-6">
+            <TrendingUp className="w-5 h-5 text-orange-600 mb-2" />
+            <p className="text-sm text-gray-600 font-medium">Total Sales</p>
+            <p className="text-2xl font-bold text-orange-600 mt-2">₹{stats.totalSales.toLocaleString('en-IN')}</p>
+          </Card>
+          <Card className="border border-red-200 bg-red-50 p-6">
+            <TrendingDown className="w-5 h-5 text-red-600 mb-2" />
+            <p className="text-sm text-gray-600 font-medium">Total Purchase</p>
+            <p className="text-2xl font-bold text-red-600 mt-2">₹{stats.totalPurchase.toLocaleString('en-IN')}</p>
+          </Card>
+          <Card className="border border-purple-200 bg-purple-50 p-6">
+            <TrendingDown className="w-5 h-5 text-purple-600 mb-2" />
+            <p className="text-sm text-gray-600 font-medium">Total Expense</p>
+            <p className="text-2xl font-bold text-purple-600 mt-2">₹{stats.totalExpense.toLocaleString('en-IN')}</p>
+          </Card>
+          <Card className="border border-gray-300 bg-gray-50 p-6">
+            <TrendingDown className="w-5 h-5 text-gray-600 mb-2" />
+            <p className="text-sm text-gray-600 font-medium">Total Mortality</p>
+            <p className="text-2xl font-bold text-gray-800 mt-2">{stats.totalMortality} Birds</p>
           </Card>
         </div>
 
@@ -177,8 +243,8 @@ const CompanyLedgerReportPage = () => {
                     <TableHead className="font-semibold">Type</TableHead>
                     <TableHead className="font-semibold">Party</TableHead>
                     <TableHead className="font-semibold">Reference</TableHead>
-                    <TableHead className="text-right font-semibold">Debit (₹)</TableHead>
-                    <TableHead className="text-right font-semibold">Credit (₹)</TableHead>
+                    <TableHead className="text-right font-semibold">Money Out (₹)</TableHead>
+                    <TableHead className="text-right font-semibold">Money In (₹)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
