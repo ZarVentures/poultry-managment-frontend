@@ -18,6 +18,7 @@ interface LedgerEntry {
   credit: number
   category: 'sale' | 'purchase' | 'expense' | 'mortality' | 'payment'
   count?: number
+  remarks?: string
 }
 
 const CompanyLedgerReportPage = () => {
@@ -37,51 +38,38 @@ const CompanyLedgerReportPage = () => {
         // Sales as debit entries
         for (const sale of (Array.isArray(sales) ? sales : [])) {
           const partyName = sale.retailerId ? (retailerMap[sale.retailerId] || sale.customerName) : sale.customerName
-          all.push({
-            date: sale.saleDate,
-            type: 'Sale',
-            party: partyName,
-            reference: sale.invoiceNumber,
-            debit: Number(sale.netAmount || sale.totalAmount || 0),
-            credit: 0,
-            category: 'sale'
-          })
-          // Payment received as credit
+          const saleAmt = Number(sale.netAmount || sale.totalAmount || 0)
           const received = Number(sale.amountReceived || 0)
-          if (received > 0) {
+          
+          if (saleAmt > 0 || received > 0) {
             all.push({
               date: sale.saleDate,
-              type: 'Payment Received',
+              type: saleAmt > 0 ? 'Sale' : 'Payment Received',
               party: partyName,
-              reference: `PMT-${sale.invoiceNumber}`,
-              debit: 0,
+              reference: sale.invoiceNumber,
+              debit: saleAmt,
               credit: received,
-              category: 'payment'
+              category: 'sale',
+              remarks: sale.notes || (sale as any).remarks || ''
             })
           }
         }
 
         // Purchases as credit entries (money going out)
         for (const po of (Array.isArray(purchases) ? purchases : [])) {
-          all.push({
-            date: po.orderDate,
-            type: 'Purchase',
-            party: po.supplierName,
-            reference: po.orderNumber,
-            debit: 0,
-            credit: Number(po.netAmount || po.totalAmount || 0),
-            category: 'purchase'
-          })
+          const poAmt = Number(po.netAmount || po.totalAmount || 0)
           const paid = Number(po.totalPaymentMade || 0)
-          if (paid > 0) {
+
+          if (poAmt > 0 || paid > 0) {
             all.push({
               date: po.orderDate,
-              type: 'Purchase Payment',
+              type: poAmt > 0 ? 'Purchase' : 'Purchase Payment',
               party: po.supplierName,
-              reference: `PAY-${po.orderNumber}`,
+              reference: po.orderNumber,
               debit: paid,
-              credit: 0,
-              category: 'payment'
+              credit: poAmt,
+              category: 'purchase',
+              remarks: po.notes || (po as any).remarks || ''
             })
           }
         }
@@ -95,7 +83,8 @@ const CompanyLedgerReportPage = () => {
             reference: exp.description || 'Expense',
             debit: 0,
             credit: Number(exp.amount || 0),
-            category: 'expense'
+            category: 'expense',
+            remarks: exp.notes || (exp as any).remarks || ''
           })
         }
 
@@ -110,7 +99,8 @@ const CompanyLedgerReportPage = () => {
             debit: 0,
             credit: 0,
             category: 'mortality',
-            count: Number(m.numberOfBirdsDied || 0)
+            count: Number(m.numberOfBirdsDied || 0),
+            remarks: m.notes || (m as any).remarks || ''
           })
         }
 
@@ -121,7 +111,11 @@ const CompanyLedgerReportPage = () => {
       .finally(() => setLoading(false))
   }, [])
 
-  const filtered = entries.filter(e => {
+  let runningBalance = 0;
+  const filtered = entries.map(e => {
+    runningBalance += (e.debit - e.credit);
+    return { ...e, balance: runningBalance };
+  }).filter(e => {
     const d = new Date(e.date)
     return d >= new Date(dateFrom) && d <= new Date(dateTo)
   })
@@ -182,7 +176,7 @@ const CompanyLedgerReportPage = () => {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 print:hidden">
           <Card className="border border-orange-200 bg-orange-50 p-6">
             <TrendingUp className="w-5 h-5 text-orange-600 mb-2" />
             <p className="text-sm text-gray-600 font-medium"> Total Money Out</p>
@@ -201,7 +195,7 @@ const CompanyLedgerReportPage = () => {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print:hidden">
           <Card className="border border-orange-200 bg-orange-50 p-6">
             <TrendingUp className="w-5 h-5 text-orange-600 mb-2" />
             <p className="text-sm text-gray-600 font-medium">Total Sales</p>
@@ -242,9 +236,11 @@ const CompanyLedgerReportPage = () => {
                     <TableHead className="font-semibold">Date</TableHead>
                     <TableHead className="font-semibold">Type</TableHead>
                     <TableHead className="font-semibold">Party</TableHead>
+                    <TableHead className="font-semibold">Remarks</TableHead>
                     <TableHead className="font-semibold">Reference</TableHead>
                     <TableHead className="text-right font-semibold">Money Out (₹)</TableHead>
                     <TableHead className="text-right font-semibold">Money In (₹)</TableHead>
+                    <TableHead className="text-right font-semibold">Balance (₹)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -259,15 +255,18 @@ const CompanyLedgerReportPage = () => {
                           <TableCell className="font-medium">{new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN')}</TableCell>
                           <TableCell className="font-semibold text-sm">{e.type}</TableCell>
                           <TableCell className="text-gray-700">{e.party}</TableCell>
+                          <TableCell className="text-gray-600 text-sm max-w-[150px] truncate" title={e.remarks}>{e.remarks || '-'}</TableCell>
                           <TableCell className="font-mono text-sm text-gray-600">{e.reference}</TableCell>
                           <TableCell className="text-right font-medium text-orange-600">{e.debit > 0 ? `₹${e.debit.toLocaleString('en-IN')}` : '–'}</TableCell>
                           <TableCell className="text-right font-medium text-green-600">{e.credit > 0 ? `₹${e.credit.toLocaleString('en-IN')}` : '–'}</TableCell>
+                          <TableCell className={`text-right font-bold ${e.balance > 0 ? 'text-orange-600' : 'text-green-600'}`}>₹{Math.abs(e.balance).toLocaleString('en-IN')} {e.balance > 0 ? '(Dr)' : e.balance < 0 ? '(Cr)' : ''}</TableCell>
                         </TableRow>
                       ))}
                       <TableRow className="bg-gray-100 font-bold border-t-2 border-gray-300">
-                        <TableCell colSpan={4} className="text-right">TOTALS</TableCell>
+                        <TableCell colSpan={5} className="text-right">TOTALS</TableCell>
                         <TableCell className="text-right text-orange-600">₹{totals.debit.toLocaleString('en-IN')}</TableCell>
                         <TableCell className="text-right text-green-600">₹{totals.credit.toLocaleString('en-IN')}</TableCell>
+                        <TableCell></TableCell>
                       </TableRow>
                     </>
                   )}

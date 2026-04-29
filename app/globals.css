@@ -361,8 +361,19 @@
 }
 
 @media print {
-  body > * { display: none !important; }
+  /* Only hide everything if a specific print-invoice element exists */
+  body:has(#print-invoice) > *:not(#print-invoice) { display: none !important; }
   #print-invoice { display: block !important; }
+
+  /* Hide sidebar, header, and specific non-printable elements */
+  aside, header, .print-hidden, .print\:hidden { display: none !important; }
+
+  /* Fix pagination truncation */
+  .h-screen, .flex-1, .overflow-hidden, .overflow-auto, .overflow-x-auto {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
 }
 
 /* Chrome, Safari, Edge */
