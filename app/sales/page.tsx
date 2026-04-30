@@ -31,6 +31,7 @@ export default function SalesPage() {
   const [purchaseCages, setPurchaseCages] = useState<Array<{ id: string; cageId?: string; numberOfBirds: number; purchaseWeight: number; status?: string }>>([])
   const [selectedCageIds, setSelectedCageIds] = useState<Set<string>>(new Set())
   const [loadingCages, setLoadingCages] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
@@ -105,10 +106,20 @@ export default function SalesPage() {
     setPurchaseCages([])
     setSelectedCageIds(new Set())
     if (!billNo) return
+
     try {
       setLoadingCages(true)
-      const cages = await purchasesApi.getCagesByOrderNumber(billNo, 'pending')
-      const mapped = Array.isArray(cages) ? cages.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) })) : []
+      // In edit mode: fetch sold cages and filter by saleId
+      // In create mode: fetch pending cages
+      const statusFilter = isEditMode ? 'sold' : 'pending'
+      const cages = await purchasesApi.getCagesByOrderNumber(billNo, statusFilter)
+      let mapped = Array.isArray(cages) ? cages.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) })) : []
+
+      // In edit mode, filter to only cages belonging to this sale
+      if (isEditMode && editingId) {
+        mapped = mapped.filter(c => c.saleId === editingId)
+      }
+
       setPurchaseCages(mapped)
       // Pre-select all cages by default
       setSelectedCageIds(new Set(mapped.map(c => c.id)))
@@ -189,6 +200,7 @@ export default function SalesPage() {
     setPayments([emptyPayment()])
     setPurchaseCages([])
     setSelectedCageIds(new Set())
+    setIsEditMode(false)
     setEditingId(null); setSaleFile(null)
   }
 
@@ -203,7 +215,11 @@ export default function SalesPage() {
 
   const handleEdit = async (sale: ApiSale) => {
     setEditingId(sale.id)
+    setIsEditMode(true)
     setShowDialog(true)
+    // Clear any stale cage data immediately so wrong cages never show
+    setPurchaseCages([])
+    setSelectedCageIds(new Set())
 
     // Always fetch full detail to get payments and all fields
     let full: ApiSale = sale
@@ -224,10 +240,12 @@ export default function SalesPage() {
       }
     } catch {}
 
+    const purchaseBillNo = (full as any).purchaseBillNo || ""
+
     setFormData({
       invoiceNumber: full.invoiceNumber,
       saleNo: (full as any).saleNo || "",
-      purchaseBillNo: (full as any).purchaseBillNo || "",
+      purchaseBillNo,
       cageNo: (full as any).cageNo || "",
       numBirds,
       totalWeight: totalWeightVal,
@@ -258,8 +276,25 @@ export default function SalesPage() {
     }
 
     setSaleFile(null)
-    setPurchaseCages([])
-    setSelectedCageIds(new Set())
+
+    // Load the sold cages that belong to this sale
+    if (purchaseBillNo) {
+      try {
+        setLoadingCages(true)
+        const cages = await purchasesApi.getCagesByOrderNumber(purchaseBillNo, 'sold')
+        const mapped = Array.isArray(cages)
+          ? cages
+              .map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) }))
+              .filter(c => c.saleId === full.id)  // only cages for THIS sale
+          : []
+        setPurchaseCages(mapped)
+        setSelectedCageIds(new Set(mapped.map(c => c.id)))
+      } catch {
+        // non-critical — form still works without cage list
+      } finally {
+        setLoadingCages(false)
+      }
+    }
   }
 
   const handleSave = async () => {
@@ -409,7 +444,7 @@ export default function SalesPage() {
                     </div>
 
 
-                    {/* Cage selection from purchase bill */}
+                    {/* Cage panel — pending cages (create mode) or sold cages for this sale (edit mode) */}
                     {formData.purchaseBillNo && formData.purchaseBillNo !== '__none__' && (
                       <div className="border rounded-lg p-3 bg-blue-50 space-y-2">
                         <div className="flex items-center justify-between">
@@ -417,7 +452,12 @@ export default function SalesPage() {
                             <Label className="text-blue-900 font-semibold">
                               Cages from {formData.purchaseBillNo}
                             </Label>
-                            <p className="text-xs text-muted-foreground mt-0.5">Checked cages will be marked as <span className="text-green-700 font-medium">SOLD</span> when you create the sale</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {isEditMode
+                                ? <span className="text-blue-700 font-medium">Cages linked to this sale</span>
+                                : <>Checked cages will be marked as <span className="text-green-700 font-medium">SOLD</span> when you create the sale</>
+                              }
+                            </p>
                           </div>
                           {loadingCages && <span className="text-xs text-muted-foreground">Loading cages...</span>}
                           {!loadingCages && purchaseCages.length > 0 && (
@@ -427,7 +467,9 @@ export default function SalesPage() {
                           )}
                         </div>
                         {!loadingCages && purchaseCages.length === 0 && (
-                          <p className="text-xs text-muted-foreground">No pending cages found for this purchase bill.</p>
+                          <p className="text-xs text-muted-foreground">
+                            {isEditMode ? 'No cages found for this sale.' : 'No pending cages found for this purchase bill.'}
+                          </p>
                         )}
                         {!loadingCages && purchaseCages.length > 0 && (
                           <div className="overflow-x-auto">

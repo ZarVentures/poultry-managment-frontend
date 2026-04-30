@@ -276,6 +276,7 @@ export interface PurchaseOrderCage {
   cageWeight: number;       // legacy alias
   purchaseWeight: number;   // actual field from backend
   status?: 'pending' | 'sold' | 'in_godown';
+  saleId?: string;          // set when cage is sold
 }
 
 // Purchase Order DTO Items (backend expects strings for quantity and unitCost)
