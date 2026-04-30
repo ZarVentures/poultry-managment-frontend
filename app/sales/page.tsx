@@ -781,9 +781,9 @@ export default function SalesPage() {
                   <TableBody>
                     {filtered.map(s => (
                       <TableRow key={s.id}>
-                        <TableCell className="font-medium">{(s as any).saleNo || '-'}</TableCell>
+                        <TableCell>{(s as any).saleNo || '-'}</TableCell>
                         <TableCell>{s.invoiceNumber}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{(s as any).purchaseBillNo || '-'}</TableCell>
+                        <TableCell>{(s as any).purchaseBillNo || '-'}</TableCell>
                         <TableCell>{new Date(s.saleDate).toLocaleDateString()}</TableCell>
                         <TableCell>{s.customerName}</TableCell>
                         <TableCell><span className="text-xs px-2 py-0.5 rounded bg-gray-100">{s.saleMode === 'from_vehicle' ? 'Vehicle' : 'Godown'}</span></TableCell>
