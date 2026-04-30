@@ -99,30 +99,34 @@ export default function SalesPage() {
 
   const handlePurchaseBillChange = async (orderNumber: string) => {
     const billNo = orderNumber === '__none__' ? '' : orderNumber
-    setFormData(f => ({
-      ...f,
-      purchaseBillNo: billNo,
-    }))
+    setFormData(f => ({ ...f, purchaseBillNo: billNo }))
     setPurchaseCages([])
     setSelectedCageIds(new Set())
     if (!billNo) return
 
     try {
       setLoadingCages(true)
-      // In edit mode: fetch sold cages and filter by saleId
-      // In create mode: fetch pending cages
-      const statusFilter = isEditMode ? 'sold' : 'pending'
-      const cages = await purchasesApi.getCagesByOrderNumber(billNo, statusFilter)
-      let mapped = Array.isArray(cages) ? cages.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) })) : []
-
-      // In edit mode, filter to only cages belonging to this sale
-      if (isEditMode && editingId) {
-        mapped = mapped.filter(c => String(c.saleId) === String(editingId))
-      }
+      // Always load ALL cages for this purchase bill (no status filter)
+      // In edit mode: pre-select only the ones belonging to this sale
+      // In create mode: pre-select only pending ones
+      const allCages = await purchasesApi.getCagesByOrderNumber(billNo)
+      const mapped = Array.isArray(allCages)
+        ? allCages.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) }))
+        : []
 
       setPurchaseCages(mapped)
-      // Pre-select all cages by default
-      setSelectedCageIds(new Set(mapped.map(c => c.id)))
+
+      if (isEditMode && editingId) {
+        // Pre-select only cages that belong to this sale
+        const thisSaleCageIds = new Set(
+          mapped.filter(c => String(c.saleId) === String(editingId)).map(c => c.id)
+        )
+        setSelectedCageIds(thisSaleCageIds)
+      } else {
+        // Create mode: pre-select all pending cages
+        const pendingIds = new Set(mapped.filter(c => c.status === 'pending').map(c => c.id))
+        setSelectedCageIds(pendingIds)
+      }
     } catch {
       toast.error('Failed to load cages for this purchase bill')
     } finally {
@@ -277,18 +281,20 @@ export default function SalesPage() {
 
     setSaleFile(null)
 
-    // Load the sold cages that belong to this sale
+    // Load ALL cages for this purchase bill, pre-select only the ones for this sale
     if (purchaseBillNo) {
       try {
         setLoadingCages(true)
-        const cages = await purchasesApi.getCagesByOrderNumber(purchaseBillNo, 'sold')
-        const mapped = Array.isArray(cages)
-          ? cages
-              .map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) }))
-              .filter(c => String(c.saleId) === String(full.id))  // only cages for THIS sale
+        const allCages = await purchasesApi.getCagesByOrderNumber(purchaseBillNo)
+        const mapped = Array.isArray(allCages)
+          ? allCages.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) }))
           : []
         setPurchaseCages(mapped)
-        setSelectedCageIds(new Set(mapped.map(c => c.id)))
+        // Pre-select only cages that belong to this sale
+        const thisSaleCageIds = new Set(
+          mapped.filter(c => String(c.saleId) === String(full.id)).map(c => c.id)
+        )
+        setSelectedCageIds(thisSaleCageIds)
       } catch {
         // non-critical — form still works without cage list
       } finally {
@@ -454,7 +460,7 @@ export default function SalesPage() {
                             </Label>
                             <p className="text-xs text-muted-foreground mt-0.5">
                               {isEditMode
-                                ? <span className="text-blue-700 font-medium">Cages linked to this sale</span>
+                                ? <span className="text-blue-700 font-medium">All cages shown — checked ones are linked to this sale</span>
                                 : <>Checked cages will be marked as <span className="text-green-700 font-medium">SOLD</span> when you create the sale</>
                               }
                             </p>
@@ -467,9 +473,7 @@ export default function SalesPage() {
                           )}
                         </div>
                         {!loadingCages && purchaseCages.length === 0 && (
-                          <p className="text-xs text-muted-foreground">
-                            {isEditMode ? 'No cages found for this sale.' : 'No pending cages found for this purchase bill.'}
-                          </p>
+                          <p className="text-xs text-muted-foreground">No cages found for this purchase bill.</p>
                         )}
                         {!loadingCages && purchaseCages.length > 0 && (
                           <div className="overflow-x-auto">
@@ -480,6 +484,7 @@ export default function SalesPage() {
                                   <th className="text-left p-1">Cage ID</th>
                                   <th className="text-right p-1">Birds</th>
                                   <th className="text-right p-1">Weight (kg)</th>
+                                  <th className="text-center p-1">Status</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -492,6 +497,13 @@ export default function SalesPage() {
                                     <td className="p-1 font-medium">{cage.cageId || '-'}</td>
                                     <td className="p-1 text-right">{cage.numberOfBirds}</td>
                                     <td className="p-1 text-right">{Number(cage.purchaseWeight).toFixed(2)}</td>
+                                    <td className="p-1 text-center">
+                                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                                        cage.status === 'sold' ? 'bg-green-100 text-green-700' :
+                                        cage.status === 'in_godown' ? 'bg-blue-100 text-blue-700' :
+                                        'bg-gray-100 text-gray-600'
+                                      }`}>{cage.status || 'pending'}</span>
+                                    </td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -500,6 +512,7 @@ export default function SalesPage() {
                                   <td colSpan={2} className="p-1">{selectedCageIds.size} selected / {purchaseCages.length} total</td>
                                   <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id!)).reduce((s, c) => s + c.numberOfBirds, 0)}</td>
                                   <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id!)).reduce((s, c) => s + Number(c.purchaseWeight), 0).toFixed(2)}</td>
+                                  <td></td>
                                 </tr>
                               </tfoot>
                             </table>
