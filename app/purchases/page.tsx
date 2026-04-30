@@ -19,8 +19,8 @@ import { toast } from "sonner"
 const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer"] as const
 type PaymentMode = typeof PAYMENT_MODES[number]
 
-interface PaymentRow { mode: PaymentMode; amount: string }
-const emptyPayment = (): PaymentRow => ({ mode: "cash", amount: "" })
+interface PaymentRow { mode: PaymentMode; amount: string; isAdvance: boolean }
+const emptyPayment = (): PaymentRow => ({ mode: "cash", amount: "", isAdvance: false })
 const emptyCage = () => ({ cageId: "", numberOfBirds: "", cageWeight: "" })
 
 export default function PurchasesPage() {
@@ -143,7 +143,7 @@ export default function PurchasesPage() {
       ? full.cages.map(c => ({ cageId: c.cageId || "", numberOfBirds: String(c.numberOfBirds), cageWeight: String((c as any).purchaseWeight || c.cageWeight || "") }))
       : [emptyCage()])
     setPayments((full as any).payments && (full as any).payments.length > 0
-      ? (full as any).payments.map((p: any) => ({ mode: p.paymentMode as PaymentMode, amount: String(p.amount) }))
+      ? (full as any).payments.map((p: any) => ({ mode: p.paymentMode as PaymentMode, amount: String(p.amount), isAdvance: p.isAdvance ?? false }))
       : [emptyPayment()])
     setEditingId(full.id)
     setInvoiceFile(null)
@@ -158,7 +158,7 @@ export default function PurchasesPage() {
   // Payment helpers
   const addPayment = () => setPayments(prev => [...prev, emptyPayment()])
   const removePayment = (i: number) => setPayments(prev => prev.filter((_, idx) => idx !== i))
-  const updatePayment = (i: number, field: keyof PaymentRow, value: string) => setPayments(prev => prev.map((p, idx) => idx === i ? { ...p, [field]: value } : p))
+  const updatePayment = (i: number, field: keyof PaymentRow, value: string | boolean) => setPayments(prev => prev.map((p, idx) => idx === i ? { ...p, [field]: value } : p))
 
   // Calculations
   const totalWeight = cages.reduce((s, c) => s + (parseFloat(c.cageWeight) || 0), 0)
@@ -180,7 +180,7 @@ export default function PurchasesPage() {
       const validCages = cages.filter(c => c.numberOfBirds && c.cageWeight)
         .map(c => ({ cageId: c.cageId || undefined, numberOfBirds: parseInt(c.numberOfBirds) || 0, cageWeight: parseFloat(c.cageWeight) || 0 }))
       const validPayments = payments.filter(p => p.amount && parseFloat(p.amount) > 0)
-        .map(p => ({ paymentMode: p.mode, amount: p.amount }))
+        .map(p => ({ paymentMode: p.mode, amount: p.amount, isAdvance: p.isAdvance }))
 
       const payload: any = {
         orderNumber: formData.orderNumber,
@@ -467,13 +467,13 @@ export default function PurchasesPage() {
 
                     <div className="space-y-3">
                       <Label className="text-sm font-semibold">Payment Breakdown</Label>
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-[1fr_1fr_auto] gap-4 items-center">
                         <Label className="text-sm font-medium">Payment Mode</Label>
                         <Label className="text-sm font-medium">Amount (₹)</Label>
-                        <Label className="text-sm font-medium">Type</Label>
+                        <Label className="text-sm font-medium">Advance?</Label>
                       </div>
                       {payments.map((p, i) => (
-                        <div key={i} className="grid grid-cols-3 gap-4">
+                        <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-4 items-center">
                           <Select value={p.mode} onValueChange={v => updatePayment(i, "mode", v)} disabled={loading}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
@@ -488,10 +488,18 @@ export default function PurchasesPage() {
                             <Input type="number" step="0.01" placeholder="0.00" value={p.amount} onChange={e => updatePayment(i, "amount", e.target.value)} disabled={loading} onWheel={(e) => e.currentTarget.blur()} />
                             {payments.length > 1 && <Button type="button" variant="ghost" size="sm" onClick={() => removePayment(i)} className="px-2 text-red-500"><X size={14} /></Button>}
                           </div>
-                          <div className="flex items-center">
-                            <span className="text-xs text-gray-500 bg-blue-50 px-2 py-1 rounded">
-                              {i === 0 ? 'Advance' : 'Payment'}
-                            </span>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id={`advance-${i}`}
+                              checked={p.isAdvance}
+                              onChange={e => updatePayment(i, "isAdvance", e.target.checked)}
+                              disabled={loading}
+                              className="w-4 h-4 accent-blue-600 cursor-pointer"
+                            />
+                            {p.isAdvance && (
+                              <span className="text-xs font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded">Advance</span>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -735,7 +743,12 @@ export default function PurchasesPage() {
                     <div className="border-t pt-2 mt-2">
                       <div className="font-semibold mb-1">Payments:</div>
                       {(viewingPurchase as any).payments.map((p: any, i: number) => (
-                        <div key={i}>{p.paymentMode}: ₹{Number(p.amount).toFixed(2)}</div>
+                        <div key={i} className="flex items-center gap-2">
+                          <span>{p.paymentMode}: ₹{Number(p.amount).toFixed(2)}</span>
+                          {p.isAdvance && (
+                            <span className="text-xs font-medium text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">Advance</span>
+                          )}
+                        </div>
                       ))}
                     </div>
                   )}
