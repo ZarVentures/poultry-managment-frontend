@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Download, Printer, TrendingUp, TrendingDown, Calendar, Building2 } from 'lucide-react'
-import { salesApi, retailersApi, purchasesApi } from '@/lib/api'
+import { salesApi, retailersApi, purchasesApi, expensesApi, mortalityApi } from '@/lib/api'
 
 interface LedgerEntry {
   date: string
@@ -16,6 +16,9 @@ interface LedgerEntry {
   reference: string
   debit: number
   credit: number
+  category: 'sale' | 'purchase' | 'expense' | 'mortality' | 'payment'
+  count?: number
+  remarks?: string
 }
 
 const CompanyLedgerReportPage = () => {
@@ -25,59 +28,80 @@ const CompanyLedgerReportPage = () => {
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0])
 
   useEffect(() => {
-    Promise.all([salesApi.getAll(), retailersApi.getAll(), purchasesApi.getAll()])
-      .then(([sales, retailers, purchases]) => {
+    Promise.all([salesApi.getAll(), retailersApi.getAll(), purchasesApi.getAll(), expensesApi.getAll(), mortalityApi.getAll()])
+      .then(([sales, retailers, purchases, expenses, mortalities]) => {
         const retailerMap: Record<string, string> = {}
         retailers.forEach(r => { retailerMap[r.id] = r.name })
 
         const all: LedgerEntry[] = []
 
         // Sales as debit entries
-        for (const sale of sales) {
+        for (const sale of (Array.isArray(sales) ? sales : [])) {
           const partyName = sale.retailerId ? (retailerMap[sale.retailerId] || sale.customerName) : sale.customerName
-          all.push({
-            date: sale.saleDate,
-            type: 'Sale',
-            party: partyName,
-            reference: sale.invoiceNumber,
-            debit: Number(sale.netAmount || sale.totalAmount || 0),
-            credit: 0,
-          })
-          // Payment received as credit
+          const saleAmt = Number(sale.netAmount || sale.totalAmount || 0)
           const received = Number(sale.amountReceived || 0)
-          if (received > 0) {
+          
+          if (saleAmt > 0 || received > 0) {
             all.push({
               date: sale.saleDate,
-              type: 'Payment Received',
+              type: saleAmt > 0 ? 'Sale' : 'Payment Received',
               party: partyName,
-              reference: `PMT-${sale.invoiceNumber}`,
-              debit: 0,
+              reference: sale.invoiceNumber,
+              debit: saleAmt,
               credit: received,
+              category: 'sale',
+              remarks: sale.notes || (sale as any).remarks || ''
             })
           }
         }
 
         // Purchases as credit entries (money going out)
-        for (const po of purchases) {
-          all.push({
-            date: po.orderDate,
-            type: 'Purchase',
-            party: po.supplierName,
-            reference: po.orderNumber,
-            debit: 0,
-            credit: Number(po.netAmount || po.totalAmount || 0),
-          })
+        for (const po of (Array.isArray(purchases) ? purchases : [])) {
+          const poAmt = Number(po.netAmount || po.totalAmount || 0)
           const paid = Number(po.totalPaymentMade || 0)
-          if (paid > 0) {
+
+          if (poAmt > 0 || paid > 0) {
             all.push({
               date: po.orderDate,
-              type: 'Purchase Payment',
+              type: poAmt > 0 ? 'Purchase' : 'Purchase Payment',
               party: po.supplierName,
-              reference: `PAY-${po.orderNumber}`,
+              reference: po.orderNumber,
               debit: paid,
-              credit: 0,
+              credit: poAmt,
+              category: 'purchase',
+              remarks: po.notes || (po as any).remarks || ''
             })
           }
+        }
+
+        // Expenses
+        for (const exp of (Array.isArray(expenses) ? expenses : [])) {
+          all.push({
+            date: exp.expenseDate,
+            type: 'Expense',
+            party: exp.category,
+            reference: exp.description || 'Expense',
+            debit: 0,
+            credit: Number(exp.amount || 0),
+            category: 'expense',
+            remarks: exp.notes || (exp as any).remarks || ''
+          })
+        }
+
+        // Mortality
+        for (const m of (Array.isArray(mortalities) ? mortalities : [])) {
+          const mDate = (m as any).mortalityDate || m.purchaseDate || m.createdAt?.split('T')[0] || new Date().toISOString().split('T')[0]
+          all.push({
+            date: mDate,
+            type: 'Mortality',
+            party: m.farmerName || 'Farm',
+            reference: `Died: ${m.numberOfBirdsDied} birds`,
+            debit: 0,
+            credit: 0,
+            category: 'mortality',
+            count: Number(m.numberOfBirdsDied || 0),
+            remarks: m.notes || (m as any).remarks || ''
+          })
         }
 
         all.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -87,18 +111,31 @@ const CompanyLedgerReportPage = () => {
       .finally(() => setLoading(false))
   }, [])
 
-  const filtered = entries.filter(e => {
+  let runningBalance = 0;
+  const filtered = entries.map(e => {
+    runningBalance += (e.debit - e.credit);
+    return { ...e, balance: runningBalance };
+  }).filter(e => {
     const d = new Date(e.date)
     return d >= new Date(dateFrom) && d <= new Date(dateTo)
   })
 
   const totals = filtered.reduce((acc, e) => ({ debit: acc.debit + e.debit, credit: acc.credit + e.credit }), { debit: 0, credit: 0 })
+  
+  const stats = {
+    totalSales: filtered.filter(e => e.category === 'sale').reduce((sum, e) => sum + e.debit, 0),
+    totalPurchase: filtered.filter(e => e.category === 'purchase').reduce((sum, e) => sum + e.credit, 0),
+    totalExpense: filtered.filter(e => e.category === 'expense').reduce((sum, e) => sum + e.credit, 0),
+    totalMortality: filtered.filter(e => e.category === 'mortality').reduce((sum, e) => sum + (e.count || 0), 0)
+  }
 
   const getTypeColor = (type: string) => {
     if (type === 'Sale') return 'border-l-4 border-l-orange-400 bg-orange-50'
     if (type === 'Payment Received') return 'border-l-4 border-l-green-500 bg-green-50'
     if (type === 'Purchase') return 'border-l-4 border-l-red-400 bg-red-50'
     if (type === 'Purchase Payment') return 'border-l-4 border-l-blue-400 bg-blue-50'
+    if (type === 'Expense') return 'border-l-4 border-l-purple-400 bg-purple-50'
+    if (type === 'Mortality') return 'border-l-4 border-l-gray-400 bg-gray-50'
     return ''
   }
 
@@ -139,15 +176,15 @@ const CompanyLedgerReportPage = () => {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 print:hidden">
           <Card className="border border-orange-200 bg-orange-50 p-6">
             <TrendingUp className="w-5 h-5 text-orange-600 mb-2" />
-            <p className="text-sm text-gray-600 font-medium">Total Sales (Debit)</p>
+            <p className="text-sm text-gray-600 font-medium"> Total Money Out</p>
             <p className="text-2xl font-bold text-orange-600 mt-2">₹{totals.debit.toLocaleString('en-IN')}</p>
           </Card>
           <Card className="border border-green-200 bg-green-50 p-6">
             <TrendingDown className="w-5 h-5 text-green-600 mb-2" />
-            <p className="text-sm text-gray-600 font-medium">Total Payments (Credit)</p>
+            <p className="text-sm text-gray-600 font-medium">Total Money In</p>
             <p className="text-2xl font-bold text-green-600 mt-2">₹{totals.credit.toLocaleString('en-IN')}</p>
           </Card>
           <Card className="border border-gray-300 bg-gray-50 p-6">
@@ -155,6 +192,29 @@ const CompanyLedgerReportPage = () => {
             <p className={`text-2xl font-bold mt-2 ${(totals.debit - totals.credit) > 0 ? 'text-red-600' : 'text-green-600'}`}>
               ₹{(totals.debit - totals.credit).toLocaleString('en-IN')}
             </p>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print:hidden">
+          <Card className="border border-orange-200 bg-orange-50 p-6">
+            <TrendingUp className="w-5 h-5 text-orange-600 mb-2" />
+            <p className="text-sm text-gray-600 font-medium">Total Sales</p>
+            <p className="text-2xl font-bold text-orange-600 mt-2">₹{stats.totalSales.toLocaleString('en-IN')}</p>
+          </Card>
+          <Card className="border border-red-200 bg-red-50 p-6">
+            <TrendingDown className="w-5 h-5 text-red-600 mb-2" />
+            <p className="text-sm text-gray-600 font-medium">Total Purchase</p>
+            <p className="text-2xl font-bold text-red-600 mt-2">₹{stats.totalPurchase.toLocaleString('en-IN')}</p>
+          </Card>
+          <Card className="border border-purple-200 bg-purple-50 p-6">
+            <TrendingDown className="w-5 h-5 text-purple-600 mb-2" />
+            <p className="text-sm text-gray-600 font-medium">Total Expense</p>
+            <p className="text-2xl font-bold text-purple-600 mt-2">₹{stats.totalExpense.toLocaleString('en-IN')}</p>
+          </Card>
+          <Card className="border border-gray-300 bg-gray-50 p-6">
+            <TrendingDown className="w-5 h-5 text-gray-600 mb-2" />
+            <p className="text-sm text-gray-600 font-medium">Total Mortality</p>
+            <p className="text-2xl font-bold text-gray-800 mt-2">{stats.totalMortality} Birds</p>
           </Card>
         </div>
 
@@ -176,9 +236,11 @@ const CompanyLedgerReportPage = () => {
                     <TableHead className="font-semibold">Date</TableHead>
                     <TableHead className="font-semibold">Type</TableHead>
                     <TableHead className="font-semibold">Party</TableHead>
+                    <TableHead className="font-semibold">Remarks</TableHead>
                     <TableHead className="font-semibold">Reference</TableHead>
-                    <TableHead className="text-right font-semibold">Debit (₹)</TableHead>
-                    <TableHead className="text-right font-semibold">Credit (₹)</TableHead>
+                    <TableHead className="text-right font-semibold">Money Out (₹)</TableHead>
+                    <TableHead className="text-right font-semibold">Money In (₹)</TableHead>
+                    <TableHead className="text-right font-semibold">Balance (₹)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -193,15 +255,18 @@ const CompanyLedgerReportPage = () => {
                           <TableCell className="font-medium">{new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN')}</TableCell>
                           <TableCell className="font-semibold text-sm">{e.type}</TableCell>
                           <TableCell className="text-gray-700">{e.party}</TableCell>
+                          <TableCell className="text-gray-600 text-sm max-w-[150px] truncate" title={e.remarks}>{e.remarks || '-'}</TableCell>
                           <TableCell className="font-mono text-sm text-gray-600">{e.reference}</TableCell>
                           <TableCell className="text-right font-medium text-orange-600">{e.debit > 0 ? `₹${e.debit.toLocaleString('en-IN')}` : '–'}</TableCell>
                           <TableCell className="text-right font-medium text-green-600">{e.credit > 0 ? `₹${e.credit.toLocaleString('en-IN')}` : '–'}</TableCell>
+                          <TableCell className={`text-right font-bold ${e.balance > 0 ? 'text-orange-600' : 'text-green-600'}`}>₹{Math.abs(e.balance).toLocaleString('en-IN')} {e.balance > 0 ? '(Dr)' : e.balance < 0 ? '(Cr)' : ''}</TableCell>
                         </TableRow>
                       ))}
                       <TableRow className="bg-gray-100 font-bold border-t-2 border-gray-300">
-                        <TableCell colSpan={4} className="text-right">TOTALS</TableCell>
+                        <TableCell colSpan={5} className="text-right">TOTALS</TableCell>
                         <TableCell className="text-right text-orange-600">₹{totals.debit.toLocaleString('en-IN')}</TableCell>
                         <TableCell className="text-right text-green-600">₹{totals.credit.toLocaleString('en-IN')}</TableCell>
+                        <TableCell></TableCell>
                       </TableRow>
                     </>
                   )}
