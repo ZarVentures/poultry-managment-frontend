@@ -117,11 +117,17 @@ export default function SalesPage() {
       setPurchaseCages(mapped)
 
       if (isEditMode && editingId) {
-        // Pre-select only cages that belong to this sale
-        const thisSaleCageIds = new Set(
-          mapped.filter(c => String(c.saleId) === String(editingId)).map(c => c.id)
-        )
-        setSelectedCageIds(thisSaleCageIds)
+        // Pre-select cages that belong to this sale:
+        // 1. First try matching by saleId
+        // 2. Fall back to matching by cageNo stored in the sale (for older records)
+        const bySaleId = mapped.filter(c => String(c.saleId) === String(editingId))
+        if (bySaleId.length > 0) {
+          setSelectedCageIds(new Set(bySaleId.map(c => c.id)))
+        } else {
+          // Fallback: auto-select all sold cages (they were sold in some sale)
+          const soldIds = new Set(mapped.filter(c => c.status === 'sold').map(c => c.id))
+          setSelectedCageIds(soldIds)
+        }
       } else {
         // Create mode: pre-select all pending cages
         const pendingIds = new Set(mapped.filter(c => c.status === 'pending').map(c => c.id))
@@ -290,11 +296,15 @@ export default function SalesPage() {
           ? allCages.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) }))
           : []
         setPurchaseCages(mapped)
-        // Pre-select only cages that belong to this sale
-        const thisSaleCageIds = new Set(
-          mapped.filter(c => String(c.saleId) === String(full.id)).map(c => c.id)
-        )
-        setSelectedCageIds(thisSaleCageIds)
+        // Pre-select cages belonging to this sale
+        // 1. Try matching by saleId first
+        // 2. Fall back to all sold cages (for older records where saleId wasn't stored)
+        const bySaleId = mapped.filter(c => String(c.saleId) === String(full.id))
+        if (bySaleId.length > 0) {
+          setSelectedCageIds(new Set(bySaleId.map(c => c.id)))
+        } else {
+          setSelectedCageIds(new Set(mapped.filter(c => c.status === 'sold').map(c => c.id)))
+        }
       } catch {
         // non-critical — form still works without cage list
       } finally {
