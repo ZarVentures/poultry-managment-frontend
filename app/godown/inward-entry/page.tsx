@@ -35,6 +35,7 @@ export default function GodownInwardPage() {
     entryDate: new Date().toISOString().split("T")[0],
     purchaseInvoiceNo: "",
     purchaseBillNo: "",
+    purchaseBillId: "",
     supplierName: "",
     selectedFarmerId: "",
     vehicleId: "",
@@ -98,23 +99,40 @@ export default function GodownInwardPage() {
     } catch { setPurchaseBills([]) }
   }
 
-  const handlePurchaseBillChange = async (orderNumber: string) => {
-    setFormData(f => ({ ...f, purchaseBillNo: orderNumber === '__none__' ? '' : orderNumber }))
-    setPurchaseCages([])
-    setSelectedCageIds(new Set())
-    if (!orderNumber || orderNumber === '__none__') return
+  const handlePurchaseBillChange = async (billId: string) => {
+    if (!billId || billId === "__none__") {
+      setFormData((f) => ({
+        ...f,
+        purchaseBillId: "",
+        purchaseBillNo: "",
+        purchaseInvoiceNo: "",
+        supplierName: "",
+      }))
+      setPurchaseCages([])
+      setSelectedCageIds(new Set())
+      return
+    }
 
-    // Find the bill in the list to get its ID
-    const bill = purchaseBills.find(b => b.orderNumber === orderNumber)
+    const bill = purchaseBills.find((b) => b.id === billId)
     if (bill) {
-      // Auto-fill supplier name immediately
-      setFormData(f => ({ ...f, purchaseBillNo: orderNumber, purchaseInvoiceNo: orderNumber, supplierName: bill.supplierName }))
+      const orderNumber = bill.orderNumber
+      setFormData((f) => ({
+        ...f,
+        purchaseBillId: billId,
+        purchaseBillNo: orderNumber,
+        purchaseInvoiceNo: orderNumber,
+        supplierName: bill.supplierName,
+      }))
+      setPurchaseCages([])
+      setSelectedCageIds(new Set())
 
-      // Fetch full purchase order to get farmer, vehicle, rate
       try {
+        setLoadingCages(true)
+        // Fetch full purchase order to get farmer, vehicle, rate
         const fullOrder = await purchasesApi.getOne(bill.id)
-        setFormData(f => ({
+        setFormData((f) => ({
           ...f,
+          purchaseBillId: billId,
           purchaseBillNo: orderNumber,
           purchaseInvoiceNo: orderNumber,
           supplierName: fullOrder.supplierName || bill.supplierName,
@@ -122,22 +140,26 @@ export default function GodownInwardPage() {
           vehicleId: fullOrder.vehicleId || f.vehicleId,
           ratePerKg: fullOrder.ratePerKg ? String(fullOrder.ratePerKg) : f.ratePerKg,
         }))
-        // Also auto-select the farmer in the dropdown
-        if (fullOrder.farmerId) {
-          const farmer = farmers.find(fa => fa.id === fullOrder.farmerId)
-          if (farmer) {
-            setFormData(f => ({ ...f, supplierName: farmer.name }))
-          }
-        }
-      } catch { /* ignore — supplier name already set */ }
-    }
 
-    try {
-      setLoadingCages(true)
-      const cageData = await purchasesApi.getCagesByOrderNumber(orderNumber, 'pending')
-      setPurchaseCages(Array.isArray(cageData) ? cageData.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0), godownWeight: '' })) : [])
-    } catch { toast.error('Failed to load cages for this purchase bill') }
-    finally { setLoadingCages(false) }
+        // Load cages
+        const cageData = await purchasesApi.getCagesByOrderNumber(orderNumber, "pending")
+        setPurchaseCages(
+          Array.isArray(cageData)
+            ? cageData.map((c) => ({
+                ...c,
+                id: c.id ?? "",
+                purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0),
+                godownWeight: "",
+              }))
+            : [],
+        )
+      } catch (error) {
+        console.error("Failed to load bill details:", error)
+        toast.error("Failed to load details for this purchase bill")
+      } finally {
+        setLoadingCages(false)
+      }
+    }
   }
 
   const toggleCage = (id: string) => {
@@ -180,6 +202,7 @@ export default function GodownInwardPage() {
       entryDate: new Date().toISOString().split("T")[0],
       purchaseInvoiceNo: "",
       purchaseBillNo: "",
+      purchaseBillId: "",
       supplierName: "",
       selectedFarmerId: "",
       vehicleId: "",
@@ -201,6 +224,7 @@ export default function GodownInwardPage() {
       entryDate: entry.entryDate,
       purchaseInvoiceNo: entry.purchaseInvoiceNo || "",
       purchaseBillNo: "",
+      purchaseBillId: "",
       supplierName: entry.supplierName || "",
       selectedFarmerId: "",
       vehicleId: entry.vehicleId || "",
@@ -407,20 +431,25 @@ export default function GodownInwardPage() {
                   </div>
                 </div>
 
-                {/* Purchase Bill linkage */}
                 <div className="space-y-2">
                   <Label>Link to Purchase Bill (loads remaining cages)</Label>
-                  <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
-                    <SelectTrigger><SelectValue placeholder="Select purchase bill (optional)" /></SelectTrigger>
-                    <SelectContent>
+                  <Select value={formData.purchaseBillId || "__none__"} onValueChange={handlePurchaseBillChange} disabled={loading}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select purchase bill (optional)" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto">
                       <SelectItem value="__none__">None</SelectItem>
-                      {purchaseBills.map(b => <SelectItem key={b.id} value={b.orderNumber}>{b.orderNumber} — {b.supplierName}</SelectItem>)}
+                      {purchaseBills.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.orderNumber} — {b.supplierName}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Remaining cages from purchase bill */}
-                {formData.purchaseBillNo && formData.purchaseBillNo !== '__none__' && (
+                {formData.purchaseBillId && (
                   <div className="border rounded-lg p-3 bg-blue-50 space-y-2">
                     <div className="flex items-center justify-between">
                       <Label className="text-blue-900 font-semibold">
