@@ -16,7 +16,7 @@ import { DateRangeFilter } from "@/components/date-range-filter"
 import { salesApi, retailersApi, vehiclesApi, purchasesApi, type Sale as ApiSale } from "@/lib/api"
 import { toast } from "sonner"
 
-const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer"] as const
+const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer", "advance"] as const
 type PaymentMode = typeof PAYMENT_MODES[number]
 interface PaymentRow { mode: PaymentMode; amount: string }
 const emptyPayment = (): PaymentRow => ({ mode: "cash", amount: "" })
@@ -201,50 +201,65 @@ export default function SalesPage() {
     }
   }
 
-  const handleEdit = (sale: ApiSale) => {
-    const retailer = retailers.find(r => r.id === sale.retailerId)
-    // Try to restore numBirds/totalWeight from notes
-    let numBirds = ""
-    let totalWeightVal = ""
+  const handleEdit = async (sale: ApiSale) => {
+    setEditingId(sale.id)
+    setShowDialog(true)
+
+    // Always fetch full detail to get payments and all fields
+    let full: ApiSale = sale
     try {
-      const parsed = JSON.parse(sale.notes || "")
+      full = await salesApi.getOne(sale.id)
+    } catch { /* fallback to list data */ }
+
+    const retailer = retailers.find(r => r.id === full.retailerId)
+
+    // Restore numBirds from notes JSON if available, otherwise leave blank
+    let numBirds = ""
+    let totalWeightVal = String(full.quantity || "")
+    try {
+      const parsed = JSON.parse(full.notes || "")
       if (parsed?.customerRows?.[0]) {
         numBirds = String(parsed.customerRows[0].numBirds || "")
-        totalWeightVal = String(parsed.customerRows[0].weight || "")
+        if (parsed.customerRows[0].weight) totalWeightVal = String(parsed.customerRows[0].weight)
       }
     } catch {}
+
     setFormData({
-      invoiceNumber: sale.invoiceNumber,
-      saleNo: (sale as any).saleNo || "",
-      purchaseBillNo: (sale as any).purchaseBillNo || "",
-      cageNo: (sale as any).cageNo || "",
+      invoiceNumber: full.invoiceNumber,
+      saleNo: (full as any).saleNo || "",
+      purchaseBillNo: (full as any).purchaseBillNo || "",
+      cageNo: (full as any).cageNo || "",
       numBirds,
-      totalWeight: totalWeightVal || String(sale.quantity || ""),
-      saleDate: sale.saleDate,
-      retailerId: sale.retailerId || "",
-      customerName: sale.customerName,
+      totalWeight: totalWeightVal,
+      saleDate: full.saleDate,
+      retailerId: full.retailerId || "",
+      customerName: full.customerName,
       ownerName: retailer?.ownerName || "",
       phone: retailer?.phone || "",
       address: retailer?.address || "",
-      saleMode: sale.saleMode || "from_vehicle",
+      saleMode: full.saleMode || "from_vehicle",
       vehicleId: "",
-      productType: (sale.productType as any) || "meat",
-      ratePerKg: String(sale.unitPrice || 0),
-      transportCharges: String(sale.transportCharges || 0),
-      loadingCharges: String(sale.loadingCharges || 0),
-      commission: String(sale.commission || 0),
-      otherCharges: String(sale.otherCharges || 0),
-      deductions: String(sale.mortalityDeduction || 0),
-      paymentStatus: sale.paymentStatus,
+      productType: (full.productType as any) || "meat",
+      ratePerKg: String(full.unitPrice || 0),
+      transportCharges: String(full.transportCharges || 0),
+      loadingCharges: String(full.loadingCharges || 0),
+      commission: String(full.commission || 0),
+      otherCharges: String(full.otherCharges || 0),
+      deductions: String(full.mortalityDeduction || 0),
+      paymentStatus: full.paymentStatus,
       notes: "",
     })
-    const salePayments = (sale as any).payments
+
+    const salePayments = (full as any).payments
     if (salePayments && salePayments.length > 0) {
-      setPayments(salePayments.map((p: any) => ({ mode: p.paymentMode as PaymentMode, amount: String(p.amount) })))
+      setPayments(salePayments.map((p: any) => ({ mode: (p.paymentMode || "cash") as PaymentMode, amount: String(p.amount) })))
     } else {
       setPayments([emptyPayment()])
     }
-    setEditingId(sale.id); setShowDialog(true)
+
+    setSaleFile(null)
+    setPurchaseCages([])
+    setSelectedCageIds(new Set())
   }
 
   const handleSave = async () => {
