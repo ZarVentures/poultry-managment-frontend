@@ -117,7 +117,7 @@ export default function SalesPage() {
 
       // In edit mode, filter to only cages belonging to this sale
       if (isEditMode && editingId) {
-        mapped = mapped.filter(c => c.saleId === editingId)
+        mapped = mapped.filter(c => String(c.saleId) === String(editingId))
       }
 
       setPurchaseCages(mapped)
@@ -285,7 +285,7 @@ export default function SalesPage() {
         const mapped = Array.isArray(cages)
           ? cages
               .map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) }))
-              .filter(c => c.saleId === full.id)  // only cages for THIS sale
+              .filter(c => String(c.saleId) === String(full.id))  // only cages for THIS sale
           : []
         setPurchaseCages(mapped)
         setSelectedCageIds(new Set(mapped.map(c => c.id)))
@@ -508,7 +508,7 @@ export default function SalesPage() {
                       </div>
                     )}
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4 mt-2">
                       <div className="space-y-2">
                         <Label>Shop / Retailer *</Label>
                         <Select value={formData.retailerId || '__none__'} onValueChange={v => handleRetailerChange(v === '__none__' ? '' : v)} disabled={loading}>
