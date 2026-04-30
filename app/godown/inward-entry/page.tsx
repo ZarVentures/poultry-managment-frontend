@@ -62,8 +62,8 @@ export default function GodownInwardPage() {
   const fetchEntries = async () => {
     try {
       setLoading(true)
-      const data = await godownApi.inward.getAll()
-      setEntries(data)
+      const data: any = await godownApi.inward.getAll()
+      setEntries(Array.isArray(data) ? data : (data?.data || []))
     } catch (error: any) {
       console.error("Failed to fetch entries:", error)
       toast.error("Failed to load inward entries")
@@ -74,8 +74,9 @@ export default function GodownInwardPage() {
 
   const fetchVehicles = async () => {
     try {
-      const data = await vehiclesApi.getAll()
-      setVehicles(data.filter(v => v.status === "active"))
+      const data: any = await vehiclesApi.getAll()
+      const list = Array.isArray(data) ? data : (data?.data || [])
+      setVehicles(list.filter((v: any) => v.status === "active"))
     } catch (error) {
       console.error("Failed to fetch vehicles:", error)
     }
@@ -83,9 +84,8 @@ export default function GodownInwardPage() {
 
   const fetchFarmers = async () => {
     try {
-      // getActive() returns a plain array of active farmers
-      const data = await farmersApi.getActive()
-      setFarmers(data)
+      const data: any = await farmersApi.getActive()
+      setFarmers(Array.isArray(data) ? data : (data?.data || []))
     } catch (error) {
       console.error("Failed to fetch farmers:", error)
     }
@@ -93,8 +93,8 @@ export default function GodownInwardPage() {
 
   const fetchPurchaseBills = async () => {
     try {
-      const data = await purchasesApi.getInvoiceList()
-      setPurchaseBills(Array.isArray(data) ? data : [])
+      const data: any = await purchasesApi.getInvoiceList()
+      setPurchaseBills(Array.isArray(data) ? data : (data?.data || []))
     } catch { setPurchaseBills([]) }
   }
 
@@ -134,8 +134,9 @@ export default function GodownInwardPage() {
 
     try {
       setLoadingCages(true)
-      const cageData = await purchasesApi.getCagesByOrderNumber(orderNumber, 'pending')
-      setPurchaseCages(Array.isArray(cageData) ? cageData.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0), godownWeight: '' })) : [])
+      const cageData: any = await purchasesApi.getCagesByOrderNumber(orderNumber, 'pending')
+      const list = Array.isArray(cageData) ? cageData : (cageData?.data || [])
+      setPurchaseCages(list.map((c: any) => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0), godownWeight: '' })))
     } catch { toast.error('Failed to load cages for this purchase bill') }
     finally { setLoadingCages(false) }
   }
@@ -412,9 +413,13 @@ export default function GodownInwardPage() {
                   <Label>Link to Purchase Bill (loads remaining cages)</Label>
                   <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
                     <SelectTrigger><SelectValue placeholder="Select purchase bill (optional)" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">None</SelectItem>
-                      {purchaseBills.map(b => <SelectItem key={b.id} value={b.orderNumber}>{b.orderNumber} — {b.supplierName}</SelectItem>)}
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                      <SelectItem value="__none__">None / Clear Selection</SelectItem>
+                      {purchaseBills.map(b => (
+                        <SelectItem key={b.id} value={b.orderNumber}>
+                          {b.orderNumber} — {b.supplierName}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
