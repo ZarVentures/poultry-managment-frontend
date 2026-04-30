@@ -581,7 +581,7 @@ export default function GodownSalePage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="font-bold">GDS No</TableHead>
-                      <TableHead className="font-bold">Date</TableHead>                      <TableHead className="font-bold">Date</TableHead>
+                      <TableHead className="font-bold">Date</TableHead>
                       <TableHead className="font-bold">Customer</TableHead>
                       <TableHead className="font-bold">Quantity</TableHead>
                       <TableHead className="font-bold">Rate</TableHead>
@@ -592,8 +592,7 @@ export default function GodownSalePage() {
                   <TableBody>
                     {filteredSales.map((sale) => (
                       <TableRow key={sale.id}>
-                        <TableCell className="font-medium">{(sale as any).invoiceNumber || '-'}</TableCell>
-                        <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>                        <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
+                        <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
                         <TableCell>{sale.customerName}</TableCell>
                         <TableCell>{sale.numberOfBirds} birds</TableCell>
                         <TableCell>₹{Number(sale.ratePerKg || 0).toFixed(2)}/kg</TableCell>
