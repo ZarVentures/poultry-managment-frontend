@@ -194,7 +194,11 @@ export default function SalesPage() {
 
   const handleRetailerChange = (id: string) => {
     const r = retailers.find(x => x.id === id)
-    if (r) setFormData(f => ({ ...f, retailerId: id, customerName: r.name, ownerName: r.ownerName || "", phone: r.phone || "", address: r.address || "" }))
+    if (r) {
+      setFormData(f => ({ ...f, retailerId: id, customerName: r.name, ownerName: r.ownerName || "", phone: r.phone || "", address: r.address || "" }))
+    } else {
+      setFormData(f => ({ ...f, retailerId: "", customerName: "", ownerName: "", phone: "", address: "" }))
+    }
   }
 
   const handleEdit = (sale: ApiSale) => {
@@ -450,9 +454,12 @@ export default function SalesPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Shop / Retailer *</Label>
-                        <Select value={formData.retailerId} onValueChange={handleRetailerChange} disabled={loading}>
+                        <Select value={formData.retailerId || '__none__'} onValueChange={v => handleRetailerChange(v === '__none__' ? '' : v)} disabled={loading}>
                           <SelectTrigger><SelectValue placeholder="Select shop" /></SelectTrigger>
-                          <SelectContent>{retailers.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
+                          <SelectContent className="max-h-60 overflow-y-auto">
+                            <SelectItem value="__none__">Select shop / retailer...</SelectItem>
+                            {retailers.map(r => <SelectItem key={r.id} value={r.id}>{r.name} {r.ownerName ? `— ${r.ownerName}` : ''}</SelectItem>)}
+                          </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
@@ -474,9 +481,12 @@ export default function SalesPage() {
                       </div>
                       <div className="space-y-2">
                         <Label>Vehicle</Label>
-                        <Select value={formData.vehicleId} onValueChange={v => setFormData(f => ({ ...f, vehicleId: v }))} disabled={loading}>
+                        <Select value={formData.vehicleId || '__none__'} onValueChange={v => setFormData(f => ({ ...f, vehicleId: v === '__none__' ? '' : v }))} disabled={loading}>
                           <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
-                          <SelectContent>{vehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.vehicleNumber}</SelectItem>)}</SelectContent>
+                          <SelectContent className="max-h-60 overflow-y-auto">
+                            <SelectItem value="__none__">Select vehicle...</SelectItem>
+                            {vehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.vehicleNumber}</SelectItem>)}
+                          </SelectContent>
                         </Select>
                       </div>
                     </div>

@@ -111,14 +111,35 @@ const CompanyLedgerReportPage = () => {
       .finally(() => setLoading(false))
   }, [])
 
-  let runningBalance = 0;
-  const filtered = entries.map(e => {
-    runningBalance += (e.debit - e.credit);
-    return { ...e, balance: runningBalance };
-  }).filter(e => {
-    const d = new Date(e.date)
-    return d >= new Date(dateFrom) && d <= new Date(dateTo)
-  })
+  let openingBalance = 0;
+  const fromDate = new Date(dateFrom);
+  fromDate.setHours(0, 0, 0, 0);
+  const toDate = new Date(dateTo);
+  toDate.setHours(23, 59, 59, 999);
+
+  // Calculate opening balance from all entries before the selected range
+  openingBalance = entries.reduce((acc, e) => {
+    const d = new Date(e.date);
+    d.setHours(0, 0, 0, 0);
+    if (d < fromDate) {
+      return acc + (e.debit - e.credit);
+    }
+    return acc;
+  }, 0);
+
+  let currentRunningBalance = openingBalance;
+  const filtered = entries
+    .filter(e => {
+      const d = new Date(e.date);
+      d.setHours(0, 0, 0, 0);
+      return d >= fromDate && d <= toDate;
+    })
+    .map(e => {
+      currentRunningBalance += (e.debit - e.credit);
+      return { ...e, balance: currentRunningBalance };
+    });
+
+  const closingBalance = currentRunningBalance;
 
   const totals = filtered.reduce((acc, e) => ({ debit: acc.debit + e.debit, credit: acc.credit + e.credit }), { debit: 0, credit: 0 })
   
@@ -127,6 +148,29 @@ const CompanyLedgerReportPage = () => {
     totalPurchase: filtered.filter(e => e.category === 'purchase').reduce((sum, e) => sum + e.credit, 0),
     totalExpense: filtered.filter(e => e.category === 'expense').reduce((sum, e) => sum + e.credit, 0),
     totalMortality: filtered.filter(e => e.category === 'mortality').reduce((sum, e) => sum + (e.count || 0), 0)
+  }
+
+  const formatRemarks = (remarks?: any): string => {
+    if (!remarks) return '-'
+    if (typeof remarks !== 'string') return JSON.stringify(remarks)
+    try {
+      const parsed = JSON.parse(remarks)
+      if (typeof parsed === 'object' && parsed !== null) {
+        const text = parsed.text
+        const rows = parsed.customerRows
+        if (text && text.trim()) {
+          if ((text.startsWith('{') && text.endsWith('}')) || (text.startsWith('[') && text.endsWith(']'))) {
+            return formatRemarks(text)
+          }
+          return text
+        }
+        if (Array.isArray(rows) && rows.length > 0) {
+          return rows.map((r: any) => r.customerName || r.name || r.customer).filter(Boolean).join(', ') || 'Multiple Customers'
+        }
+        return parsed.notes || parsed.description || JSON.stringify(parsed)
+      }
+    } catch (e) {}
+    return remarks
   }
 
   const getTypeColor = (type: string) => {
@@ -141,8 +185,8 @@ const CompanyLedgerReportPage = () => {
 
   const downloadCSV = () => {
     if (!filtered.length) { alert('No data to export.'); return }
-    const headers = 'Date,Type,Party,Reference,Debit,Credit'
-    const rows = filtered.map(e => `${e.date},${e.type},${e.party},${e.reference},${e.debit},${e.credit}`).join('\n')
+    const headers = 'Date,Type,Party,Reference,Debit,Credit,Balance'
+    const rows = filtered.map(e => `${e.date},${e.type},${e.party},${e.reference},${e.debit},${e.credit},${e.balance}`).join('\n')
     const blob = new Blob([`${headers}\n${rows}`], { type: 'text/csv;charset=utf-8;' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -176,7 +220,13 @@ const CompanyLedgerReportPage = () => {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 print:hidden">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4 print:hidden">
+          <Card className="border border-gray-200 bg-white p-6">
+            <p className="text-sm text-gray-600 font-medium">Opening Balance</p>
+            <p className={`text-2xl font-bold mt-2 ${openingBalance >= 0 ? 'text-orange-600' : 'text-green-600'}`}>
+              ₹{Math.abs(openingBalance).toLocaleString('en-IN')} {openingBalance > 0 ? '(Dr)' : openingBalance < 0 ? '(Cr)' : ''}
+            </p>
+          </Card>
           <Card className="border border-orange-200 bg-orange-50 p-6">
             <TrendingUp className="w-5 h-5 text-orange-600 mb-2" />
             <p className="text-sm text-gray-600 font-medium"> Total Money Out</p>
@@ -187,8 +237,14 @@ const CompanyLedgerReportPage = () => {
             <p className="text-sm text-gray-600 font-medium">Total Money In</p>
             <p className="text-2xl font-bold text-green-600 mt-2">₹{totals.credit.toLocaleString('en-IN')}</p>
           </Card>
+          <Card className="border border-blue-200 bg-blue-50 p-6">
+            <p className="text-sm text-gray-600 font-medium">Closing Balance</p>
+            <p className={`text-2xl font-bold mt-2 ${closingBalance >= 0 ? 'text-orange-600' : 'text-green-600'}`}>
+              ₹{Math.abs(closingBalance).toLocaleString('en-IN')} {closingBalance > 0 ? '(Dr)' : closingBalance < 0 ? '(Cr)' : ''}
+            </p>
+          </Card>
           <Card className="border border-gray-300 bg-gray-50 p-6">
-            <p className="text-sm text-gray-600 font-medium">Net Outstanding</p>
+            <p className="text-sm text-gray-600 font-medium">Net Period Change</p>
             <p className={`text-2xl font-bold mt-2 ${(totals.debit - totals.credit) > 0 ? 'text-red-600' : 'text-green-600'}`}>
               ₹{(totals.debit - totals.credit).toLocaleString('en-IN')}
             </p>
@@ -250,12 +306,18 @@ const CompanyLedgerReportPage = () => {
                     <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500">No entries for selected date range</TableCell></TableRow>
                   ) : (
                     <>
+                      <TableRow className="bg-gray-100 font-medium">
+                        <TableCell colSpan={7} className="text-right">Opening Balance</TableCell>
+                        <TableCell className={`text-right font-bold ${openingBalance > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                          ₹{Math.abs(openingBalance).toLocaleString('en-IN')} {openingBalance > 0 ? '(Dr)' : openingBalance < 0 ? '(Cr)' : ''}
+                        </TableCell>
+                      </TableRow>
                       {filtered.map((e, idx) => (
                         <TableRow key={idx} className={getTypeColor(e.type)}>
                           <TableCell className="font-medium">{new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN')}</TableCell>
                           <TableCell className="font-semibold text-sm">{e.type}</TableCell>
                           <TableCell className="text-gray-700">{e.party}</TableCell>
-                          <TableCell className="text-gray-600 text-sm max-w-[150px] truncate" title={e.remarks}>{e.remarks || '-'}</TableCell>
+                          <TableCell className="text-gray-600 text-sm max-w-[150px] truncate" title={formatRemarks(e.remarks)}>{formatRemarks(e.remarks)}</TableCell>
                           <TableCell className="font-mono text-sm text-gray-600">{e.reference}</TableCell>
                           <TableCell className="text-right font-medium text-orange-600">{e.debit > 0 ? `₹${e.debit.toLocaleString('en-IN')}` : '–'}</TableCell>
                           <TableCell className="text-right font-medium text-green-600">{e.credit > 0 ? `₹${e.credit.toLocaleString('en-IN')}` : '–'}</TableCell>
@@ -263,10 +325,16 @@ const CompanyLedgerReportPage = () => {
                         </TableRow>
                       ))}
                       <TableRow className="bg-gray-100 font-bold border-t-2 border-gray-300">
-                        <TableCell colSpan={5} className="text-right">TOTALS</TableCell>
+                        <TableCell colSpan={5} className="text-right">TOTAL FOR PERIOD</TableCell>
                         <TableCell className="text-right text-orange-600">₹{totals.debit.toLocaleString('en-IN')}</TableCell>
                         <TableCell className="text-right text-green-600">₹{totals.credit.toLocaleString('en-IN')}</TableCell>
                         <TableCell></TableCell>
+                      </TableRow>
+                      <TableRow className="bg-blue-50 font-bold border-t border-blue-200 text-blue-900">
+                        <TableCell colSpan={7} className="text-right">Closing Balance</TableCell>
+                        <TableCell className={`text-right font-bold ${closingBalance > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                          ₹{Math.abs(closingBalance).toLocaleString('en-IN')} {closingBalance > 0 ? '(Dr)' : closingBalance < 0 ? '(Cr)' : ''}
+                        </TableCell>
                       </TableRow>
                     </>
                   )}
