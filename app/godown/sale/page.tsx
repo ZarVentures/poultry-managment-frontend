@@ -254,6 +254,7 @@ export default function GodownSalePage() {
           <table>
             <thead>
               <tr>
+                <th>GDS No</th>
                 <th>Date</th>
                 <th>Customer</th>
                 <th>Quantity</th>
@@ -264,6 +265,7 @@ export default function GodownSalePage() {
             <tbody>
               ${filteredSales.map(sale => `
                 <tr>
+                  <td>${sale.invoiceNumber || "-"}</td>
                   <td>${new Date(sale.saleDate).toLocaleDateString()}</td>
                   <td>${sale.customerName}</td>
                   <td>${sale.numberOfBirds} birds</td>
@@ -592,6 +594,7 @@ export default function GodownSalePage() {
                   <TableBody>
                     {filteredSales.map((sale) => (
                       <TableRow key={sale.id}>
+                        <TableCell>{sale.invoiceNumber || "-"}</TableCell>
                         <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
                         <TableCell>{sale.customerName}</TableCell>
                         <TableCell>{sale.numberOfBirds} birds</TableCell>
