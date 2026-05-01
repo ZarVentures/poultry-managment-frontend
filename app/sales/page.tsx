@@ -85,7 +85,15 @@ export default function SalesPage() {
     finally { setLoading(false) }
   }
   const fetchRetailers = async () => {
-    try { const d = await retailersApi.getActive(); setRetailers(Array.isArray(d) ? d : []) }
+    try { 
+      const d = await retailersApi.getActive()
+      const data = Array.isArray(d) ? d : []
+      // Ensure uniqueness by name to prevent duplicates in the UI
+      const uniqueData = data.filter((v, i, a) => 
+        a.findIndex(t => t.name === v.name) === i
+      )
+      setRetailers(uniqueData)
+    }
     catch { setRetailers([]) }
   }
   const fetchVehicles = async () => {
@@ -538,7 +546,7 @@ export default function SalesPage() {
                           <SelectTrigger><SelectValue placeholder="Select shop" /></SelectTrigger>
                           <SelectContent className="max-h-60 overflow-y-auto">
                             <SelectItem value="__none__">Select shop / retailer...</SelectItem>
-                            {retailers.map(r => <SelectItem key={r.id} value={r.id}>{r.name} {r.ownerName ? `— ${r.ownerName}` : ''}</SelectItem>)}
+                            {retailers.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>

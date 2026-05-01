@@ -67,7 +67,14 @@ export default function GodownSalePage() {
   const fetchRetailers = async () => {
     try {
       const data = await retailersApi.getAll()
-      setRetailers(data.filter(r => r.status === "active"))
+      if (Array.isArray(data)) {
+        const activeRetailers = data.filter(r => r.status === "active")
+        // Ensure uniqueness by name to prevent UI duplicates
+        const uniqueRetailers = activeRetailers.filter((v, i, a) => 
+          a.findIndex(t => t.name === v.name) === i
+        )
+        setRetailers(uniqueRetailers)
+      }
     } catch (error) {
       console.error("Failed to fetch retailers:", error)
     }
