@@ -122,24 +122,21 @@ export default function SalesPage() {
         ? allCages.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) }))
         : []
 
-      setPurchaseCages(mapped)
-
       if (isEditMode && editingId) {
-        // Pre-select cages that belong to this sale:
-        // 1. First try matching by saleId
-        // 2. Fall back to matching by cageNo stored in the sale (for older records)
+        // Edit mode: show ALL cages, pre-select ones belonging to this sale
+        setPurchaseCages(mapped)
         const bySaleId = mapped.filter(c => String(c.saleId) === String(editingId))
         if (bySaleId.length > 0) {
           setSelectedCageIds(new Set(bySaleId.map(c => c.id)))
         } else {
-          // Fallback: auto-select all sold cages (they were sold in some sale)
           const soldIds = new Set(mapped.filter(c => c.status === 'sold').map(c => c.id))
           setSelectedCageIds(soldIds)
         }
       } else {
-        // Create mode: load pending cages but don't pre-select any — user picks manually
-        const pendingIds = new Set(mapped.filter(c => c.status === 'pending').map(c => c.id))
-        setSelectedCageIds(new Set()) // no auto-select on create
+        // Create mode: only show pending cages, no auto-select
+        const pendingOnly = mapped.filter(c => !c.status || c.status === 'pending')
+        setPurchaseCages(pendingOnly)
+        setSelectedCageIds(new Set())
       }
     } catch {
       toast.error('Failed to load cages for this purchase bill')
@@ -502,7 +499,7 @@ export default function SalesPage() {
                                   <th className="text-left p-1">Cage ID</th>
                                   <th className="text-right p-1">Birds</th>
                                   <th className="text-right p-1">Weight (kg)</th>
-                                  <th className="text-center p-1">Status</th>
+                                  {isEditMode && <th className="text-center p-1">Status</th>}
                                 </tr>
                               </thead>
                               <tbody>
@@ -515,13 +512,15 @@ export default function SalesPage() {
                                     <td className="p-1 font-medium">{cage.cageId || '-'}</td>
                                     <td className="p-1 text-right">{cage.numberOfBirds}</td>
                                     <td className="p-1 text-right">{Number(cage.purchaseWeight).toFixed(2)}</td>
-                                    <td className="p-1 text-center">
-                                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                                        cage.status === 'sold' ? 'bg-green-100 text-green-700' :
-                                        cage.status === 'in_godown' ? 'bg-blue-100 text-blue-700' :
-                                        'bg-gray-100 text-gray-600'
-                                      }`}>{cage.status || 'pending'}</span>
-                                    </td>
+                                    {isEditMode && (
+                                      <td className="p-1 text-center">
+                                        <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                                          cage.status === 'sold' ? 'bg-green-100 text-green-700' :
+                                          cage.status === 'in_godown' ? 'bg-blue-100 text-blue-700' :
+                                          'bg-gray-100 text-gray-600'
+                                        }`}>{cage.status || 'pending'}</span>
+                                      </td>
+                                    )}
                                   </tr>
                                 ))}
                               </tbody>
@@ -530,7 +529,7 @@ export default function SalesPage() {
                                   <td colSpan={2} className="p-1">{selectedCageIds.size} selected / {purchaseCages.length} total</td>
                                   <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id!)).reduce((s, c) => s + c.numberOfBirds, 0)}</td>
                                   <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id!)).reduce((s, c) => s + Number(c.purchaseWeight), 0).toFixed(2)}</td>
-                                  <td></td>
+                                  {isEditMode && <td></td>}
                                 </tr>
                               </tfoot>
                             </table>
