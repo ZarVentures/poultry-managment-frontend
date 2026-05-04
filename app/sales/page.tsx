@@ -123,15 +123,17 @@ export default function SalesPage() {
         : []
 
       if (isEditMode && editingId) {
-        // Edit mode: show ALL cages, pre-select ones belonging to this sale
-        setPurchaseCages(mapped)
-        const bySaleId = mapped.filter(c => String(c.saleId) === String(editingId))
-        if (bySaleId.length > 0) {
-          setSelectedCageIds(new Set(bySaleId.map(c => c.id)))
-        } else {
-          const soldIds = new Set(mapped.filter(c => c.status === 'sold').map(c => c.id))
-          setSelectedCageIds(soldIds)
-        }
+        // Edit mode: show cages belonging to THIS sale + pending cages (exclude cages sold to OTHER sales)
+        const cagesForThisSale = mapped.filter(c => String(c.saleId) === String(editingId))
+        const pendingCages = mapped.filter(c => !c.status || c.status === 'pending')
+        const availableCages = [...cagesForThisSale, ...pendingCages]
+        // Remove duplicates
+        const uniqueCages = availableCages.filter((cage, index, self) => 
+          index === self.findIndex(c => c.id === cage.id)
+        )
+        setPurchaseCages(uniqueCages)
+        // Pre-select only cages belonging to this sale
+        setSelectedCageIds(new Set(cagesForThisSale.map(c => c.id)))
       } else {
         // Create mode: only show pending cages, no auto-select
         const pendingOnly = mapped.filter(c => !c.status || c.status === 'pending')
@@ -292,7 +294,7 @@ export default function SalesPage() {
 
     setSaleFile(null)
 
-    // Load ALL cages for this purchase bill, pre-select only the ones for this sale
+    // Load cages for this purchase bill: show cages for THIS sale + pending cages only
     if (purchaseBillNo) {
       try {
         setLoadingCages(true)
@@ -300,16 +302,19 @@ export default function SalesPage() {
         const mapped = Array.isArray(allCages)
           ? allCages.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) }))
           : []
-        setPurchaseCages(mapped)
-        // Pre-select cages belonging to this sale
-        // 1. Try matching by saleId first
-        // 2. Fall back to all sold cages (for older records where saleId wasn't stored)
-        const bySaleId = mapped.filter(c => String(c.saleId) === String(full.id))
-        if (bySaleId.length > 0) {
-          setSelectedCageIds(new Set(bySaleId.map(c => c.id)))
-        } else {
-          setSelectedCageIds(new Set(mapped.filter(c => c.status === 'sold').map(c => c.id)))
-        }
+        
+        // Filter: show cages belonging to THIS sale + pending cages (exclude cages sold to OTHER sales)
+        const cagesForThisSale = mapped.filter(c => String(c.saleId) === String(full.id))
+        const pendingCages = mapped.filter(c => !c.status || c.status === 'pending')
+        const availableCages = [...cagesForThisSale, ...pendingCages]
+        // Remove duplicates
+        const uniqueCages = availableCages.filter((cage, index, self) => 
+          index === self.findIndex(c => c.id === cage.id)
+        )
+        setPurchaseCages(uniqueCages)
+        
+        // Pre-select only cages belonging to this sale
+        setSelectedCageIds(new Set(cagesForThisSale.map(c => c.id)))
       } catch {
         // non-critical — form still works without cage list
       } finally {
