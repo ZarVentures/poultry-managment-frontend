@@ -15,7 +15,7 @@ import {
 } from "lucide-react"
 import { farmersApi, retailersApi, vehiclesApi, purchasesApi, salesApi, mortalityApi } from "@/lib/api"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://chickenbackend.onrender.com/api/v1"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://13.234.140.190.nip.io/api/v1"
 
 const EXPENSE_COLORS: Record<string, string> = {
   feed: "#10b981", labor: "#6366f1", medicine: "#f59e0b",
