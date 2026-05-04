@@ -129,9 +129,9 @@ export default function SalesPage() {
           setSelectedCageIds(soldIds)
         }
       } else {
-        // Create mode: pre-select all pending cages
+        // Create mode: load pending cages but don't pre-select any — user picks manually
         const pendingIds = new Set(mapped.filter(c => c.status === 'pending').map(c => c.id))
-        setSelectedCageIds(pendingIds)
+        setSelectedCageIds(new Set()) // no auto-select on create
       }
     } catch {
       toast.error('Failed to load cages for this purchase bill')
