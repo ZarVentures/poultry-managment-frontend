@@ -85,7 +85,15 @@ export default function SalesPage() {
     finally { setLoading(false) }
   }
   const fetchRetailers = async () => {
-    try { const d = await retailersApi.getActive(); setRetailers(Array.isArray(d) ? d : []) }
+    try { 
+      const d = await retailersApi.getActive()
+      const data = Array.isArray(d) ? d : []
+      // Ensure uniqueness by name to prevent duplicates in the UI
+      const uniqueData = data.filter((v, i, a) => 
+        a.findIndex(t => t.name === v.name) === i
+      )
+      setRetailers(uniqueData)
+    }
     catch { setRetailers([]) }
   }
   const fetchVehicles = async () => {
@@ -538,7 +546,7 @@ export default function SalesPage() {
                           <SelectTrigger><SelectValue placeholder="Select shop" /></SelectTrigger>
                           <SelectContent className="max-h-60 overflow-y-auto">
                             <SelectItem value="__none__">Select shop / retailer...</SelectItem>
-                            {retailers.map(r => <SelectItem key={r.id} value={r.id}>{r.name} {r.ownerName ? `— ${r.ownerName}` : ''}</SelectItem>)}
+                            {retailers.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
@@ -815,14 +823,14 @@ export default function SalesPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 <DateRangeFilter startDate={dateRangeStart} endDate={dateRangeEnd} onDateRangeChange={(s, e) => { setDateRangeStart(s); setDateRangeEnd(e) }} />
                 <Input placeholder="Search bill no, customer..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[180px]" />
-                <Input placeholder="Filter by location..." value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="w-[160px]" />
-                <Select value={filterRetailer || '__all__'} onValueChange={v => setFilterRetailer(v === '__all__' ? '' : v)}>
+                {/* <Input placeholder="Filter by location..." value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="w-[160px]" /> */}
+                {/* <Select value={filterRetailer || '__all__'} onValueChange={v => setFilterRetailer(v === '__all__' ? '' : v)}>
                   <SelectTrigger className="w-[160px]"><SelectValue placeholder="All Retailers" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__all__">All Retailers</SelectItem>
                     {retailers.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                   </SelectContent>
-                </Select>
+                </Select> */}
                 <Select value={filterPaymentStatus || '__all__'} onValueChange={v => setFilterPaymentStatus(v === '__all__' ? '' : v)}>
                   <SelectTrigger className="w-[140px]"><SelectValue placeholder="All Status" /></SelectTrigger>
                   <SelectContent>
