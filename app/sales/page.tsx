@@ -125,21 +125,22 @@ export default function SalesPage() {
         : []
 
       if (isEditMode && editingId) {
-        // Edit mode: show cages belonging to THIS sale + pending cages (exclude cages sold to OTHER sales)
-        // For backward compatibility: if cage is sold but has no saleId, assume it belongs to this sale
+        // Edit mode: 
+        // - Keep ALL cages (sold + pending) in state for Section 2
+        // - Section 1 will filter to show only pending cages
+        // - Section 2 shows all selected cages (sold + newly selected pending)
         const cagesForThisSale = mapped.filter(c => 
           String(c.saleId) === String(editingId) || 
           (c.status === 'sold' && !c.saleId)
         )
         const pendingCages = mapped.filter(c => !c.status || c.status === 'pending')
         console.log('Edit mode - Cages for this sale:', cagesForThisSale.length, 'Pending:', pendingCages.length)
-        const availableCages = [...cagesForThisSale, ...pendingCages]
-        // Remove duplicates
-        const uniqueCages = availableCages.filter((cage, index, self) => 
-          index === self.findIndex(c => c.id === cage.id)
-        )
-        setPurchaseCages(uniqueCages)
-        // Pre-select only cages belonging to this sale
+        
+        // Keep ALL cages (sold + pending) in state
+        const allCages = [...cagesForThisSale, ...pendingCages]
+        setPurchaseCages(allCages)
+        
+        // Pre-select the sold cages (they will appear in Section 2)
         setSelectedCageIds(new Set(cagesForThisSale.map(c => c.id)))
       } else {
         // Create mode: only show pending cages, no auto-select
@@ -314,7 +315,10 @@ export default function SalesPage() {
           ? allCages.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) }))
           : []
         
-        // Filter: show cages belonging to THIS sale + pending cages (exclude cages sold to OTHER sales)
+        // Filter: 
+        // - Keep ALL cages (sold + pending) in state for Section 2
+        // - Section 1 will filter to show only pending cages
+        // - Section 2 shows all selected cages (sold + newly selected pending)
         // For backward compatibility: if cage is sold but has no saleId, assume it belongs to this sale
         const cagesForThisSale = mapped.filter(c => 
           String(c.saleId) === String(full.id) || 
@@ -322,15 +326,12 @@ export default function SalesPage() {
         )
         const pendingCages = mapped.filter(c => !c.status || c.status === 'pending')
         console.log('Cages for this sale:', cagesForThisSale.length, 'Pending cages:', pendingCages.length)
-        const availableCages = [...cagesForThisSale, ...pendingCages]
-        // Remove duplicates
-        const uniqueCages = availableCages.filter((cage, index, self) => 
-          index === self.findIndex(c => c.id === cage.id)
-        )
-        console.log('Unique cages to show:', uniqueCages.length)
-        setPurchaseCages(uniqueCages)
         
-        // Pre-select only cages belonging to this sale
+        // Keep ALL cages (sold + pending) in state
+        const allCages = [...cagesForThisSale, ...pendingCages]
+        setPurchaseCages(allCages)
+        
+        // Pre-select the sold cages (they will appear in Section 2)
         setSelectedCageIds(new Set(cagesForThisSale.map(c => c.id)))
       } catch (error) {
         console.error('Failed to load cages:', error)
@@ -502,7 +503,7 @@ export default function SalesPage() {
                             </Label>
                             <p className="text-xs text-muted-foreground mt-0.5">
                               {isEditMode
-                                ? <span className="text-blue-700 font-medium">Cages for this sale are shown (checked, disabled). Pending cages can be added.</span>
+                                ? <span className="text-blue-700 font-medium">Select additional pending cages to add to this sale</span>
                                 : <>Checked cages will be marked as <span className="text-green-700 font-medium">SOLD</span> when you create the sale</>
                               }
                             </p>
@@ -526,52 +527,40 @@ export default function SalesPage() {
                                   <th className="text-left p-1">Cage ID</th>
                                   <th className="text-right p-1">Birds</th>
                                   <th className="text-right p-1">Weight (kg)</th>
-                                  {isEditMode && <th className="text-center p-1">Status</th>}
                                 </tr>
                               </thead>
                               <tbody>
-                                {purchaseCages.map(cage => {
-                                  const isSoldToThisSale = cage.status === 'sold' && String(cage.saleId) === String(editingId)
-                                  const isSoldToOtherSale = cage.status === 'sold' && String(cage.saleId) !== String(editingId)
-                                  const isDisabled = isSoldToThisSale // Sold cages for this sale are shown but disabled
+                                {purchaseCages
+                                  .filter(cage => !cage.status || cage.status === 'pending') // Section 1: Show ONLY pending cages
+                                  .map(cage => {
+                                  const isDisabled = false // Pending cages are never disabled
                                   
                                   return (
                                     <tr 
                                       key={cage.id} 
-                                      className={`border-b ${!isDisabled ? 'cursor-pointer hover:bg-blue-100' : 'opacity-60 cursor-not-allowed'} ${selectedCageIds.has(cage.id!) ? 'bg-green-50' : ''}`}
-                                      onClick={() => !isDisabled && toggleCage(cage.id!)}
+                                      className={`border-b cursor-pointer hover:bg-blue-100 ${selectedCageIds.has(cage.id!) ? 'bg-green-50' : ''}`}
+                                      onClick={() => toggleCage(cage.id!)}
                                     >
                                       <td className="p-1 text-center">
                                         <input 
                                           type="checkbox" 
                                           checked={selectedCageIds.has(cage.id!)} 
-                                          onChange={() => !isDisabled && toggleCage(cage.id!)} 
+                                          onChange={() => toggleCage(cage.id!)} 
                                           onClick={e => e.stopPropagation()}
-                                          disabled={isDisabled}
                                         />
                                       </td>
                                       <td className="p-1 font-medium">{cage.cageId || '-'}</td>
                                       <td className="p-1 text-right">{cage.numberOfBirds}</td>
                                       <td className="p-1 text-right">{Number(cage.purchaseWeight).toFixed(2)}</td>
-                                      {isEditMode && (
-                                        <td className="p-1 text-center">
-                                          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                                            cage.status === 'sold' ? 'bg-green-100 text-green-700' :
-                                            cage.status === 'in_godown' ? 'bg-blue-100 text-blue-700' :
-                                            'bg-gray-100 text-gray-600'
-                                          }`}>{cage.status || 'pending'}</span>
-                                        </td>
-                                      )}
                                     </tr>
                                   )
                                 })}
                               </tbody>
                               <tfoot>
                                 <tr className="border-t font-semibold bg-blue-100">
-                                  <td colSpan={2} className="p-1">{selectedCageIds.size} selected / {purchaseCages.length} total</td>
+                                  <td colSpan={2} className="p-1">{selectedCageIds.size} selected / {purchaseCages.filter(c => !c.status || c.status === 'pending').length} pending</td>
                                   <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id!)).reduce((s, c) => s + c.numberOfBirds, 0)}</td>
                                   <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id!)).reduce((s, c) => s + Number(c.purchaseWeight), 0).toFixed(2)}</td>
-                                  {isEditMode && <td></td>}
                                 </tr>
                               </tfoot>
                             </table>
