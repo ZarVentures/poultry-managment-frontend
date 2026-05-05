@@ -117,7 +117,9 @@ export default function SalesPage() {
       // Always load ALL cages for this purchase bill (no status filter)
       // In edit mode: pre-select only the ones belonging to this sale
       // In create mode: pre-select only pending ones
+      console.log('handlePurchaseBillChange - Loading cages for:', billNo, 'isEditMode:', isEditMode, 'editingId:', editingId)
       const allCages = await purchasesApi.getCagesByOrderNumber(billNo)
+      console.log('Cages received:', allCages)
       const mapped = Array.isArray(allCages)
         ? allCages.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) }))
         : []
@@ -126,6 +128,7 @@ export default function SalesPage() {
         // Edit mode: show cages belonging to THIS sale + pending cages (exclude cages sold to OTHER sales)
         const cagesForThisSale = mapped.filter(c => String(c.saleId) === String(editingId))
         const pendingCages = mapped.filter(c => !c.status || c.status === 'pending')
+        console.log('Edit mode - Cages for this sale:', cagesForThisSale.length, 'Pending:', pendingCages.length)
         const availableCages = [...cagesForThisSale, ...pendingCages]
         // Remove duplicates
         const uniqueCages = availableCages.filter((cage, index, self) => 
@@ -137,10 +140,12 @@ export default function SalesPage() {
       } else {
         // Create mode: only show pending cages, no auto-select
         const pendingOnly = mapped.filter(c => !c.status || c.status === 'pending')
+        console.log('Create mode - Pending cages:', pendingOnly.length)
         setPurchaseCages(pendingOnly)
         setSelectedCageIds(new Set())
       }
-    } catch {
+    } catch (error) {
+      console.error('Failed to load cages:', error)
       toast.error('Failed to load cages for this purchase bill')
     } finally {
       setLoadingCages(false)
@@ -298,7 +303,9 @@ export default function SalesPage() {
     if (purchaseBillNo) {
       try {
         setLoadingCages(true)
+        console.log('Loading cages for purchase bill:', purchaseBillNo, 'sale ID:', full.id)
         const allCages = await purchasesApi.getCagesByOrderNumber(purchaseBillNo)
+        console.log('All cages received:', allCages)
         const mapped = Array.isArray(allCages)
           ? allCages.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) }))
           : []
@@ -306,20 +313,27 @@ export default function SalesPage() {
         // Filter: show cages belonging to THIS sale + pending cages (exclude cages sold to OTHER sales)
         const cagesForThisSale = mapped.filter(c => String(c.saleId) === String(full.id))
         const pendingCages = mapped.filter(c => !c.status || c.status === 'pending')
+        console.log('Cages for this sale:', cagesForThisSale.length, 'Pending cages:', pendingCages.length)
         const availableCages = [...cagesForThisSale, ...pendingCages]
         // Remove duplicates
         const uniqueCages = availableCages.filter((cage, index, self) => 
           index === self.findIndex(c => c.id === cage.id)
         )
+        console.log('Unique cages to show:', uniqueCages.length)
         setPurchaseCages(uniqueCages)
         
         // Pre-select only cages belonging to this sale
         setSelectedCageIds(new Set(cagesForThisSale.map(c => c.id)))
-      } catch {
+      } catch (error) {
+        console.error('Failed to load cages:', error)
         // non-critical — form still works without cage list
       } finally {
         setLoadingCages(false)
       }
+    } else {
+      console.log('No purchase bill number for this sale')
+      setPurchaseCages([])
+      setSelectedCageIds(new Set())
     }
   }
 
