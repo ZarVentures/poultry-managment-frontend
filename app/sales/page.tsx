@@ -662,15 +662,34 @@ export default function SalesPage() {
                               return (
                                 <tr key={cage.id} className="border-b hover:bg-gray-50">
                                   <td className="p-1 font-medium text-xs">{cage.cageId || '-'}</td>
-                                  <td className="p-1 text-center">{cage.numberOfBirds}</td>
+                                  <td className="p-1">
+                                    <Input 
+                                      type="number" 
+                                      defaultValue={cage.numberOfBirds}
+                                      onChange={e => {
+                                        // Update the cage's bird count in the state
+                                        const newBirds = parseInt(e.target.value) || 0
+                                        setPurchaseCages(prev => prev.map(c => 
+                                          c.id === cage.id ? { ...c, numberOfBirds: newBirds } : c
+                                        ))
+                                      }}
+                                      className="h-8 text-sm text-center" 
+                                      disabled={loading} 
+                                      onWheel={(e) => e.currentTarget.blur()}
+                                    />
+                                  </td>
                                   <td className="p-1">
                                     <Input type="number" step="0.001" defaultValue={wt.toFixed(3)}
                                       onChange={e => {
                                         const newWt = parseFloat(e.target.value) || 0
+                                        // Update the cage's weight in the state
+                                        setPurchaseCages(prev => prev.map(c => 
+                                          c.id === cage.id ? { ...c, purchaseWeight: newWt } : c
+                                        ))
                                         const others = purchaseCages.filter(c => selectedCageIds.has(c.id!) && c.id !== cage.id).reduce((s, c) => s + Number(c.purchaseWeight), 0)
                                         setFormData(f => ({ ...f, totalWeight: (others + newWt).toFixed(3) }))
                                       }}
-                                      className="h-8 text-sm" disabled={loading} />
+                                      className="h-8 text-sm" disabled={loading} onWheel={(e) => e.currentTarget.blur()} />
                                   </td>
                                   <td className="p-1 text-right font-medium">{amt > 0 ? `₹${amt.toFixed(0)}` : '-'}</td>
                                 </tr>
