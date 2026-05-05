@@ -137,8 +137,8 @@ export default function SalesPage() {
         console.log('Edit mode - Cages for this sale:', cagesForThisSale.length, 'Pending:', pendingCages.length)
         
         // Keep ALL cages (sold + pending) in state
-        const allCages = [...cagesForThisSale, ...pendingCages]
-        setPurchaseCages(allCages)
+        const combinedCages = [...cagesForThisSale, ...pendingCages]
+        setPurchaseCages(combinedCages)
         
         // Pre-select the sold cages (they will appear in Section 2)
         setSelectedCageIds(new Set(cagesForThisSale.map(c => c.id)))
@@ -328,8 +328,8 @@ export default function SalesPage() {
         console.log('Cages for this sale:', cagesForThisSale.length, 'Pending cages:', pendingCages.length)
         
         // Keep ALL cages (sold + pending) in state
-        const allCages = [...cagesForThisSale, ...pendingCages]
-        setPurchaseCages(allCages)
+        const combinedCages = [...cagesForThisSale, ...pendingCages]
+        setPurchaseCages(combinedCages)
         
         // Pre-select the sold cages (they will appear in Section 2)
         setSelectedCageIds(new Set(cagesForThisSale.map(c => c.id)))
