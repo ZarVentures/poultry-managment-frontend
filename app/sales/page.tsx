@@ -480,7 +480,7 @@ export default function SalesPage() {
                             </Label>
                             <p className="text-xs text-muted-foreground mt-0.5">
                               {isEditMode
-                                ? <span className="text-blue-700 font-medium">All cages shown — checked ones are linked to this sale</span>
+                                ? <span className="text-blue-700 font-medium">Cages for this sale are shown (checked, disabled). Pending cages can be added.</span>
                                 : <>Checked cages will be marked as <span className="text-green-700 font-medium">SOLD</span> when you create the sale</>
                               }
                             </p>
@@ -508,26 +508,41 @@ export default function SalesPage() {
                                 </tr>
                               </thead>
                               <tbody>
-                                {purchaseCages.map(cage => (
-                                  <tr key={cage.id} className={`border-b cursor-pointer hover:bg-blue-100 ${selectedCageIds.has(cage.id!) ? 'bg-green-50' : ''}`}
-                                    onClick={() => toggleCage(cage.id!)}>
-                                    <td className="p-1 text-center">
-                                      <input type="checkbox" checked={selectedCageIds.has(cage.id!)} onChange={() => toggleCage(cage.id!)} onClick={e => e.stopPropagation()} />
-                                    </td>
-                                    <td className="p-1 font-medium">{cage.cageId || '-'}</td>
-                                    <td className="p-1 text-right">{cage.numberOfBirds}</td>
-                                    <td className="p-1 text-right">{Number(cage.purchaseWeight).toFixed(2)}</td>
-                                    {isEditMode && (
+                                {purchaseCages.map(cage => {
+                                  const isSoldToThisSale = cage.status === 'sold' && String(cage.saleId) === String(editingId)
+                                  const isSoldToOtherSale = cage.status === 'sold' && String(cage.saleId) !== String(editingId)
+                                  const isDisabled = isSoldToThisSale // Sold cages for this sale are shown but disabled
+                                  
+                                  return (
+                                    <tr 
+                                      key={cage.id} 
+                                      className={`border-b ${!isDisabled ? 'cursor-pointer hover:bg-blue-100' : 'opacity-60 cursor-not-allowed'} ${selectedCageIds.has(cage.id!) ? 'bg-green-50' : ''}`}
+                                      onClick={() => !isDisabled && toggleCage(cage.id!)}
+                                    >
                                       <td className="p-1 text-center">
-                                        <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                                          cage.status === 'sold' ? 'bg-green-100 text-green-700' :
-                                          cage.status === 'in_godown' ? 'bg-blue-100 text-blue-700' :
-                                          'bg-gray-100 text-gray-600'
-                                        }`}>{cage.status || 'pending'}</span>
+                                        <input 
+                                          type="checkbox" 
+                                          checked={selectedCageIds.has(cage.id!)} 
+                                          onChange={() => !isDisabled && toggleCage(cage.id!)} 
+                                          onClick={e => e.stopPropagation()}
+                                          disabled={isDisabled}
+                                        />
                                       </td>
-                                    )}
-                                  </tr>
-                                ))}
+                                      <td className="p-1 font-medium">{cage.cageId || '-'}</td>
+                                      <td className="p-1 text-right">{cage.numberOfBirds}</td>
+                                      <td className="p-1 text-right">{Number(cage.purchaseWeight).toFixed(2)}</td>
+                                      {isEditMode && (
+                                        <td className="p-1 text-center">
+                                          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                                            cage.status === 'sold' ? 'bg-green-100 text-green-700' :
+                                            cage.status === 'in_godown' ? 'bg-blue-100 text-blue-700' :
+                                            'bg-gray-100 text-gray-600'
+                                          }`}>{cage.status || 'pending'}</span>
+                                        </td>
+                                      )}
+                                    </tr>
+                                  )
+                                })}
                               </tbody>
                               <tfoot>
                                 <tr className="border-t font-semibold bg-blue-100">
