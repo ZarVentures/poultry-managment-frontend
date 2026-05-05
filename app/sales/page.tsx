@@ -126,7 +126,11 @@ export default function SalesPage() {
 
       if (isEditMode && editingId) {
         // Edit mode: show cages belonging to THIS sale + pending cages (exclude cages sold to OTHER sales)
-        const cagesForThisSale = mapped.filter(c => String(c.saleId) === String(editingId))
+        // For backward compatibility: if cage is sold but has no saleId, assume it belongs to this sale
+        const cagesForThisSale = mapped.filter(c => 
+          String(c.saleId) === String(editingId) || 
+          (c.status === 'sold' && !c.saleId)
+        )
         const pendingCages = mapped.filter(c => !c.status || c.status === 'pending')
         console.log('Edit mode - Cages for this sale:', cagesForThisSale.length, 'Pending:', pendingCages.length)
         const availableCages = [...cagesForThisSale, ...pendingCages]
@@ -311,7 +315,11 @@ export default function SalesPage() {
           : []
         
         // Filter: show cages belonging to THIS sale + pending cages (exclude cages sold to OTHER sales)
-        const cagesForThisSale = mapped.filter(c => String(c.saleId) === String(full.id))
+        // For backward compatibility: if cage is sold but has no saleId, assume it belongs to this sale
+        const cagesForThisSale = mapped.filter(c => 
+          String(c.saleId) === String(full.id) || 
+          (c.status === 'sold' && !c.saleId)
+        )
         const pendingCages = mapped.filter(c => !c.status || c.status === 'pending')
         console.log('Cages for this sale:', cagesForThisSale.length, 'Pending cages:', pendingCages.length)
         const availableCages = [...cagesForThisSale, ...pendingCages]
