@@ -39,6 +39,7 @@ export default function GodownSalePage() {
     ratePerKg: "",
     totalAmount: "",
     paymentStatus: "pending" as "paid" | "pending" | "partial",
+    paymentMode: "cash",
     amountReceived: "",
     notes: "",
   })
@@ -91,6 +92,7 @@ export default function GodownSalePage() {
       ratePerKg: "",
       totalAmount: "",
       paymentStatus: "pending",
+      paymentMode: "cash",
       amountReceived: "",
       notes: "",
     })
@@ -110,6 +112,7 @@ export default function GodownSalePage() {
       ratePerKg: String(sale.ratePerKg || ""),
       totalAmount: String(sale.totalAmount || ""),
       paymentStatus: (sale as any).paymentStatus || "pending",
+      paymentMode: (sale as any).paymentMode || "cash",
       amountReceived: String((sale as any).amountReceived || ""),
       notes: sale.notes || "",
     })
@@ -141,6 +144,7 @@ export default function GodownSalePage() {
         ratePerKg: parseFloat(formData.ratePerKg) || undefined,
         totalAmount: parseFloat(formData.totalAmount) || parseFloat(calculateTotal()) || 0,
         paymentStatus: formData.paymentStatus,
+        paymentMode: formData.paymentMode || undefined,
         amountReceived: parseFloat(formData.amountReceived) || 0,
         notes: formData.notes,
         cages: cages
@@ -460,20 +464,40 @@ export default function GodownSalePage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Payment Status *</Label>
-                    <select
-                      className="w-full border rounded p-2"
+                    <Select
                       value={formData.paymentStatus}
-                      onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value as any })}
+                      onValueChange={(v: any) => setFormData({ ...formData, paymentStatus: v })}
                       disabled={loading}
                     >
-                      <option value="pending">Pending</option>
-                      <option value="partial">Partial</option>
-                      <option value="paid">Paid</option>
-                    </select>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="partial">Partial</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Payment Mode</Label>
+                    <Select
+                      value={formData.paymentMode}
+                      onValueChange={(v) => setFormData({ ...formData, paymentMode: v })}
+                      disabled={loading}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Select payment mode" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="upi">UPI</SelectItem>
+                        <SelectItem value="card">Card</SelectItem>
+                        <SelectItem value="cheque">Cheque</SelectItem>
+                        <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                        <SelectItem value="advance">Advance</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="space-y-2">
                     <Label>Amount Received (₹)</Label>
                     <Input
@@ -576,6 +600,8 @@ export default function GodownSalePage() {
                       <TableHead className="font-bold">Quantity</TableHead>
                       <TableHead className="font-bold">Rate</TableHead>
                       <TableHead className="font-bold">Total</TableHead>
+                      <TableHead className="font-bold">Payment Mode</TableHead>
+                      <TableHead className="font-bold">Status</TableHead>
                       <TableHead className="font-bold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -588,6 +614,20 @@ export default function GodownSalePage() {
                         <TableCell>{sale.numberOfBirds} birds</TableCell>
                         <TableCell>₹{Number(sale.ratePerKg || 0).toFixed(2)}/kg</TableCell>
                         <TableCell>₹{Number(sale.totalAmount || 0).toFixed(2)}</TableCell>
+                        <TableCell>
+                          <span className="text-xs px-2 py-0.5 rounded bg-gray-100 capitalize">
+                            {(sale as any).paymentMode?.replace('_', ' ') || '-'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                            (sale as any).paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                            (sale as any).paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {(sale as any).paymentStatus || 'pending'}
+                          </span>
+                        </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(sale)}>
