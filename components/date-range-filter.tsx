@@ -45,6 +45,10 @@ export function DateRangeFilter({ startDate, endDate, onDateRangeChange }: DateR
     onDateRangeChange(start, end)
   }
 
+  const disabledDate = (current: Dayjs) => {
+    return current && current.isAfter(dayjs().endOf("day"))
+  }
+
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <Label className="text-sm font-medium whitespace-nowrap">Date Range:</Label>
@@ -53,6 +57,7 @@ export function DateRangeFilter({ startDate, endDate, onDateRangeChange }: DateR
           value={value}
           onChange={handleChange}
           format="DD-MMM-YYYY"
+          disabledDate={disabledDate}
           popupClassName="no-calendar-shadow"
           className="premium-datepicker h-9"
         />
