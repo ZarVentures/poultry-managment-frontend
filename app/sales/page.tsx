@@ -29,6 +29,7 @@ export default function SalesPage() {
   const [vehicles, setVehicles] = useState<any[]>([])
   const [purchaseBills, setPurchaseBills] = useState<Array<{ id: string; orderNumber: string; supplierName: string }>>([])
   const [purchaseCages, setPurchaseCages] = useState<Array<{ id: string; cageId?: string; numberOfBirds: number; purchaseWeight: number; status?: string; saleId?: string }>>([])
+  const [billSearch, setBillSearch] = useState("");
   const [selectedCageIds, setSelectedCageIds] = useState<Set<string>>(new Set())
   const [loadingCages, setLoadingCages] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
@@ -85,11 +86,11 @@ export default function SalesPage() {
     finally { setLoading(false) }
   }
   const fetchRetailers = async () => {
-    try { 
+    try {
       const d = await retailersApi.getActive()
       const data = Array.isArray(d) ? d : []
       // Ensure uniqueness by name to prevent duplicates in the UI
-      const uniqueData = data.filter((v, i, a) => 
+      const uniqueData = data.filter((v, i, a) =>
         a.findIndex(t => t.name === v.name) === i
       )
       setRetailers(uniqueData)
@@ -129,17 +130,17 @@ export default function SalesPage() {
         // - Keep ALL cages (sold + pending) in state for Section 2
         // - Section 1 will filter to show only pending cages
         // - Section 2 shows all selected cages (sold + newly selected pending)
-        const cagesForThisSale = mapped.filter(c => 
-          String(c.saleId) === String(editingId) || 
+        const cagesForThisSale = mapped.filter(c =>
+          String(c.saleId) === String(editingId) ||
           (c.status === 'sold' && !c.saleId)
         )
         const pendingCages = mapped.filter(c => !c.status || c.status === 'pending')
         console.log('Edit mode - Cages for this sale:', cagesForThisSale.length, 'Pending:', pendingCages.length)
-        
+
         // Keep ALL cages (sold + pending) in state
         const combinedCages = [...cagesForThisSale, ...pendingCages]
         setPurchaseCages(combinedCages)
-        
+
         // Pre-select the sold cages (they will appear in Section 2)
         setSelectedCageIds(new Set(cagesForThisSale.map(c => c.id)))
       } else {
@@ -265,7 +266,7 @@ export default function SalesPage() {
         numBirds = String(parsed.customerRows[0].numBirds || "")
         if (parsed.customerRows[0].weight) totalWeightVal = String(parsed.customerRows[0].weight)
       }
-    } catch {}
+    } catch { }
 
     const purchaseBillNo = (full as any).purchaseBillNo || ""
 
@@ -314,23 +315,23 @@ export default function SalesPage() {
         const mapped = Array.isArray(allCages)
           ? allCages.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) }))
           : []
-        
+
         // Filter: 
         // - Keep ALL cages (sold + pending) in state for Section 2
         // - Section 1 will filter to show only pending cages
         // - Section 2 shows all selected cages (sold + newly selected pending)
         // For backward compatibility: if cage is sold but has no saleId, assume it belongs to this sale
-        const cagesForThisSale = mapped.filter(c => 
-          String(c.saleId) === String(full.id) || 
+        const cagesForThisSale = mapped.filter(c =>
+          String(c.saleId) === String(full.id) ||
           (c.status === 'sold' && !c.saleId)
         )
         const pendingCages = mapped.filter(c => !c.status || c.status === 'pending')
         console.log('Cages for this sale:', cagesForThisSale.length, 'Pending cages:', pendingCages.length)
-        
+
         // Keep ALL cages (sold + pending) in state
         const combinedCages = [...cagesForThisSale, ...pendingCages]
         setPurchaseCages(combinedCages)
-        
+
         // Pre-select the sold cages (they will appear in Section 2)
         setSelectedCageIds(new Set(cagesForThisSale.map(c => c.id)))
       } catch (error) {
@@ -420,8 +421,8 @@ export default function SalesPage() {
       f = f.filter(s => s.invoiceNumber.toLowerCase().includes(q) || s.customerName.toLowerCase().includes(q) || (s as any).saleNo?.toLowerCase().includes(q))
     }
     if (dateRangeStart && dateRangeEnd) {
-      const s = new Date(dateRangeStart); s.setHours(0,0,0,0)
-      const e = new Date(dateRangeEnd); e.setHours(23,59,59,999)
+      const s = new Date(dateRangeStart); s.setHours(0, 0, 0, 0)
+      const e = new Date(dateRangeEnd); e.setHours(23, 59, 59, 999)
       f = f.filter(x => { const d = new Date(x.saleDate); return d >= s && d <= e })
     }
     if (filterRetailer) f = f.filter(s => s.retailerId === filterRetailer)
@@ -470,8 +471,25 @@ export default function SalesPage() {
                       <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
                         <SelectTrigger><SelectValue placeholder="Select purchase bill" /></SelectTrigger>
                         <SelectContent className="max-h-60 overflow-y-auto">
+                          {/* Search box inside dropdown */}
+                          <div className="px-2 py-1 sticky top-0 bg-white z-10">
+                            <Input
+                              placeholder="Search bill no or supplier..."
+                              value={billSearch}
+                              onChange={e => setBillSearch(e.target.value)}
+                              className="h-8 text-xs"
+                              autoFocus
+                            />
+                          </div>
                           <SelectItem value="__none__">Select purchase bill...</SelectItem>
-                          {purchaseBills.map(b => <SelectItem key={b.id} value={b.orderNumber}>{b.orderNumber} — {b.supplierName}</SelectItem>)}
+                          {(billSearch.trim() ? purchaseBills.filter(b =>
+                            b.orderNumber.toLowerCase().includes(billSearch.toLowerCase()) ||
+                            b.supplierName.toLowerCase().includes(billSearch.toLowerCase())
+                          ) : purchaseBills).map(b => (
+                            <SelectItem key={b.id} value={b.orderNumber}>
+                              {b.orderNumber} — {b.supplierName}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -533,28 +551,28 @@ export default function SalesPage() {
                                 {purchaseCages
                                   .filter(cage => !cage.status || cage.status === 'pending') // Section 1: Show ONLY pending cages
                                   .map(cage => {
-                                  const isDisabled = false // Pending cages are never disabled
-                                  
-                                  return (
-                                    <tr 
-                                      key={cage.id} 
-                                      className={`border-b cursor-pointer hover:bg-blue-100 ${selectedCageIds.has(cage.id!) ? 'bg-green-50' : ''}`}
-                                      onClick={() => toggleCage(cage.id!)}
-                                    >
-                                      <td className="p-1 text-center">
-                                        <input 
-                                          type="checkbox" 
-                                          checked={selectedCageIds.has(cage.id!)} 
-                                          onChange={() => toggleCage(cage.id!)} 
-                                          onClick={e => e.stopPropagation()}
-                                        />
-                                      </td>
-                                      <td className="p-1 font-medium">{cage.cageId || '-'}</td>
-                                      <td className="p-1 text-right">{cage.numberOfBirds}</td>
-                                      <td className="p-1 text-right">{Number(cage.purchaseWeight).toFixed(2)}</td>
-                                    </tr>
-                                  )
-                                })}
+                                    const isDisabled = false // Pending cages are never disabled
+
+                                    return (
+                                      <tr
+                                        key={cage.id}
+                                        className={`border-b cursor-pointer hover:bg-blue-100 ${selectedCageIds.has(cage.id!) ? 'bg-green-50' : ''}`}
+                                        onClick={() => toggleCage(cage.id!)}
+                                      >
+                                        <td className="p-1 text-center">
+                                          <input
+                                            type="checkbox"
+                                            checked={selectedCageIds.has(cage.id!)}
+                                            onChange={() => toggleCage(cage.id!)}
+                                            onClick={e => e.stopPropagation()}
+                                          />
+                                        </td>
+                                        <td className="p-1 font-medium">{cage.cageId || '-'}</td>
+                                        <td className="p-1 text-right">{cage.numberOfBirds}</td>
+                                        <td className="p-1 text-right">{Number(cage.purchaseWeight).toFixed(2)}</td>
+                                      </tr>
+                                    )
+                                  })}
                               </tbody>
                               <tfoot>
                                 <tr className="border-t font-semibold bg-blue-100">
@@ -638,7 +656,7 @@ export default function SalesPage() {
                       </div>
                       <div className="space-y-1">
                         <Label>Rate per KG *</Label>
-                        <Input type="number" step="0.01" value={formData.ratePerKg} onChange={e => setFormData(f => ({ ...f, ratePerKg: e.target.value }))} placeholder="e.g. 146" disabled={loading}  onWheel={(e) => e.currentTarget.blur()}/>
+                        <Input type="number" step="0.01" value={formData.ratePerKg} onChange={e => setFormData(f => ({ ...f, ratePerKg: e.target.value }))} placeholder="e.g. 146" disabled={loading} onWheel={(e) => e.currentTarget.blur()} />
                       </div>
                     </div>
                     <div className="overflow-x-auto">
@@ -660,18 +678,18 @@ export default function SalesPage() {
                                 <tr key={cage.id} className="border-b hover:bg-gray-50">
                                   <td className="p-1 font-medium text-xs">{cage.cageId || '-'}</td>
                                   <td className="p-1">
-                                    <Input 
-                                      type="number" 
+                                    <Input
+                                      type="number"
                                       defaultValue={cage.numberOfBirds}
                                       onChange={e => {
                                         // Update the cage's bird count in the state
                                         const newBirds = parseInt(e.target.value) || 0
-                                        setPurchaseCages(prev => prev.map(c => 
+                                        setPurchaseCages(prev => prev.map(c =>
                                           c.id === cage.id ? { ...c, numberOfBirds: newBirds } : c
                                         ))
                                       }}
-                                      className="h-8 text-sm text-center" 
-                                      disabled={loading} 
+                                      className="h-8 text-sm text-center"
+                                      disabled={loading}
                                       onWheel={(e) => e.currentTarget.blur()}
                                     />
                                   </td>
@@ -680,7 +698,7 @@ export default function SalesPage() {
                                       onChange={e => {
                                         const newWt = parseFloat(e.target.value) || 0
                                         // Update the cage's weight in the state
-                                        setPurchaseCages(prev => prev.map(c => 
+                                        setPurchaseCages(prev => prev.map(c =>
                                           c.id === cage.id ? { ...c, purchaseWeight: newWt } : c
                                         ))
                                         const others = purchaseCages.filter(c => selectedCageIds.has(c.id!) && c.id !== cage.id).reduce((s, c) => s + Number(c.purchaseWeight), 0)
@@ -762,7 +780,7 @@ export default function SalesPage() {
                             </SelectContent>
                           </Select>
                           <div className="flex gap-1">
-                            <Input type="number" step="0.01" placeholder="0.00" value={p.amount} onChange={e => updatePayment(i, "amount", e.target.value)} disabled={loading}  onWheel={(e) => e.currentTarget.blur()}/>
+                            <Input type="number" step="0.01" placeholder="0.00" value={p.amount} onChange={e => updatePayment(i, "amount", e.target.value)} disabled={loading} onWheel={(e) => e.currentTarget.blur()} />
                             {payments.length > 1 && <Button type="button" variant="ghost" size="sm" onClick={() => removePayment(i)} className="px-2 text-red-500"><X size={14} /></Button>}
                           </div>
                         </div>
@@ -788,78 +806,78 @@ export default function SalesPage() {
         </div>
 
         {/* Mini Dashboard */}
-       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-  
-  <Card>
-    <CardHeader className="pb-2">
-      <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-        <ShoppingCart size={14} className="text-blue-600" />
-        Total Sales
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold text-blue-600">
-        {stats.count}
-      </div>
-    </CardContent>
-  </Card>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
 
-  <Card>
-    <CardHeader className="pb-2">
-      <CardTitle className="text-xs font-medium text-muted-foreground">
-        Total Birds
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold text-purple-600">
-        {stats.totalBirds.toFixed(0)} kg
-      </div>
-    </CardContent>
-  </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <ShoppingCart size={14} className="text-blue-600" />
+                Total Sales
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">
+                {stats.count}
+              </div>
+            </CardContent>
+          </Card>
 
-  <Card>
-    <CardHeader className="pb-2">
-      <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-        <TrendingUp size={14} className="text-orange-600" />
-        Revenue
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold text-orange-600">
-        ₹{stats.totalRevenue.toFixed(0)}
-      </div>
-    </CardContent>
-  </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-muted-foreground">
+                Total Birds
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-600">
+                {stats.totalBirds.toFixed(0)} kg
+              </div>
+            </CardContent>
+          </Card>
 
-  <Card>
-    <CardHeader className="pb-2">
-      <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-        <Wallet size={14} className="text-green-600" />
-        Received
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold text-green-600">
-        ₹{stats.totalReceived.toFixed(0)}
-      </div>
-    </CardContent>
-  </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <TrendingUp size={14} className="text-orange-600" />
+                Revenue
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">
+                ₹{stats.totalRevenue.toFixed(0)}
+              </div>
+            </CardContent>
+          </Card>
 
-  <Card>
-    <CardHeader className="pb-2">
-      <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-        <Clock size={14} className="text-red-600" />
-        Pending
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold text-red-600">
-        ₹{stats.totalPending.toFixed(0)}
-      </div>
-    </CardContent>
-  </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Wallet size={14} className="text-green-600" />
+                Received
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                ₹{stats.totalReceived.toFixed(0)}
+              </div>
+            </CardContent>
+          </Card>
 
-</div>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Clock size={14} className="text-red-600" />
+                Pending
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                ₹{stats.totalPending.toFixed(0)}
+              </div>
+            </CardContent>
+          </Card>
+
+        </div>
 
         {/* Table */}
         <Card>
@@ -908,23 +926,23 @@ export default function SalesPage() {
             ) : (
               <div className="overflow-x-auto">
                 <Table>
-                  
-                     <TableHeader>
-                     <TableRow>
-                       <TableHead className="font-bold">Sale No</TableHead>
-                       <TableHead className="font-bold">Bill No</TableHead>
-                       <TableHead className="font-bold">Purchase Bill</TableHead>
-                       <TableHead className="font-bold">Date</TableHead>
-                       <TableHead className="font-bold">Customer</TableHead>
-                       <TableHead className="font-bold">Mode</TableHead>
-                       <TableHead className="font-bold">Weight</TableHead>
-                       <TableHead className="font-bold">Net Amount</TableHead>
-                       <TableHead className="font-bold">Payment</TableHead>
-                       <TableHead className="font-bold">Balance</TableHead>
-                       <TableHead className="font-bold">Actions</TableHead>
-                     </TableRow>
-                   </TableHeader>
-                  
+
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="font-bold">Sale No</TableHead>
+                      <TableHead className="font-bold">Bill No</TableHead>
+                      <TableHead className="font-bold">Purchase Bill</TableHead>
+                      <TableHead className="font-bold">Date</TableHead>
+                      <TableHead className="font-bold">Customer</TableHead>
+                      <TableHead className="font-bold">Mode</TableHead>
+                      <TableHead className="font-bold">Weight</TableHead>
+                      <TableHead className="font-bold">Net Amount</TableHead>
+                      <TableHead className="font-bold">Payment</TableHead>
+                      <TableHead className="font-bold">Balance</TableHead>
+                      <TableHead className="font-bold">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+
                   <TableBody>
                     {filtered.map(s => (
                       <TableRow key={s.id}>
