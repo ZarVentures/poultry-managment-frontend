@@ -466,15 +466,20 @@ export default function MortalityPage() {
   const totalBirdsDeath = filteredMortalities.reduce((sum, m) => sum + (m.numberOfBirdsDied || 0), 0)
   const totalRecords = filteredMortalities.length
   
-  // Calculate Total Value - sum of purchase values for mortalities
+  // Calculate Total Value - value of dead birds only (dead birds × rate per bird)
   const totalValue = useMemo(() => {
     return filteredMortalities.reduce((sum, m) => {
-      if (m.purchaseInvoiceNo) {
+      if (m.purchaseInvoiceNo && m.numberOfBirdsDied) {
         const purchase = purchases.find(
           (p) => (p.orderNumber || "").toLowerCase() === m.purchaseInvoiceNo.toLowerCase()
         )
         if (purchase) {
-          return sum + (Number(purchase.totalAmount) || 0)
+          // Calculate rate per bird from purchase order
+          const totalBirds = purchase.cages?.reduce((total, cage) => total + (cage.numberOfBirds || 0), 0) || 0
+          const ratePerBird = totalBirds > 0 ? (Number(purchase.totalAmount) || 0) / totalBirds : 0
+          // Calculate value of dead birds
+          const deadBirdsValue = m.numberOfBirdsDied * ratePerBird
+          return sum + deadBirdsValue
         }
       }
       return sum
