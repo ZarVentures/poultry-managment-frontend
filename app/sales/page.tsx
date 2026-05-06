@@ -29,6 +29,7 @@ export default function SalesPage() {
   const [vehicles, setVehicles] = useState<any[]>([])
   const [purchaseBills, setPurchaseBills] = useState<Array<{ id: string; orderNumber: string; supplierName: string }>>([])
   const [purchaseCages, setPurchaseCages] = useState<Array<{ id: string; cageId?: string; numberOfBirds: number; purchaseWeight: number; status?: string }>>([])
+  const [billSearch, setBillSearch] = useState("");
   const [selectedCageIds, setSelectedCageIds] = useState<Set<string>>(new Set())
   const [loadingCages, setLoadingCages] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
@@ -445,8 +446,25 @@ export default function SalesPage() {
                       <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
                         <SelectTrigger><SelectValue placeholder="Select purchase bill" /></SelectTrigger>
                         <SelectContent className="max-h-60 overflow-y-auto">
+                          {/* Search box inside dropdown */}
+                          <div className="px-2 py-1 sticky top-0 bg-white z-10">
+                            <Input
+                              placeholder="Search bill no or supplier..."
+                              value={billSearch}
+                              onChange={e => setBillSearch(e.target.value)}
+                              className="h-8 text-xs"
+                              autoFocus
+                            />
+                          </div>
                           <SelectItem value="__none__">Select purchase bill...</SelectItem>
-                          {purchaseBills.map(b => <SelectItem key={b.id} value={b.orderNumber}>{b.orderNumber} — {b.supplierName}</SelectItem>)}
+                          {(billSearch.trim() ? purchaseBills.filter(b =>
+                            b.orderNumber.toLowerCase().includes(billSearch.toLowerCase()) ||
+                            b.supplierName.toLowerCase().includes(billSearch.toLowerCase())
+                          ) : purchaseBills).map(b => (
+                            <SelectItem key={b.id} value={b.orderNumber}>
+                              {b.orderNumber} — {b.supplierName}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
