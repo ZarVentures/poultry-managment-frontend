@@ -14,9 +14,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
 import { godownApi, retailersApi, purchasesApi, type GodownSale, type GodownCage, type Retailer } from "@/lib/api"
-
-const emptyCage = (): GodownCage => ({ cageId: "", birdType: "", numberOfBirds: 0, cageWeight: 0 })
 import { toast } from "sonner"
+
+const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer", "advance"] as const
+type PaymentMode = typeof PAYMENT_MODES[number]
+interface PaymentRow { mode: PaymentMode; amount: string }
+const emptyPayment = (): PaymentRow => ({ mode: "cash", amount: "" })
+const emptyCage = (): GodownCage => ({ cageId: "", birdType: "", numberOfBirds: 0, cageWeight: 0 })
 
 export default function GodownSalePage() {
   const [sales, setSales] = useState<GodownSale[]>([])
@@ -39,10 +43,9 @@ export default function GodownSalePage() {
     ratePerKg: "",
     totalAmount: "",
     paymentStatus: "pending" as "paid" | "pending" | "partial",
-    paymentMode: "cash",
-    amountReceived: "",
     notes: "",
   })
+  const [payments, setPayments] = useState<PaymentRow[]>([emptyPayment()])
   const [cages, setCages] = useState<GodownCage[]>([emptyCage()])
 
   useEffect(() => {
@@ -80,6 +83,11 @@ export default function GodownSalePage() {
     }
   }
 
+  const addPayment = () => setPayments(p => [...p, emptyPayment()])
+  const removePayment = (i: number) => setPayments(p => p.filter((_, idx) => idx !== i))
+  const updatePayment = (i: number, field: keyof PaymentRow, value: string) =>
+    setPayments(p => p.map((x, idx) => idx === i ? { ...x, [field]: value } : x))
+
   const resetForm = () => {
     setFormData({
       saleDate: new Date().toISOString().split("T")[0],
@@ -92,10 +100,9 @@ export default function GodownSalePage() {
       ratePerKg: "",
       totalAmount: "",
       paymentStatus: "pending",
-      paymentMode: "cash",
-      amountReceived: "",
       notes: "",
     })
+    setPayments([emptyPayment()])
     setCages([emptyCage()])
     setEditingId(null)
   }
@@ -112,10 +119,20 @@ export default function GodownSalePage() {
       ratePerKg: String(sale.ratePerKg || ""),
       totalAmount: String(sale.totalAmount || ""),
       paymentStatus: (sale as any).paymentStatus || "pending",
-      paymentMode: (sale as any).paymentMode || "cash",
-      amountReceived: String((sale as any).amountReceived || ""),
       notes: sale.notes || "",
     })
+    
+    // Load payments from sale data
+    const salePayments = (sale as any).payments
+    if (salePayments && salePayments.length > 0) {
+      setPayments(salePayments.map((p: any) => ({ 
+        mode: (p.paymentMode || "cash") as PaymentMode, 
+        amount: String(p.amount) 
+      })))
+    } else {
+      setPayments([emptyPayment()])
+    }
+    
     setCages(sale.cages && sale.cages.length > 0 ? sale.cages : [emptyCage()])
     setEditingId(sale.id)
     setShowDialog(true)
@@ -127,6 +144,9 @@ export default function GodownSalePage() {
     return (weight * rate).toFixed(2)
   }
 
+  const totalPaymentMade = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
+  const balanceAmount = Math.max(0, parseFloat(formData.totalAmount || calculateTotal()) - totalPaymentMade)
+
   const handleSave = async () => {
     if (!formData.customerName || !formData.numberOfBirds || !formData.paymentStatus) {
       toast.error("Please fill all required fields")
@@ -135,6 +155,11 @@ export default function GodownSalePage() {
 
     try {
       setLoading(true)
+      const validPayments = payments.filter(p => parseFloat(p.amount) > 0).map(p => ({ 
+        paymentMode: p.mode, 
+        amount: p.amount 
+      }))
+      
       const saleData = {
         saleDate: formData.saleDate,
         invoiceNumber: formData.invoiceNumber || undefined,
@@ -144,9 +169,9 @@ export default function GodownSalePage() {
         ratePerKg: parseFloat(formData.ratePerKg) || undefined,
         totalAmount: parseFloat(formData.totalAmount) || parseFloat(calculateTotal()) || 0,
         paymentStatus: formData.paymentStatus,
-        paymentMode: formData.paymentMode || undefined,
-        amountReceived: parseFloat(formData.amountReceived) || 0,
+        amountReceived: totalPaymentMade,
         notes: formData.notes,
+        payments: validPayments,
         cages: cages
           .filter(c => c.numberOfBirds > 0 || c.cageWeight > 0)
           .map(c => ({
@@ -479,48 +504,84 @@ export default function GodownSalePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Payment Mode</Label>
-                    <Select
-                      value={formData.paymentMode}
-                      onValueChange={(v) => setFormData({ ...formData, paymentMode: v })}
-                      disabled={loading}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Select payment mode" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="upi">UPI</SelectItem>
-                        <SelectItem value="card">Card</SelectItem>
-                        <SelectItem value="cheque">Cheque</SelectItem>
-                        <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                        <SelectItem value="advance">Advance</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Amount Received (₹)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.amountReceived}
-                      onChange={(e) => setFormData({ ...formData, amountReceived: e.target.value })}
-                      placeholder="0.00"
-                      disabled={loading}
-                      onWheel={(e) => e.currentTarget.blur()} 
-                    />
-                  </div>
-                </div>
-
-                {/* Balance display */}
-                {formData.totalAmount && (
-                  <div className="bg-gray-50 border rounded p-3 flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-700">Balance Amount</span>
-                    <span className={`text-lg font-bold ${(parseFloat(formData.totalAmount) - parseFloat(formData.amountReceived || '0')) > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      ₹{Math.max(0, parseFloat(formData.totalAmount) - parseFloat(formData.amountReceived || '0')).toFixed(2)}
-                    </span>
-                  </div>
-                )}
+                {/* Payment Breakdown Card */}
+                <Card className="border-purple-200">
+                  <CardHeader className="bg-purple-50 border-b border-purple-100 py-3">
+                    <CardTitle className="text-purple-900 text-sm">Payment Breakdown</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-4">
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-4">
+                        <Label className="text-sm font-medium">Payment Mode</Label>
+                        <Label className="text-sm font-medium">Amount (₹)</Label>
+                      </div>
+                      {payments.map((p, i) => (
+                        <div key={i} className="grid grid-cols-2 gap-4">
+                          <Select value={p.mode} onValueChange={v => updatePayment(i, "mode", v)} disabled={loading}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="advance">Advance</SelectItem>
+                              <SelectItem value="cash">Cash</SelectItem>
+                              <SelectItem value="upi">UPI</SelectItem>
+                              <SelectItem value="card">Card</SelectItem>
+                              <SelectItem value="cheque">Cheque</SelectItem>
+                              <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <div className="flex gap-1">
+                            <Input 
+                              type="number" 
+                              step="0.01" 
+                              placeholder="0.00" 
+                              value={p.amount} 
+                              onChange={e => updatePayment(i, "amount", e.target.value)} 
+                              disabled={loading}  
+                              onWheel={(e) => e.currentTarget.blur()}
+                            />
+                            {payments.length > 1 && (
+                              <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => removePayment(i)} 
+                                className="px-2 text-red-500"
+                              >
+                                <X size={14} />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={addPayment} 
+                        disabled={loading}
+                      >
+                        <Plus size={14} className="mr-1" /> Add Payment Mode
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                      <div className="space-y-2">
+                        <Label>Total Received (₹)</Label>
+                        <Input 
+                          value={`₹${totalPaymentMade.toFixed(2)}`} 
+                          disabled 
+                          className="bg-gray-50 font-semibold text-green-700" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Balance (₹)</Label>
+                        <Input 
+                          value={`₹${balanceAmount.toFixed(2)}`} 
+                          disabled 
+                          className="bg-gray-50 font-semibold text-red-600" 
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
                 <div className="space-y-2">
                   <Label>Notes</Label>
@@ -600,46 +661,50 @@ export default function GodownSalePage() {
                       <TableHead className="font-bold">Quantity</TableHead>
                       <TableHead className="font-bold">Rate</TableHead>
                       <TableHead className="font-bold">Total</TableHead>
-                      <TableHead className="font-bold">Payment Mode</TableHead>
+                      <TableHead className="font-bold">Received</TableHead>
+                      <TableHead className="font-bold">Balance</TableHead>
                       <TableHead className="font-bold">Status</TableHead>
                       <TableHead className="font-bold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredSales.map((sale) => (
-                      <TableRow key={sale.id}>
-                        <TableCell>{sale.invoiceNumber || "-"}</TableCell>
-                        <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
-                        <TableCell>{sale.customerName}</TableCell>
-                        <TableCell>{sale.numberOfBirds} birds</TableCell>
-                        <TableCell>₹{Number(sale.ratePerKg || 0).toFixed(2)}/kg</TableCell>
-                        <TableCell>₹{Number(sale.totalAmount || 0).toFixed(2)}</TableCell>
-                        <TableCell>
-                          <span className="text-xs px-2 py-0.5 rounded bg-gray-100 capitalize">
-                            {(sale as any).paymentMode?.replace('_', ' ') || '-'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            (sale as any).paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                            (sale as any).paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {(sale as any).paymentStatus || 'pending'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(sale)}>
-                              <Edit2 size={16} />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(sale.id)}>
-                              <Trash2 size={16} />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredSales.map((sale) => {
+                      const totalAmount = Number(sale.totalAmount || 0)
+                      const amountReceived = Number((sale as any).amountReceived || 0)
+                      const balance = Math.max(0, totalAmount - amountReceived)
+                      
+                      return (
+                        <TableRow key={sale.id}>
+                          <TableCell>{sale.invoiceNumber || "-"}</TableCell>
+                          <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
+                          <TableCell>{sale.customerName}</TableCell>
+                          <TableCell>{sale.numberOfBirds} birds</TableCell>
+                          <TableCell>₹{Number(sale.ratePerKg || 0).toFixed(2)}/kg</TableCell>
+                          <TableCell>₹{totalAmount.toFixed(2)}</TableCell>
+                          <TableCell className="text-green-700 font-medium">₹{amountReceived.toFixed(2)}</TableCell>
+                          <TableCell className="text-red-600 font-medium">₹{balance.toFixed(2)}</TableCell>
+                          <TableCell>
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                              (sale as any).paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                              (sale as any).paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {(sale as any).paymentStatus || 'pending'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(sale)}>
+                                <Edit2 size={16} />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(sale.id)}>
+                                <Trash2 size={16} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </div>
