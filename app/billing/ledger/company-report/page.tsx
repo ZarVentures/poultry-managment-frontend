@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Download, Printer, TrendingUp, TrendingDown, Calendar, Building2 } from 'lucide-react'
-import { salesApi, retailersApi, purchasesApi, expensesApi, mortalityApi, godownApi } from '@/lib/api'
+import { salesApi, retailersApi, purchasesApi, expensesApi, mortalityApi } from '@/lib/api'
 
 interface LedgerEntry {
   date: string
@@ -28,9 +28,8 @@ const CompanyLedgerReportPage = () => {
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0])
 
   useEffect(() => {
-    Promise.all([salesApi.getAll(), retailersApi.getAll(), purchasesApi.getAll(), expensesApi.getAll(), mortalityApi.getAll(), godownApi.sales.getAll()])
-      .then(([regularSales, retailers, purchases, expenses, mortalities, godownSales]) => {
-        const sales = [...(Array.isArray(regularSales) ? regularSales : []), ...(Array.isArray(godownSales) ? godownSales : [])]
+    Promise.all([salesApi.getAll(), retailersApi.getAll(), purchasesApi.getAll(), expensesApi.getAll(), mortalityApi.getAll()])
+      .then(([sales, retailers, purchases, expenses, mortalities]) => {
         const retailerMap: Record<string, string> = {}
         retailers.forEach(r => { retailerMap[r.id] = r.name })
 

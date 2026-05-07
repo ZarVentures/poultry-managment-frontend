@@ -88,25 +88,13 @@ const FarmLedgerPage = () => {
       openingBalance += (amt - paid)
       runningBalance += (amt - paid)
     } else if (poDateObj >= fromDateObj && poDateObj <= toDateObj) {
-      if (amt > 0) {
-        runningBalance += amt
+      if (amt > 0 || paid > 0) {
+        runningBalance += (amt - paid)
         ledgerEntries.push({
           date: po.orderDate,
-          type: 'Purchase',
+          type: amt > 0 ? 'Purchase' : 'Payment Made',
           reference: po.orderNumber,
           debit: amt,
-          credit: 0,
-          balance: runningBalance,
-          remarks: po.notes || po.remarks || ''
-        })
-      }
-      if (paid > 0) {
-        runningBalance -= paid
-        ledgerEntries.push({
-          date: po.orderDate,
-          type: 'Payment Made',
-          reference: po.orderNumber,
-          debit: 0,
           credit: paid,
           balance: runningBalance,
           remarks: po.notes || po.remarks || ''
@@ -203,9 +191,9 @@ const FarmLedgerPage = () => {
                   <TableHead>Type</TableHead>
                   <TableHead>Reference</TableHead>
                   <TableHead>Remarks</TableHead>
-                  <TableHead className="text-right"> Debit(₹)</TableHead>
-                  <TableHead className="text-right">Credit(₹)</TableHead>
-                  <TableHead className="text-right">Balance(₹)</TableHead>
+                  <TableHead className="text-right">Net Amount (₹)</TableHead>
+                  <TableHead className="text-right">Total Payment Made (₹)</TableHead>
+                  <TableHead className="text-right">Balance Amount(₹)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
