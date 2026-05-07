@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertTriangle, Download, Printer } from 'lucide-react'
-import { salesApi, retailersApi } from '@/lib/api'
+import { salesApi, retailersApi, godownApi } from '@/lib/api'
 
 interface RetailerOutstanding {
   id: string
@@ -27,8 +27,9 @@ const OutstandingReportPage = () => {
   const [sortBy, setSortBy] = useState('outstanding')
 
   useEffect(() => {
-    Promise.all([retailersApi.getAll(), salesApi.getAll()])
-      .then(([retailers, sales]) => {
+    Promise.all([retailersApi.getAll(), salesApi.getAll(), godownApi.sales.getAll()])
+      .then(([retailers, regularSales, godownSales]) => {
+        const sales = [...(Array.isArray(regularSales) ? regularSales : []), ...(Array.isArray(godownSales) ? godownSales : [])]
         const result: RetailerOutstanding[] = retailers.map(r => {
           const retailerSales = sales.filter(s => s.retailerId === r.id)
           const totalSales = retailerSales.reduce((s, x) => s + Number(x.netAmount || x.totalAmount || 0), 0)
