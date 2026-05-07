@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect, useMemo, useRef } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -430,13 +430,13 @@ export default function PurchasesPage() {
                         <Input value={totalWeight.toFixed(2)} disabled className="bg-gray-50" />
                       </div>
                       <div className="space-y-2">
-                        <Label>Rate per Kg (G�)</Label>
+                        <Label>Rate per Kg (₹)</Label>
                         <Input type="number" step="0.01" value={formData.ratePerKg} onChange={e => setFormData(prev => ({ ...prev, ratePerKg: e.target.value }))} placeholder="0.00" disabled={loading} onWheel={(e) => e.currentTarget.blur()}  />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Bird Amount (G�)</Label>
-                      <Input value={`G�${totalAmount.toFixed(2)}`} disabled className="bg-gray-50 font-semibold" />
+                      <Label>Bird Amount (₹)</Label>
+                      <Input value={`₹${totalAmount.toFixed(2)}`} disabled className="bg-gray-50 font-semibold" />
                     </div>
                   </CardContent>
                 </Card>
@@ -462,14 +462,14 @@ export default function PurchasesPage() {
                     {/* Net Amount display */}
                     <div className="bg-gray-50 border rounded p-3 flex justify-between items-center">
                       <span className="text-sm font-medium text-gray-700">Net Amount (Total Weight +� Rate)</span>
-                      <span className="text-lg font-bold text-green-700">G�{netAmount.toFixed(2)}</span>
+                      <span className="text-lg font-bold text-green-700">₹{netAmount.toFixed(2)}</span>
                     </div>
 
                     <div className="space-y-3">
                       <Label className="text-sm font-semibold">Payment Breakdown</Label>
                       <div className="grid grid-cols-[1fr_1fr_auto] gap-4 items-center">
                         <Label className="text-sm font-medium">Payment Mode</Label>
-                        <Label className="text-sm font-medium">Amount (G�)</Label>
+                        <Label className="text-sm font-medium">Amount (₹)</Label>
                         <Label className="text-sm font-medium">Advance?</Label>
                       </div>
                       {payments.map((p, i) => (
@@ -510,12 +510,12 @@ export default function PurchasesPage() {
 
                     <div className="grid grid-cols-2 gap-4 pt-2 border-t">
                       <div className="space-y-2">
-                        <Label>Total Payment Made (G�)</Label>
-                        <Input value={`G�${totalPaymentMade.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-green-700" />
+                        <Label>Total Payment Made (₹)</Label>
+                        <Input value={`₹${totalPaymentMade.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-green-700" />
                       </div>
                       <div className="space-y-2">
-                        <Label>Balance Amount (G�)</Label>
-                        <Input value={`G�${balanceAmount.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-red-600" />
+                        <Label>Balance Amount (₹)</Label>
+                        <Input value={`₹${balanceAmount.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-red-600" />
                       </div>
                     </div>
                   </CardContent>
@@ -563,12 +563,12 @@ export default function PurchasesPage() {
   <Card>
     <CardHeader className="pb-2">
       <CardTitle className="text-sm font-medium text-muted-foreground">
-        Total Value (G�)
+        Total Value (₹)
       </CardTitle>
     </CardHeader>
     <CardContent>
       <div className="text-3xl font-bold text-orange-600">
-        G�{stats.totalValue.toFixed(2)}
+        ₹{stats.totalValue.toFixed(2)}
       </div>
     </CardContent>
   </Card>
@@ -576,12 +576,12 @@ export default function PurchasesPage() {
   <Card>
     <CardHeader className="pb-2">
       <CardTitle className="text-sm font-medium text-muted-foreground">
-        Total Paid (G�)
+        Total Paid (₹)
       </CardTitle>
     </CardHeader>
     <CardContent>
       <div className="text-3xl font-bold text-green-600">
-        G�{stats.totalPaid.toFixed(2)}
+        ₹{stats.totalPaid.toFixed(2)}
       </div>
     </CardContent>
   </Card>
@@ -640,8 +640,8 @@ export default function PurchasesPage() {
                         <TableCell>{p.supplierName}</TableCell>
                         <TableCell>{new Date(p.orderDate).toLocaleDateString()}</TableCell>
                         <TableCell>{Number(p.totalWeight || 0).toFixed(2)} kg</TableCell>
-                        <TableCell>G�{Number(p.ratePerKg || 0).toFixed(2)}</TableCell>
-                        <TableCell>G�{Number(p.netAmount || p.totalAmount || 0).toFixed(2)}</TableCell>
+                        <TableCell>₹{Number(p.ratePerKg || 0).toFixed(2)}</TableCell>
+                        <TableCell>₹{Number(p.netAmount || p.totalAmount || 0).toFixed(2)}</TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             p.purchasePaymentStatus === "paid" ? "bg-green-100 text-green-800" :
@@ -649,7 +649,7 @@ export default function PurchasesPage() {
                             "bg-red-100 text-red-800"
                           }`}>{p.purchasePaymentStatus}</span>
                         </TableCell>
-                        <TableCell>G�{Number(p.balanceAmount || 0).toFixed(2)}</TableCell>
+                        <TableCell>₹{Number(p.balanceAmount || 0).toFixed(2)}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">
                             <Button variant="ghost" size="sm" onClick={async () => {
@@ -680,7 +680,7 @@ export default function PurchasesPage() {
           <Dialog open={showInvoiceModal} onOpenChange={setShowInvoiceModal}>
             <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
               <DialogHeader>
-                <DialogTitle>Purchase Bill G�� {viewingPurchase.orderNumber}</DialogTitle>
+                <DialogTitle>Purchase Bill ₹� {viewingPurchase.orderNumber}</DialogTitle>
               </DialogHeader>
               <div className="overflow-y-auto flex-1 space-y-4 text-sm">
                 {loadingPreview && (
@@ -733,18 +733,18 @@ export default function PurchasesPage() {
                 <div className="border p-3 rounded text-xs space-y-1">
                   <div className="grid grid-cols-2 gap-2">
                     <div><span className="font-semibold">Total Weight:</span> {Number(viewingPurchase.totalWeight || 0).toFixed(2)} kg</div>
-                    <div><span className="font-semibold">Rate/Kg:</span> G�{Number(viewingPurchase.ratePerKg || 0).toFixed(2)}</div>
-                    <div><span className="font-semibold">Bird Amount:</span> G�{(Number(viewingPurchase.totalWeight || 0) * Number(viewingPurchase.ratePerKg || 0)).toFixed(2)}</div>
-                    {Number(viewingPurchase.transportCharges) > 0 && <div><span className="font-semibold">Transport:</span> G�{Number(viewingPurchase.transportCharges).toFixed(2)}</div>}
-                    <div className="font-bold"><span className="font-semibold">Net Amount:</span> G�{Number(viewingPurchase.netAmount || viewingPurchase.totalAmount || 0).toFixed(2)}</div>
-                    <div><span className="font-semibold">Balance:</span> G�{Number(viewingPurchase.balanceAmount || 0).toFixed(2)}</div>
+                    <div><span className="font-semibold">Rate/Kg:</span> ₹{Number(viewingPurchase.ratePerKg || 0).toFixed(2)}</div>
+                    <div><span className="font-semibold">Bird Amount:</span> ₹{(Number(viewingPurchase.totalWeight || 0) * Number(viewingPurchase.ratePerKg || 0)).toFixed(2)}</div>
+                    {Number(viewingPurchase.transportCharges) > 0 && <div><span className="font-semibold">Transport:</span> ₹{Number(viewingPurchase.transportCharges).toFixed(2)}</div>}
+                    <div className="font-bold"><span className="font-semibold">Net Amount:</span> ₹{Number(viewingPurchase.netAmount || viewingPurchase.totalAmount || 0).toFixed(2)}</div>
+                    <div><span className="font-semibold">Balance:</span> ₹{Number(viewingPurchase.balanceAmount || 0).toFixed(2)}</div>
                   </div>
                   {(viewingPurchase as any).payments && (viewingPurchase as any).payments.length > 0 && (
                     <div className="border-t pt-2 mt-2">
                       <div className="font-semibold mb-1">Payments:</div>
                       {(viewingPurchase as any).payments.map((p: any, i: number) => (
                         <div key={i} className="flex items-center gap-2">
-                          <span>{p.paymentMode}: G�{Number(p.amount).toFixed(2)}</span>
+                          <span>{p.paymentMode}: ₹{Number(p.amount).toFixed(2)}</span>
                           {p.isAdvance && (
                             <span className="text-xs font-medium text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">Advance</span>
                           )}
@@ -761,3 +761,4 @@ export default function PurchasesPage() {
     </DashboardLayout>
   )
 }
+
