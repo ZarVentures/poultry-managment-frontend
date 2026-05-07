@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Download, Printer, ArrowLeft, Calendar } from 'lucide-react'
-import { salesApi, retailersApi, godownApi } from '@/lib/api'
+import { salesApi, retailersApi } from '@/lib/api'
 
 const RetailerLedgerContent = () => {
   const searchParams = useSearchParams()
@@ -37,11 +37,8 @@ const RetailerLedgerContent = () => {
   useEffect(() => {
     if (!selectedId) return
     setLoadingSales(true)
-    Promise.all([salesApi.getAll(), godownApi.sales.getAll()])
-      .then(([regularSales, godownSales]) => {
-        const allSales = [...(Array.isArray(regularSales) ? regularSales : []), ...(Array.isArray(godownSales) ? godownSales : [])]
-        setSales(allSales.filter(s => s.retailerId === selectedId))
-      })
+    salesApi.getAll()
+      .then(data => setSales(data.filter(s => s.retailerId === selectedId)))
       .catch(err => console.error('Sales load error:', err))
       .finally(() => setLoadingSales(false))
   }, [selectedId])
@@ -68,13 +65,9 @@ const RetailerLedgerContent = () => {
       openingBalance += (saleAmt - received)
       runningBalance += (saleAmt - received)
     } else if (saleDateObj >= fromDateObj && saleDateObj <= toDateObj) {
-      if (saleAmt > 0) {
-        runningBalance += saleAmt
-        ledgerEntries.push({ date: sale.saleDate, type: 'Sale', reference: sale.invoiceNumber, debit: saleAmt, credit: 0, balance: runningBalance, remarks: sale.notes || sale.remarks || '' })
-      }
-      if (received > 0) {
-        runningBalance -= received
-        ledgerEntries.push({ date: sale.saleDate, type: 'Payment', reference: sale.invoiceNumber, debit: 0, credit: received, balance: runningBalance, remarks: sale.notes || sale.remarks || '' })
+      if (saleAmt > 0 || received > 0) {
+        runningBalance += (saleAmt - received)
+        ledgerEntries.push({ date: sale.saleDate, type: saleAmt > 0 ? 'Sale' : 'Payment', reference: sale.invoiceNumber, debit: saleAmt, credit: received, balance: runningBalance, remarks: sale.notes || sale.remarks || '' })
       }
     }
   }
@@ -166,9 +159,9 @@ const RetailerLedgerContent = () => {
                   <TableHead>Type</TableHead>
                   <TableHead>Reference</TableHead>
                   <TableHead>Remarks</TableHead>
-                  <TableHead className="text-right"> Debit(₹)</TableHead>
-                  <TableHead className="text-right">Credit(₹)</TableHead>
-                  <TableHead className="text-right">Balance(₹)</TableHead>
+                  <TableHead className="text-right">Net Amount (₹)</TableHead>
+                  <TableHead className="text-right">Total Payment Received (₹)</TableHead>
+                  <TableHead className="text-right">Balance Amount (₹)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
