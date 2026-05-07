@@ -14,8 +14,9 @@ import {
   Bird, BarChart3, Tractor, Wallet, IndianRupee,
 } from "lucide-react"
 import { farmersApi, retailersApi, vehiclesApi, purchasesApi, salesApi, mortalityApi } from "@/lib/api"
+import { DateRangeFilter } from "@/components/date-range-filter"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://chickenbackend.onrender.com/api/v1"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://13.234.140.190.nip.io/api/v1"
 
 const EXPENSE_COLORS: Record<string, string> = {
   feed: "#10b981", labor: "#6366f1", medicine: "#f59e0b",
@@ -54,6 +55,10 @@ export default function DashboardPage() {
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  // Date range filter
+  const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
+  const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
+
   // Live counts
   const [farmerCount, setFarmerCount] = useState(0)
   const [retailerCount, setRetailerCount] = useState(0)
@@ -73,74 +78,88 @@ export default function DashboardPage() {
   const authFetch = (url: string) =>
     fetch(url, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json())
 
+  const loadDashboard = async (startDate?: Date, endDate?: Date) => {
+    try {
+      setLoading(true)
+
+      // Build date query params
+      const dateParams = new URLSearchParams()
+      if (startDate) dateParams.set("startDate", startDate.toISOString().split("T")[0])
+      if (endDate) dateParams.set("endDate", endDate.toISOString().split("T")[0])
+      const dateQuery = dateParams.toString() ? `?${dateParams.toString()}` : ""
+
+      const [
+        dashboardResult,
+        farmersResult,
+        retailersResult,
+        vehiclesResult,
+        salesResult,
+        purchasesResult,
+        mortalityResult,
+      ] = await Promise.allSettled([
+        authFetch(`${API_BASE}/dashboard/comprehensive${dateQuery}`),
+        farmersApi.getAll(),
+        retailersApi.getAll(),
+        vehiclesApi.getAll(),
+        salesApi.getAll(),
+        purchasesApi.getAll(),
+        mortalityApi.getStats(),
+      ])
+
+      const dashboard = dashboardResult.status === 'fulfilled' ? dashboardResult.value : null
+      const farmers = farmersResult.status === 'fulfilled' ? farmersResult.value : []
+      const retailers = retailersResult.status === 'fulfilled' ? retailersResult.value : []
+      const vehicles = vehiclesResult.status === 'fulfilled' ? vehiclesResult.value : []
+      const sales = salesResult.status === 'fulfilled' ? salesResult.value : []
+      const purchases = purchasesResult.status === 'fulfilled' ? purchasesResult.value : []
+      const mortality = mortalityResult.status === 'fulfilled' ? mortalityResult.value : null
+
+      if (dashboard) {
+        setKpis(dashboard.kpis)
+        setMonthlyTrends(dashboard.monthlyTrends || [])
+        setExpensesByCategory(dashboard.expensesByCategory || [])
+        setPurchasesSummary(dashboard.purchasesSummary)
+      }
+
+      // Recent 5 sales
+      const salesArr = (sales as any).data || sales
+      const sortedSales = [...(Array.isArray(salesArr) ? salesArr : [])].sort(
+        (a, b) => new Date(b.saleDate || b.createdAt).getTime() - new Date(a.saleDate || a.createdAt).getTime()
+      )
+      setRecentSales(sortedSales.slice(0, 5))
+
+      // Recent 5 purchases
+      const purchasesArr = (purchases as any).data || purchases
+      const sortedPurchases = [...(Array.isArray(purchasesArr) ? purchasesArr : [])].sort(
+        (a, b) => new Date(b.orderDate || b.createdAt).getTime() - new Date(a.orderDate || a.createdAt).getTime()
+      )
+      setRecentPurchases(sortedPurchases.slice(0, 5))
+
+      const farmersArr = (farmers as any).data || farmers
+      const retailersArr = (retailers as any).data || retailers
+      const vehiclesArr = (vehicles as any).data || vehicles
+
+      setFarmerCount(Array.isArray(farmersArr) ? farmersArr.length : 0)
+      setRetailerCount(Array.isArray(retailersArr) ? retailersArr.length : 0)
+      setVehicleCount(Array.isArray(vehiclesArr) ? vehiclesArr.filter((v: any) => v.status === "active").length : 0)
+      setMortalityStats(mortality)
+    } catch (e) {
+      console.error("Dashboard load error:", e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     setMounted(true)
-    const load = async () => {
-      try {
-        setLoading(true)
-        const [
-          dashboardResult,
-          farmersResult,
-          retailersResult,
-          vehiclesResult,
-          salesResult,
-          purchasesResult,
-          mortalityResult,
-        ] = await Promise.allSettled([
-          authFetch(`${API_BASE}/dashboard/comprehensive`),
-          farmersApi.getAll(),
-          retailersApi.getAll(),
-          vehiclesApi.getAll(),
-          salesApi.getAll(),
-          purchasesApi.getAll(),
-          mortalityApi.getStats(),
-        ])
-
-        const dashboard = dashboardResult.status === 'fulfilled' ? dashboardResult.value : null
-        const farmers = farmersResult.status === 'fulfilled' ? farmersResult.value : []
-        const retailers = retailersResult.status === 'fulfilled' ? retailersResult.value : []
-        const vehicles = vehiclesResult.status === 'fulfilled' ? vehiclesResult.value : []
-        const sales = salesResult.status === 'fulfilled' ? salesResult.value : []
-        const purchases = purchasesResult.status === 'fulfilled' ? purchasesResult.value : []
-        const mortality = mortalityResult.status === 'fulfilled' ? mortalityResult.value : null
-
-        if (dashboard) {
-          setKpis(dashboard.kpis)
-          setMonthlyTrends(dashboard.monthlyTrends || [])
-          setExpensesByCategory(dashboard.expensesByCategory || [])
-          setPurchasesSummary(dashboard.purchasesSummary)
-        }
-
-        // Recent 5 sales
-        const salesArr = (sales as any).data || sales
-        const sortedSales = [...(Array.isArray(salesArr) ? salesArr : [])].sort(
-          (a, b) => new Date(b.saleDate || b.createdAt).getTime() - new Date(a.saleDate || a.createdAt).getTime()
-        )
-        setRecentSales(sortedSales.slice(0, 5))
-
-        // Recent 5 purchases
-        const purchasesArr = (purchases as any).data || purchases
-        const sortedPurchases = [...(Array.isArray(purchasesArr) ? purchasesArr : [])].sort(
-          (a, b) => new Date(b.orderDate || b.createdAt).getTime() - new Date(a.orderDate || a.createdAt).getTime()
-        )
-        setRecentPurchases(sortedPurchases.slice(0, 5))
-
-        const farmersArr = (farmers as any).data || farmers
-        const retailersArr = (retailers as any).data || retailers
-        const vehiclesArr = (vehicles as any).data || vehicles
-
-        setFarmerCount(Array.isArray(farmersArr) ? farmersArr.length : 0)
-        setRetailerCount(Array.isArray(retailersArr) ? retailersArr.length : 0)
-        setVehicleCount(Array.isArray(vehiclesArr) ? vehiclesArr.filter((v: any) => v.status === "active").length : 0)
-        setMortalityStats(mortality)
-      } catch (e) {
-        console.error("Dashboard load error:", e)
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
+    loadDashboard()
   }, [])
+
+  const handleDateRangeChange = (start: Date | undefined, end: Date | undefined) => {
+    setDateRangeStart(start)
+    setDateRangeEnd(end)
+    loadDashboard(start, end)
+  }
 
   const netPL = kpis ? kpis.totalRevenue - kpis.totalExpenses : 0
   const isProfit = netPL >= 0
@@ -168,6 +187,23 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-3xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground">Live overview of your poultry farm</p>
+        </div>
+
+        {/* Date Range Filter */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <DateRangeFilter
+            startDate={dateRangeStart}
+            endDate={dateRangeEnd}
+            onDateRangeChange={handleDateRangeChange}
+          />
+          {(dateRangeStart && dateRangeEnd) && (
+            <span className="text-xs text-muted-foreground bg-blue-50 border border-blue-200 px-2 py-1 rounded">
+              {dateRangeStart.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} – {dateRangeEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+            </span>
+          )}
+          {!dateRangeStart && (
+            <span className="text-xs text-muted-foreground">Showing: This Month</span>
+          )}
         </div>
 
         {/* Row 1 - Financial KPIs */}

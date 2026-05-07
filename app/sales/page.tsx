@@ -28,8 +28,7 @@ export default function SalesPage() {
   const [retailers, setRetailers] = useState<any[]>([])
   const [vehicles, setVehicles] = useState<any[]>([])
   const [purchaseBills, setPurchaseBills] = useState<Array<{ id: string; orderNumber: string; supplierName: string }>>([])
-  const [purchaseCages, setPurchaseCages] = useState<Array<{ id: string; cageId?: string; numberOfBirds: number; purchaseWeight: number; status?: string }>>([])
-  const [billSearch, setBillSearch] = useState("");
+  const [purchaseCages, setPurchaseCages] = useState<Array<{ id: string; cageId?: string; numberOfBirds: number; purchaseWeight: number; status?: string; saleId?: string }>>([])
   const [selectedCageIds, setSelectedCageIds] = useState<Set<string>>(new Set())
   const [loadingCages, setLoadingCages] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
@@ -118,31 +117,40 @@ export default function SalesPage() {
       // Always load ALL cages for this purchase bill (no status filter)
       // In edit mode: pre-select only the ones belonging to this sale
       // In create mode: pre-select only pending ones
+      console.log('handlePurchaseBillChange - Loading cages for:', billNo, 'isEditMode:', isEditMode, 'editingId:', editingId)
       const allCages = await purchasesApi.getCagesByOrderNumber(billNo)
+      console.log('Cages received:', allCages)
       const mapped = Array.isArray(allCages)
         ? allCages.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) }))
         : []
 
-      setPurchaseCages(mapped)
-
       if (isEditMode && editingId) {
-        // Pre-select cages that belong to this sale:
-        // 1. First try matching by saleId
-        // 2. Fall back to matching by cageNo stored in the sale (for older records)
-        const bySaleId = mapped.filter(c => String(c.saleId) === String(editingId))
-        if (bySaleId.length > 0) {
-          setSelectedCageIds(new Set(bySaleId.map(c => c.id)))
-        } else {
-          // Fallback: auto-select all sold cages (they were sold in some sale)
-          const soldIds = new Set(mapped.filter(c => c.status === 'sold').map(c => c.id))
-          setSelectedCageIds(soldIds)
-        }
+        // Edit mode: 
+        // - Keep ALL cages (sold + pending) in state for Section 2
+        // - Section 1 will filter to show only pending cages
+        // - Section 2 shows all selected cages (sold + newly selected pending)
+        const cagesForThisSale = mapped.filter(c => 
+          String(c.saleId) === String(editingId) || 
+          (c.status === 'sold' && !c.saleId)
+        )
+        const pendingCages = mapped.filter(c => !c.status || c.status === 'pending')
+        console.log('Edit mode - Cages for this sale:', cagesForThisSale.length, 'Pending:', pendingCages.length)
+        
+        // Keep ALL cages (sold + pending) in state
+        const combinedCages = [...cagesForThisSale, ...pendingCages]
+        setPurchaseCages(combinedCages)
+        
+        // Pre-select the sold cages (they will appear in Section 2)
+        setSelectedCageIds(new Set(cagesForThisSale.map(c => c.id)))
       } else {
-        // Create mode: load pending cages but don't pre-select any — user picks manually
-        const pendingIds = new Set(mapped.filter(c => c.status === 'pending').map(c => c.id))
-        setSelectedCageIds(new Set()) // no auto-select on create
+        // Create mode: only show pending cages, no auto-select
+        const pendingOnly = mapped.filter(c => !c.status || c.status === 'pending')
+        console.log('Create mode - Pending cages:', pendingOnly.length)
+        setPurchaseCages(pendingOnly)
+        setSelectedCageIds(new Set())
       }
-    } catch {
+    } catch (error) {
+      console.error('Failed to load cages:', error)
       toast.error('Failed to load cages for this purchase bill')
     } finally {
       setLoadingCages(false)
@@ -296,29 +304,45 @@ export default function SalesPage() {
 
     setSaleFile(null)
 
-    // Load ALL cages for this purchase bill, pre-select only the ones for this sale
+    // Load cages for this purchase bill: show cages for THIS sale + pending cages only
     if (purchaseBillNo) {
       try {
         setLoadingCages(true)
+        console.log('Loading cages for purchase bill:', purchaseBillNo, 'sale ID:', full.id)
         const allCages = await purchasesApi.getCagesByOrderNumber(purchaseBillNo)
+        console.log('All cages received:', allCages)
         const mapped = Array.isArray(allCages)
           ? allCages.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) }))
           : []
-        setPurchaseCages(mapped)
-        // Pre-select cages belonging to this sale
-        // 1. Try matching by saleId first
-        // 2. Fall back to all sold cages (for older records where saleId wasn't stored)
-        const bySaleId = mapped.filter(c => String(c.saleId) === String(full.id))
-        if (bySaleId.length > 0) {
-          setSelectedCageIds(new Set(bySaleId.map(c => c.id)))
-        } else {
-          setSelectedCageIds(new Set(mapped.filter(c => c.status === 'sold').map(c => c.id)))
-        }
-      } catch {
+        
+        // Filter: 
+        // - Keep ALL cages (sold + pending) in state for Section 2
+        // - Section 1 will filter to show only pending cages
+        // - Section 2 shows all selected cages (sold + newly selected pending)
+        // For backward compatibility: if cage is sold but has no saleId, assume it belongs to this sale
+        const cagesForThisSale = mapped.filter(c => 
+          String(c.saleId) === String(full.id) || 
+          (c.status === 'sold' && !c.saleId)
+        )
+        const pendingCages = mapped.filter(c => !c.status || c.status === 'pending')
+        console.log('Cages for this sale:', cagesForThisSale.length, 'Pending cages:', pendingCages.length)
+        
+        // Keep ALL cages (sold + pending) in state
+        const combinedCages = [...cagesForThisSale, ...pendingCages]
+        setPurchaseCages(combinedCages)
+        
+        // Pre-select the sold cages (they will appear in Section 2)
+        setSelectedCageIds(new Set(cagesForThisSale.map(c => c.id)))
+      } catch (error) {
+        console.error('Failed to load cages:', error)
         // non-critical — form still works without cage list
       } finally {
         setLoadingCages(false)
       }
+    } else {
+      console.log('No purchase bill number for this sale')
+      setPurchaseCages([])
+      setSelectedCageIds(new Set())
     }
   }
 
@@ -496,7 +520,7 @@ export default function SalesPage() {
                             </Label>
                             <p className="text-xs text-muted-foreground mt-0.5">
                               {isEditMode
-                                ? <span className="text-blue-700 font-medium">All cages shown — checked ones are linked to this sale</span>
+                                ? <span className="text-blue-700 font-medium">Select additional pending cages to add to this sale</span>
                                 : <>Checked cages will be marked as <span className="text-green-700 font-medium">SOLD</span> when you create the sale</>
                               }
                             </p>
@@ -520,35 +544,40 @@ export default function SalesPage() {
                                   <th className="text-left p-1">Cage ID</th>
                                   <th className="text-right p-1">Birds</th>
                                   <th className="text-right p-1">Weight (kg)</th>
-                                  <th className="text-center p-1">Status</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {purchaseCages.map(cage => (
-                                  <tr key={cage.id} className={`border-b cursor-pointer hover:bg-blue-100 ${selectedCageIds.has(cage.id!) ? 'bg-green-50' : ''}`}
-                                    onClick={() => toggleCage(cage.id!)}>
-                                    <td className="p-1 text-center">
-                                      <input type="checkbox" checked={selectedCageIds.has(cage.id!)} onChange={() => toggleCage(cage.id!)} onClick={e => e.stopPropagation()} />
-                                    </td>
-                                    <td className="p-1 font-medium">{cage.cageId || '-'}</td>
-                                    <td className="p-1 text-right">{cage.numberOfBirds}</td>
-                                    <td className="p-1 text-right">{Number(cage.purchaseWeight).toFixed(2)}</td>
-                                    <td className="p-1 text-center">
-                                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                                        cage.status === 'sold' ? 'bg-green-100 text-green-700' :
-                                        cage.status === 'in_godown' ? 'bg-blue-100 text-blue-700' :
-                                        'bg-gray-100 text-gray-600'
-                                      }`}>{cage.status || 'pending'}</span>
-                                    </td>
-                                  </tr>
-                                ))}
+                                {purchaseCages
+                                  .filter(cage => !cage.status || cage.status === 'pending') // Section 1: Show ONLY pending cages
+                                  .map(cage => {
+                                  const isDisabled = false // Pending cages are never disabled
+                                  
+                                  return (
+                                    <tr 
+                                      key={cage.id} 
+                                      className={`border-b cursor-pointer hover:bg-blue-100 ${selectedCageIds.has(cage.id!) ? 'bg-green-50' : ''}`}
+                                      onClick={() => toggleCage(cage.id!)}
+                                    >
+                                      <td className="p-1 text-center">
+                                        <input 
+                                          type="checkbox" 
+                                          checked={selectedCageIds.has(cage.id!)} 
+                                          onChange={() => toggleCage(cage.id!)} 
+                                          onClick={e => e.stopPropagation()}
+                                        />
+                                      </td>
+                                      <td className="p-1 font-medium">{cage.cageId || '-'}</td>
+                                      <td className="p-1 text-right">{cage.numberOfBirds}</td>
+                                      <td className="p-1 text-right">{Number(cage.purchaseWeight).toFixed(2)}</td>
+                                    </tr>
+                                  )
+                                })}
                               </tbody>
                               <tfoot>
                                 <tr className="border-t font-semibold bg-blue-100">
-                                  <td colSpan={2} className="p-1">{selectedCageIds.size} selected / {purchaseCages.length} total</td>
+                                  <td colSpan={2} className="p-1">{selectedCageIds.size} selected / {purchaseCages.filter(c => !c.status || c.status === 'pending').length} pending</td>
                                   <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id!)).reduce((s, c) => s + c.numberOfBirds, 0)}</td>
                                   <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id!)).reduce((s, c) => s + Number(c.purchaseWeight), 0).toFixed(2)}</td>
-                                  <td></td>
                                 </tr>
                               </tfoot>
                             </table>
@@ -647,15 +676,34 @@ export default function SalesPage() {
                               return (
                                 <tr key={cage.id} className="border-b hover:bg-gray-50">
                                   <td className="p-1 font-medium text-xs">{cage.cageId || '-'}</td>
-                                  <td className="p-1 text-center">{cage.numberOfBirds}</td>
+                                  <td className="p-1">
+                                    <Input 
+                                      type="number" 
+                                      defaultValue={cage.numberOfBirds}
+                                      onChange={e => {
+                                        // Update the cage's bird count in the state
+                                        const newBirds = parseInt(e.target.value) || 0
+                                        setPurchaseCages(prev => prev.map(c => 
+                                          c.id === cage.id ? { ...c, numberOfBirds: newBirds } : c
+                                        ))
+                                      }}
+                                      className="h-8 text-sm text-center" 
+                                      disabled={loading} 
+                                      onWheel={(e) => e.currentTarget.blur()}
+                                    />
+                                  </td>
                                   <td className="p-1">
                                     <Input type="number" step="0.001" defaultValue={wt.toFixed(3)}
                                       onChange={e => {
                                         const newWt = parseFloat(e.target.value) || 0
+                                        // Update the cage's weight in the state
+                                        setPurchaseCages(prev => prev.map(c => 
+                                          c.id === cage.id ? { ...c, purchaseWeight: newWt } : c
+                                        ))
                                         const others = purchaseCages.filter(c => selectedCageIds.has(c.id!) && c.id !== cage.id).reduce((s, c) => s + Number(c.purchaseWeight), 0)
                                         setFormData(f => ({ ...f, totalWeight: (others + newWt).toFixed(3) }))
                                       }}
-                                      className="h-8 text-sm" disabled={loading} />
+                                      className="h-8 text-sm" disabled={loading} onWheel={(e) => e.currentTarget.blur()} />
                                   </td>
                                   <td className="p-1 text-right font-medium">{amt > 0 ? `₹${amt.toFixed(0)}` : '-'}</td>
                                 </tr>

@@ -39,7 +39,6 @@ export default function GodownSalePage() {
     ratePerKg: "",
     totalAmount: "",
     paymentStatus: "pending" as "paid" | "pending" | "partial",
-    paymentMode: "cash",
     amountReceived: "",
     notes: "",
   })
@@ -92,7 +91,6 @@ export default function GodownSalePage() {
       ratePerKg: "",
       totalAmount: "",
       paymentStatus: "pending",
-      paymentMode: "cash",
       amountReceived: "",
       notes: "",
     })
@@ -112,7 +110,6 @@ export default function GodownSalePage() {
       ratePerKg: String(sale.ratePerKg || ""),
       totalAmount: String(sale.totalAmount || ""),
       paymentStatus: (sale as any).paymentStatus || "pending",
-      paymentMode: (sale as any).paymentMode || "cash",
       amountReceived: String((sale as any).amountReceived || ""),
       notes: sale.notes || "",
     })
@@ -144,7 +141,6 @@ export default function GodownSalePage() {
         ratePerKg: parseFloat(formData.ratePerKg) || undefined,
         totalAmount: parseFloat(formData.totalAmount) || parseFloat(calculateTotal()) || 0,
         paymentStatus: formData.paymentStatus,
-        paymentMode: formData.paymentMode || undefined,
         amountReceived: parseFloat(formData.amountReceived) || 0,
         notes: formData.notes,
         cages: cages
@@ -489,21 +485,6 @@ export default function GodownSalePage() {
                       disabled={loading}
                       onWheel={(e) => e.currentTarget.blur()} 
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Payment Mode</Label>
-                    <select
-                      className="w-full border rounded p-2"
-                      value={formData.paymentMode}
-                      onChange={(e) => setFormData({ ...formData, paymentMode: e.target.value })}
-                      disabled={loading}
-                    >
-                      <option value="advance">Advance</option>
-                      <option value="cash">Cash</option>
-                      <option value="upi">UPI</option>
-                      <option value="bank_transfer">Bank Transfer</option>
-                      <option value="cheque">Cheque</option>
-                    </select>
                   </div>
                 </div>
 
