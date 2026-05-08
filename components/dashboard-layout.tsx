@@ -36,6 +36,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [godownOpen, setGodownOpen] = useState(false)
   const [billingOpen, setBillingOpen] = useState(false)
+  const [masterEntriesOpen, setMasterEntriesOpen] = useState(false)
+  const [purchasesOpen, setPurchasesOpen] = useState(false)
+  const [salesOpen, setSalesOpen] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
   const { isDevMode, logs, clearLogs, addLog } = useDevMode()
@@ -64,6 +67,10 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
   if (!user) return null
 
+  const isAdmin = user.role === 'admin'
+  const isManager = user.role === 'manager' || user.role === 'Manager'
+  const isStaff = user.role === 'staff' || user.role === 'Staff' || user.role === 'staf'
+
   return (
     <div className="flex h-screen bg-background">
       <aside className={`${sidebarOpen ? "w-64" : "w-20"} bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col`}>
@@ -77,10 +84,12 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
-          {user.role === 'admin' && (
+          {/* ADMIN ONLY - Dashboard */}
+          {isAdmin && (
             <SidebarLink href="/dashboard" icon={Home} label="Dashboard" open={sidebarOpen} />
           )}
 
+          {/* GODOWN - Staff (Overview only), Manager & Admin (all) */}
           <div className="space-y-1">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -93,18 +102,99 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             </Tooltip>
             {godownOpen && sidebarOpen && (
               <div className="ml-4 space-y-1 border-l border-sidebar-border">
-                <SidebarLink href="/inventory" icon={PackageOpen} label="Godown Overview" open={true} isSubItem={true} />
+                {(isManager || isAdmin) && (
+                  <SidebarLink href="/inventory" icon={PackageOpen} label="Godown Overview" open={true} isSubItem={true} />
+                )}
+                <SidebarLink href="/godown/inward-entry" icon={PackagePlus} label="Godown Inward Entry" open={true} isSubItem={true} />
+                <SidebarLink href="/godown/sale" icon={PackageCheck} label="Godown Sale" open={true} isSubItem={true} />
+                <SidebarLink href="/godown/mortality" icon={PackageX} label="Godown Mortality" open={true} isSubItem={true} />
+                <SidebarLink href="/godown/expense" icon={PackageSearch} label="Godown Expense" open={true} isSubItem={true} />
               </div>
             )}
           </div>
 
-          <SidebarLink href="/reports" icon={ChartNoAxesCombined} label="Reports" open={sidebarOpen} />
-
-          {user.role === 'admin' && (
+          {/* MANAGER ONLY - Purchases, Sales, Mortality, Expenses, Master Entries */}
+          {(isStaff || isManager) && (
             <>
+              {/* PURCHASES */}
+              <div className="space-y-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setPurchasesOpen(!purchasesOpen)}>
+                      <ShoppingCart size={20} />
+                      {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Purchases</span><ChevronDown size={16} className={`transition-transform ${purchasesOpen ? "rotate-180" : ""}`} /></>)}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="bg-foreground text-background">Purchases</TooltipContent>
+                </Tooltip>
+                {purchasesOpen && sidebarOpen && (
+                  <div className="ml-4 space-y-1 border-l border-sidebar-border">
+                    <SidebarLink href="/purchases" icon={ShoppingCart} label="Purchases Overview" open={true} isSubItem={true} />
+                    <SidebarLink href="/purchases/payment-out/voucher" icon={TrendingDown} label="Payment Out Voucher" open={true} isSubItem={true} />
+                  </div>
+                )}
+              </div>
+
+              {/* SALES */}
+              <div className="space-y-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setSalesOpen(!salesOpen)}>
+                      <TrendingUp size={20} />
+                      {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Sales</span><ChevronDown size={16} className={`transition-transform ${salesOpen ? "rotate-180" : ""}`} /></>)}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="bg-foreground text-background">Sales</TooltipContent>
+                </Tooltip>
+                {salesOpen && sidebarOpen && (
+                  <div className="ml-4 space-y-1 border-l border-sidebar-border">
+                    <SidebarLink href="/sales" icon={TrendingUp} label="Sales Overview" open={true} isSubItem={true} />
+                    <SidebarLink href="/sales/payment-in/voucher" icon={CreditCard} label="Payment In Voucher" open={true} isSubItem={true} />
+                  </div>
+                )}
+              </div>
+
+              {/* MORTALITY */}
+              <SidebarLink href="/mortality" icon={AlertCircle} label="Mortality" open={sidebarOpen} />
+
+              {/* EXPENSE */}
+              <SidebarLink href="/expenses" icon={BarChart3} label="Expenses" open={sidebarOpen} />
+
+              {/* MASTER ENTRIES - Manager only */}
+              {isManager && (
+                <div className="space-y-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setMasterEntriesOpen(!masterEntriesOpen)}>
+                        <Users2 size={20} />
+                        {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Master Entries</span><ChevronDown size={16} className={`transition-transform ${masterEntriesOpen ? "rotate-180" : ""}`} /></>)}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="bg-foreground text-background">Master Entries</TooltipContent>
+                  </Tooltip>
+                  {masterEntriesOpen && sidebarOpen && (
+                    <div className="ml-4 space-y-1 border-l border-sidebar-border">
+                      <SidebarLink href="/farmers" icon={Tractor} label="Farmers" open={true} isSubItem={true} />
+                      <SidebarLink href="/retailers" icon={Users} label="Retailers" open={true} isSubItem={true} />
+                      <SidebarLink href="/vehicles" icon={Truck} label="Vehicles" open={true} isSubItem={true} />
+                      <SidebarLink href="/products" icon={Package} label="Products" open={true} isSubItem={true} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ADMIN ONLY - Reports, Financial Analytics, Billing, Users */}
+          {isAdmin && (
+            <>
+              {/* REPORTS */}
+              <SidebarLink href="/reports" icon={ChartNoAxesCombined} label="Reports" open={sidebarOpen} />
+
+              {/* FINANCIAL ANALYTICS */}
               <SidebarLink href="/financial-analytics" icon={Calculator} label="Financial Analytics" open={sidebarOpen} />
 
-              {/* Billing Module */}
+              {/* BILLING */}
               <div className="space-y-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -130,12 +220,15 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 )}
               </div>
 
+              {/* USERS */}
               <SidebarLink href="/users" icon={User} label="Users" open={sidebarOpen} />
             </>
           )}
 
+          {/* SETTINGS - All */}
           <SidebarLink href="/settings" icon={Settings} label="Settings" open={sidebarOpen} />
 
+          {/* API DOCS - Staging only */}
           {IS_STAGING && (
             <SidebarLink href="/api-docs" icon={Terminal} label="API Docs" open={sidebarOpen} />
           )}
