@@ -233,7 +233,7 @@ export default function SalesPage() {
       retailerId: "", customerName: "", ownerName: "", phone: "", address: "",
       saleMode: "from_vehicle", vehicleId: "", productType: "meat",
       ratePerKg: "", transportCharges: "", loadingCharges: "", commission: "",
-      otherCharges: "", deductions: "", paymentStatus: "pending", notes: "",
+      otherCharges: "", deductions: "", paymentStatus: "pending", amountReceived: "", notes: "",
     })
     setPayments([emptyPayment()])
     setPurchaseCages([])
@@ -303,6 +303,7 @@ export default function SalesPage() {
       otherCharges: String(full.otherCharges || 0),
       deductions: String(full.mortalityDeduction || 0),
       paymentStatus: full.paymentStatus,
+      amountReceived: String(full.amountReceived || ""),
       notes: "",
     })
 
@@ -366,6 +367,18 @@ export default function SalesPage() {
       
       const retailer = retailers.find(r => r.id === full.retailerId)
       setFormData({
+        invoiceNumber: full.invoiceNumber || "",
+        saleNo: (full as any).saleNo || "",
+        purchaseBillNo: (full as any).purchaseBillNo || "",
+        cageNo: (full as any).cageNo || "",
+        numBirds: String(full.quantity || 0),
+        totalWeight: String(full.quantity || 0),
+        saleDate: full.saleDate,
+        retailerId: full.retailerId || "",
+        customerName: full.customerName || "",
+        ownerName: retailer?.ownerName || "",
+        phone: retailer?.phone || "",
+        address: retailer?.address || "",
         saleMode: full.saleMode || "from_vehicle",
         vehicleId: "",
         productType: (full.productType as any) || "meat",
