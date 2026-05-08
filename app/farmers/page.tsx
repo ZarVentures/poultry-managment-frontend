@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -38,6 +39,8 @@ interface Farmer {
 }
 
 export default function FarmersPage() {
+  const router = useRouter()
+  const [userRole, setUserRole] = useState<string>("")
   const [farmers, setFarmers] = useState<Farmer[]>([])
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -78,6 +81,13 @@ export default function FarmersPage() {
 
   useEffect(() => {
     setMounted(true)
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      try {
+        const user = JSON.parse(userData)
+        setUserRole(user.role || "")
+      } catch {}
+    }
     fetchFarmers()
   }, [])
 
@@ -624,12 +634,16 @@ export default function FarmersPage() {
                           </span>
                         </TableCell>
                         <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
-                          <Button variant="outline" size="icon" onClick={() => handleEdit(farmer)}>
-                            <Edit2 size={16} />
-                    </Button>
-                          <Button variant="outline" size="icon" onClick={() => handleDelete(farmer.id)}>
-                            <Trash2 size={16} />
-                    </Button>
+                          {userRole !== 'staff' && userRole !== 'Staff' && (
+                            <>
+                              <Button variant="outline" size="icon" onClick={() => handleEdit(farmer)}>
+                                <Edit2 size={16} />
+                              </Button>
+                              <Button variant="outline" size="icon" onClick={() => handleDelete(farmer.id)}>
+                                <Trash2 size={16} />
+                              </Button>
+                            </>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))

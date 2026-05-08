@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -24,6 +25,8 @@ const emptyPayment = (): PaymentRow => ({ mode: "cash", amount: "", isAdvance: f
 const emptyCage = () => ({ cageId: "", numberOfBirds: "", cageWeight: "" })
 
 export default function PurchasesPage() {
+  const router = useRouter()
+  const [userRole, setUserRole] = useState<string>("")
   const [purchases, setPurchases] = useState<ApiPurchaseOrder[]>([])
   const [invoiceList, setInvoiceList] = useState<Array<{ id: string; orderNumber: string; orderDate: string; supplierName: string }>>([])
   const [farmers, setFarmers] = useState<Farmer[]>([])
@@ -65,6 +68,13 @@ export default function PurchasesPage() {
 
   useEffect(() => {
     setMounted(true)
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      try {
+        const user = JSON.parse(userData)
+        setUserRole(user.role || "")
+      } catch {}
+    }
     fetchPurchases()
     fetchInvoiceList()
     fetchFarmers()
@@ -651,7 +661,22 @@ export default function PurchasesPage() {
                         </TableCell>
                         <TableCell>₹{Number(p.balanceAmount || 0).toFixed(2)}</TableCell>
                         <TableCell>
-                          <div className="flex gap-1">
+                          {userRole !== 'staff' && userRole !== 'Staff' ? (
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="sm" onClick={async () => {
+                                setViewingPurchase(p)
+                                setShowInvoiceModal(true)
+                                setLoadingPreview(true)
+                                try {
+                                  const full = await purchasesApi.getOne(p.id)
+                                  setViewingPurchase(full)
+                                } catch { /* keep list data */ }
+                                finally { setLoadingPreview(false) }
+                              }}><Eye size={14} /></Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(p)}><Edit2 size={14} /></Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(p.id)} className="text-red-500"><Trash2 size={14} /></Button>
+                            </div>
+                          ) : (
                             <Button variant="ghost" size="sm" onClick={async () => {
                               setViewingPurchase(p)
                               setShowInvoiceModal(true)
@@ -662,9 +687,7 @@ export default function PurchasesPage() {
                               } catch { /* keep list data */ }
                               finally { setLoadingPreview(false) }
                             }}><Eye size={14} /></Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(p)}><Edit2 size={14} /></Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(p.id)} className="text-red-500"><Trash2 size={14} /></Button>
-                          </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

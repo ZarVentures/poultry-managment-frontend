@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,8 @@ import { usersApi, permissionsApi, type User as ApiUser } from "@/lib/api"
 import { toast } from "sonner"
 
 export default function UsersPage() {
+  const router = useRouter()
+  const [userRole, setUserRole] = useState<string>("")
   const [users, setUsers] = useState<ApiUser[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -37,6 +40,13 @@ export default function UsersPage() {
 
   useEffect(() => {
     setMounted(true)
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      try {
+        const user = JSON.parse(userData)
+        setUserRole(user.role || "")
+      } catch {}
+    }
     fetchUsers()
     fetchPermissions()
   }, [])
@@ -514,30 +524,32 @@ export default function UsersPage() {
                         <TableCell>{new Date(user.joinDate).toLocaleDateString()}</TableCell>
                         <TableCell>{user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}</TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => handleToggleStatus(user.id, user.status)}
-                              title={user.status === "active" ? "Deactivate user (lock)" : "Activate user (unlock)"}
-                              disabled={!canUpdate}
-                            >
-                              {user.status === "active" ? <Lock size={16} className="text-orange-600" /> : <Unlock size={16} className="text-green-600" />}
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(user)} disabled={!canUpdate}>
-                              <Edit2 size={16} />
-                            </Button>
-                            {canDelete && (
+                          {userRole !== 'staff' && userRole !== 'Staff' && (
+                            <div className="flex gap-2">
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                onClick={() => handleDelete(user.id)}
-                                title="Permanently delete user from database"
+                                onClick={() => handleToggleStatus(user.id, user.status)}
+                                title={user.status === "active" ? "Deactivate user (lock)" : "Activate user (unlock)"}
+                                disabled={!canUpdate}
                               >
-                                <Trash2 size={16} className="text-red-600" />
+                                {user.status === "active" ? <Lock size={16} className="text-orange-600" /> : <Unlock size={16} className="text-green-600" />}
                               </Button>
-                            )}
-                          </div>
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(user)} disabled={!canUpdate}>
+                                <Edit2 size={16} />
+                              </Button>
+                              {canDelete && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => handleDelete(user.id)}
+                                  title="Permanently delete user from database"
+                                >
+                                  <Trash2 size={16} className="text-red-600" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
