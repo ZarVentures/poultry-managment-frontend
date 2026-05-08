@@ -73,6 +73,7 @@ export default function SalesPage() {
     otherCharges: "",
     deductions: "",
     paymentStatus: "pending" as "paid" | "pending" | "partial",
+    amountReceived: "",
     notes: "",
   })
   const [payments, setPayments] = useState<PaymentRow[]>([emptyPayment()])
