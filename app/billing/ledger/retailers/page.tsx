@@ -45,29 +45,48 @@ const RetailerLedgerContent = () => {
 
   const selectedRetailer = retailers.find(r => r.id === selectedId)
 
-  const ledgerEntries: any[] = []
-  let openingBalance = Number(selectedRetailer?.openingBalance || 0)
-  let runningBalance = Number(selectedRetailer?.openingBalance || 0)
-  const sortedSales = [...sales].sort((a, b) => new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime())
+  const ledgerEntries: any[] = [];
+  let openingBalance = Number(selectedRetailer?.openingBalance || 0);
+  let runningBalance = Number(selectedRetailer?.openingBalance || 0);
+  const sortedSales = [...sales].sort((a, b) => new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime());
+  const fromDateObj = new Date(dateFrom); fromDateObj.setHours(0,0,0,0);
+  const toDateObj = new Date(dateTo); toDateObj.setHours(23,59,59,999);
 
   for (const sale of sortedSales) {
-    const saleDateObj = new Date(sale.saleDate)
-    saleDateObj.setHours(0,0,0,0)
-    const fromDateObj = new Date(dateFrom)
-    fromDateObj.setHours(0,0,0,0)
-    const toDateObj = new Date(dateTo)
-    toDateObj.setHours(23,59,59,999)
-
-    const saleAmt = Number(sale.netAmount || sale.totalAmount || 0)
-    const received = Number(sale.amountReceived || 0)
+    const saleDateObj = new Date(sale.saleDate);
+    saleDateObj.setHours(0,0,0,0);
+    const saleAmt = Number(sale.netAmount || sale.totalAmount || 0);
+    const received = Number(sale.amountReceived || 0);
 
     if (saleDateObj < fromDateObj) {
-      openingBalance += (saleAmt - received)
-      runningBalance += (saleAmt - received)
+      openingBalance += (saleAmt - received);
+      runningBalance += (saleAmt - received);
     } else if (saleDateObj >= fromDateObj && saleDateObj <= toDateObj) {
-      if (saleAmt > 0 || received > 0) {
-        runningBalance += (saleAmt - received)
-        ledgerEntries.push({ date: sale.saleDate, type: saleAmt > 0 ? 'Sale' : 'Payment', reference: sale.invoiceNumber, debit: saleAmt, credit: received, balance: runningBalance, remarks: sale.notes || sale.remarks || '' })
+      // Sale row
+      if (saleAmt > 0) {
+        runningBalance += saleAmt;
+        ledgerEntries.push({
+          date: sale.saleDate,
+          type: 'Sale',
+          reference: sale.invoiceNumber,
+          debit: saleAmt,
+          credit: 0,
+          balance: runningBalance,
+          remarks: sale.notes || sale.remarks || ''
+        });
+      }
+      // Payment row
+      if (received > 0) {
+        runningBalance -= received;
+        ledgerEntries.push({
+          date: sale.saleDate,
+          type: 'Payment',
+          reference: sale.invoiceNumber,
+          debit: 0,
+          credit: received,
+          balance: runningBalance,
+          remarks: sale.notes || sale.remarks || ''
+        });
       }
     }
   }
@@ -159,9 +178,9 @@ const RetailerLedgerContent = () => {
                   <TableHead>Type</TableHead>
                   <TableHead>Reference</TableHead>
                   <TableHead>Remarks</TableHead>
-                  <TableHead className="text-right">Net Amount (₹)</TableHead>
-                  <TableHead className="text-right">Total Payment Received (₹)</TableHead>
-                  <TableHead className="text-right">Balance Amount (₹)</TableHead>
+                  <TableHead className="text-right">Debit (₹)</TableHead>
+                  <TableHead className="text-right">Credit (₹)</TableHead>
+                  <TableHead className="text-right">Balance (₹)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -170,7 +189,7 @@ const RetailerLedgerContent = () => {
                 ) : (
                   <>
                     <TableRow className="bg-gray-100 font-medium">
-                      <TableCell colSpan={6} className="text-right">Opening Balance (Shuru ka pending)</TableCell>
+                      <TableCell colSpan={6} className="text-right">Opening Balance</TableCell>
                       <TableCell className="text-right font-bold">₹{openingBalance.toLocaleString('en-IN')}</TableCell>
                     </TableRow>
                     {ledgerEntries.length === 0 ? (
@@ -195,7 +214,7 @@ const RetailerLedgerContent = () => {
                       <TableCell className="text-right"></TableCell>
                     </TableRow>
                     <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-bold text-blue-900">
-                      <TableCell colSpan={6} className="text-right">Closing Balance (End ka pending)</TableCell>
+                      <TableCell colSpan={6} className="text-right">Closing Balance</TableCell>
                       <TableCell className="text-right">₹{closingBalance.toLocaleString('en-IN')}</TableCell>
                     </TableRow>
                   </>
