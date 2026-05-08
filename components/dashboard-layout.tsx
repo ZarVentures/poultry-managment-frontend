@@ -209,7 +209,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             {billingOpen && sidebarOpen && (
               <div className="ml-4 space-y-1 border-l border-sidebar-border">
                 <SidebarLink href="/billing" icon={CreditCard} label="Dashboard" open={true} isSubItem={true} />
-                <SidebarLink href="/billing/ledger" icon={BookOpen} label="Ledger Report" open={true} isSubItem={true} />
+                {/* <SidebarLink href="/billing/ledger" icon={BookOpen} label="Ledger Report" open={true} isSubItem={true} /> */}
                 <SidebarLink href="/billing/ledger/farms" icon={Tractor} label="Ledger Farms" open={true} isSubItem={true} />
                 <SidebarLink href="/billing/ledger/retailers" icon={Users} label="Ledger Retailers" open={true} isSubItem={true} />
                 <SidebarLink href="/billing/ledger/company-report" icon={BookOpen} label="Company Report" open={true} isSubItem={true} />

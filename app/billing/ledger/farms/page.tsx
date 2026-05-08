@@ -69,36 +69,47 @@ const FarmLedgerPage = () => {
     .sort((a: any, b: any) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime())
 
   // Build ledger entries
-  const ledgerEntries: any[] = []
-  let openingBalance = Number(selectedFarmer?.openingBalance || 0)
-  let runningBalance = Number(selectedFarmer?.openingBalance || 0)
+  const ledgerEntries: any[] = [];
+  let openingBalance = Number(selectedFarmer?.openingBalance || 0);
+  let runningBalance = Number(selectedFarmer?.openingBalance || 0);
+  const fromDateObj = new Date(dateFrom); fromDateObj.setHours(0,0,0,0);
+  const toDateObj = new Date(dateTo); toDateObj.setHours(23,59,59,999);
 
   for (const po of farmerPurchases) {
-    const poDateObj = new Date(po.orderDate)
-    poDateObj.setHours(0,0,0,0)
-    const fromDateObj = new Date(dateFrom)
-    fromDateObj.setHours(0,0,0,0)
-    const toDateObj = new Date(dateTo)
-    toDateObj.setHours(23,59,59,999)
-
-    const amt = Number(po.netAmount || po.totalAmount || 0)
-    const paid = Number(po.totalPaymentMade || 0)
+    const poDateObj = new Date(po.orderDate);
+    poDateObj.setHours(0,0,0,0);
+    const amt = Number(po.netAmount || po.totalAmount || 0);
+    const paid = Number(po.totalPaymentMade || 0);
 
     if (poDateObj < fromDateObj) {
-      openingBalance += (amt - paid)
-      runningBalance += (amt - paid)
+      openingBalance += (amt - paid);
+      runningBalance += (amt - paid);
     } else if (poDateObj >= fromDateObj && poDateObj <= toDateObj) {
-      if (amt > 0 || paid > 0) {
-        runningBalance += (amt - paid)
+      // Purchase row
+      if (amt > 0) {
+        runningBalance += amt;
         ledgerEntries.push({
           date: po.orderDate,
-          type: amt > 0 ? 'Purchase' : 'Payment Made',
+          type: 'Purchase',
           reference: po.orderNumber,
           debit: amt,
+          credit: 0,
+          balance: runningBalance,
+          remarks: po.notes || po.remarks || ''
+        });
+      }
+      // Payment row
+      if (paid > 0) {
+        runningBalance -= paid;
+        ledgerEntries.push({
+          date: po.orderDate,
+          type: 'Payment Made',
+          reference: po.orderNumber,
+          debit: 0,
           credit: paid,
           balance: runningBalance,
           remarks: po.notes || po.remarks || ''
-        })
+        });
       }
     }
   }
@@ -191,9 +202,9 @@ const FarmLedgerPage = () => {
                   <TableHead>Type</TableHead>
                   <TableHead>Reference</TableHead>
                   <TableHead>Remarks</TableHead>
-                  <TableHead className="text-right">Net Amount (₹)</TableHead>
-                  <TableHead className="text-right">Total Payment Made (₹)</TableHead>
-                  <TableHead className="text-right">Balance Amount(₹)</TableHead>
+                  <TableHead className="text-right">Debit (₹)</TableHead>
+                  <TableHead className="text-right">Credit (₹)</TableHead>
+                  <TableHead className="text-right">Balance (₹)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -202,7 +213,7 @@ const FarmLedgerPage = () => {
                 ) : (
                   <>
                     <TableRow className="bg-gray-100 font-medium">
-                      <TableCell colSpan={6} className="text-right">Opening Balance (Shuru ka pending)</TableCell>
+                      <TableCell colSpan={6} className="text-right">Opening Balance </TableCell>
                       <TableCell className="text-right font-bold">₹{openingBalance.toLocaleString('en-IN')}</TableCell>
                     </TableRow>
                     {ledgerEntries.length === 0 ? (
@@ -227,7 +238,7 @@ const FarmLedgerPage = () => {
                       <TableCell className="text-right"></TableCell>
                     </TableRow>
                     <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-bold text-blue-900">
-                      <TableCell colSpan={6} className="text-right">Closing Balance (End ka pending)</TableCell>
+                      <TableCell colSpan={6} className="text-right">Closing Balance </TableCell>
                       <TableCell className="text-right">₹{closingBalance.toLocaleString('en-IN')}</TableCell>
                     </TableRow>
                   </>
