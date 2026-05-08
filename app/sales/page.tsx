@@ -223,7 +223,7 @@ export default function SalesPage() {
       retailerId: "", customerName: "", ownerName: "", phone: "", address: "",
       saleMode: "from_vehicle", vehicleId: "", productType: "meat",
       ratePerKg: "", transportCharges: "", loadingCharges: "", commission: "",
-      otherCharges: "", deductions: "", paymentStatus: "pending", notes: "",
+      otherCharges: "", deductions: "", paymentStatus: "pending", amountReceived: "", notes: "",
     })
     setPayments([emptyPayment()])
     setPurchaseCages([])
@@ -293,6 +293,7 @@ export default function SalesPage() {
       otherCharges: String(full.otherCharges || 0),
       deductions: String(full.mortalityDeduction || 0),
       paymentStatus: full.paymentStatus,
+      amountReceived: String(full.amountReceived || ""),
       notes: "",
     })
 
@@ -344,6 +345,50 @@ export default function SalesPage() {
       console.log('No purchase bill number for this sale')
       setPurchaseCages([])
       setSelectedCageIds(new Set())
+    }
+  }
+
+  const handleView = async (sale: ApiSale) => {
+    try {
+      const full = await salesApi.getOne(sale.id)
+      setEditingId(full.id)
+      setIsEditMode(false)
+      setShowDialog(true)
+
+      const retailer = retailers.find(r => r.id === full.retailerId)
+      setFormData({
+        invoiceNumber: full.invoiceNumber || "",
+        saleNo: (full as any).saleNo || "",
+        purchaseBillNo: (full as any).purchaseBillNo || "",
+        cageNo: (full as any).cageNo || "",
+        numBirds: String(full.quantity || 0),
+        totalWeight: String(full.quantity || 0),
+        saleDate: full.saleDate,
+        retailerId: full.retailerId || "",
+        customerName: full.customerName || "",
+        ownerName: retailer?.ownerName || "",
+        phone: retailer?.phone || "",
+        address: retailer?.address || "",
+        saleMode: full.saleMode || "from_vehicle",
+        vehicleId: "",
+        productType: (full.productType as any) || "meat",
+        ratePerKg: String(full.unitPrice || 0),
+        transportCharges: String(full.transportCharges || 0),
+        loadingCharges: String(full.loadingCharges || 0),
+        commission: String(full.commission || 0),
+        otherCharges: String(full.otherCharges || 0),
+        deductions: String(full.mortalityDeduction || 0),
+        paymentStatus: full.paymentStatus,
+        amountReceived: String(full.amountReceived || ""),
+        notes: full.notes || "",
+      })
+
+      setPayments(full.payments && full.payments.length > 0
+        ? full.payments.map((p: any) => ({ ...p, id: p.id || crypto.randomUUID() }))
+        : [emptyPayment()])
+      setShowDialog(true)
+    } catch (error) {
+      toast.error("Failed to load sale details")
     }
   }
 
