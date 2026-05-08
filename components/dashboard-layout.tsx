@@ -44,6 +44,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { isDevMode, logs, clearLogs, addLog } = useDevMode()
   const [showDevPanel, setShowDevPanel] = useState(false)
+ const [purchasesOpen, setPurchasesOpen] = useState(false)
+  const [salesOpen, setSalesOpen] = useState(false)
 
   useEffect(() => {
     setDevLogger(addLog)
@@ -104,9 +106,90 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             )}
           </div>
 
-          <SidebarLink href="/purchases" icon={ShoppingCart} label="Purchases" open={sidebarOpen} />
+          {/* <SidebarLink href="/purchases" icon={ShoppingCart} label="Purchases" open={sidebarOpen} /> */}
+          {/* PURCHASES */}
+<div className="space-y-1">
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button
+        variant="ghost"
+        className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
+        onClick={() => setPurchasesOpen(!purchasesOpen)}
+      >
+        <ShoppingCart size={20} />
+
+        {sidebarOpen && (
+          <>
+            <span className="ml-2 flex-1 text-left">
+              Purchases
+            </span>
+
+            <ChevronDown
+              size={16}
+              className={`transition-transform ${
+                purchasesOpen ? "rotate-180" : ""
+              }`}
+            />
+          </>
+        )}
+      </Button>
+    </TooltipTrigger>
+
+    <TooltipContent
+      side="right"
+      className="bg-foreground text-background"
+    >
+      Purchases
+    </TooltipContent>
+  </Tooltip>
+
+  {purchasesOpen && sidebarOpen && (
+    <div className="ml-4 space-y-1 border-l border-sidebar-border">
+      
+      <SidebarLink
+        href="/purchases"
+        icon={ShoppingCart}
+        label="Purchases Overview"
+        open={true}
+        isSubItem={true}
+      />
+
+      <SidebarLink
+        href="/purchases/payment-out/voucher"
+        icon={TrendingDown}
+        label="Payment Out Voucher"
+        open={true}
+        isSubItem={true}
+      />
+    </div>
+  )}
+</div>
           <SidebarLink href="/cage-tracking" icon={GitBranch} label="Cage Tracking" open={sidebarOpen} />
-          <SidebarLink href="/sales" icon={TrendingUp} label="Sales" open={sidebarOpen} />
+
+          {/* SALES */}
+          <div className="space-y-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
+                  onClick={() => setSalesOpen(!salesOpen)}
+                >
+                  <TrendingUp size={20} />
+                  {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Sales</span><ChevronDown size={16} className={`transition-transform ${salesOpen ? "rotate-180" : ""}`} /></>)}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="bg-foreground text-background">Sales</TooltipContent>
+            </Tooltip>
+
+            {salesOpen && sidebarOpen && (
+              <div className="ml-4 space-y-1 border-l border-sidebar-border">
+                <SidebarLink href="/sales" icon={TrendingUp} label="Sales Overview" open={true} isSubItem={true} />
+                <SidebarLink href="/sales/payment-in/voucher" icon={CreditCard} label="Payment In Voucher" open={true} isSubItem={true} />
+              </div>
+            )}
+          </div>
+
           <SidebarLink href="/mortality" icon={AlertCircle} label="Mortality" open={sidebarOpen} />
           <SidebarLink href="/expenses" icon={BarChart3} label="Expenses" open={sidebarOpen} />
           <SidebarLink href="/reports" icon={ChartNoAxesCombined} label="Reports" open={sidebarOpen} />
@@ -126,11 +209,14 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             {billingOpen && sidebarOpen && (
               <div className="ml-4 space-y-1 border-l border-sidebar-border">
                 <SidebarLink href="/billing" icon={CreditCard} label="Dashboard" open={true} isSubItem={true} />
-                {/* <SidebarLink href="/billing/party-master" icon={Users} label="Party Master" open={true} isSubItem={true} />
-                <SidebarLink href="/billing/sale-entry" icon={ShoppingCart} label="Sale Entry" open={true} isSubItem={true} />
-                <SidebarLink href="/billing/payment-entry" icon={BarChartAlt} label="Payment Entry" open={true} isSubItem={true} /> */}
                 <SidebarLink href="/billing/ledger" icon={BookOpen} label="Ledger Report" open={true} isSubItem={true} />
+                <SidebarLink href="/billing/ledger/farms" icon={Tractor} label="Ledger Farms" open={true} isSubItem={true} />
+                <SidebarLink href="/billing/ledger/retailers" icon={Users} label="Ledger Retailers" open={true} isSubItem={true} />
+                <SidebarLink href="/billing/ledger/company-report" icon={BookOpen} label="Company Report" open={true} isSubItem={true} />
                 <SidebarLink href="/billing/reports/outstanding" icon={TrendingDown} label="Outstanding" open={true} isSubItem={true} />
+                <SidebarLink href="/billing/reports/dispatch" icon={Truck} label="Dispatch Report" open={true} isSubItem={true} />
+                <SidebarLink href="/billing/reports/collection" icon={CreditCard} label="Collection Report" open={true} isSubItem={true} />
+                <SidebarLink href="/billing/reports/pending-purchases" icon={ShoppingCart} label="Pending Purchases" open={true} isSubItem={true} />
               </div>
             )}
           </div>
@@ -150,6 +236,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 <SidebarLink href="/farmers" icon={Tractor} label="Farmers" open={true} isSubItem={true} />
                 <SidebarLink href="/retailers" icon={Users} label="Retailers" open={true} isSubItem={true} />
                 <SidebarLink href="/vehicles" icon={Truck} label="Vehicles" open={true} isSubItem={true} />
+                <SidebarLink href="/products" icon={Package} label="Products" open={true} isSubItem={true} />
               </div>
             )}
           </div>
