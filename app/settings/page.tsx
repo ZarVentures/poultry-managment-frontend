@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,6 +29,8 @@ const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType; descript
 ]
 
 export default function SettingsPage() {
+  const router = useRouter()
+  const [userRole, setUserRole] = useState<string>("")
   const [mounted, setMounted] = useState(false)
   const [activeSection, setActiveSection] = useState<Section>("general")
   const [loading, setLoading] = useState(false)
@@ -64,6 +67,13 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setMounted(true)
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      try {
+        const user = JSON.parse(userData)
+        setUserRole(user.role || "")
+      } catch {}
+    }
     authApi.get2FAStatus().then(d => setIs2FAEnabled(d.isTwoFactorEnabled)).catch(() => {})
   }, [])
 
@@ -125,7 +135,15 @@ export default function SettingsPage() {
             <h1 className="text-lg font-semibold">Settings</h1>
           </div>
           <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-            {NAV_ITEMS.map(item => {
+            {NAV_ITEMS.filter(item => {
+              if (userRole === 'staff' || userRole === 'Staff') {
+                return item.id !== 'notifications' && item.id !== 'security'
+              }
+              if (userRole === 'manager' || userRole === 'Manager') {
+                return item.id !== 'notifications' && item.id !== 'security' && item.id !== 'developer'
+              }
+              return true
+            }).map(item => {
               const Icon = item.icon
               const active = activeSection === item.id
               return (

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -21,6 +22,8 @@ type ActiveFarmer = { id: string; name: string; phone: string; address?: string 
 const emptyCage = (): GodownCage => ({ cageId: "", birdType: "", numberOfBirds: 0, cageWeight: 0 })
 
 export default function GodownInwardPage() {
+  const router = useRouter()
+  const [userRole, setUserRole] = useState<string>("")
   const [entries, setEntries] = useState<GodownInward[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [farmers, setFarmers] = useState<ActiveFarmer[]>([])
@@ -54,6 +57,13 @@ export default function GodownInwardPage() {
 
   useEffect(() => {
     setMounted(true)
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      try {
+        const user = JSON.parse(userData)
+        setUserRole(user.role || "")
+      } catch {}
+    }
     fetchEntries()
     fetchVehicles()
     fetchFarmers()
@@ -742,14 +752,16 @@ export default function GodownInwardPage() {
                       <TableCell>₹{entry.ratePerKg ? Number(entry.ratePerKg).toFixed(2) : "0.00"}</TableCell>
                       <TableCell className="font-semibold">₹{entry.totalAmount ? Number(entry.totalAmount).toFixed(2) : "0.00"}</TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(entry)}>
-                            <Edit2 size={16} />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(entry.id)}>
-                            <Trash2 size={16} />
-                          </Button>
-                        </div>
+                        {userRole !== 'staff' && userRole !== 'Staff' && (
+                          <div className="flex gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(entry)}>
+                              <Edit2 size={16} />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(entry.id)}>
+                              <Trash2 size={16} />
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

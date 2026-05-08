@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -41,6 +42,8 @@ interface Mortality {
 }
 
 export default function MortalityPage() {
+  const router = useRouter()
+  const [userRole, setUserRole] = useState<string>("")
   const [mortalities, setMortalities] = useState<Mortality[]>([])
   const [purchases, setPurchases] = useState<PurchaseOrder[]>([])
   const [mounted, setMounted] = useState(false)
@@ -78,6 +81,13 @@ export default function MortalityPage() {
   // Fetch data from API
   useEffect(() => {
     setMounted(true)
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      try {
+        const user = JSON.parse(userData)
+        setUserRole(user.role || "")
+      } catch {}
+    }
     fetchMortalities()
     fetchPurchases()
   }, [])
@@ -773,12 +783,16 @@ export default function MortalityPage() {
                         <TableCell>{mortality.numberOfBirdsDied || 0}</TableCell>
                         <TableCell>{mortality.cause || "N/A"}</TableCell>
                         <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
-                          <Button variant="outline" size="icon" onClick={() => handleEdit(mortality)}>
-                            <Edit2 size={16} />
-                          </Button>
-                          <Button variant="outline" size="icon" onClick={() => handleDelete(mortality.id)}>
-                            <Trash2 size={16} />
-                          </Button>
+                          {userRole !== 'staff' && userRole !== 'Staff' && (
+                            <>
+                              <Button variant="outline" size="icon" onClick={() => handleEdit(mortality)}>
+                                <Edit2 size={16} />
+                              </Button>
+                              <Button variant="outline" size="icon" onClick={() => handleDelete(mortality.id)}>
+                                <Trash2 size={16} />
+                              </Button>
+                            </>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))
