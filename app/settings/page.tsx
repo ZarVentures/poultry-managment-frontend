@@ -12,19 +12,20 @@ import {
   Save, Lock, Bell, Palette, Terminal, Eye, EyeOff,
   Shield, ShieldCheck, ShieldOff, Building2, User, ChevronRight
 } from "lucide-react"
-import { settingsApi, authApi, type Setting } from "@/lib/api"
+import { settingsApi, authApi, permissionsApi, type Setting } from "@/lib/api"
 import { useDevMode } from "@/lib/dev-mode"
 import { toast } from "sonner"
 import { useDispatch } from "react-redux"
 import { setTheme } from "@/app/redux/slices/themeSlice"
 
-type Section = "general" | "display" | "notifications" | "security" | "developer"
+type Section = "general" | "display" | "notifications" | "security" | "permissions" | "developer"
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType; description: string }[] = [
   { id: "general", label: "General", icon: Building2, description: "Farm info & currency" },
   { id: "display", label: "Appearance", icon: Palette, description: "Theme & display" },
   { id: "notifications", label: "Notifications", icon: Bell, description: "Alerts & preferences" },
   { id: "security", label: "Security", icon: Lock, description: "2FA & account security" },
+  { id: "permissions", label: "Permissions", icon: ShieldCheck, description: "Manage role access levels" },
   { id: "developer", label: "Developer", icon: Terminal, description: "Dev mode & API logs" },
 ]
 
@@ -64,6 +65,9 @@ export default function SettingsPage() {
   const [setupCode, setSetupCode] = useState("")
   const [disableCode, setDisableCode] = useState("")
   const [twoFALoading, setTwoFALoading] = useState(false)
+  const [allRolePermissions, setAllRolePermissions] = useState<any[]>([])
+  const [permissionsLoading, setPermissionsLoading] = useState(false)
+
 
   useEffect(() => {
     setMounted(true)
@@ -72,10 +76,37 @@ export default function SettingsPage() {
       try {
         const user = JSON.parse(userData)
         setUserRole(user.role || "")
-      } catch {}
+      } catch { }
     }
-    authApi.get2FAStatus().then(d => setIs2FAEnabled(d.isTwoFactorEnabled)).catch(() => {})
+    authApi.get2FAStatus().then(d => setIs2FAEnabled(d.isTwoFactorEnabled)).catch(() => { })
+    fetchPermissions()
   }, [])
+
+  const fetchPermissions = async () => {
+    try {
+      setPermissionsLoading(true)
+      const perms = await permissionsApi.getAllRolePermissions()
+      setAllRolePermissions(perms)
+    } catch { toast.error("Failed to fetch permissions") }
+    finally { setPermissionsLoading(false) }
+  }
+
+  const handleUpdatePermission = async (role: string, resource: string, field: string, value: boolean) => {
+    try {
+      const existing = allRolePermissions.find(p => p.role === role && p.resource === resource)
+      const updatedPerms = {
+        canCreate: field === 'canCreate' ? value : (existing?.canCreate ?? false),
+        canRead: field === 'canRead' ? value : (existing?.canRead ?? true),
+        canUpdate: field === 'canUpdate' ? value : (existing?.canUpdate ?? false),
+        canDelete: field === 'canDelete' ? value : (existing?.canDelete ?? false),
+      }
+      await permissionsApi.updateRolePermission(role, resource, updatedPerms)
+      setAllRolePermissions(prev => prev.map(p =>
+        (p.role === role && p.resource === resource) ? { ...p, ...updatedPerms } : p
+      ))
+      toast.success("Permission updated")
+    } catch { toast.error("Failed to update permission") }
+  }
 
   const handleSave = async () => {
     try {
@@ -150,11 +181,10 @@ export default function SettingsPage() {
                 <button
                   key={item.id}
                   onClick={() => setActiveSection(item.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
-                    active
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-muted text-foreground"
-                  }`}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${active
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-muted text-foreground"
+                    }`}
                 >
                   <Icon size={18} className={active ? "text-primary-foreground" : "text-muted-foreground"} />
                   <div className="flex-1 min-w-0">
@@ -377,6 +407,66 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+
+            {/* Permissions */}
+            {activeSection === "permissions" && (
+              <div className="space-y-6">
+                <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-start gap-3">
+                  <ShieldCheck className="text-blue-600 shrink-0 mt-0.5" size={20} />
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">Access Control Management</p>
+                    <p className="text-xs text-blue-700 mt-0.5">Control module visibility and action permissions for each user role. Admin roles always have full access.</p>
+                  </div>
+                </div>
+
+                {permissionsLoading ? (
+                  <div className="flex justify-center p-8 text-muted-foreground animate-pulse text-sm">Loading permissions matrix...</div>
+                ) : (
+                  <div className="border rounded-xl overflow-hidden bg-background">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 border-b">
+                        <tr>
+                          <th className="text-left p-3 font-semibold">Module / Resource</th>
+                          <th className="p-3 font-semibold text-center">Role</th>
+                          <th className="p-3 font-semibold text-center">Read</th>
+                          <th className="p-3 font-semibold text-center">Create</th>
+                          <th className="p-3 font-semibold text-center">Update</th>
+                          <th className="p-3 font-semibold text-center">Delete</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {['manager', 'staff'].map(role => (
+                          ['dashboard', 'purchases', 'sales', 'godown', 'mortality', 'expenses', 'reports', 'billing', 'users', 'settings'].map(resource => {
+                            const perm = allRolePermissions.find(p => p.role === role && p.resource === resource)
+                            return (
+                              <tr key={`${role}-${resource}`} className="hover:bg-muted/30 transition-colors">
+                                <td className="p-3 font-medium capitalize">{resource.replace('-', ' ')}</td>
+                                <td className="p-3 text-center">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${role === 'manager' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
+                                    {role}
+                                  </span>
+                                </td>
+                                {['canRead', 'canCreate', 'canUpdate', 'canDelete'].map(field => (
+                                  <td key={field} className="p-3 text-center">
+                                    <input
+                                      type="checkbox"
+                                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                      checked={perm ? perm[field] : (field === 'canRead')}
+                                      onChange={(e) => handleUpdatePermission(role, resource, field, e.target.checked)}
+                                    />
+                                  </td>
+                                ))}
+                              </tr>
+                            )
+                          })
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         </div>
       </div>
@@ -413,7 +503,7 @@ export default function SettingsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showBackupCodesModal} onOpenChange={() => {}}>
+      <Dialog open={showBackupCodesModal} onOpenChange={() => { }}>
         <DialogContent className="max-w-md" onInteractOutside={e => e.preventDefault()}>
           <DialogHeader><DialogTitle>🔐 Save Your Recovery Codes</DialogTitle></DialogHeader>
           <div className="space-y-4">

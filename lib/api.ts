@@ -404,8 +404,6 @@ export interface GodownSale {
   totalAmount?: number;
   paymentStatus: 'paid' | 'pending' | 'partial';
   amountReceived: number;
-  paymentMode?: string;
-  payments?: SalePayment[];
   notes?: string;
   cages?: GodownCage[];
   createdAt?: string;
