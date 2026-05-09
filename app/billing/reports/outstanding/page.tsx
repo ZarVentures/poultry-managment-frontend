@@ -32,7 +32,7 @@ const OutstandingReportPage = () => {
         const sales = [...(Array.isArray(regularSales) ? regularSales : []), ...(Array.isArray(godownSales) ? godownSales : [])]
         const result: RetailerOutstanding[] = retailers.map(r => {
           const retailerSales = sales.filter(s => s.retailerId === r.id)
-          const totalSales = retailerSales.reduce((s, x) => s + Number(x.netAmount || x.totalAmount || 0), 0)
+          const totalSales = retailerSales.reduce((s, x: any) => s + Number(x.netAmount || x.totalAmount || 0), 0)
           const totalReceived = retailerSales.reduce((s, x) => s + Number(x.amountReceived || 0), 0)
           return {
             id: r.id,
