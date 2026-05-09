@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -17,6 +18,8 @@ import { expensesApi, type Expense as ApiExpense } from "@/lib/api"
 import { toast } from "sonner"
 
 export default function ExpensesPage() {
+  const router = useRouter()
+  const [userRole, setUserRole] = useState<string>("")
   const [expenses, setExpenses] = useState<ApiExpense[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -37,6 +40,13 @@ export default function ExpensesPage() {
 
   useEffect(() => {
     setMounted(true)
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      try {
+        const user = JSON.parse(userData)
+        setUserRole(user.role || "")
+      } catch {}
+    }
     fetchExpenses()
   }, [])
 
@@ -533,14 +543,16 @@ export default function ExpensesPage() {
                         <TableCell className="capitalize">{expense.paymentMethod.replace('_', ' ')}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">-</TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(expense)}>
-                              <Edit2 size={16} />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(expense.id)}>
-                              <Trash2 size={16} />
-                            </Button>
-                          </div>
+                          {userRole !== 'staff' && userRole !== 'Staff' && (
+                            <div className="flex gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(expense)}>
+                                <Edit2 size={16} />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(expense.id)}>
+                                <Trash2 size={16} />
+                              </Button>
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

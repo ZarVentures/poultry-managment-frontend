@@ -1,349 +1,249 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React from 'react'
+import Link from 'next/link'
 import { DashboardLayout } from '@/components/dashboard-layout'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Download, Printer, TrendingUp, TrendingDown, Calendar, Building2 } from 'lucide-react'
-import { salesApi, retailersApi, purchasesApi, expensesApi, mortalityApi, godownApi } from '@/lib/api'
+import { Button } from '@/components/ui/button'
+import { ArrowUpRight, BookOpen, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Building2, Calendar, FileText } from 'lucide-react'
 
-interface LedgerEntry {
-  date: string
-  type: string
-  party: string
-  reference: string
-  debit: number
-  credit: number
-  category: 'sale' | 'purchase' | 'expense' | 'mortality' | 'payment'
-  count?: number
-  remarks?: string
+interface StatementItem {
+  label: string
+  amount: number
+  bold?: boolean
+  highlight?: boolean
+  negative?: boolean
+  positive?: boolean
+  dark?: boolean
+}
+
+interface StatementSection {
+  section?: string
+  items: StatementItem[]
 }
 
 const CompanyLedgerReportPage = () => {
-  const [entries, setEntries] = useState<LedgerEntry[]>([])
-  const [loading, setLoading] = useState(true)
-  const [dateFrom, setDateFrom] = useState(() => { const d = new Date(); d.setMonth(0); d.setDate(1); return d.toISOString().split('T')[0] })
-  const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0])
-
-  useEffect(() => {
-    Promise.all([salesApi.getAll(), retailersApi.getAll(), purchasesApi.getAll(), expensesApi.getAll(), mortalityApi.getAll(), godownApi.sales.getAll()])
-      .then(([regularSales, retailers, purchases, expenses, mortalities, godownSales]) => {
-        const sales = [...(Array.isArray(regularSales) ? regularSales : []), ...(Array.isArray(godownSales) ? godownSales : [])]
-        const retailerMap: Record<string, string> = {}
-        retailers.forEach(r => { retailerMap[r.id] = r.name })
-
-        const all: LedgerEntry[] = []
-
-        // Sales as debit entries
-        for (const sale of (Array.isArray(sales) ? sales : [])) {
-          const partyName = sale.retailerId ? (retailerMap[sale.retailerId] || sale.customerName) : sale.customerName
-          const saleAmt = Number(sale.netAmount || sale.totalAmount || 0)
-          const received = Number(sale.amountReceived || 0)
-          
-          if (saleAmt > 0 || received > 0) {
-            all.push({
-              date: sale.saleDate,
-              type: saleAmt > 0 ? 'Sale' : 'Payment Received',
-              party: partyName,
-              reference: sale.invoiceNumber,
-              debit: saleAmt,
-              credit: received,
-              category: 'sale',
-              remarks: sale.notes || (sale as any).remarks || ''
-            })
-          }
-        }
-
-        // Purchases as credit entries (money going out)
-        for (const po of (Array.isArray(purchases) ? purchases : [])) {
-          const poAmt = Number(po.netAmount || po.totalAmount || 0)
-          const paid = Number(po.totalPaymentMade || 0)
-
-          if (poAmt > 0 || paid > 0) {
-            all.push({
-              date: po.orderDate,
-              type: poAmt > 0 ? 'Purchase' : 'Purchase Payment',
-              party: po.supplierName,
-              reference: po.orderNumber,
-              debit: paid,
-              credit: poAmt,
-              category: 'purchase',
-              remarks: po.notes || (po as any).remarks || ''
-            })
-          }
-        }
-
-        // Expenses
-        for (const exp of (Array.isArray(expenses) ? expenses : [])) {
-          all.push({
-            date: exp.expenseDate,
-            type: 'Expense',
-            party: exp.category,
-            reference: exp.description || 'Expense',
-            debit: 0,
-            credit: Number(exp.amount || 0),
-            category: 'expense',
-            remarks: exp.notes || (exp as any).remarks || ''
-          })
-        }
-
-        // Mortality
-        for (const m of (Array.isArray(mortalities) ? mortalities : [])) {
-          const mDate = (m as any).mortalityDate || m.purchaseDate || m.createdAt?.split('T')[0] || new Date().toISOString().split('T')[0]
-          all.push({
-            date: mDate,
-            type: 'Mortality',
-            party: m.farmerName || 'Farm',
-            reference: `Died: ${m.numberOfBirdsDied} birds`,
-            debit: 0,
-            credit: 0,
-            category: 'mortality',
-            count: Number(m.numberOfBirdsDied || 0),
-            remarks: m.notes || (m as any).remarks || ''
-          })
-        }
-
-        all.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        setEntries(all)
-      })
-      .catch(err => console.error('Company ledger error:', err))
-      .finally(() => setLoading(false))
-  }, [])
-
-  let openingBalance = 0;
-  const fromDate = new Date(dateFrom);
-  fromDate.setHours(0, 0, 0, 0);
-  const toDate = new Date(dateTo);
-  toDate.setHours(23, 59, 59, 999);
-
-  // Calculate opening balance from all entries before the selected range
-  openingBalance = entries.reduce((acc, e) => {
-    const d = new Date(e.date);
-    d.setHours(0, 0, 0, 0);
-    if (d < fromDate) {
-      return acc + (e.debit - e.credit);
-    }
-    return acc;
-  }, 0);
-
-  let currentRunningBalance = openingBalance;
-  const filtered = entries
-    .filter(e => {
-      const d = new Date(e.date);
-      d.setHours(0, 0, 0, 0);
-      return d >= fromDate && d <= toDate;
-    })
-    .map(e => {
-      currentRunningBalance += (e.debit - e.credit);
-      return { ...e, balance: currentRunningBalance };
-    });
-
-  const closingBalance = currentRunningBalance;
-
-  const totals = filtered.reduce((acc, e) => ({ debit: acc.debit + e.debit, credit: acc.credit + e.credit }), { debit: 0, credit: 0 })
-  
-  const stats = {
-    totalSales: filtered.filter(e => e.category === 'sale').reduce((sum, e) => sum + e.debit, 0),
-    totalPurchase: filtered.filter(e => e.category === 'purchase').reduce((sum, e) => sum + e.credit, 0),
-    totalExpense: filtered.filter(e => e.category === 'expense').reduce((sum, e) => sum + e.credit, 0),
-    totalMortality: filtered.filter(e => e.category === 'mortality').reduce((sum, e) => sum + (e.count || 0), 0)
+  // Hardcoded data for demo (replace with real data as needed)
+  const summary = {
+    totalRevenue: 1240500,
+    grossProfit: 785200,
+    opExpenses: 342100,
+    netProfit: 443100,
   }
-
-  const formatRemarks = (remarks?: any): string => {
-    if (!remarks) return '-'
-    if (typeof remarks !== 'string') return JSON.stringify(remarks)
-    try {
-      const parsed = JSON.parse(remarks)
-      if (typeof parsed === 'object' && parsed !== null) {
-        const text = parsed.text
-        const rows = parsed.customerRows
-        if (text && text.trim()) {
-          if ((text.startsWith('{') && text.endsWith('}')) || (text.startsWith('[') && text.endsWith(']'))) {
-            return formatRemarks(text)
-          }
-          return text
-        }
-        if (Array.isArray(rows) && rows.length > 0) {
-          return rows.map((r: any) => r.customerName || r.name || r.customer).filter(Boolean).join(', ') || 'Multiple Customers'
-        }
-        return parsed.notes || parsed.description || JSON.stringify(parsed)
-      }
-    } catch (e) {}
-    return remarks
+  const detailedStatement: StatementSection[] = [
+    { section: 'REVENUE', items: [
+      { label: 'Sales - Party A', amount: 500000 },
+      { label: 'Sales - Party B', amount: 450000 },
+      { label: 'Sales - Party C', amount: 290500 },
+      { label: 'Total Sales', amount: 1240500, bold: true },
+      { label: 'Other Income', amount: 12000 },
+      { label: 'TOTAL REVENUE', amount: 1252500, bold: true, highlight: true },
+    ]},
+    { section: 'COST OF GOODS SOLD', items: [
+      { label: 'Opening Stock', amount: 120000 },
+      { label: 'Purchases', amount: 380000 },
+      { label: 'Direct Expenses', amount: 45300 },
+      { label: 'Closing Stock (Less)', amount: -80000, negative: true },
+      { label: 'TOTAL COGS', amount: 465300, bold: true },
+      { label: 'GROSS PROFIT', amount: 787200, bold: true, highlight: true, positive: true },
+    ]},
+    { section: 'OPERATING EXPENSES', items: [
+      { label: 'Salary', amount: 210000 },
+      { label: 'Rent', amount: 45000 },
+      { label: 'Office Expense', amount: 15000 },
+      { label: 'Utilities', amount: 12400 },
+      { label: 'Travel', amount: 38200 },
+      { label: 'Misc Expenses', amount: 23500 },
+      { label: 'TOTAL EXPENSES', amount: 344100, bold: true },
+    ]},
+    { section: '', items: [
+      { label: 'NET PROFIT', amount: 443100, bold: true, highlight: true, dark: true },
+    ]},
+  ]
+  const keyInsight = {
+    title: 'Profitability remains strong with Gross Margins holding at 63%. Operating expenses are within the 10% tolerance band of the quarterly budget.',
+    netProfitMargin: 35.4,
+    expenseRatio: 27.5,
   }
-
-  const getTypeColor = (type: string) => {
-    if (type === 'Sale') return 'border-l-4 border-l-orange-400 bg-orange-50'
-    if (type === 'Payment Received') return 'border-l-4 border-l-green-500 bg-green-50'
-    if (type === 'Purchase') return 'border-l-4 border-l-red-400 bg-red-50'
-    if (type === 'Purchase Payment') return 'border-l-4 border-l-blue-400 bg-blue-50'
-    if (type === 'Expense') return 'border-l-4 border-l-purple-400 bg-purple-50'
-    if (type === 'Mortality') return 'border-l-4 border-l-gray-400 bg-gray-50'
-    return ''
-  }
-
-  const downloadCSV = () => {
-    if (!filtered.length) { alert('No data to export.'); return }
-    const headers = 'Date,Type,Party,Reference,Debit,Credit,Balance'
-    const rows = filtered.map(e => `${e.date},${e.type},${e.party},${e.reference},${e.debit},${e.credit},${e.balance}`).join('\n')
-    const blob = new Blob([`${headers}\n${rows}`], { type: 'text/csv;charset=utf-8;' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = `company_ledger_${new Date().toISOString().split('T')[0]}.csv`
-    a.style.display = 'none'; document.body.appendChild(a); a.click(); document.body.removeChild(a)
-    window.URL.revokeObjectURL(url)
-  }
+  const auditLog = [
+    { status: 'success', label: 'Q1 Reconciliation Complete', user: 'Admin', time: '2 hours ago' },
+    { status: 'warning', label: 'Manual Entry Adjustment', user: 'SaaS Revenue', time: '5 hours ago' },
+    { status: 'info', label: 'Automated Forecast Update', user: 'System', time: '1 day ago' },
+  ]
 
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <Building2 className="w-8 h-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">Company Ledger Report</h1>
+        {/* Header */}
+        {/* Header Section */}
+<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
+  
+  {/* Left Content */}
+  <div>
+    <h1 className="text-4xl md:text-5xl font-extrabold text-black">
+      Performance Overview
+    </h1>
+
+    <p className="text-gray-500 text-lg mt-3">
+      Consolidated Profit & Loss statement for the current fiscal year.
+    </p>
+  </div>
+
+  {/* Right Toggle */}
+  <div className="bg-gray-100 p-2 rounded-2xl flex items-center gap-2 w-fit">
+    
+    <button className="bg-white shadow-sm px-6 py-3 rounded-xl text-lg font-semibold text-black">
+      YTD 2024
+    </button>
+
+    <button className="px-6 py-3 rounded-xl text-lg font-semibold text-gray-500 hover:bg-white transition">
+      Q1 2024
+    </button>
+  </div>
+</div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="border border-gray-200 p-5 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-gray-500">TOTAL REVENUE</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-gray-900">₹{summary.totalRevenue.toLocaleString('en-IN')}</span>
+                <TrendingUp className="w-8 h-8 text-green-200" />
+              </div>
+              <div className="text-xs text-green-600 mt-1">↑ 12.5% Increase</div>
+            </CardContent>
+          </Card>
+          <Card className="border border-gray-200 p-5 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-gray-500">GROSS PROFIT</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-gray-900">₹{summary.grossProfit.toLocaleString('en-IN')}</span>
+                <ArrowUpRight className="w-8 h-8 text-blue-200" />
+              </div>
+              <div className="text-xs text-gray-500 mt-1">63.3% Gross Margin</div>
+            </CardContent>
+          </Card>
+          <Card className="border border-gray-200 p-5 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-gray-500">OP. EXPENSES</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-gray-900">₹{summary.opExpenses.toLocaleString('en-IN')}</span>
+                <TrendingDown className="w-8 h-8 text-orange-200" />
+              </div>
+              <div className="text-xs text-gray-500 mt-1">Managed Efficiently</div>
+            </CardContent>
+          </Card>
+          <Card className="border border-green-600 bg-green-900/90 p-5 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-white">NET PROFIT (YTD)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-white">₹{summary.netProfit.toLocaleString('en-IN')}</span>
+                <DollarSign className="w-8 h-8 text-green-300" />
+              </div>
+              <div className="text-xs text-green-200 mt-1">+ TARGET ACHIEVED</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Detailed Statement Table */}
+          <div className="col-span-2">
+            <Card className="border border-gray-200 p-0 shadow-sm">
+              <div className="flex items-center justify-between px-6 pt-6 pb-2">
+                <h3 className="text-lg font-semibold text-gray-900">Detailed Statement</h3>
+                <Button variant="ghost" size="sm"><FileText className="w-4 h-4 mr-2" />Export PDF</Button>
+              </div>
+              <div className="overflow-x-auto px-6 pb-6">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-gray-500 border-b">
+                      <th className="py-2 text-left font-medium">PARTICULARS</th>
+                      <th className="py-2 text-right font-medium">AMOUNT (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detailedStatement.map((section, idx) => (
+                      <React.Fragment key={idx}>
+                        {section.section && (
+                          <tr className="bg-gray-50">
+                            <td colSpan={2} className="py-2 font-semibold text-gray-700 uppercase tracking-wider">{section.section}</td>
+                          </tr>
+                        )}
+                        {section.items.map((item, j) => (
+                          <tr key={j} className={item.highlight ? (item.positive ? 'bg-green-50' : item.dark ? 'bg-gray-900 text-white' : 'bg-gray-100') : ''}>
+                            <td className={
+                              'py-1 px-2 ' +
+                              (item.bold ? 'font-bold ' : '') +
+                              (item.negative ? 'text-red-500 ' : '')
+                            }>{item.label}</td>
+                            <td className={
+                              'py-1 px-2 text-right ' +
+                              (item.bold ? 'font-bold ' : '') +
+                              (item.negative ? 'text-red-500 ' : '') +
+                              (item.positive ? 'text-green-600 ' : '') +
+                              (item.dark ? 'text-white ' : '')
+                            }>
+                              ₹{Math.abs(item.amount).toLocaleString('en-IN')}
+                            </td>
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           </div>
-          <p className="text-gray-600 mt-2">All sales, purchases, and payments across the company</p>
-        </div>
-
-        <Card className="border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter by Date Range</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">From Date</label>
-              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="pl-10" /></div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">To Date</label>
-              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="pl-10" /></div>
-            </div>
+          {/* Side Panel */}
+          <div className="flex flex-col gap-6">
+            {/* Key Insight */}
+            <Card className="border border-gray-200 p-5 shadow-sm">
+              <div className="mb-2 font-semibold text-gray-800 flex items-center gap-2">
+                <span>Key Insight</span>
+              </div>
+              <div className="text-gray-600 text-sm mb-4">{keyInsight.title}</div>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-500">NET PROFIT MARGIN</span>
+                  <span className="font-bold text-green-700">{keyInsight.netProfitMargin}%</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-500">EXPENSE RATIO</span>
+                  <span className="font-bold text-blue-700">{keyInsight.expenseRatio}%</span>
+                </div>
+              </div>
+            </Card>
+            {/* Activity Audit Log */}
+            <Card className="border border-gray-200 p-5 shadow-sm">
+              <div className="mb-2 font-semibold text-gray-800 flex items-center gap-2">
+                <span>Activity Audit Log</span>
+              </div>
+              <div className="flex flex-col gap-3">
+                {auditLog.map((log, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-sm">
+                    <span className={
+                      'w-2 h-2 rounded-full ' +
+                      (log.status === 'success' ? 'bg-green-500' : log.status === 'warning' ? 'bg-orange-400' : 'bg-blue-400')
+                    }></span>
+                    <span className="font-medium text-gray-900">{log.label}</span>
+                    <span className="text-gray-400 ml-auto">{log.user} • {log.time}</span>
+                  </div>
+                ))}
+              </div>
+              <Button variant="outline" size="sm" className="mt-4 w-full">Full Activity Trail</Button>
+            </Card>
           </div>
-        </Card>
-
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4 print:hidden">
-          <Card className="border border-gray-200 bg-white p-6">
-            <p className="text-sm text-gray-600 font-medium">Opening Balance</p>
-            <p className={`text-2xl font-bold mt-2 ${openingBalance >= 0 ? 'text-orange-600' : 'text-green-600'}`}>
-              ₹{Math.abs(openingBalance).toLocaleString('en-IN')} {openingBalance > 0 ? '(Dr)' : openingBalance < 0 ? '(Cr)' : ''}
-            </p>
-          </Card>
-          <Card className="border border-orange-200 bg-orange-50 p-6">
-            <TrendingUp className="w-5 h-5 text-orange-600 mb-2" />
-            <p className="text-sm text-gray-600 font-medium"> Total Money Out</p>
-            <p className="text-2xl font-bold text-orange-600 mt-2">₹{totals.debit.toLocaleString('en-IN')}</p>
-          </Card>
-          <Card className="border border-green-200 bg-green-50 p-6">
-            <TrendingDown className="w-5 h-5 text-green-600 mb-2" />
-            <p className="text-sm text-gray-600 font-medium">Total Money In</p>
-            <p className="text-2xl font-bold text-green-600 mt-2">₹{totals.credit.toLocaleString('en-IN')}</p>
-          </Card>
-          <Card className="border border-blue-200 bg-blue-50 p-6">
-            <p className="text-sm text-gray-600 font-medium">Closing Balance</p>
-            <p className={`text-2xl font-bold mt-2 ${closingBalance >= 0 ? 'text-orange-600' : 'text-green-600'}`}>
-              ₹{Math.abs(closingBalance).toLocaleString('en-IN')} {closingBalance > 0 ? '(Dr)' : closingBalance < 0 ? '(Cr)' : ''}
-            </p>
-          </Card>
-          <Card className="border border-gray-300 bg-gray-50 p-6">
-            <p className="text-sm text-gray-600 font-medium">Net Period Change</p>
-            <p className={`text-2xl font-bold mt-2 ${(totals.debit - totals.credit) > 0 ? 'text-red-600' : 'text-green-600'}`}>
-              ₹{(totals.debit - totals.credit).toLocaleString('en-IN')}
-            </p>
-          </Card>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print:hidden">
-          <Card className="border border-orange-200 bg-orange-50 p-6">
-            <TrendingUp className="w-5 h-5 text-orange-600 mb-2" />
-            <p className="text-sm text-gray-600 font-medium">Total Sales</p>
-            <p className="text-2xl font-bold text-orange-600 mt-2">₹{stats.totalSales.toLocaleString('en-IN')}</p>
-          </Card>
-          <Card className="border border-red-200 bg-red-50 p-6">
-            <TrendingDown className="w-5 h-5 text-red-600 mb-2" />
-            <p className="text-sm text-gray-600 font-medium">Total Purchase</p>
-            <p className="text-2xl font-bold text-red-600 mt-2">₹{stats.totalPurchase.toLocaleString('en-IN')}</p>
-          </Card>
-          <Card className="border border-purple-200 bg-purple-50 p-6">
-            <TrendingDown className="w-5 h-5 text-purple-600 mb-2" />
-            <p className="text-sm text-gray-600 font-medium">Total Expense</p>
-            <p className="text-2xl font-bold text-purple-600 mt-2">₹{stats.totalExpense.toLocaleString('en-IN')}</p>
-          </Card>
-          <Card className="border border-gray-300 bg-gray-50 p-6">
-            <TrendingDown className="w-5 h-5 text-gray-600 mb-2" />
-            <p className="text-sm text-gray-600 font-medium">Total Mortality</p>
-            <p className="text-2xl font-bold text-gray-800 mt-2">{stats.totalMortality} Birds</p>
-          </Card>
-        </div>
-
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={downloadCSV} type="button"><Download className="w-4 h-4 mr-2" />Export CSV</Button>
-          <Button variant="outline" onClick={() => window.print()} type="button"><Printer className="w-4 h-4 mr-2" />Print</Button>
-        </div>
-
-        <Card className="border border-gray-200 overflow-hidden">
-          <CardHeader className="bg-gray-50 border-b border-gray-200">
-            <CardTitle>All Transactions</CardTitle>
-            <p className="text-sm text-gray-600 mt-1">{loading ? 'Loading...' : `${filtered.length} transactions`}</p>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50">
-                    <TableHead className="font-semibold">Date</TableHead>
-                    <TableHead className="font-semibold">Type</TableHead>
-                    <TableHead className="font-semibold">Party</TableHead>
-                    <TableHead className="font-semibold">Remarks</TableHead>
-                    <TableHead className="font-semibold">Reference</TableHead>
-                    <TableHead className="text-right font-semibold">Money Out (₹)</TableHead>
-                    <TableHead className="text-right font-semibold">Money In (₹)</TableHead>
-                    <TableHead className="text-right font-semibold">Balance (₹)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500">Loading...</TableCell></TableRow>
-                  ) : filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500">No entries for selected date range</TableCell></TableRow>
-                  ) : (
-                    <>
-                      <TableRow className="bg-gray-100 font-medium">
-                        <TableCell colSpan={7} className="text-right">Opening Balance</TableCell>
-                        <TableCell className={`text-right font-bold ${openingBalance > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                          ₹{Math.abs(openingBalance).toLocaleString('en-IN')} {openingBalance > 0 ? '(Dr)' : openingBalance < 0 ? '(Cr)' : ''}
-                        </TableCell>
-                      </TableRow>
-                      {filtered.map((e, idx) => (
-                        <TableRow key={idx} className={getTypeColor(e.type)}>
-                          <TableCell className="font-medium">{new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN')}</TableCell>
-                          <TableCell className="font-semibold text-sm">{e.type}</TableCell>
-                          <TableCell className="text-gray-700">{e.party}</TableCell>
-                          <TableCell className="text-gray-600 text-sm max-w-[150px] truncate" title={formatRemarks(e.remarks)}>{formatRemarks(e.remarks)}</TableCell>
-                          <TableCell className="font-mono text-sm text-gray-600">{e.reference}</TableCell>
-                          <TableCell className="text-right font-medium text-orange-600">{e.debit > 0 ? `₹${e.debit.toLocaleString('en-IN')}` : '–'}</TableCell>
-                          <TableCell className="text-right font-medium text-green-600">{e.credit > 0 ? `₹${e.credit.toLocaleString('en-IN')}` : '–'}</TableCell>
-                          <TableCell className={`text-right font-bold ${e.balance > 0 ? 'text-orange-600' : 'text-green-600'}`}>₹{Math.abs(e.balance).toLocaleString('en-IN')} {e.balance > 0 ? '(Dr)' : e.balance < 0 ? '(Cr)' : ''}</TableCell>
-                        </TableRow>
-                      ))}
-                      <TableRow className="bg-gray-100 font-bold border-t-2 border-gray-300">
-                        <TableCell colSpan={5} className="text-right">TOTAL FOR PERIOD</TableCell>
-                        <TableCell className="text-right text-orange-600">₹{totals.debit.toLocaleString('en-IN')}</TableCell>
-                        <TableCell className="text-right text-green-600">₹{totals.credit.toLocaleString('en-IN')}</TableCell>
-                        <TableCell></TableCell>
-                      </TableRow>
-                      <TableRow className="bg-blue-50 font-bold border-t border-blue-200 text-blue-900">
-                        <TableCell colSpan={7} className="text-right">Closing Balance</TableCell>
-                        <TableCell className={`text-right font-bold ${closingBalance > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                          ₹{Math.abs(closingBalance).toLocaleString('en-IN')} {closingBalance > 0 ? '(Dr)' : closingBalance < 0 ? '(Cr)' : ''}
-                        </TableCell>
-                      </TableRow>
-                    </>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </DashboardLayout>
   )

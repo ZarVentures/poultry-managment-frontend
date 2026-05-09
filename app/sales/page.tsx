@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X, Paperclip, Wallet, TrendingUp, ShoppingCart, Clock } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Paperclip, Wallet, TrendingUp, ShoppingCart, Clock, Eye, MoreHorizontal } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
@@ -24,6 +25,8 @@ const emptyPayment = (): PaymentRow => ({ mode: "cash", amount: "" })
 interface CustomerRow { id: string; customerName: string; cageId: string; numBirds: string; weight: string; amount: number }
 
 export default function SalesPage() {
+  const router = useRouter()
+  const [userRole, setUserRole] = useState<string>("")
   const [sales, setSales] = useState<ApiSale[]>([])
   const [retailers, setRetailers] = useState<any[]>([])
   const [vehicles, setVehicles] = useState<any[]>([])
@@ -71,12 +74,20 @@ export default function SalesPage() {
     otherCharges: "",
     deductions: "",
     paymentStatus: "pending" as "paid" | "pending" | "partial",
+    amountReceived: "",
     notes: "",
   })
   const [payments, setPayments] = useState<PaymentRow[]>([emptyPayment()])
 
   useEffect(() => {
     setMounted(true)
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      try {
+        const user = JSON.parse(userData)
+        setUserRole(user.role || "")
+      } catch {}
+    }
     fetchSales(); fetchRetailers(); fetchVehicles(); fetchPurchaseBills()
   }, [])
 
@@ -354,7 +365,7 @@ export default function SalesPage() {
       setEditingId(full.id)
       setIsEditMode(false)
       setShowDialog(true)
-
+      
       const retailer = retailers.find(r => r.id === full.retailerId)
       setFormData({
         invoiceNumber: full.invoiceNumber || "",
@@ -382,9 +393,9 @@ export default function SalesPage() {
         amountReceived: String(full.amountReceived || ""),
         notes: full.notes || "",
       })
-
-      setPayments(full.payments && full.payments.length > 0
-        ? full.payments.map((p: any) => ({ ...p, id: p.id || crypto.randomUUID() }))
+      
+      setPayments(full.payments && full.payments.length > 0 
+        ? full.payments.map((p: any) => ({ ...p, id: p.id || crypto.randomUUID() })) 
         : [emptyPayment()])
       setShowDialog(true)
     } catch (error) {
@@ -1006,10 +1017,14 @@ export default function SalesPage() {
                         </TableCell>
                         <TableCell>₹{Math.max(0, Number(s.netAmount || s.totalAmount || 0) - Number(s.amountReceived || 0)).toFixed(2)}</TableCell>
                         <TableCell>
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(s)}><Edit2 size={14} /></Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(s.id)} className="text-red-500"><Trash2 size={14} /></Button>
-                          </div>
+                          {userRole !== 'staff' && userRole !== 'Staff' ? (
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(s)}><Edit2 size={14} /></Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(s.id)} className="text-red-500"><Trash2 size={14} /></Button>
+                            </div>
+                          ) : (
+                            <Button variant="ghost" size="sm" onClick={() => handleView(s)}><Eye size={14} /></Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

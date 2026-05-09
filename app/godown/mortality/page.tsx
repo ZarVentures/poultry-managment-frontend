@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -17,6 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner"
 
 export default function GodownMortalityPage() {
+  const router = useRouter()
+  const [userRole, setUserRole] = useState<string>("")
   const [mortalities, setMortalities] = useState<GodownMortality[]>([])
   const [inwardEntries, setInwardEntries] = useState<GodownInward[]>([])
   const [loading, setLoading] = useState(false)
@@ -37,6 +40,13 @@ export default function GodownMortalityPage() {
 
   useEffect(() => {
     setMounted(true)
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      try {
+        const user = JSON.parse(userData)
+        setUserRole(user.role || "")
+      } catch {}
+    }
     fetchMortalities()
     godownApi.inward.getAll().then(d => setInwardEntries(Array.isArray(d) ? d : [])).catch(() => {})
   }, [])
@@ -402,14 +412,16 @@ export default function GodownMortalityPage() {
                         <TableCell>{(mortality as any).weightOfDeadBirds ? `${Number((mortality as any).weightOfDeadBirds).toFixed(2)} kg` : '-'}</TableCell>
                         <TableCell>{mortality.reason || "-"}</TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(mortality)}>
-                              <Edit2 size={16} />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(mortality.id)}>
-                              <Trash2 size={16} />
-                            </Button>
-                          </div>
+                          {userRole !== 'staff' && userRole !== 'Staff' && (
+                            <div className="flex gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(mortality)}>
+                                <Edit2 size={16} />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(mortality.id)}>
+                                <Trash2 size={16} />
+                              </Button>
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

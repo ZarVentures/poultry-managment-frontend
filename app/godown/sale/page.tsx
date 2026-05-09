@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -23,6 +24,8 @@ const emptyPayment = (): PaymentRow => ({ mode: "cash", amount: "" })
 const emptyCage = (): GodownCage => ({ cageId: "", birdType: "", numberOfBirds: 0, cageWeight: 0 })
 
 export default function GodownSalePage() {
+  const router = useRouter()
+  const [userRole, setUserRole] = useState<string>("")
   const [sales, setSales] = useState<GodownSale[]>([])
   const [retailers, setRetailers] = useState<Retailer[]>([])
   const [loading, setLoading] = useState(false)
@@ -50,6 +53,13 @@ export default function GodownSalePage() {
 
   useEffect(() => {
     setMounted(true)
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      try {
+        const user = JSON.parse(userData)
+        setUserRole(user.role || "")
+      } catch {}
+    }
     fetchSales()
     fetchRetailers()
   }, [])
@@ -668,31 +678,16 @@ export default function GodownSalePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredSales.map((sale) => {
-                      const totalAmount = Number(sale.totalAmount || 0)
-                      const amountReceived = Number((sale as any).amountReceived || 0)
-                      const balance = Math.max(0, totalAmount - amountReceived)
-                      
-                      return (
-                        <TableRow key={sale.id}>
-                          <TableCell>{sale.invoiceNumber || "-"}</TableCell>
-                          <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
-                          <TableCell>{sale.customerName}</TableCell>
-                          <TableCell>{sale.numberOfBirds} birds</TableCell>
-                          <TableCell>₹{Number(sale.ratePerKg || 0).toFixed(2)}/kg</TableCell>
-                          <TableCell>₹{totalAmount.toFixed(2)}</TableCell>
-                          <TableCell className="text-green-700 font-medium">₹{amountReceived.toFixed(2)}</TableCell>
-                          <TableCell className="text-red-600 font-medium">₹{balance.toFixed(2)}</TableCell>
-                          <TableCell>
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                              (sale as any).paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                              (sale as any).paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {(sale as any).paymentStatus || 'pending'}
-                            </span>
-                          </TableCell>
-                          <TableCell>
+                    {filteredSales.map((sale) => (
+                      <TableRow key={sale.id}>
+                        <TableCell>{sale.invoiceNumber || "-"}</TableCell>
+                        <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
+                        <TableCell>{sale.customerName}</TableCell>
+                        <TableCell>{sale.numberOfBirds} birds</TableCell>
+                        <TableCell>₹{Number(sale.ratePerKg || 0).toFixed(2)}/kg</TableCell>
+                        <TableCell>₹{Number(sale.totalAmount || 0).toFixed(2)}</TableCell>
+                        <TableCell>
+                          {userRole !== 'staff' && userRole !== 'Staff' && (
                             <div className="flex gap-2">
                               <Button variant="ghost" size="sm" onClick={() => handleEdit(sale)}>
                                 <Edit2 size={16} />
@@ -701,10 +696,10 @@ export default function GodownSalePage() {
                                 <Trash2 size={16} />
                               </Button>
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>

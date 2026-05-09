@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -17,6 +18,8 @@ import { vehiclesApi, type Vehicle as ApiVehicle } from "@/lib/api"
 import { toast } from "sonner"
 
 export default function VehiclesPage() {
+  const router = useRouter()
+  const [userRole, setUserRole] = useState<string>("")
   const [vehicles, setVehicles] = useState<ApiVehicle[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -44,6 +47,13 @@ export default function VehiclesPage() {
 
   useEffect(() => {
     setMounted(true)
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      try {
+        const user = JSON.parse(userData)
+        setUserRole(user.role || "")
+      } catch {}
+    }
     fetchVehicles()
   }, [])
 
@@ -648,14 +658,16 @@ export default function VehiclesPage() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(vehicle)}>
-                              <Edit2 size={16} />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(vehicle.id)}>
-                              <Trash2 size={16} />
-                            </Button>
-                          </div>
+                          {userRole !== 'staff' && userRole !== 'Staff' && (
+                            <div className="flex gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(vehicle)}>
+                                <Edit2 size={16} />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(vehicle.id)}>
+                                <Trash2 size={16} />
+                              </Button>
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
