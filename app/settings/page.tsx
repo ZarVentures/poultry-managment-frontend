@@ -68,9 +68,12 @@ export default function SettingsPage() {
   const [allRolePermissions, setAllRolePermissions] = useState<any[]>([])
   const [permissionsLoading, setPermissionsLoading] = useState(false)
   const [showAddRoleModal, setShowAddRoleModal] = useState(false)
-  const [showAddResourceModal, setShowAddResourceModal] = useState(false)
   const [newRoleName, setNewRoleName] = useState("")
-  const [newResourceName, setNewResourceName] = useState("")
+
+  const ALL_RESOURCES = [
+    'dashboard', 'purchases', 'sales', 'godown', 'mortality',
+    'expenses', 'reports', 'billing', 'users', 'settings'
+  ]
 
 
   useEffect(() => {
@@ -120,16 +123,6 @@ export default function SettingsPage() {
       await fetchPermissions()
       setShowAddRoleModal(false); setNewRoleName(""); toast.success("New role added!")
     } catch { toast.error("Failed to add role") }
-  }
-
-  const handleAddResource = async () => {
-    if (!newResourceName) return
-    try {
-      const defaultRole = 'admin'
-      await permissionsApi.updateRolePermission(defaultRole, newResourceName.toLowerCase(), { canRead: true, canCreate: true, canUpdate: true, canDelete: true })
-      await fetchPermissions()
-      setShowAddResourceModal(false); setNewResourceName(""); toast.success("New category added!")
-    } catch { toast.error("Failed to add category") }
   }
 
   const handleSave = async () => {
@@ -445,7 +438,6 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <Button variant="outline" size="sm" onClick={() => setShowAddRoleModal(true)}>+ Add Role</Button>
-                    <Button variant="outline" size="sm" onClick={() => setShowAddResourceModal(true)}>+ Add Category</Button>
                   </div>
                 </div>
 
@@ -453,9 +445,9 @@ export default function SettingsPage() {
                   <div className="flex justify-center p-8 text-muted-foreground animate-pulse text-sm">Loading permissions matrix...</div>
                 ) : (
                   <div className="space-y-8 pb-10">
-                    {Array.from(new Set(allRolePermissions.map(p => p.role))).sort((a, b) => a === 'admin' ? 1 : -1).map(role => {
+                    {Array.from(new Set(['admin', 'manager', 'staff', ...allRolePermissions.map(p => p.role)])).sort((a, b) => a === 'admin' ? -1 : 1).map(role => {
                       const rolePermissions = allRolePermissions.filter(p => p.role === role)
-                      const resources = Array.from(new Set(allRolePermissions.map(p => p.resource))).sort()
+                      const resources = ALL_RESOURCES
 
                       return (
                         <div key={role} className="border rounded-xl overflow-hidden bg-background shadow-sm">
@@ -561,25 +553,6 @@ export default function SettingsPage() {
               <p className="text-[10px] text-muted-foreground italic">* Role names are case-insensitive</p>
             </div>
             <Button className="w-full" onClick={handleAddRole} disabled={!newRoleName}>Create Role</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showAddResourceModal} onOpenChange={setShowAddResourceModal}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Add New Category/Module</DialogTitle></DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label>Module Name</Label>
-              <Input
-                placeholder="e.g. audit-logs"
-                value={newResourceName}
-                onChange={e => setNewResourceName(e.target.value)}
-                autoFocus
-              />
-              <p className="text-[10px] text-muted-foreground italic">* Use lowercase and hyphens (e.g. my-module)</p>
-            </div>
-            <Button className="w-full" onClick={handleAddResource} disabled={!newResourceName}>Add Module</Button>
           </div>
         </DialogContent>
       </Dialog>
