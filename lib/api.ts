@@ -22,7 +22,7 @@ async function apiRequest<T>(
   const url = `${API_BASE_URL}${endpoint}`;
   const method = (options.method || 'GET').toUpperCase();
   const bodyStr = options.body ? String(options.body) : undefined;
-  
+
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...(token && { Authorization: `Bearer ${token}` }),
@@ -61,7 +61,7 @@ async function apiRequest<T>(
           const text = await response.text();
           errorMessage = text || errorMessage;
         }
-      } catch (e) {}
+      } catch (e) { }
       throw new Error(errorMessage);
     }
 
@@ -229,7 +229,7 @@ export interface CreateSaleDto {
   retailerId?: string;
 }
 
-export interface UpdateSaleDto extends Partial<CreateSaleDto> {}
+export interface UpdateSaleDto extends Partial<CreateSaleDto> { }
 
 // Expense Interface
 export interface Expense {
@@ -256,7 +256,7 @@ export interface CreateExpenseDto {
   notes?: string;
 }
 
-export interface UpdateExpenseDto extends Partial<CreateExpenseDto> {}
+export interface UpdateExpenseDto extends Partial<CreateExpenseDto> { }
 
 // Purchase Order Interface
 export interface PurchaseOrderItem {
@@ -361,7 +361,7 @@ export interface CreatePurchaseOrderDto {
   cages?: CreatePurchaseOrderCageDto[];
 }
 
-export interface UpdatePurchaseOrderDto extends Partial<CreatePurchaseOrderDto> {}
+export interface UpdatePurchaseOrderDto extends Partial<CreatePurchaseOrderDto> { }
 
 // Settings Interface
 export interface Setting {
@@ -494,30 +494,30 @@ export interface CreateProductDto {
   status?: 'active' | 'inactive';
 }
 
-export interface UpdateProductDto extends Partial<CreateProductDto> {}
+export interface UpdateProductDto extends Partial<CreateProductDto> { }
 
 // ============================================
 // FARMERS API
 // ============================================
 export const farmersApi = {
   getAll: () => apiRequest<Farmer[]>('/farmers'),
-  
+
   getActive: () => apiRequest<Array<{ id: string; name: string; phone: string; address?: string }>>('/farmers/active/list'),
-  
+
   getOne: (id: string) => apiRequest<Farmer>(`/farmers/${id}`),
-  
+
   create: (data: Omit<Farmer, 'id' | 'createdAt' | 'updatedAt'>) =>
     apiRequest<Farmer>('/farmers', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  
+
   update: (id: string, data: Partial<Farmer>) =>
     apiRequest<Farmer>(`/farmers/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  
+
   delete: (id: string) =>
     apiRequest<void>(`/farmers/${id}`, {
       method: 'DELETE',
@@ -529,23 +529,23 @@ export const farmersApi = {
 // ============================================
 export const retailersApi = {
   getAll: () => apiRequest<Retailer[]>('/retailers'),
-  
+
   getActive: () => apiRequest<Array<{ id: string; name: string; ownerName?: string; phone: string; address?: string }>>('/retailers/active/list'),
-  
+
   getOne: (id: string) => apiRequest<Retailer>(`/retailers/${id}`),
-  
+
   create: (data: Omit<Retailer, 'id' | 'createdAt' | 'updatedAt'>) =>
     apiRequest<Retailer>('/retailers', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  
+
   update: (id: string, data: Partial<Retailer>) =>
     apiRequest<Retailer>(`/retailers/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  
+
   delete: (id: string) =>
     apiRequest<void>(`/retailers/${id}`, {
       method: 'DELETE',
@@ -557,23 +557,23 @@ export const retailersApi = {
 // ============================================
 export const vehiclesApi = {
   getAll: () => apiRequest<Vehicle[]>('/vehicles'),
-  
+
   getActive: () => apiRequest<Array<{ id: string; vehicleNumber: string; driverName: string; phone: string }>>('/vehicles/active/list'),
-  
+
   getOne: (id: string) => apiRequest<Vehicle>(`/vehicles/${id}`),
-  
+
   create: (data: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'>) =>
     apiRequest<Vehicle>('/vehicles', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  
+
   update: (id: string, data: Partial<Vehicle>) =>
     apiRequest<Vehicle>(`/vehicles/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  
+
   delete: (id: string) =>
     apiRequest<void>(`/vehicles/${id}`, {
       method: 'DELETE',
@@ -585,21 +585,21 @@ export const vehiclesApi = {
 // ============================================
 export const usersApi = {
   getAll: () => apiRequest<User[]>('/users'),
-  
+
   getOne: (id: string) => apiRequest<User>(`/users/${id}`),
-  
+
   create: (data: { name: string; email: string; password: string; role: string; status: string; phone?: string; notes?: string }) =>
     apiRequest<User>('/users', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  
+
   update: (id: string, data: Partial<User>) =>
     apiRequest<User>(`/users/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  
+
   updateStatus: (id: string, status: 'active' | 'inactive') =>
     apiRequest<User>(`/users/${id}/${status === 'active' ? 'activate' : 'deactivate'}`, {
       method: 'PATCH',
@@ -661,21 +661,21 @@ export const authApi = {
 // ============================================
 export const inventoryApi = {
   getAll: () => apiRequest<InventoryItem[]>('/inventory'),
-  
+
   getOne: (id: number) => apiRequest<InventoryItem>(`/inventory/${id}`),
-  
+
   create: (data: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt' | 'lastUpdated'>) =>
     apiRequest<InventoryItem>('/inventory', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  
+
   update: (id: number, data: Partial<InventoryItem>) =>
     apiRequest<InventoryItem>(`/inventory/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  
+
   delete: (id: number) =>
     apiRequest<void>(`/inventory/${id}`, {
       method: 'DELETE',
@@ -687,23 +687,23 @@ export const inventoryApi = {
 // ============================================
 export const salesApi = {
   getAll: () => apiRequest<Sale[]>('/sales'),
-  
+
   getInvoiceList: () => apiRequest<Array<{ id: string; invoiceNumber: string; saleDate: string; customerName: string }>>('/sales/invoices/list'),
-  
+
   getOne: (id: string) => apiRequest<Sale>(`/sales/${id}`),
-  
+
   create: (data: CreateSaleDto) =>
     apiRequest<Sale>('/sales', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  
+
   update: (id: string, data: UpdateSaleDto) =>
     apiRequest<Sale>(`/sales/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  
+
   delete: (id: string) =>
     apiRequest<void>(`/sales/${id}`, {
       method: 'DELETE',
@@ -731,21 +731,21 @@ export const salesApi = {
 // ============================================
 export const expensesApi = {
   getAll: () => apiRequest<Expense[]>('/expenses'),
-  
+
   getOne: (id: string) => apiRequest<Expense>(`/expenses/${id}`),
-  
+
   create: (data: CreateExpenseDto) =>
     apiRequest<Expense>('/expenses', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  
+
   update: (id: string, data: UpdateExpenseDto) =>
     apiRequest<Expense>(`/expenses/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  
+
   delete: (id: string) =>
     apiRequest<void>(`/expenses/${id}`, {
       method: 'DELETE',
@@ -757,23 +757,23 @@ export const expensesApi = {
 // ============================================
 export const purchasesApi = {
   getAll: () => apiRequest<PurchaseOrder[]>('/purchases'),
-  
+
   getInvoiceList: () => apiRequest<Array<{ id: string; orderNumber: string; orderDate: string; supplierName: string }>>('/purchases/invoices/list'),
-  
+
   getOne: (id: string) => apiRequest<PurchaseOrder>(`/purchases/${id}`),
-  
+
   create: (data: CreatePurchaseOrderDto) =>
     apiRequest<PurchaseOrder>('/purchases', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  
+
   update: (id: string, data: UpdatePurchaseOrderDto) =>
     apiRequest<PurchaseOrder>(`/purchases/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  
+
   delete: (id: string) =>
     apiRequest<void>(`/purchases/${id}`, {
       method: 'DELETE',
@@ -823,15 +823,15 @@ export const purchasesApi = {
 // ============================================
 export const settingsApi = {
   getAll: () => apiRequest<Setting[]>('/settings'),
-  
+
   getOne: (key: string) => apiRequest<Setting>(`/settings/${key}`),
-  
+
   update: (key: string, value: string) =>
     apiRequest<Setting>(`/settings/${key}`, {
       method: 'PATCH',
       body: JSON.stringify({ value }),
     }),
-  
+
   createOrUpdate: (data: { key: string; value: string; category?: string; description?: string }) =>
     apiRequest<Setting>('/settings', {
       method: 'POST',
@@ -862,7 +862,7 @@ export const godownApi = {
         method: 'DELETE',
       }),
   },
-  
+
   // Sales
   sales: {
     getAll: () => apiRequest<GodownSale[]>('/godown/sales'),
@@ -882,7 +882,7 @@ export const godownApi = {
         method: 'DELETE',
       }),
   },
-  
+
   // Mortality
   mortality: {
     getAll: () => apiRequest<GodownMortality[]>('/godown/mortality'),
@@ -902,7 +902,7 @@ export const godownApi = {
         method: 'DELETE',
       }),
   },
-  
+
   // Expenses
   expenses: {
     getAll: () => apiRequest<GodownExpense[]>('/godown/expenses'),
@@ -922,7 +922,7 @@ export const godownApi = {
         method: 'DELETE',
       }),
   },
-  
+
   // Summary
   getSummary: () => apiRequest<GodownSummary>('/godown/summary'),
 };
@@ -961,31 +961,37 @@ export interface UserPermissions {
 export const permissionsApi = {
   // Get current user's permissions for all resources
   getMyPermissions: () => apiRequest<UserPermissions>('/permissions/my-permissions'),
-  
+
   // Check permission for a specific resource
-  checkPermission: (resource: string) => 
+  checkPermission: (resource: string) =>
     apiRequest<PermissionCheck & { resource: string }>(`/permissions/check/${resource}`),
-  
+
   // Get all role permissions (admin only)
   getAllRolePermissions: () => apiRequest<any[]>('/permissions/roles'),
-  
+
   // Update role permission (admin only)
   updateRolePermission: (role: string, resource: string, permissions: Partial<PermissionCheck>) =>
     apiRequest<any>(`/permissions/roles/${role}/${resource}`, {
       method: 'PUT',
       body: JSON.stringify(permissions),
     }),
-  
+
   // Set user-specific permission (admin only)
   setUserPermission: (userId: string, resource: string, permissionName: string, permissions: Partial<PermissionCheck>) =>
     apiRequest<any>(`/permissions/users/${userId}/${resource}`, {
       method: 'POST',
       body: JSON.stringify({ permissionName, permissions }),
     }),
-  
+
   // Delete user-specific permission (admin only)
   deleteUserPermission: (userId: string, resource: string) =>
     apiRequest<{ message: string }>(`/permissions/users/${userId}/${resource}`, {
+      method: 'DELETE',
+    }),
+
+  // Delete all permissions for a role (admin only)
+  deleteRole: (role: string) =>
+    apiRequest<{ message: string }>(`/permissions/roles/${role}`, {
       method: 'DELETE',
     }),
 };
@@ -1001,7 +1007,7 @@ export const mortalityApi = {
     if (endDate) params.append('endDate', endDate);
     return apiRequest<MortalityRecord[]>(`/mortality?${params.toString()}`);
   },
-  
+
   getStats: (startDate?: string, endDate?: string) => {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
@@ -1013,21 +1019,21 @@ export const mortalityApi = {
       totalRecords: number;
     }>(`/mortality/stats?${params.toString()}`);
   },
-  
+
   getOne: (id: string) => apiRequest<MortalityRecord>(`/mortality/${id}`),
-  
+
   create: (data: Omit<MortalityRecord, 'id' | 'recordNumber' | 'createdAt' | 'updatedAt'>) =>
     apiRequest<MortalityRecord>('/mortality', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  
+
   update: (id: string, data: Partial<Omit<MortalityRecord, 'id' | 'recordNumber' | 'createdAt' | 'updatedAt'>>) =>
     apiRequest<MortalityRecord>(`/mortality/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  
+
   delete: (id: string) =>
     apiRequest<void>(`/mortality/${id}`, {
       method: 'DELETE',
@@ -1045,29 +1051,29 @@ export const productsApi = {
     if (status) params.append('status', status);
     return apiRequest<Product[]>(`/products?${params.toString()}`);
   },
-  
+
   getActive: () => apiRequest<Product[]>('/products/active'),
-  
+
   getOne: (id: string) => apiRequest<Product>(`/products/${id}`),
-  
+
   create: (data: CreateProductDto) =>
     apiRequest<Product>('/products', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  
+
   update: (id: string, data: UpdateProductDto) =>
     apiRequest<Product>(`/products/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  
+
   updateStatus: (id: string, status: 'active' | 'inactive') =>
     apiRequest<Product>(`/products/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
-  
+
   delete: (id: string) =>
     apiRequest<void>(`/products/${id}`, {
       method: 'DELETE',

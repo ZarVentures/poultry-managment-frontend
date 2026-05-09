@@ -99,6 +99,19 @@ export default function SettingsPage() {
   }
 
   const handleUpdatePermission = async (role: string, resource: string, field: string, value: boolean) => {
+    const previousState = [...allRolePermissions]
+
+    // Optimistically update the UI
+    setAllRolePermissions(prev => {
+      const idx = prev.findIndex(p => p.role === role && p.resource === resource)
+      if (idx > -1) {
+        const fresh = [...prev]
+        fresh[idx] = { ...fresh[idx], [field]: value }
+        return fresh
+      }
+      return [...prev, { role, resource, canCreate: false, canRead: true, canUpdate: false, canDelete: false, [field]: value }]
+    })
+
     try {
       const existing = allRolePermissions.find(p => p.role === role && p.resource === resource)
       const updatedPerms = {
@@ -108,11 +121,19 @@ export default function SettingsPage() {
         canDelete: field === 'canDelete' ? value : (existing?.canDelete ?? false),
       }
       await permissionsApi.updateRolePermission(role, resource, updatedPerms)
-      setAllRolePermissions(prev => prev.map(p =>
-        (p.role === role && p.resource === resource) ? { ...p, ...updatedPerms } : p
-      ))
-      toast.success("Permission updated")
-    } catch { toast.error("Failed to update permission") }
+    } catch {
+      setAllRolePermissions(previousState)
+      toast.error("Failed to update permission")
+    }
+  }
+
+  const handleDeleteRole = async (role: string) => {
+    if (!window.confirm(`Are you sure you want to delete the role: ${role}?`)) return
+    try {
+      await permissionsApi.deleteRole(role)
+      setAllRolePermissions(prev => prev.filter(p => p.role !== role))
+      toast.success("Role deleted successfully")
+    } catch { toast.error("Failed to delete role") }
   }
 
   const handleAddRole = async () => {
@@ -455,7 +476,18 @@ export default function SettingsPage() {
                             role === 'manager' ? 'bg-blue-800 text-white' :
                               'bg-slate-700 text-white'
                             }`}>
-                            <h3 className="font-bold uppercase tracking-wider">{role.replace('-', ' ')}</h3>
+                            <div className="flex items-center gap-3">
+                              <h3 className="font-bold uppercase tracking-wider">{role.replace('-', ' ')}</h3>
+                              {role !== 'admin' && role !== 'manager' && role !== 'staff' && (
+                                <button
+                                  onClick={() => handleDeleteRole(role)}
+                                  className="text-white/50 hover:text-red-400 transition-colors"
+                                  title="Delete Role"
+                                >
+                                  <ShieldOff size={14} />
+                                </button>
+                              )}
+                            </div>
                             <span className="text-[10px] font-medium opacity-70">ROLE ACCESS LEVELS</span>
                           </div>
                           <table className="w-full text-sm">
