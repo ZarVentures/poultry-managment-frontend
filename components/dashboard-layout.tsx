@@ -84,12 +84,12 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
-          {/* ADMIN ONLY - Dashboard */}
-          {isAdmin && (
+          {/* DASHBOARD - Admin & Manager */}
+          {(isAdmin || isManager) && (
             <SidebarLink href="/dashboard" icon={Home} label="Dashboard" open={sidebarOpen} />
           )}
 
-          {/* GODOWN - Staff (Overview only), Manager & Admin (all) */}
+          {/* GODOWN - Admin & Manager (All), Staff (Varies) */}
           <div className="space-y-1">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -113,7 +113,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             )}
           </div>
 
-          {/* STAFF, MANAGER & ADMIN - Purchases, Sales, Mortality, Expenses */}
+          {/* STAFF, MANAGER & ADMIN - Purchases, Cage Tracking, Sales, Mortality, Expenses */}
           {(isStaff || isManager || isAdmin) && (
             <>
               {/* PURCHASES */}
@@ -134,6 +134,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                   </div>
                 )}
               </div>
+
+              {/* CAGE TRACKING */}
+              <SidebarLink href="/cage-tracking" icon={GitBranch} label="Cage Tracking" open={sidebarOpen} />
 
               {/* SALES */}
               <div className="space-y-1">
@@ -159,30 +162,30 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
               {/* EXPENSE */}
               <SidebarLink href="/expenses" icon={BarChart3} label="Expenses" open={sidebarOpen} />
+            </>
+          )}
 
-              {/* MASTER ENTRIES - Manager & Admin */}
-              {(isManager || isAdmin) && (
-                <div className="space-y-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setMasterEntriesOpen(!masterEntriesOpen)}>
-                        <Users2 size={20} />
-                        {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Master Entries</span><ChevronDown size={16} className={`transition-transform ${masterEntriesOpen ? "rotate-180" : ""}`} /></>)}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-foreground text-background">Master Entries</TooltipContent>
-                  </Tooltip>
-                  {masterEntriesOpen && sidebarOpen && (
-                    <div className="ml-4 space-y-1 border-l border-sidebar-border">
-                      <SidebarLink href="/farmers" icon={Tractor} label="Farmers" open={true} isSubItem={true} />
-                      <SidebarLink href="/retailers" icon={Users} label="Retailers" open={true} isSubItem={true} />
-                      <SidebarLink href="/vehicles" icon={Truck} label="Vehicles" open={true} isSubItem={true} />
-                      <SidebarLink href="/products" icon={Package} label="Products" open={true} isSubItem={true} />
-                    </div>
-                  )}
+          {/* ADMIN & MANAGER - Master Entries */}
+          {(isManager || isAdmin) && (
+            <div className="space-y-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setMasterEntriesOpen(!masterEntriesOpen)}>
+                    <Users2 size={20} />
+                    {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Master Entries</span><ChevronDown size={16} className={`transition-transform ${masterEntriesOpen ? "rotate-180" : ""}`} /></>)}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="bg-foreground text-background">Master Entries</TooltipContent>
+              </Tooltip>
+              {masterEntriesOpen && sidebarOpen && (
+                <div className="ml-4 space-y-1 border-l border-sidebar-border">
+                  <SidebarLink href="/farmers" icon={Tractor} label="Farmers" open={true} isSubItem={true} />
+                  <SidebarLink href="/retailers" icon={Users} label="Retailers" open={true} isSubItem={true} />
+                  <SidebarLink href="/vehicles" icon={Truck} label="Vehicles" open={true} isSubItem={true} />
+                  <SidebarLink href="/products" icon={Package} label="Products" open={true} isSubItem={true} />
                 </div>
               )}
-            </>
+            </div>
           )}
 
           {/* ADMIN ONLY - Reports, Financial Analytics, Billing, Users */}
@@ -321,9 +324,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className={`font-bold px-1.5 py-0.5 rounded text-xs ${log.method === 'GET' ? 'bg-blue-900 text-blue-300' :
-                            log.method === 'POST' ? 'bg-green-900 text-green-300' :
-                              log.method === 'PATCH' ? 'bg-yellow-900 text-yellow-300' :
-                                'bg-red-900 text-red-300'
+                          log.method === 'POST' ? 'bg-green-900 text-green-300' :
+                            log.method === 'PATCH' ? 'bg-yellow-900 text-yellow-300' :
+                              'bg-red-900 text-red-300'
                           }`}>{log.method}</span>
                         <span className="text-gray-300 truncate max-w-[300px]">{log.url.replace(/.*\/api\/v1/, '/api/v1')}</span>
                         <span className={`text-xs ${log.status && log.status < 400 ? 'text-green-400' : 'text-red-400'}`}>
