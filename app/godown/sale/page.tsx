@@ -58,7 +58,7 @@ export default function GodownSalePage() {
       try {
         const user = JSON.parse(userData)
         setUserRole(user.role || "")
-      } catch {}
+      } catch { }
     }
     fetchSales()
     fetchRetailers()
@@ -83,7 +83,7 @@ export default function GodownSalePage() {
       if (Array.isArray(data)) {
         const activeRetailers = data.filter(r => r.status === "active")
         // Ensure uniqueness by name to prevent UI duplicates
-        const uniqueRetailers = activeRetailers.filter((v, i, a) => 
+        const uniqueRetailers = activeRetailers.filter((v, i, a) =>
           a.findIndex(t => t.name === v.name) === i
         )
         setRetailers(uniqueRetailers)
@@ -131,18 +131,18 @@ export default function GodownSalePage() {
       paymentStatus: (sale as any).paymentStatus || "pending",
       notes: sale.notes || "",
     })
-    
+
     // Load payments from sale data
     const salePayments = (sale as any).payments
     if (salePayments && salePayments.length > 0) {
-      setPayments(salePayments.map((p: any) => ({ 
-        mode: (p.paymentMode || "cash") as PaymentMode, 
-        amount: String(p.amount) 
+      setPayments(salePayments.map((p: any) => ({
+        mode: (p.paymentMode || "cash") as PaymentMode,
+        amount: String(p.amount)
       })))
     } else {
       setPayments([emptyPayment()])
     }
-    
+
     setCages(sale.cages && sale.cages.length > 0 ? sale.cages : [emptyCage()])
     setEditingId(sale.id)
     setShowDialog(true)
@@ -165,11 +165,11 @@ export default function GodownSalePage() {
 
     try {
       setLoading(true)
-      const validPayments = payments.filter(p => parseFloat(p.amount) > 0).map(p => ({ 
-        paymentMode: p.mode, 
-        amount: p.amount 
+      const validPayments = payments.filter(p => parseFloat(p.amount) > 0).map(p => ({
+        paymentMode: p.mode,
+        amount: parseFloat(p.amount)
       }))
-      
+
       const saleData = {
         saleDate: formData.saleDate,
         invoiceNumber: formData.invoiceNumber || undefined,
@@ -445,7 +445,7 @@ export default function GodownSalePage() {
                       }}
                       placeholder="0.00"
                       disabled={loading}
-                      onWheel={(e) => e.currentTarget.blur()} 
+                      onWheel={(e) => e.currentTarget.blur()}
                     />
                   </div>
                 </div>
@@ -464,7 +464,7 @@ export default function GodownSalePage() {
                       }}
                       placeholder="0.00"
                       disabled={loading}
-                      onWheel={(e) => e.currentTarget.blur()} 
+                      onWheel={(e) => e.currentTarget.blur()}
                     />
                   </div>
                   {/* <div className="space-y-2">
@@ -494,7 +494,7 @@ export default function GodownSalePage() {
                       onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
                       placeholder="0.00"
                       disabled={loading}
-                      onWheel={(e) => e.currentTarget.blur()} 
+                      onWheel={(e) => e.currentTarget.blur()}
                     />
                   </div>
                   <div className="space-y-2">
@@ -539,21 +539,21 @@ export default function GodownSalePage() {
                             </SelectContent>
                           </Select>
                           <div className="flex gap-1">
-                            <Input 
-                              type="number" 
-                              step="0.01" 
-                              placeholder="0.00" 
-                              value={p.amount} 
-                              onChange={e => updatePayment(i, "amount", e.target.value)} 
-                              disabled={loading}  
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={p.amount}
+                              onChange={e => updatePayment(i, "amount", e.target.value)}
+                              disabled={loading}
                               onWheel={(e) => e.currentTarget.blur()}
                             />
                             {payments.length > 1 && (
-                              <Button 
-                                type="button" 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={() => removePayment(i)} 
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removePayment(i)}
                                 className="px-2 text-red-500"
                               >
                                 <X size={14} />
@@ -562,11 +562,11 @@ export default function GodownSalePage() {
                           </div>
                         </div>
                       ))}
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={addPayment} 
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addPayment}
                         disabled={loading}
                       >
                         <Plus size={14} className="mr-1" /> Add Payment Mode
@@ -575,18 +575,18 @@ export default function GodownSalePage() {
                     <div className="grid grid-cols-2 gap-4 pt-2 border-t">
                       <div className="space-y-2">
                         <Label>Total Received (₹)</Label>
-                        <Input 
-                          value={`₹${totalPaymentMade.toFixed(2)}`} 
-                          disabled 
-                          className="bg-gray-50 font-semibold text-green-700" 
+                        <Input
+                          value={`₹${totalPaymentMade.toFixed(2)}`}
+                          disabled
+                          className="bg-gray-50 font-semibold text-green-700"
                         />
                       </div>
                       <div className="space-y-2">
                         <Label>Balance (₹)</Label>
-                        <Input 
-                          value={`₹${balanceAmount.toFixed(2)}`} 
-                          disabled 
-                          className="bg-gray-50 font-semibold text-red-600" 
+                        <Input
+                          value={`₹${balanceAmount.toFixed(2)}`}
+                          disabled
+                          className="bg-gray-50 font-semibold text-red-600"
                         />
                       </div>
                     </div>
@@ -601,7 +601,7 @@ export default function GodownSalePage() {
                     placeholder="Additional notes"
                     rows={3}
                     disabled={loading}
-                    onWheel={(e) => e.currentTarget.blur()} 
+                    onWheel={(e) => e.currentTarget.blur()}
                   />
                 </div>
 
@@ -656,8 +656,8 @@ export default function GodownSalePage() {
               <p className="text-center py-8 text-muted-foreground">Loading...</p>
             ) : filteredSales.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">
-                {searchQuery || (dateRangeStart && dateRangeEnd) 
-                  ? "No sales match your filters" 
+                {searchQuery || (dateRangeStart && dateRangeEnd)
+                  ? "No sales match your filters"
                   : "No sales found"}
               </p>
             ) : (
