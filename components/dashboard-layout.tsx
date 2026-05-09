@@ -113,8 +113,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             )}
           </div>
 
-          {/* MANAGER ONLY - Purchases, Sales, Mortality, Expenses, Master Entries */}
-          {(isStaff || isManager) && (
+          {/* STAFF, MANAGER & ADMIN - Purchases, Sales, Mortality, Expenses */}
+          {(isStaff || isManager || isAdmin) && (
             <>
               {/* PURCHASES */}
               <div className="space-y-1">
@@ -160,8 +160,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
               {/* EXPENSE */}
               <SidebarLink href="/expenses" icon={BarChart3} label="Expenses" open={sidebarOpen} />
 
-              {/* MASTER ENTRIES - Manager only */}
-              {isManager && (
+              {/* MASTER ENTRIES - Manager & Admin */}
+              {(isManager || isAdmin) && (
                 <div className="space-y-1">
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -320,12 +320,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                   <div key={log.id} className="bg-gray-900 rounded-lg p-3 text-xs border border-gray-800">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <span className={`font-bold px-1.5 py-0.5 rounded text-xs ${
-                          log.method === 'GET' ? 'bg-blue-900 text-blue-300' :
-                          log.method === 'POST' ? 'bg-green-900 text-green-300' :
-                          log.method === 'PATCH' ? 'bg-yellow-900 text-yellow-300' :
-                          'bg-red-900 text-red-300'
-                        }`}>{log.method}</span>
+                        <span className={`font-bold px-1.5 py-0.5 rounded text-xs ${log.method === 'GET' ? 'bg-blue-900 text-blue-300' :
+                            log.method === 'POST' ? 'bg-green-900 text-green-300' :
+                              log.method === 'PATCH' ? 'bg-yellow-900 text-yellow-300' :
+                                'bg-red-900 text-red-300'
+                          }`}>{log.method}</span>
                         <span className="text-gray-300 truncate max-w-[300px]">{log.url.replace(/.*\/api\/v1/, '/api/v1')}</span>
                         <span className={`text-xs ${log.status && log.status < 400 ? 'text-green-400' : 'text-red-400'}`}>
                           {log.status} {log.duration}ms
