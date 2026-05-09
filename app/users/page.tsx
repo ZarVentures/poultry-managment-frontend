@@ -26,6 +26,7 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [dynamicRoles, setDynamicRoles] = useState<string[]>(['admin', 'manager', 'staff'])
   const [userPermissions, setUserPermissions] = useState<any>(null)
   const [formData, setFormData] = useState({
     name: "",
@@ -45,7 +46,7 @@ export default function UsersPage() {
       try {
         const user = JSON.parse(userData)
         setUserRole(user.role || "")
-      } catch {}
+      } catch { }
     }
     fetchUsers()
     fetchPermissions()
@@ -55,6 +56,11 @@ export default function UsersPage() {
     try {
       const perms = await permissionsApi.getMyPermissions()
       setUserPermissions(perms)
+
+      // Also fetch all unique roles for the dropdown
+      const allRoles = await permissionsApi.getAllRolePermissions()
+      const uniqueRoles = Array.from(new Set(['admin', 'manager', 'staff', ...allRoles.map(p => p.role)]))
+      setDynamicRoles(uniqueRoles)
     } catch (error) {
       console.error('Failed to fetch permissions:', error)
     }
@@ -120,7 +126,7 @@ export default function UsersPage() {
 
     try {
       setLoading(true)
-      
+
       if (editingId) {
         await usersApi.update(editingId, {
           name: formData.name,
@@ -163,7 +169,7 @@ export default function UsersPage() {
 
     const newStatus = currentStatus === "active" ? "inactive" : "active"
     const action = newStatus === "active" ? "activate" : "deactivate"
-    
+
     if (!confirm(`Are you sure you want to ${action} this user?${newStatus === "inactive" ? " They will no longer be able to log in." : ""}`)) {
       return
     }
@@ -215,7 +221,7 @@ export default function UsersPage() {
         staff: 0
       }
     }
-    
+
     return {
       totalUsers: users.length,
       activeUsers: users.filter(u => u.status === 'active').length,
@@ -227,21 +233,21 @@ export default function UsersPage() {
 
   const filteredUsers = useMemo(() => {
     if (!Array.isArray(users)) return []
-    
+
     return users.filter(user => {
       // Search filter
       const searchLower = searchQuery.toLowerCase()
-      const matchesSearch = !searchQuery || 
+      const matchesSearch = !searchQuery ||
         user.name.toLowerCase().includes(searchLower) ||
         user.email.toLowerCase().includes(searchLower) ||
         (user.phone && user.phone.toLowerCase().includes(searchLower))
-      
+
       // Role filter
       const matchesRole = roleFilter === "all" || user.role === roleFilter
-      
+
       // Status filter
       const matchesStatus = statusFilter === "all" || user.status === statusFilter
-      
+
       return matchesSearch && matchesRole && matchesStatus
     })
   }, [users, searchQuery, roleFilter, statusFilter])
@@ -264,116 +270,118 @@ export default function UsersPage() {
                   Add New User
                 </Button>
               </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[90vh] flex flex-col" aria-describedby="dialog-description">
-              <DialogHeader>
-                <DialogTitle>{editingId ? "Edit User" : "Add New User"}</DialogTitle>
-                <p id="dialog-description" className="sr-only">
-                  {editingId ? "Edit user details" : "Add a new user to the system"}
-                </p>
-              </DialogHeader>
-              <div className="space-y-4 overflow-y-auto flex-1 pr-1 pb-2">
-                <div className="space-y-2">
-                  <Label>Full Name *</Label>
-                  <Input
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Full name"
-                    disabled={loading}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email *</Label>
-                  <Input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="user@azizpoultry.com"
-                    disabled={loading}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Phone *</Label>
-                  <Input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="Phone number"
-                    disabled={loading}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Join Date</Label>
-                  <DatePicker
-                    value={formData.joinDate}
-                    onChange={(date) => setFormData({ ...formData, joinDate: date })}
-                    disabled={loading}
-                  />
-                </div>
-                {!editingId && (
+              <DialogContent className="max-w-lg max-h-[90vh] flex flex-col" aria-describedby="dialog-description">
+                <DialogHeader>
+                  <DialogTitle>{editingId ? "Edit User" : "Add New User"}</DialogTitle>
+                  <p id="dialog-description" className="sr-only">
+                    {editingId ? "Edit user details" : "Add a new user to the system"}
+                  </p>
+                </DialogHeader>
+                <div className="space-y-4 overflow-y-auto flex-1 pr-1 pb-2">
                   <div className="space-y-2">
-                    <Label>Password *</Label>
+                    <Label>Full Name *</Label>
                     <Input
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="Password"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Full name"
                       disabled={loading}
                     />
                   </div>
-                )}
-                <div className="space-y-2">
-                  <Label>Role *</Label>
-                  <Select
-                    value={formData.role}
-                    onValueChange={(value: any) => setFormData({ ...formData, role: value })}
-                    disabled={loading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Administrator</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      <SelectItem value="staff">Staff</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2">
+                    <Label>Email *</Label>
+                    <Input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="user@azizpoultry.com"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phone *</Label>
+                    <Input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      placeholder="Phone number"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Join Date</Label>
+                    <DatePicker
+                      value={formData.joinDate}
+                      onChange={(date) => setFormData({ ...formData, joinDate: date })}
+                      disabled={loading}
+                    />
+                  </div>
+                  {!editingId && (
+                    <div className="space-y-2">
+                      <Label>Password *</Label>
+                      <Input
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        placeholder="Password"
+                        disabled={loading}
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label>Role *</Label>
+                    <Select
+                      value={formData.role}
+                      onValueChange={(value: any) => setFormData({ ...formData, role: value })}
+                      disabled={loading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {dynamicRoles.map(role => (
+                          <SelectItem key={role} value={role}>
+                            {role.charAt(0).toUpperCase() + role.slice(1).replace('-', ' ')}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Status *</Label>
+                    <Select
+                      value={formData.status}
+                      onValueChange={(value: any) => setFormData({ ...formData, status: value })}
+                      disabled={loading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Notes</Label>
+                    <Input
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder="Additional notes"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={handleSave} className="flex-1" disabled={loading}>
+                      {loading ? "Saving..." : editingId ? "Update" : "Create"}
+                    </Button>
+                    <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}>
+                      <X size={20} />
+                    </Button>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Status *</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value: any) => setFormData({ ...formData, status: value })}
-                    disabled={loading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Notes</Label>
-                  <Input
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder="Additional notes"
-                    disabled={loading}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={handleSave} className="flex-1" disabled={loading}>
-                    {loading ? "Saving..." : editingId ? "Update" : "Create"}
-                  </Button>
-                  <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}>
-                    <X size={20} />
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
           )}
         </div>
 
@@ -453,9 +461,11 @@ export default function UsersPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Roles</SelectItem>
-                    <SelectItem value="admin">Administrator</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="staff">Staff</SelectItem>
+                    {dynamicRoles.map(role => (
+                      <SelectItem key={role} value={role}>
+                        {role.charAt(0).toUpperCase() + role.slice(1).replace('-', ' ')}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -474,8 +484,8 @@ export default function UsersPage() {
                 <p className="text-center py-8 text-muted-foreground">Loading...</p>
               ) : filteredUsers.length === 0 ? (
                 <p className="text-center py-8 text-muted-foreground">
-                  {searchQuery || roleFilter !== "all" || statusFilter !== "all" 
-                    ? "No users match your filters" 
+                  {searchQuery || roleFilter !== "all" || statusFilter !== "all"
+                    ? "No users match your filters"
                     : "No users found"}
                 </p>
               ) : (
@@ -499,19 +509,17 @@ export default function UsersPage() {
                         <TableCell>{user.email}</TableCell>
                         <TableCell>{user.phone || "-"}</TableCell>
                         <TableCell>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            user.role === 'admin' ? 'bg-red-100 text-red-800' : 
-                            user.role === 'manager' ? 'bg-blue-100 text-blue-800' : 
-                            'bg-blue-100 text-blue-800'
-                          }`}>
-                            {user.role === 'admin' ? 'Admin' : user.role === 'manager' ? 'Manager' : 'Operator'}
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === 'admin' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
+                              user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
+                                'bg-slate-100 text-slate-800 border border-slate-200'
+                            }`}>
+                            {user.role.charAt(0).toUpperCase() + user.role.slice(1).replace('-', ' ')}
                           </span>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                            }`}>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                              }`}>
                               {user.status === 'active' ? 'Active' : 'Inactive'}
                             </span>
                             {user.status === 'inactive' && (
@@ -526,9 +534,9 @@ export default function UsersPage() {
                         <TableCell>
                           {userRole !== 'staff' && userRole !== 'Staff' && (
                             <div className="flex gap-2">
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => handleToggleStatus(user.id, user.status)}
                                 title={user.status === "active" ? "Deactivate user (lock)" : "Activate user (unlock)"}
                                 disabled={!canUpdate}
@@ -539,9 +547,9 @@ export default function UsersPage() {
                                 <Edit2 size={16} />
                               </Button>
                               {canDelete && (
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => handleDelete(user.id)}
                                   title="Permanently delete user from database"
                                 >
