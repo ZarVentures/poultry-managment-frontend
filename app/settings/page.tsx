@@ -67,6 +67,10 @@ export default function SettingsPage() {
   const [twoFALoading, setTwoFALoading] = useState(false)
   const [allRolePermissions, setAllRolePermissions] = useState<any[]>([])
   const [permissionsLoading, setPermissionsLoading] = useState(false)
+  const [showAddRoleModal, setShowAddRoleModal] = useState(false)
+  const [showAddResourceModal, setShowAddResourceModal] = useState(false)
+  const [newRoleName, setNewRoleName] = useState("")
+  const [newResourceName, setNewResourceName] = useState("")
 
 
   useEffect(() => {
@@ -106,6 +110,26 @@ export default function SettingsPage() {
       ))
       toast.success("Permission updated")
     } catch { toast.error("Failed to update permission") }
+  }
+
+  const handleAddRole = async () => {
+    if (!newRoleName) return
+    try {
+      const defaultResource = 'dashboard'
+      await permissionsApi.updateRolePermission(newRoleName.toLowerCase(), defaultResource, { canRead: true })
+      await fetchPermissions()
+      setShowAddRoleModal(false); setNewRoleName(""); toast.success("New role added!")
+    } catch { toast.error("Failed to add role") }
+  }
+
+  const handleAddResource = async () => {
+    if (!newResourceName) return
+    try {
+      const defaultRole = 'admin'
+      await permissionsApi.updateRolePermission(defaultRole, newResourceName.toLowerCase(), { canRead: true, canCreate: true, canUpdate: true, canDelete: true })
+      await fetchPermissions()
+      setShowAddResourceModal(false); setNewResourceName(""); toast.success("New category added!")
+    } catch { toast.error("Failed to add category") }
   }
 
   const handleSave = async () => {
@@ -411,57 +435,107 @@ export default function SettingsPage() {
             {/* Permissions */}
             {activeSection === "permissions" && (
               <div className="space-y-6">
-                <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-start gap-3">
-                  <ShieldCheck className="text-blue-600 shrink-0 mt-0.5" size={20} />
-                  <div>
-                    <p className="text-sm font-medium text-blue-900">Access Control Management</p>
-                    <p className="text-xs text-blue-700 mt-0.5">Control module visibility and action permissions for each user role. Admin roles always have full access.</p>
+                <div className="flex items-center justify-between">
+                  <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-start gap-3 flex-1 mr-4">
+                    <ShieldCheck className="text-blue-600 shrink-0 mt-0.5" size={20} />
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">Access Control Management</p>
+                      <p className="text-xs text-blue-700 mt-0.5">Control module visibility and action permissions for each user role. Admin roles always have full access.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <Button variant="outline" size="sm" onClick={() => setShowAddRoleModal(true)}>+ Add Role</Button>
+                    <Button variant="outline" size="sm" onClick={() => setShowAddResourceModal(true)}>+ Add Category</Button>
                   </div>
                 </div>
 
                 {permissionsLoading ? (
                   <div className="flex justify-center p-8 text-muted-foreground animate-pulse text-sm">Loading permissions matrix...</div>
                 ) : (
-                  <div className="border rounded-xl overflow-hidden bg-background">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/50 border-b">
-                        <tr>
-                          <th className="text-left p-3 font-semibold">Module / Resource</th>
-                          <th className="p-3 font-semibold text-center">Role</th>
-                          <th className="p-3 font-semibold text-center">Read</th>
-                          <th className="p-3 font-semibold text-center">Create</th>
-                          <th className="p-3 font-semibold text-center">Update</th>
-                          <th className="p-3 font-semibold text-center">Delete</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {['manager', 'staff'].map(role => (
-                          ['dashboard', 'purchases', 'sales', 'godown', 'mortality', 'expenses', 'reports', 'billing', 'users', 'settings'].map(resource => {
-                            const perm = allRolePermissions.find(p => p.role === role && p.resource === resource)
-                            return (
-                              <tr key={`${role}-${resource}`} className="hover:bg-muted/30 transition-colors">
-                                <td className="p-3 font-medium capitalize">{resource.replace('-', ' ')}</td>
-                                <td className="p-3 text-center">
-                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${role === 'manager' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
-                                    {role}
-                                  </span>
-                                </td>
-                                {['canRead', 'canCreate', 'canUpdate', 'canDelete'].map(field => (
-                                  <td key={field} className="p-3 text-center">
-                                    <input
-                                      type="checkbox"
-                                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                      checked={perm ? perm[field] : (field === 'canRead')}
-                                      onChange={(e) => handleUpdatePermission(role, resource, field, e.target.checked)}
-                                    />
-                                  </td>
-                                ))}
+                  <div className="space-y-8 pb-10">
+                    {Array.from(new Set(allRolePermissions.map(p => p.role))).sort((a, b) => a === 'admin' ? 1 : -1).map(role => {
+                      const rolePermissions = allRolePermissions.filter(p => p.role === role)
+                      const resources = Array.from(new Set(allRolePermissions.map(p => p.resource))).sort()
+
+                      return (
+                        <div key={role} className="border rounded-xl overflow-hidden bg-background shadow-sm">
+                          <div className={`p-4 border-b flex items-center justify-between ${role === 'admin' ? 'bg-indigo-900 text-white' :
+                            role === 'manager' ? 'bg-blue-800 text-white' :
+                              'bg-slate-700 text-white'
+                            }`}>
+                            <h3 className="font-bold uppercase tracking-wider">{role.replace('-', ' ')}</h3>
+                            <span className="text-[10px] font-medium opacity-70">ROLE ACCESS LEVELS</span>
+                          </div>
+                          <table className="w-full text-sm">
+                            <thead className="bg-muted/50 border-b">
+                              <tr className="text-xs uppercase text-muted-foreground">
+                                <th className="text-left p-3 font-semibold w-1/3">Resource / Module</th>
+                                <th className="p-3 font-semibold text-center group">
+                                  <div className="flex flex-col items-center">
+                                    <span>View</span>
+                                    <span className="text-[9px] opacity-50 font-normal mt-0.5">(Read)</span>
+                                  </div>
+                                </th>
+                                <th className="p-3 font-semibold text-center">
+                                  <div className="flex flex-col items-center">
+                                    <span>Create</span>
+                                    <span className="text-[9px] opacity-50 font-normal mt-0.5">(Add New)</span>
+                                  </div>
+                                </th>
+                                <th className="p-3 font-semibold text-center">
+                                  <div className="flex flex-col items-center">
+                                    <span>Edit</span>
+                                    <span className="text-[9px] opacity-50 font-normal mt-0.5">(Update)</span>
+                                  </div>
+                                </th>
+                                <th className="p-3 font-semibold text-center">
+                                  <div className="flex flex-col items-center">
+                                    <span>Delete</span>
+                                    <span className="text-[9px] opacity-50 font-normal mt-0.5">(Remove)</span>
+                                  </div>
+                                </th>
                               </tr>
-                            )
-                          })
-                        ))}
-                      </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {resources.map(resource => {
+                                const perm = rolePermissions.find(p => p.resource === resource)
+                                const isFull = role === 'admin'
+                                return (
+                                  <tr key={`${role}-${resource}`} className="hover:bg-muted/30 transition-colors group">
+                                    <td className="p-3 font-medium capitalize flex items-center gap-2">
+                                      <ChevronRight size={12} className="text-muted-foreground group-hover:text-primary" />
+                                      {resource.replace('-', ' ')}
+                                    </td>
+                                    {['canRead', 'canCreate', 'canUpdate', 'canDelete'].map(field => {
+                                      const checked = isFull || (perm ? perm[field] : false)
+                                      return (
+                                        <td key={field} className={`p-3 text-center transition-colors ${checked ? 'bg-green-50/30' : 'bg-red-50/30'
+                                          }`}>
+                                          <div className="flex justify-center items-center">
+                                            {isFull ? (
+                                              <div title="Admin always has access">
+                                                <ShieldCheck size={16} className="text-green-600 opacity-50" />
+                                              </div>
+                                            ) : (
+                                              <input
+                                                type="checkbox"
+                                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer hover:scale-110 transition-transform"
+                                                checked={checked}
+                                                onChange={(e) => handleUpdatePermission(role, resource, field, e.target.checked)}
+                                              />
+                                            )}
+                                          </div>
+                                        </td>
+                                      )
+                                    })}
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -470,6 +544,45 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* Role & Resource Modals */}
+      <Dialog open={showAddRoleModal} onOpenChange={setShowAddRoleModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Add New User Role</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label>Role Name</Label>
+              <Input
+                placeholder="e.g. Data Entry Operator"
+                value={newRoleName}
+                onChange={e => setNewRoleName(e.target.value)}
+                autoFocus
+              />
+              <p className="text-[10px] text-muted-foreground italic">* Role names are case-insensitive</p>
+            </div>
+            <Button className="w-full" onClick={handleAddRole} disabled={!newRoleName}>Create Role</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAddResourceModal} onOpenChange={setShowAddResourceModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Add New Category/Module</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label>Module Name</Label>
+              <Input
+                placeholder="e.g. audit-logs"
+                value={newResourceName}
+                onChange={e => setNewResourceName(e.target.value)}
+                autoFocus
+              />
+              <p className="text-[10px] text-muted-foreground italic">* Use lowercase and hyphens (e.g. my-module)</p>
+            </div>
+            <Button className="w-full" onClick={handleAddResource} disabled={!newResourceName}>Add Module</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 2FA Modals */}
       <Dialog open={showSetupModal} onOpenChange={setShowSetupModal}>
