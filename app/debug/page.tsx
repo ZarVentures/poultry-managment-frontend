@@ -1,18 +1,19 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { getApiBaseUrl } from "@/lib/api-base-url"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function DebugPage() {
-  const [apiUrl, setApiUrl] = useState<string>("")
+  const [envApiUrl, setEnvApiUrl] = useState<string>("")
+  const [resolvedApiUrl, setResolvedApiUrl] = useState<string>("")
   const [testResult, setTestResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    // Get the API URL from environment
-    const url = process.env.NEXT_PUBLIC_API_URL || "NOT SET"
-    setApiUrl(url)
+    setEnvApiUrl(process.env.NEXT_PUBLIC_API_URL?.trim() || "NOT SET")
+    setResolvedApiUrl(getApiBaseUrl())
   }, [])
 
   const testAPI = async () => {
@@ -21,7 +22,7 @@ export default function DebugPage() {
       const token = localStorage.getItem("token")
       
       // Test dashboard API
-      const response = await fetch(`${apiUrl}/dashboard/comprehensive?startDate=2026-05-01&endDate=2026-05-10`, {
+      const response = await fetch(`${getApiBaseUrl()}/dashboard/comprehensive?startDate=2026-05-01&endDate=2026-05-10`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -56,8 +57,16 @@ export default function DebugPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <p className="text-sm font-medium">NEXT_PUBLIC_API_URL:</p>
-              <p className="text-lg font-mono bg-gray-100 p-2 rounded">{apiUrl}</p>
+              <p className="text-sm font-medium">NEXT_PUBLIC_API_URL (build-time override, optional):</p>
+              <p className="text-lg font-mono bg-gray-100 p-2 rounded">{envApiUrl}</p>
+            </div>
+
+            <div>
+              <p className="text-sm font-medium">Resolved API base (used for all requests):</p>
+              <p className="text-lg font-mono bg-gray-100 p-2 rounded">{resolvedApiUrl}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                On Amplify, this follows the site hostname (staging.* → staging API, prod.* → prod API).
+              </p>
             </div>
             
             <div>

@@ -1,5 +1,6 @@
+import { getApiBaseUrl } from '@/lib/api-base-url';
+
 // API Configuration and Utilities
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://13.234.140.190.nip.io/api/v1';
 
 // Get auth token from localStorage
 const getAuthToken = () => {
@@ -19,7 +20,7 @@ async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const token = getAuthToken();
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = `${getApiBaseUrl()}${endpoint}`;
   const method = (options.method || 'GET').toUpperCase();
   const bodyStr = options.body ? String(options.body) : undefined;
 
@@ -713,7 +714,7 @@ export const salesApi = {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const formData = new FormData();
     formData.append('file', file);
-    const response = await fetch(`${API_BASE_URL}/sales/${id}/upload-attachment`, {
+    const response = await fetch(`${getApiBaseUrl()}/sales/${id}/upload-attachment`, {
       method: 'POST',
       headers: { ...(token && { Authorization: `Bearer ${token}` }) },
       body: formData,
@@ -783,7 +784,7 @@ export const purchasesApi = {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const formData = new FormData();
     formData.append('file', file);
-    const response = await fetch(`${API_BASE_URL}/purchases/${id}/upload-invoice`, {
+    const response = await fetch(`${getApiBaseUrl()}/purchases/${id}/upload-invoice`, {
       method: 'POST',
       headers: { ...(token && { Authorization: `Bearer ${token}` }) },
       body: formData,

@@ -4,21 +4,7 @@ frontend:
     preBuild:
       commands:
         - npm ci
-        - |
-          # Automatically set API URL based on branch
-          echo "Current branch: ${AWS_BRANCH}"
-          if [ "${AWS_BRANCH}" = "staging" ] || [ "${AWS_BRANCH}" = "stage" ]; then
-            echo "NEXT_PUBLIC_API_URL=https://13.234.140.190.nip.io/staging/api/v1" > .env.production
-            echo "✅ Using STAGING backend API"
-          elif [ "${AWS_BRANCH}" = "prod" ] || [ "${AWS_BRANCH}" = "production" ] || [ "${AWS_BRANCH}" = "main" ] || [ "${AWS_BRANCH}" = "master" ]; then
-            echo "NEXT_PUBLIC_API_URL=https://13.234.140.190.nip.io/api/v1" > .env.production
-            echo "✅ Using PRODUCTION backend API"
-          else
-            echo "NEXT_PUBLIC_API_URL=https://13.234.140.190.nip.io/staging/api/v1" > .env.production
-            echo "⚠️  Unknown branch '${AWS_BRANCH}', defaulting to STAGING backend API"
-          fi
-          echo "Created .env.production with:"
-          cat .env.production
+        - echo "API base URL is resolved at runtime from Amplify hostname (see lib/api-base-url.ts)."
     build:
       commands:
         - npm run build

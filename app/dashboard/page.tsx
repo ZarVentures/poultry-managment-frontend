@@ -14,9 +14,8 @@ import {
   Bird, BarChart3, Tractor, Wallet, IndianRupee,
 } from "lucide-react"
 import { farmersApi, retailersApi, vehiclesApi, purchasesApi, salesApi, mortalityApi } from "@/lib/api"
+import { getApiBaseUrl } from "@/lib/api-base-url"
 import { DateRangeFilter } from "@/components/date-range-filter"
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://13.234.140.190.nip.io/api/v1"
 
 const EXPENSE_COLORS: Record<string, string> = {
   feed: "#10b981", labor: "#6366f1", medicine: "#f59e0b",
@@ -81,6 +80,8 @@ export default function DashboardPage() {
   const loadDashboard = async (startDate?: Date, endDate?: Date) => {
     try {
       setLoading(true)
+
+      const API_BASE = getApiBaseUrl()
 
       // Build date query params (fix timezone issue)
       const dateParams = new URLSearchParams()

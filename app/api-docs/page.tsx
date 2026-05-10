@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Copy, Check, ChevronDown, ChevronRight } from "lucide-react"
+import { getApiBaseUrl } from "@/lib/api-base-url"
 
-const BASE = "https://13.234.140.190.nip.io/staging/api/v1"
 const TOKEN = "<YOUR_TOKEN>"
 
 interface Endpoint {
@@ -353,8 +353,8 @@ function methodColor(m: string) {
     "bg-red-100 text-red-700"
 }
 
-function buildCurl(ep: Endpoint): string {
-  const url = `${BASE}${ep.path.replace(":id", "1")}`
+function buildCurl(ep: Endpoint, base: string): string {
+  const url = `${base}${ep.path.replace(":id", "1")}`
   const lines = [`curl -X ${ep.method} '${url}'`]
   lines.push(`  -H 'Content-Type: application/json'`)
   if (ep.auth) lines.push(`  -H 'Authorization: Bearer ${TOKEN}'`)
@@ -375,9 +375,9 @@ function CopyButton({ text }: { text: string }) {
   )
 }
 
-function EndpointCard({ ep }: { ep: Endpoint }) {
+function EndpointCard({ ep, apiBase }: { ep: Endpoint; apiBase: string }) {
   const [open, setOpen] = useState(false)
-  const curl = buildCurl(ep)
+  const curl = buildCurl(ep, apiBase || getApiBaseUrl())
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
       <button
@@ -440,6 +440,10 @@ function EndpointCard({ ep }: { ep: Endpoint }) {
 export default function ApiDocsPage() {
   const [search, setSearch] = useState("")
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Authentication: true })
+  const [apiBase, setApiBase] = useState("")
+  useEffect(() => {
+    setApiBase(getApiBaseUrl())
+  }, [])
 
   const toggleGroup = (name: string) => setOpenGroups(v => ({ ...v, [name]: !v[name] }))
 
@@ -458,11 +462,12 @@ export default function ApiDocsPage() {
         <div>
           <h1 className="text-3xl font-bold">API Documentation</h1>
           <p className="text-muted-foreground mt-1">
-            Base URL: <code className="bg-gray-100 px-2 py-0.5 rounded text-sm">{BASE}</code>
+            Base URL: <code className="bg-gray-100 px-2 py-0.5 rounded text-sm">{apiBase || "…"}</code>
             <span className="ml-4 text-xs">
-              Interactive: <a href={`${BASE}/docs`} target="_blank" rel="noreferrer" className="text-blue-600 underline">Swagger UI</a>
+              Interactive:{" "}
+              <a href={apiBase ? `${apiBase}/docs` : "#"} target="_blank" rel="noreferrer" className="text-blue-600 underline">Swagger UI</a>
               {" · "}
-              <a href={`${BASE}/docs-json`} target="_blank" rel="noreferrer" className="text-blue-600 underline">OpenAPI JSON (Postman import)</a>
+              <a href={apiBase ? `${apiBase}/docs-json` : "#"} target="_blank" rel="noreferrer" className="text-blue-600 underline">OpenAPI JSON (Postman import)</a>
             </span>
           </p>
         </div>
@@ -501,7 +506,7 @@ export default function ApiDocsPage() {
             {openGroups[group.name] && (
               <div className="divide-y divide-gray-100">
                 {group.endpoints.map((ep, i) => (
-                  <EndpointCard key={i} ep={ep} />
+                  <EndpointCard key={i} ep={ep} apiBase={apiBase} />
                 ))}
               </div>
             )}

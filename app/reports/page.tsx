@@ -10,9 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Download, Table as TableIcon, BarChart3, PieChart as PieChartIcon } from "lucide-react"
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { toast } from "sonner"
+import { getApiBaseUrl } from "@/lib/api-base-url"
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D']
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://13.234.140.190.nip.io/api/v1'
 
 type ViewMode = 'table' | 'chart' | 'pie'
 
@@ -38,7 +38,7 @@ export default function ReportsPage() {
       if (startDate) params.append('startDate', startDate)
       if (endDate) params.append('endDate', endDate)
       
-      const response = await fetch(`${API_URL}/reports/${endpoint}?${params}`, {
+      const response = await fetch(`${getApiBaseUrl()}/reports/${endpoint}?${params}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       
