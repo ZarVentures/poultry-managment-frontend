@@ -4,6 +4,16 @@ frontend:
     preBuild:
       commands:
         - npm ci
+        - |
+          # Automatically set API URL based on branch
+          if [ "${AWS_BRANCH}" = "staging" ]; then
+            echo "NEXT_PUBLIC_API_URL=https://13.234.140.190.nip.io/staging/api/v1" > .env.production
+            echo "✅ Using STAGING backend API"
+          else
+            echo "NEXT_PUBLIC_API_URL=https://13.234.140.190.nip.io/api/v1" > .env.production
+            echo "✅ Using PRODUCTION backend API"
+          fi
+          cat .env.production
     build:
       commands:
         - npm run build
