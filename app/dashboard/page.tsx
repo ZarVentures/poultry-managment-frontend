@@ -82,10 +82,21 @@ export default function DashboardPage() {
     try {
       setLoading(true)
 
-      // Build date query params
+      // Build date query params (fix timezone issue)
       const dateParams = new URLSearchParams()
-      if (startDate) dateParams.set("startDate", startDate.toISOString().split("T")[0])
-      if (endDate) dateParams.set("endDate", endDate.toISOString().split("T")[0])
+      if (startDate) {
+        // Format date in local timezone to avoid UTC conversion issues
+        const year = startDate.getFullYear()
+        const month = String(startDate.getMonth() + 1).padStart(2, '0')
+        const day = String(startDate.getDate()).padStart(2, '0')
+        dateParams.set("startDate", `${year}-${month}-${day}`)
+      }
+      if (endDate) {
+        const year = endDate.getFullYear()
+        const month = String(endDate.getMonth() + 1).padStart(2, '0')
+        const day = String(endDate.getDate()).padStart(2, '0')
+        dateParams.set("endDate", `${year}-${month}-${day}`)
+      }
       const dateQuery = dateParams.toString() ? `?${dateParams.toString()}` : ""
 
       const [
