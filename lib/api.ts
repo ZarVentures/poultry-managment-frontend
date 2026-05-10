@@ -927,6 +927,85 @@ export const godownApi = {
   getSummary: () => apiRequest<GodownSummary>('/godown/summary'),
 };
 
+export type PaymentMethodVoucher =
+  | 'cash'
+  | 'cheque'
+  | 'bank_transfer'
+  | 'upi'
+  | 'card';
+
+export interface CreatePaymentVoucherPayload {
+  voucherDate: string;
+  payeeType: 'farmer' | 'retailer' | 'supplier' | 'employee' | 'other';
+  payeeId?: number;
+  payeeName: string;
+  amount: number;
+  paymentMethod: PaymentMethodVoucher;
+  chequeNumber?: string;
+  bankName?: string;
+  transactionReference?: string;
+  purpose: string;
+  description?: string;
+  referenceType?: 'purchase' | 'expense' | 'sale' | 'other';
+  referenceId?: number;
+  status?: 'pending' | 'paid' | 'cancelled';
+  paidDate?: string;
+  attachmentUrl?: string;
+  notes?: string;
+}
+
+/** Response from POST /payment-vouchers (matches Nest + TypeORM shape) */
+export interface PaymentVoucherRecord {
+  id: number;
+  voucherNumber: string;
+  voucherDate: string;
+  payeeType: string;
+  payeeId?: number;
+  payeeName: string;
+  amount: number;
+  paymentMethod: string;
+  chequeNumber?: string;
+  bankName?: string;
+  transactionReference?: string;
+  purpose: string;
+  description?: string;
+  referenceType?: string;
+  referenceId?: number;
+  status: string;
+  paidDate?: string;
+  attachmentUrl?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export const paymentVouchersApi = {
+  create: (data: CreatePaymentVoucherPayload) =>
+    apiRequest<PaymentVoucherRecord>('/payment-vouchers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  findAll: (params?: Record<string, string | undefined>) => {
+    const q = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== '') q.set(k, v);
+      });
+    }
+    const s = q.toString();
+    return apiRequest<PaymentVoucherRecord[]>(`/payment-vouchers${s ? `?${s}` : ''}`);
+  },
+
+  findOne: (id: number) => apiRequest<PaymentVoucherRecord>(`/payment-vouchers/${id}`),
+
+  approve: (id: number) =>
+    apiRequest<PaymentVoucherRecord>(`/payment-vouchers/${id}/approve`, { method: 'POST' }),
+
+  cancel: (id: number) =>
+    apiRequest<PaymentVoucherRecord>(`/payment-vouchers/${id}/cancel`, { method: 'POST' }),
+};
+
 export default {
   farmers: farmersApi,
   retailers: retailersApi,
@@ -939,6 +1018,7 @@ export default {
   purchases: purchasesApi,
   settings: settingsApi,
   godown: godownApi,
+  paymentVouchers: paymentVouchersApi,
 };
 
 
