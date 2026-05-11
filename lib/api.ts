@@ -233,11 +233,24 @@ export interface CreateSaleDto {
 export interface UpdateSaleDto extends Partial<CreateSaleDto> { }
 
 // Expense Interface
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  isActive: boolean;
+  isSystem: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Expense {
   id: string;
   expenseDate: string;
   expenseOwner?: string;
-  category: 'feed' | 'labor' | 'medicine' | 'utilities' | 'equipment' | 'maintenance' | 'transportation' | 'other';
+  category?: 'feed' | 'labor' | 'medicine' | 'utilities' | 'equipment' | 'maintenance' | 'transportation' | 'other';
+  categoryId?: string;
+  expenseCategory?: ExpenseCategory;
   description: string;
   amount: number;
   paymentMethod: 'cash' | 'bank_transfer' | 'check' | 'credit_card';
@@ -250,7 +263,8 @@ export interface Expense {
 export interface CreateExpenseDto {
   expenseDate: string;
   expenseOwner?: string;
-  category: 'feed' | 'labor' | 'medicine' | 'utilities' | 'equipment' | 'maintenance' | 'transportation' | 'other';
+  categoryId?: string;
+  category?: 'feed' | 'labor' | 'medicine' | 'utilities' | 'equipment' | 'maintenance' | 'transportation' | 'other';
   description: string;
   amount: string;
   paymentMethod: 'cash' | 'bank_transfer' | 'check' | 'credit_card';
@@ -258,6 +272,15 @@ export interface CreateExpenseDto {
 }
 
 export interface UpdateExpenseDto extends Partial<CreateExpenseDto> { }
+
+export interface CreateExpenseCategoryDto {
+  name: string;
+  description?: string;
+  icon?: string;
+  isActive?: boolean;
+}
+
+export interface UpdateExpenseCategoryDto extends Partial<CreateExpenseCategoryDto> { }
 
 // Purchase Order Interface
 export interface PurchaseOrderItem {
@@ -725,6 +748,38 @@ export const salesApi = {
     }
     return response.json();
   },
+};
+
+// ============================================
+// EXPENSE CATEGORIES API
+// ============================================
+export const expenseCategoriesApi = {
+  getAll: (includeInactive = false) => 
+    apiRequest<ExpenseCategory[]>(`/expense-categories?includeInactive=${includeInactive}`),
+
+  getOne: (id: string) => apiRequest<ExpenseCategory>(`/expense-categories/${id}`),
+
+  create: (data: CreateExpenseCategoryDto) =>
+    apiRequest<ExpenseCategory>('/expense-categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: UpdateExpenseCategoryDto) =>
+    apiRequest<ExpenseCategory>(`/expense-categories/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    apiRequest<void>(`/expense-categories/${id}`, {
+      method: 'DELETE',
+    }),
+
+  toggleActive: (id: string) =>
+    apiRequest<ExpenseCategory>(`/expense-categories/${id}/toggle-active`, {
+      method: 'PATCH',
+    }),
 };
 
 // ============================================
