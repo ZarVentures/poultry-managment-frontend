@@ -80,7 +80,7 @@ export default function ExpensesPage() {
     setFormData({
       expenseDate: expense.expenseDate,
       expenseOwner: expense.expenseOwner || "",
-      category: expense.category,
+      category: expense.category || "other",
       description: expense.description,
       amount: String(expense.amount),
       paymentMethod: expense.paymentMethod,
