@@ -6,6 +6,7 @@ import { DashboardLayout } from '@/components/dashboard-layout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ArrowUpRight, BookOpen, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Building2, Calendar, FileText } from 'lucide-react'
+import { billingApi } from '@/lib/api'
 
 interface StatementItem {
   label: string
@@ -23,53 +24,54 @@ interface StatementSection {
 }
 
 const CompanyLedgerReportPage = () => {
-  // Hardcoded data for demo (replace with real data as needed)
-  const summary = {
-    totalRevenue: 1240500,
-    grossProfit: 785200,
-    opExpenses: 342100,
-    netProfit: 443100,
-  }
-  const detailedStatement: StatementSection[] = [
+  const [data, setData] = React.useState<any>(null)
+  const [loading, setLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    billingApi.getCompanyReport().then((res) => {
+      setData(res)
+      setLoading(false)
+    }).catch((err) => {
+      console.error(err)
+      setLoading(false)
+    })
+  }, [])
+
+  const summary = data?.summary || { totalRevenue: 0, grossProfit: 0, operatingExpenses: 0, netProfit: 0 }
+  
+  const detailedStatement: StatementSection[] = data ? [
     { section: 'REVENUE', items: [
-      { label: 'Sales - Party A', amount: 500000 },
-      { label: 'Sales - Party B', amount: 450000 },
-      { label: 'Sales - Party C', amount: 290500 },
-      { label: 'Total Sales', amount: 1240500, bold: true },
-      { label: 'Other Income', amount: 12000 },
-      { label: 'TOTAL REVENUE', amount: 1252500, bold: true, highlight: true },
+      ...(data.partyWiseSales || []).map((p: any) => ({ label: `Sales - ${p.party}`, amount: p.amount })),
+      { label: 'TOTAL REVENUE', amount: data.summary.totalRevenue, bold: true, highlight: true, positive: true },
     ]},
     { section: 'COST OF GOODS SOLD', items: [
-      { label: 'Opening Stock', amount: 120000 },
-      { label: 'Purchases', amount: 380000 },
-      { label: 'Direct Expenses', amount: 45300 },
-      { label: 'Closing Stock (Less)', amount: -80000, negative: true },
-      { label: 'TOTAL COGS', amount: 465300, bold: true },
-      { label: 'GROSS PROFIT', amount: 787200, bold: true, highlight: true, positive: true },
+      { label: 'Opening Stock', amount: data.summary.openingStock || 0 },
+      { label: 'Purchases', amount: data.summary.totalPurchases || 0 },
+      { label: 'Direct Expenses', amount: data.summary.totalDirectExpenses || 0 },
+      { label: 'Closing Stock (Less)', amount: -(data.summary.closingStock || 0), negative: true },
+      { label: 'TOTAL COGS', amount: data.summary.costOfGoodsSold || 0, bold: true },
+      { label: 'GROSS PROFIT', amount: data.summary.grossProfit || 0, bold: true, highlight: true, positive: data.summary.grossProfit >= 0, negative: data.summary.grossProfit < 0 },
     ]},
     { section: 'OPERATING EXPENSES', items: [
-      { label: 'Salary', amount: 210000 },
-      { label: 'Rent', amount: 45000 },
-      { label: 'Office Expense', amount: 15000 },
-      { label: 'Utilities', amount: 12400 },
-      { label: 'Travel', amount: 38200 },
-      { label: 'Misc Expenses', amount: 23500 },
-      { label: 'TOTAL EXPENSES', amount: 344100, bold: true },
+      ...(data.expenseBreakdown || []).map((e: any) => ({ label: e.category.toUpperCase(), amount: e.amount })),
+      { label: 'TOTAL EXPENSES', amount: data.summary.operatingExpenses || 0, bold: true },
     ]},
     { section: '', items: [
-      { label: 'NET PROFIT', amount: 443100, bold: true, highlight: true, dark: true },
+      { label: data.summary.netProfit >= 0 ? 'NET PROFIT' : 'NET LOSS', amount: data.summary.netProfit || 0, bold: true, highlight: true, dark: true, negative: data.summary.netProfit < 0 },
     ]},
-  ]
+  ] : []
+
   const keyInsight = {
-    title: 'Profitability remains strong with Gross Margins holding at 63%. Operating expenses are within the 10% tolerance band of the quarterly budget.',
-    netProfitMargin: 35.4,
-    expenseRatio: 27.5,
+    title: data?.keyInsights?.map((k: any) => k.message).join('. ') || 'Loading insights...',
+    netProfitMargin: data?.summary?.totalRevenue ? ((data.summary.netProfit / data.summary.totalRevenue) * 100).toFixed(1) : 0,
+    expenseRatio: data?.summary?.totalRevenue ? ((data.summary.operatingExpenses / data.summary.totalRevenue) * 100).toFixed(1) : 0,
   }
-  const auditLog = [
-    { status: 'success', label: 'Q1 Reconciliation Complete', user: 'Admin', time: '2 hours ago' },
-    { status: 'warning', label: 'Manual Entry Adjustment', user: 'SaaS Revenue', time: '5 hours ago' },
-    { status: 'info', label: 'Automated Forecast Update', user: 'System', time: '1 day ago' },
-  ]
+
+  const auditLog = data?.auditLog ? [
+    { status: 'success', label: `Data Processed (${data.auditLog.dataSources.salesCount} Sales, ${data.auditLog.dataSources.purchasesCount} Purchases)`, user: 'System', time: new Date(data.auditLog.generatedAt).toLocaleString() }
+  ] : []
+
+  if (loading) return <DashboardLayout><div className="p-8 text-center text-gray-500">Loading Report Data...</div></DashboardLayout>
 
   return (
     <DashboardLayout>
@@ -110,7 +112,7 @@ const CompanyLedgerReportPage = () => {
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-gray-900">₹{summary.totalRevenue.toLocaleString('en-IN')}</span>
+                <span className="text-2xl font-bold text-gray-900">₹{(summary.totalRevenue || 0).toLocaleString('en-IN')}</span>
                 <TrendingUp className="w-8 h-8 text-green-200" />
               </div>
               <div className="text-xs text-green-600 mt-1">↑ 12.5% Increase</div>
@@ -122,7 +124,7 @@ const CompanyLedgerReportPage = () => {
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-gray-900">₹{summary.grossProfit.toLocaleString('en-IN')}</span>
+                <span className="text-2xl font-bold text-gray-900">₹{(summary.grossProfit || 0).toLocaleString('en-IN')}</span>
                 <ArrowUpRight className="w-8 h-8 text-blue-200" />
               </div>
               <div className="text-xs text-gray-500 mt-1">63.3% Gross Margin</div>
@@ -134,7 +136,7 @@ const CompanyLedgerReportPage = () => {
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-gray-900">₹{summary.opExpenses.toLocaleString('en-IN')}</span>
+                <span className="text-2xl font-bold text-gray-900">₹{(summary.operatingExpenses || 0).toLocaleString('en-IN')}</span>
                 <TrendingDown className="w-8 h-8 text-orange-200" />
               </div>
               <div className="text-xs text-gray-500 mt-1">Managed Efficiently</div>
@@ -146,7 +148,7 @@ const CompanyLedgerReportPage = () => {
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-white">₹{summary.netProfit.toLocaleString('en-IN')}</span>
+                <span className="text-2xl font-bold text-white">₹{(summary.netProfit || 0).toLocaleString('en-IN')}</span>
                 <DollarSign className="w-8 h-8 text-green-300" />
               </div>
               <div className="text-xs text-green-200 mt-1">+ TARGET ACHIEVED</div>
@@ -193,7 +195,7 @@ const CompanyLedgerReportPage = () => {
                               (item.positive ? 'text-green-600 ' : '') +
                               (item.dark ? 'text-white ' : '')
                             }>
-                              ₹{Math.abs(item.amount).toLocaleString('en-IN')}
+                              ₹{Math.abs(item.amount || 0).toLocaleString('en-IN')}
                             </td>
                           </tr>
                         ))}

@@ -1221,6 +1221,13 @@ export const productsApi = {
 // ============================================
 export const billingApi = {
   getSummary: () => apiRequest<any>('/billing/summary'),
+  getCompanyReport: (fromDate?: string, toDate?: string) => {
+    const params = new URLSearchParams();
+    if (fromDate) params.append('from', fromDate);
+    if (toDate) params.append('to', toDate);
+    const qs = params.toString();
+    return apiRequest<any>(`/billing/company-report${qs ? `?${qs}` : ''}`);
+  },
 
   // Parties
   getParties: () => apiRequest<any[]>('/billing/parties'),
