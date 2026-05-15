@@ -10,15 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Save, Lock, Bell, Palette, Terminal, Eye, EyeOff,
-  Shield, ShieldCheck, ShieldOff, Building2, User, ChevronRight
+  Shield, ShieldCheck, ShieldOff, Building2, User, ChevronRight,
+  Tag, Plus, Edit2, Trash2, CheckCircle2, AlertCircle
 } from "lucide-react"
-import { settingsApi, authApi, permissionsApi, type Setting } from "@/lib/api"
+import { settingsApi, authApi, permissionsApi, expenseCategoriesApi, type Setting, type ExpenseCategory } from "@/lib/api"
 import { useDevMode } from "@/lib/dev-mode"
 import { toast } from "sonner"
 import { useDispatch } from "react-redux"
 import { setTheme } from "@/app/redux/slices/themeSlice"
 
-type Section = "general" | "display" | "notifications" | "security" | "permissions" | "developer"
+type Section = "general" | "display" | "notifications" | "security" | "permissions" | "categories" | "developer"
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType; description: string }[] = [
   { id: "general", label: "General", icon: Building2, description: "Farm info & currency" },
@@ -26,6 +27,7 @@ const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType; descript
   { id: "notifications", label: "Notifications", icon: Bell, description: "Alerts & preferences" },
   { id: "security", label: "Security", icon: Lock, description: "2FA & account security" },
   { id: "permissions", label: "Permissions", icon: ShieldCheck, description: "Manage role access levels" },
+  { id: "categories", label: "Expense Categories", icon: Tag, description: "Manage expense category list" },
   { id: "developer", label: "Developer", icon: Terminal, description: "Dev mode & API logs" },
 ]
 
@@ -69,6 +71,16 @@ export default function SettingsPage() {
   const [permissionsLoading, setPermissionsLoading] = useState(false)
   const [showAddRoleModal, setShowAddRoleModal] = useState(false)
   const [newRoleName, setNewRoleName] = useState("")
+  const [categories, setCategories] = useState<ExpenseCategory[]>([])
+  const [categoriesLoading, setCategoriesLoading] = useState(false)
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
+  const [editingCategory, setEditingCategory] = useState<ExpenseCategory | null>(null)
+  const [categoryFormData, setCategoryFormData] = useState({
+    name: "",
+    description: "",
+    icon: "tag",
+    isActive: true
+  })
 
   const ALL_RESOURCES = [
     'dashboard', 'purchases', 'sales', 'godown', 'mortality',
@@ -87,7 +99,51 @@ export default function SettingsPage() {
     }
     authApi.get2FAStatus().then(d => setIs2FAEnabled(d.isTwoFactorEnabled)).catch(() => { })
     fetchPermissions()
+    fetchCategories()
   }, [])
+
+  const fetchCategories = async () => {
+    try {
+      setCategoriesLoading(true)
+      const data = await expenseCategoriesApi.getAll(true) // include inactive
+      setCategories(data)
+    } catch { toast.error("Failed to fetch categories") }
+    finally { setCategoriesLoading(false) }
+  }
+
+  const handleSaveCategory = async () => {
+    if (!categoryFormData.name) { toast.error("Name is required"); return }
+    try {
+      setLoading(true)
+      if (editingCategory) {
+        await expenseCategoriesApi.update(editingCategory.id, categoryFormData)
+        toast.success("Category updated")
+      } else {
+        await expenseCategoriesApi.create(categoryFormData)
+        toast.success("Category created")
+      }
+      fetchCategories()
+      setShowCategoryModal(false)
+    } catch (e: any) { toast.error(e.message || "Failed to save category") }
+    finally { setLoading(false) }
+  }
+
+  const handleDeleteCategory = async (id: string, isSystem: boolean) => {
+    if (isSystem) { toast.error("System categories cannot be deleted"); return }
+    if (!window.confirm("Are you sure?")) return
+    try {
+      await expenseCategoriesApi.delete(id)
+      toast.success("Category deleted")
+      fetchCategories()
+    } catch { toast.error("Failed to delete") }
+  }
+
+  const handleToggleCategory = async (id: string) => {
+    try {
+      await expenseCategoriesApi.toggleActive(id)
+      fetchCategories()
+    } catch { toast.error("Failed to toggle status") }
+  }
 
   const fetchPermissions = async () => {
     try {
@@ -565,6 +621,92 @@ export default function SettingsPage() {
               </div>
             )}
 
+            {/* Categories */}
+            {activeSection === "categories" && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-start gap-3 flex-1 mr-4">
+                    <CheckCircle2 className="text-emerald-600 shrink-0 mt-0.5" size={20} />
+                    <div>
+                      <p className="text-sm font-medium text-emerald-900">Expense Category Management</p>
+                      <p className="text-xs text-emerald-700 mt-0.5">Manage categories and icons for expense tracking. System categories are pre-defined.</p>
+                    </div>
+                  </div>
+                  <Button size="sm" onClick={() => {
+                    setEditingCategory(null)
+                    setCategoryFormData({ name: "", description: "", icon: "tag", isActive: true })
+                    setShowCategoryModal(true)
+                  }}>+ New Category</Button>
+                </div>
+
+                {categoriesLoading ? (
+                  <div className="flex justify-center p-8 text-muted-foreground animate-pulse text-sm">Loading categories...</div>
+                ) : (
+                  <div className="border rounded-xl overflow-hidden bg-background shadow-sm">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 border-b">
+                        <tr className="text-xs uppercase text-muted-foreground">
+                          <th className="text-left p-4 font-semibold">Category</th>
+                          <th className="text-left p-4 font-semibold">Description</th>
+                          <th className="text-center p-4 font-semibold">Status</th>
+                          <th className="text-right p-4 font-semibold">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {categories.map(cat => (
+                          <tr key={cat.id} className="hover:bg-muted/30 transition-colors">
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 bg-muted rounded-lg text-muted-foreground">
+                                  <Tag size={16} />
+                                </div>
+                                <div>
+                                  <p className="font-medium">{cat.name}</p>
+                                  {cat.isSystem && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold uppercase">System</span>}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4 text-muted-foreground text-xs leading-relaxed max-w-xs">{cat.description || "-"}</td>
+                            <td className="p-4 text-center">
+                              <button
+                                onClick={() => handleToggleCategory(cat.id)}
+                                className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${cat.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
+                              >
+                                {cat.isActive ? 'ACTIVE' : 'INACTIVE'}
+                              </button>
+                            </td>
+                            <td className="p-4 text-right">
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingCategory(cat)
+                                    setCategoryFormData({ name: cat.name, description: cat.description || "", icon: cat.icon || "tag", isActive: cat.isActive })
+                                    setShowCategoryModal(true)
+                                  }}
+                                  className="p-2 text-muted-foreground hover:text-primary transition-colors"
+                                  title="Edit"
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                                {!cat.isSystem && (
+                                  <button
+                                    onClick={() => handleDeleteCategory(cat.id, cat.isSystem)}
+                                    className="p-2 text-muted-foreground hover:text-red-500 transition-colors"
+                                    title="Delete"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -640,6 +782,52 @@ export default function SettingsPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </DashboardLayout>
+      {/* Category Modal */}
+      <Dialog open={showCategoryModal} onOpenChange={setShowCategoryModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{editingCategory ? "Edit Expense Category" : "Add New Expense Category"}</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label>Category Name *</Label>
+              <Input
+                placeholder="e.g. Electricity Bill"
+                value={categoryFormData.name}
+                onChange={e => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
+                disabled={editingCategory?.isSystem}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input
+                placeholder="What is this for?"
+                value={categoryFormData.description}
+                onChange={e => setCategoryFormData({ ...categoryFormData, description: e.target.value })}
+              />
+            </div>
+            {/* <div className="space-y-2">
+              <Label>Icon Name (Lucide)</Label>
+              <Input
+                placeholder="e.g. zap, fuel, dollar-sign"
+                value={categoryFormData.icon}
+                onChange={e => setCategoryFormData({ ...categoryFormData, icon: e.target.value })}
+              />
+            </div> */}
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                type="checkbox"
+                id="cat-active"
+                className="h-4 w-4 rounded"
+                checked={categoryFormData.isActive}
+                onChange={e => setCategoryFormData({ ...categoryFormData, isActive: e.target.checked })}
+              />
+              <Label htmlFor="cat-active">Mark as Active</Label>
+            </div>
+            <Button className="w-full" onClick={handleSaveCategory} disabled={loading || !categoryFormData.name}>
+              {loading ? "Saving..." : editingCategory ? "Update Category" : "Create Category"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </DashboardLayout >
   )
 }

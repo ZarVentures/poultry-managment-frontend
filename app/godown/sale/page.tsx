@@ -43,13 +43,17 @@ export default function GodownSalePage() {
     customerName: "",
     numberOfBirds: "",
     totalWeight: "",
+    weightLoss: "",
     ratePerKg: "",
     totalAmount: "",
     paymentStatus: "pending" as "paid" | "pending" | "partial",
     notes: "",
   })
   const [payments, setPayments] = useState<PaymentRow[]>([emptyPayment()])
-  const [cages, setCages] = useState<GodownCage[]>([emptyCage()])
+  const [cages, setCages] = useState<GodownCage[]>([])
+  const [availableCages, setAvailableCages] = useState<any[]>([])
+  const [selectedCageIds, setSelectedCageIds] = useState<Set<string>>(new Set())
+  const [loadingCages, setLoadingCages] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -62,7 +66,26 @@ export default function GodownSalePage() {
     }
     fetchSales()
     fetchRetailers()
+    fetchAvailableCages()
   }, [])
+
+  const fetchAvailableCages = async () => {
+    try {
+      setLoadingCages(true)
+      const data = await purchasesApi.getInGodownCages()
+      setAvailableCages(data.map(c => ({
+        ...c,
+        totalBirds: c.numberOfBirds, // Store original for validation
+        totalWeight: Number(c.godownInwardWeight || c.purchaseWeight || 0),
+        soldBirds: c.numberOfBirds, // Default to full
+        soldWeight: Number(c.godownInwardWeight || c.purchaseWeight || 0)
+      })))
+    } catch (error) {
+      console.error("Failed to fetch available cages:", error)
+    } finally {
+      setLoadingCages(false)
+    }
+  }
 
   const fetchSales = async () => {
     try {
@@ -107,14 +130,17 @@ export default function GodownSalePage() {
       customerName: "",
       numberOfBirds: "",
       totalWeight: "",
+      weightLoss: "",
       ratePerKg: "",
       totalAmount: "",
       paymentStatus: "pending",
       notes: "",
     })
     setPayments([emptyPayment()])
-    setCages([emptyCage()])
+    setCages([])
+    setSelectedCageIds(new Set())
     setEditingId(null)
+    fetchAvailableCages() // Refresh available stock
   }
 
   const handleEdit = (sale: GodownSale) => {
@@ -126,6 +152,7 @@ export default function GodownSalePage() {
       customerName: sale.customerName,
       numberOfBirds: String(sale.numberOfBirds || ""),
       totalWeight: String(sale.totalWeight || ""),
+      weightLoss: String((sale as any).weightLoss || ""),
       ratePerKg: String(sale.ratePerKg || ""),
       totalAmount: String(sale.totalAmount || ""),
       paymentStatus: (sale as any).paymentStatus || "pending",
@@ -143,7 +170,7 @@ export default function GodownSalePage() {
       setPayments([emptyPayment()])
     }
 
-    setCages(sale.cages && sale.cages.length > 0 ? sale.cages : [emptyCage()])
+    setCages(sale.cages || [])
     setEditingId(sale.id)
     setShowDialog(true)
   }
@@ -176,19 +203,22 @@ export default function GodownSalePage() {
         customerName: formData.customerName,
         numberOfBirds: parseInt(formData.numberOfBirds) || 0,
         totalWeight: parseFloat(formData.totalWeight) || undefined,
+        weightLoss: parseFloat(formData.weightLoss) || 0,
         ratePerKg: parseFloat(formData.ratePerKg) || undefined,
         totalAmount: parseFloat(formData.totalAmount) || parseFloat(calculateTotal()) || 0,
         paymentStatus: formData.paymentStatus,
         amountReceived: totalPaymentMade,
         notes: formData.notes,
         payments: validPayments,
-        cages: cages
-          .filter(c => c.numberOfBirds > 0 || c.cageWeight > 0)
-          .map(c => ({
-            cageId: c.cageId || undefined,
-            numberOfBirds: Number(c.numberOfBirds) || 0,
-            cageWeight: Number(c.cageWeight) || 0,
-          })),
+        cages: Array.from(selectedCageIds).map(id => {
+          const cage = availableCages.find(c => c.id === id)
+          return {
+            id,
+            numberOfBirds: parseInt(String(cage?.soldBirds || "0"), 10),
+            cageWeight: parseFloat(String(cage?.soldWeight || "0")),
+            weightLoss: parseFloat(String(cage?.weightLoss || "0")),
+          }
+        }),
       }
 
       if (editingId) {
@@ -236,6 +266,69 @@ export default function GodownSalePage() {
       })
     } else {
       setFormData({ ...formData, retailerId: '', customerName: '' })
+    }
+  }
+
+  const toggleCage = (id: string) => {
+    setSelectedCageIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+
+      const selected = availableCages.filter(c => next.has(c.id))
+      const totalBirds = selected.reduce((s, c) => s + (Number(c.soldBirds) || 0), 0)
+      const totalWt = selected.reduce((s, c) => s + (Number(c.soldWeight) || 0), 0)
+
+      const totalInwardWt = selected.reduce((s, c) => s + (Number(c.totalWeight) || 0), 0)
+      const loss = Math.max(0, totalInwardWt - totalWt)
+
+      setFormData(f => ({
+        ...f,
+        numberOfBirds: String(totalBirds),
+        totalWeight: totalWt.toFixed(2),
+        weightLoss: loss.toFixed(2),
+        totalAmount: (totalWt * (parseFloat(f.ratePerKg) || 0)).toFixed(2)
+      }))
+      return next
+    })
+  }
+
+  const updateCageSale = (id: string, field: 'soldBirds' | 'soldWeight' | 'weightLoss', value: string) => {
+    const numVal = parseFloat(value) || 0
+    setAvailableCages(prev => prev.map(c => {
+      if (c.id === id) {
+        if (field === 'soldBirds' && numVal > c.totalBirds) {
+          toast.error(`Cannot sell more than ${c.totalBirds} birds`)
+          return { ...c, [field]: String(c.totalBirds) }
+        }
+        if (field === 'soldWeight' && numVal > c.totalWeight) {
+          toast.error(`Cannot sell more than ${c.totalWeight.toFixed(2)} kg`)
+          return { ...c, [field]: String(c.totalWeight.toFixed(2)) }
+        }
+        return { ...c, [field]: value }
+      }
+      return c
+    }))
+
+    // Update form totals if selected
+    if (selectedCageIds.has(id)) {
+      setTimeout(() => {
+        setAvailableCages(currentCages => {
+          const selected = currentCages.filter(c => selectedCageIds.has(c.id))
+          const totalBirds = selected.reduce((s, c) => s + (Number(c.soldBirds) || 0), 0)
+          const totalWt = selected.reduce((s, c) => s + (Number(c.soldWeight) || 0), 0)
+          const totalLoss = selected.reduce((s, c) => s + (Number(c.weightLoss) || 0), 0)
+
+          setFormData(f => ({
+            ...f,
+            numberOfBirds: String(totalBirds),
+            totalWeight: totalWt.toFixed(2),
+            weightLoss: totalLoss.toFixed(2),
+            totalAmount: (totalWt * (parseFloat(f.ratePerKg) || 0)).toFixed(2)
+          }))
+          return currentCages
+        })
+      }, 0)
     }
   }
 
@@ -420,6 +513,87 @@ export default function GodownSalePage() {
                   />
                 </div>
 
+                {/* Available Cages in Godown */}
+                <div className="border rounded-lg p-3 bg-purple-50 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-purple-900 font-semibold"> Available Cages in Godown </Label>
+                    {loadingCages && <span className="text-xs text-muted-foreground animate-pulse">Loading...</span>}
+                  </div>
+                  {!loadingCages && availableCages.length === 0 && (
+                    <p className="text-xs text-muted-foreground py-2 text-center">No cages available in godown.</p>
+                  )}
+                  {!loadingCages && availableCages.length > 0 && (
+                    <div className="max-h-60 overflow-y-auto border rounded bg-white">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-purple-100 shadow-sm">
+                          <tr className="border-b">
+                            <th className="p-2 w-8"></th>
+                            <th className="text-left p-2">Cage ID</th>
+                            <th className="text-right p-2">Total Birds</th>
+                            <th className="text-right p-2">Total Wt</th>
+                            <th className="text-right p-2 text-blue-700">Sold Birds</th>
+                            <th className="text-right p-2 text-blue-700">Sold Wt (kg)</th>
+                            <th className="text-right p-2 text-red-700">Loss (kg)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {availableCages.map(cage => (
+                            <tr key={cage.id} className={`border-b hover:bg-purple-50 transition-colors ${selectedCageIds.has(cage.id) ? 'bg-green-50' : ''}`} onClick={() => toggleCage(cage.id)}>
+                              <td className="p-2 text-center" onClick={e => e.stopPropagation()}>
+                                <input type="checkbox" checked={selectedCageIds.has(cage.id)} onChange={() => toggleCage(cage.id)} />
+                              </td>
+                              <td className="p-2 font-medium">{cage.cageId || '-'}</td>
+                              <td className="p-2 text-right">{cage.totalBirds}</td>
+                              <td className="p-2 text-right">{cage.totalWeight.toFixed(2)}</td>
+                              <td className="p-2 text-right" onClick={e => e.stopPropagation()}>
+                                <input
+                                  type="number"
+                                  value={cage.soldBirds}
+                                  onChange={e => updateCageSale(cage.id, 'soldBirds', e.target.value)}
+                                  className="w-16 text-right border rounded px-1 py-0.5"
+                                  onWheel={e => e.currentTarget.blur()}
+                                />
+                              </td>
+                              <td className="p-2 text-right" onClick={e => e.stopPropagation()}>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={cage.soldWeight}
+                                  onChange={e => updateCageSale(cage.id, 'soldWeight', e.target.value)}
+                                  className="w-20 text-right border rounded px-1 py-0.5"
+                                  onWheel={e => e.currentTarget.blur()}
+                                />
+                              </td>
+                              <td className="p-2 text-right" onClick={e => e.stopPropagation()}>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={cage.weightLoss || "0.00"}
+                                  onChange={e => updateCageSale(cage.id, 'weightLoss', e.target.value)}
+                                  className="w-16 text-right border rounded px-1 py-0.5 text-red-600 font-medium"
+                                  onWheel={e => e.currentTarget.blur()}
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="sticky bottom-0 bg-purple-100 font-bold border-t">
+                          <tr>
+                            <td colSpan={2} className="p-2">Selected: {selectedCageIds.size}</td>
+                            <td className="p-2 text-right">{availableCages.filter(c => selectedCageIds.has(c.id)).reduce((s, c) => s + (Number(c.soldBirds) || 0), 0)}</td>
+                            <td className="p-2 text-right" colSpan={4}>
+                              <div className="flex justify-end gap-4">
+                                <span>Sold: {availableCages.filter(c => selectedCageIds.has(c.id)).reduce((s, c) => s + (Number(c.soldWeight) || 0), 0).toFixed(2)} kg</span>
+                                <span className="text-red-600">Loss: {availableCages.filter(c => selectedCageIds.has(c.id)).reduce((s, c) => s + (Number(c.weightLoss) || 0), 0).toFixed(2)} kg</span>
+                              </div>
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Number of Birds *</Label>
@@ -467,21 +641,19 @@ export default function GodownSalePage() {
                       onWheel={(e) => e.currentTarget.blur()}
                     />
                   </div>
-                  {/* <div className="space-y-2">
-                    <Label>Rate per Kg (₹)</Label>
+                  <div className="space-y-2">
+                    <Label className="text-red-600 font-medium">Weight Loss (kg)</Label>
                     <Input
                       type="number"
                       step="0.01"
-                      value={formData.ratePerKg}
-                      onChange={(e) => {
-                        const rate = e.target.value
-                        const total = (parseFloat(formData.totalWeight || "0") * parseFloat(rate || "0")).toFixed(2)
-                        setFormData({ ...formData, ratePerKg: rate, totalAmount: total })
-                      }}
+                      value={formData.weightLoss}
+                      onChange={(e) => setFormData({ ...formData, weightLoss: e.target.value })}
                       placeholder="0.00"
                       disabled={loading}
+                      className="border-red-200 focus-visible:ring-red-500"
+                      onWheel={(e) => e.currentTarget.blur()}
                     />
-                  </div> */}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -671,10 +843,11 @@ export default function GodownSalePage() {
                       <TableHead className="font-bold">Quantity</TableHead>
                       <TableHead className="font-bold">Rate</TableHead>
                       <TableHead className="font-bold">Total</TableHead>
+                      <TableHead className="font-bold text-red-600">Loss (kg)</TableHead>
                       <TableHead className="font-bold">Received</TableHead>
                       <TableHead className="font-bold">Balance</TableHead>
                       <TableHead className="font-bold">Status</TableHead>
-                      <TableHead className="font-bold">Actions</TableHead>
+                      <TableHead className="font-bold text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -686,6 +859,17 @@ export default function GodownSalePage() {
                         <TableCell>{sale.numberOfBirds} birds</TableCell>
                         <TableCell>₹{Number(sale.ratePerKg || 0).toFixed(2)}/kg</TableCell>
                         <TableCell>₹{Number(sale.totalAmount || 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-red-600 font-medium">{Number((sale as any).weightLoss || 0).toFixed(2)} kg</TableCell>
+                        <TableCell className="text-green-600">₹{Number(sale.amountReceived || 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-red-600">₹{Math.max(0, Number(sale.totalAmount || 0) - Number(sale.amountReceived || 0)).toFixed(2)}</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${sale.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                            sale.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                            {(sale.paymentStatus || 'pending').toUpperCase()}
+                          </span>
+                        </TableCell>
                         <TableCell>
                           {userRole !== 'staff' && userRole !== 'Staff' && (
                             <div className="flex gap-2">
@@ -707,6 +891,6 @@ export default function GodownSalePage() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </DashboardLayout >
   )
 }

@@ -299,7 +299,9 @@ export interface PurchaseOrderCage {
   numberOfBirds: number;
   cageWeight: number;       // legacy alias
   purchaseWeight: number;   // actual field from backend
-  status?: 'pending' | 'sold' | 'in_godown';
+  godownInwardWeight?: number;
+  godownSaleWeight?: number;
+  status?: 'pending' | 'sold' | 'in_godown' | 'godown_sold' | 'on_vehicle';
   saleId?: string;          // set when cage is sold
 }
 
@@ -754,7 +756,7 @@ export const salesApi = {
 // EXPENSE CATEGORIES API
 // ============================================
 export const expenseCategoriesApi = {
-  getAll: (includeInactive = false) => 
+  getAll: (includeInactive = false) =>
     apiRequest<ExpenseCategory[]>(`/expense-categories?includeInactive=${includeInactive}`),
 
   getOne: (id: string) => apiRequest<ExpenseCategory>(`/expense-categories/${id}`),
@@ -872,6 +874,16 @@ export const purchasesApi = {
   // Get full cage journey for weight loss tracking
   getCageJourney: (orderNumber: string) =>
     apiRequest<any[]>(`/cages/journey/${encodeURIComponent(orderNumber)}`),
+
+  // Get all cages currently in godown
+  getInGodownCages: () => apiRequest<PurchaseOrderCage[]>('/cages/in-godown'),
+
+  // Partial godown sale
+  partialGodownSale: (cageId: string, godownSaleId: string, soldBirds: number, soldWeight: number) =>
+    apiRequest<void>('/cages/partial-godown-sale', {
+      method: 'PATCH',
+      body: JSON.stringify({ cageId, godownSaleId, soldBirds, soldWeight }),
+    }),
 };
 
 // ============================================

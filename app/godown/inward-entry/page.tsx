@@ -44,6 +44,8 @@ export default function GodownInwardPage() {
     vehicleId: "",
     numberOfBirds: "",
     averageWeight: "",
+    actualWeight: "",
+    weightLoss: "",
     totalWeight: "",
     ratePerKg: "",
     totalAmount: "",
@@ -62,7 +64,7 @@ export default function GodownInwardPage() {
       try {
         const user = JSON.parse(userData)
         setUserRole(user.role || "")
-      } catch {}
+      } catch { }
     }
     fetchEntries()
     fetchVehicles()
@@ -156,11 +158,11 @@ export default function GodownInwardPage() {
         setPurchaseCages(
           Array.isArray(cageData)
             ? cageData.map((c) => ({
-                ...c,
-                id: c.id ?? "",
-                purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0),
-                godownWeight: "",
-              }))
+              ...c,
+              id: c.id ?? "",
+              purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0),
+              godownWeight: "",
+            }))
             : [],
         )
       } catch (error) {
@@ -184,7 +186,7 @@ export default function GodownInwardPage() {
       setFormData(f => ({
         ...f,
         numberOfBirds: totalBirds > 0 ? String(totalBirds) : f.numberOfBirds,
-        totalWeight: totalGodownWt > 0 ? totalGodownWt.toFixed(2) : f.totalWeight,
+        actualWeight: totalGodownWt > 0 ? totalGodownWt.toFixed(2) : f.actualWeight,
       }))
       return next
     })
@@ -202,7 +204,7 @@ export default function GodownInwardPage() {
       setFormData(f => ({
         ...f,
         numberOfBirds: String(totalBirds),
-        totalWeight: totalGodownWt.toFixed(2),
+        actualWeight: totalGodownWt.toFixed(2),
       }))
     }
   }
@@ -218,6 +220,8 @@ export default function GodownInwardPage() {
       vehicleId: "",
       numberOfBirds: "",
       averageWeight: "",
+      actualWeight: "",
+      weightLoss: "",
       totalWeight: "",
       ratePerKg: "",
       totalAmount: "",
@@ -240,6 +244,8 @@ export default function GodownInwardPage() {
       vehicleId: entry.vehicleId || "",
       numberOfBirds: String(entry.numberOfBirds || ""),
       averageWeight: String(entry.averageWeight || ""),
+      actualWeight: String((entry as any).actualWeight || ""),
+      weightLoss: String((entry as any).weightLoss || ""),
       totalWeight: String(entry.totalWeight || ""),
       ratePerKg: String(entry.ratePerKg || ""),
       totalAmount: String(entry.totalAmount || ""),
@@ -284,6 +290,8 @@ export default function GodownInwardPage() {
         vehicleId: formData.vehicleId || undefined,
         numberOfBirds,
         averageWeight: averageWeight || undefined,
+        actualWeight: parseFloat(formData.actualWeight) || 0,
+        weightLoss: parseFloat(formData.weightLoss) || 0,
         totalWeight: totalWeight || undefined,
         ratePerKg,
         totalAmount,
@@ -363,17 +371,15 @@ export default function GodownInwardPage() {
     })
   }
 
-  // Auto-calculate total weight when birds or average weight changes
+  // Auto-calculate final weight when actual weight or loss changes
   useEffect(() => {
-    if (formData.numberOfBirds && formData.averageWeight) {
-      const numberOfBirds = parseFloat(formData.numberOfBirds) || 0
-      const averageWeight = parseFloat(formData.averageWeight) || 0
-      const total = (numberOfBirds * averageWeight).toFixed(2)
-      if (formData.totalWeight !== total) {
-        setFormData(prev => ({ ...prev, totalWeight: total }))
-      }
+    const actual = parseFloat(formData.actualWeight) || 0
+    const loss = parseFloat(formData.weightLoss) || 0
+    const total = (actual - loss).toFixed(2)
+    if (formData.totalWeight !== total) {
+      setFormData(prev => ({ ...prev, totalWeight: total }))
     }
-  }, [formData.numberOfBirds, formData.averageWeight])
+  }, [formData.actualWeight, formData.weightLoss])
 
   const filteredEntries = useMemo(() => {
     let f = [...entries]
@@ -385,11 +391,11 @@ export default function GodownInwardPage() {
       )
     }
     if (dateRangeStart && dateRangeEnd) {
-      const start = new Date(dateRangeStart); start.setHours(0,0,0,0)
-      const end = new Date(dateRangeEnd); end.setHours(23,59,59,999)
+      const start = new Date(dateRangeStart); start.setHours(0, 0, 0, 0)
+      const end = new Date(dateRangeEnd); end.setHours(23, 59, 59, 999)
       f = f.filter(e => {
         if (!e.entryDate) return false
-        const d = new Date(e.entryDate); d.setHours(0,0,0,0)
+        const d = new Date(e.entryDate); d.setHours(0, 0, 0, 0)
         return d >= start && d <= end
       })
     }
@@ -485,6 +491,7 @@ export default function GodownInwardPage() {
                               <th className="text-right p-1">Birds</th>
                               <th className="text-right p-1">Purchase Wt (kg)</th>
                               <th className="text-right p-1">Godown Wt (kg) *</th>
+                              <th className="text-right p-1 text-red-600">Loss (kg)</th>
                               <th className="text-right p-1 text-orange-700">Wt Loss %</th>
                             </tr>
                           </thead>
@@ -495,55 +502,59 @@ export default function GodownInwardPage() {
                               const lossKg = purchaseWt - godownWt
                               const lossPct = purchaseWt > 0 && godownWt > 0 ? (lossKg / purchaseWt) * 100 : null
                               return (
-                              <tr key={cage.id} className={`border-b cursor-pointer hover:bg-blue-100 ${selectedCageIds.has(cage.id) ? 'bg-green-50' : ''}`}
-                                onClick={() => toggleCage(cage.id)}>
-                                <td className="p-1 text-center">
-                                  <input type="checkbox" checked={selectedCageIds.has(cage.id)} onChange={() => toggleCage(cage.id)} onClick={e => e.stopPropagation()} />
-                                </td>
-                                <td className="p-1 font-medium">{cage.cageId || '-'}</td>
-                                <td className="p-1 text-right">{cage.numberOfBirds}</td>
-                                <td className="p-1 text-right">{purchaseWt.toFixed(2)}</td>
-                                <td className="p-1 text-right" onClick={e => e.stopPropagation()}>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    placeholder="0.00"
-                                    value={cage.godownWeight}
-                                    onChange={e => {
-                                      const val = e.target.value
-                                      const enteredWt = parseFloat(val) || 0
-                                      if (enteredWt > purchaseWt && purchaseWt > 0) {
-                                        toast.error(`Godown weight (${enteredWt} kg) cannot exceed purchase weight (${purchaseWt.toFixed(2)} kg) for cage ${cage.cageId || cage.id}`)
-                                        return
-                                      }
-                                      const updatedCages = purchaseCages.map(c => c.id === cage.id ? { ...c, godownWeight: val } : c)
-                                      setPurchaseCages(updatedCages)
-                                      if (val) {
-                                        setSelectedCageIds(prev => {
-                                          const next = new Set([...prev, cage.id])
-                                          const selected = updatedCages.filter(c => next.has(c.id))
-                                          const totalBirds = selected.reduce((s, c) => s + c.numberOfBirds, 0)
-                                          const totalGodownWt = selected.reduce((s, c) => s + (Number(c.godownWeight) || 0), 0)
-                                          setFormData(f => ({
-                                            ...f,
-                                            numberOfBirds: String(totalBirds),
-                                            totalWeight: totalGodownWt.toFixed(2),
-                                          }))
-                                          return next
-                                        })
-                                      }
-                                    }}
-                                    className="w-20 text-right border rounded px-1 py-0.5 text-xs"
-                                  />
-                                </td>
-                                <td className="p-1 text-right">
-                                  {lossPct !== null ? (
-                                    <span className={`font-medium ${lossPct > 5 ? 'text-red-600' : 'text-green-600'}`}>
-                                      {lossPct.toFixed(1)}%
-                                    </span>
-                                  ) : <span className="text-muted-foreground">-</span>}
-                                </td>
-                              </tr>
+                                <tr key={cage.id} className={`border-b cursor-pointer hover:bg-blue-100 ${selectedCageIds.has(cage.id) ? 'bg-green-50' : ''}`}
+                                  onClick={() => toggleCage(cage.id)}>
+                                  <td className="p-1 text-center">
+                                    <input type="checkbox" checked={selectedCageIds.has(cage.id)} onChange={() => toggleCage(cage.id)} onClick={e => e.stopPropagation()} />
+                                  </td>
+                                  <td className="p-1 font-medium">{cage.cageId || '-'}</td>
+                                  <td className="p-1 text-right">{cage.numberOfBirds}</td>
+                                  <td className="p-1 text-right">{purchaseWt.toFixed(2)}</td>
+                                  <td className="p-1 text-right" onClick={e => e.stopPropagation()}>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      placeholder="0.00"
+                                      value={cage.godownWeight}
+                                      onChange={e => {
+                                        const val = e.target.value
+                                        const enteredWt = parseFloat(val) || 0
+                                        if (enteredWt > purchaseWt && purchaseWt > 0) {
+                                          toast.error(`Godown weight (${enteredWt} kg) cannot exceed purchase weight (${purchaseWt.toFixed(2)} kg) for cage ${cage.cageId || cage.id}`)
+                                          return
+                                        }
+                                        const updatedCages = purchaseCages.map(c => c.id === cage.id ? { ...c, godownWeight: val } : c)
+                                        setPurchaseCages(updatedCages)
+                                        if (val) {
+                                          setSelectedCageIds(prev => {
+                                            const next = new Set([...prev, cage.id])
+                                            const selected = updatedCages.filter(c => next.has(c.id))
+                                            const totalBirds = selected.reduce((s, c) => s + c.numberOfBirds, 0)
+                                            const totalGodownWt = selected.reduce((s, c) => s + (Number(c.godownWeight) || 0), 0)
+                                            setFormData(f => ({
+                                              ...f,
+                                              numberOfBirds: String(totalBirds),
+                                              totalWeight: totalGodownWt.toFixed(2),
+                                              actualWeight: totalGodownWt.toFixed(2),
+                                            }))
+                                            return next
+                                          })
+                                        }
+                                      }}
+                                      className="w-20 text-right border rounded px-1 py-0.5 text-xs"
+                                    />
+                                  </td>
+                                  <td className="p-1 text-right text-red-600 font-medium">
+                                    {cage.godownWeight ? lossKg.toFixed(2) : '-'}
+                                  </td>
+                                  <td className="p-1 text-right">
+                                    {lossPct !== null ? (
+                                      <span className={`font-medium ${lossPct > 5 ? 'text-red-600' : 'text-green-600'}`}>
+                                        {lossPct.toFixed(1)}%
+                                      </span>
+                                    ) : <span className="text-muted-foreground">-</span>}
+                                  </td>
+                                </tr>
                               )
                             })}
                           </tbody>
@@ -561,6 +572,7 @@ export default function GodownInwardPage() {
                                   <td className="p-1 text-right">{selCages.reduce((s, c) => s + c.numberOfBirds, 0)}</td>
                                   <td className="p-1 text-right">{totalPurchaseWt.toFixed(2)}</td>
                                   <td className="p-1 text-right">{totalGodownWt.toFixed(2)}</td>
+                                  <td className="p-1 text-right text-red-600">{(totalPurchaseWt - totalGodownWt).toFixed(2)}</td>
                                   <td className="p-1 text-right">
                                     {totalLossPct !== null ? (
                                       <span className={totalLossPct > 5 ? 'text-red-600' : 'text-green-600'}>
@@ -625,7 +637,7 @@ export default function GodownInwardPage() {
                   </Select>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Number of Birds *</Label>
                     <Input
@@ -634,20 +646,42 @@ export default function GodownInwardPage() {
                       onChange={(e) => setFormData({ ...formData, numberOfBirds: e.target.value })}
                       placeholder="1000"
                       disabled={loading}
-                      onWheel={(e) => e.currentTarget.blur()} 
+                      onWheel={(e) => e.currentTarget.blur()}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Total Weight (Kg)</Label>
+                    <Label>Actual Inward Wt (Kg) *</Label>
                     <Input
                       type="number"
                       step="0.01"
-                      value={formData.totalWeight}
-                      onChange={(e) => setFormData({ ...formData, totalWeight: e.target.value })}
-                      placeholder="Auto-calculated"
+                      value={formData.actualWeight}
+                      onChange={(e) => setFormData({ ...formData, actualWeight: e.target.value })}
+                      placeholder="0.00"
                       disabled={loading}
-                      onWheel={(e) => e.currentTarget.blur()} 
+                      onWheel={(e) => e.currentTarget.blur()}
                     />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-red-600">Weight Loss (Kg)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.weightLoss}
+                      onChange={(e) => setFormData({ ...formData, weightLoss: e.target.value })}
+                      placeholder="0.00"
+                      disabled={loading}
+                      className="border-red-200"
+                      onWheel={(e) => e.currentTarget.blur()}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Final Stock Wt (Kg)</Label>
+                    <div className="flex items-center h-10 px-3 border rounded-md bg-green-50 border-green-200 font-bold text-green-700">
+                      {formData.totalWeight || "0.00"}
+                    </div>
                   </div>
                 </div>
 
@@ -661,7 +695,7 @@ export default function GodownInwardPage() {
                       onChange={(e) => setFormData({ ...formData, ratePerKg: e.target.value })}
                       placeholder="125.00"
                       disabled={loading}
-                      onWheel={(e) => e.currentTarget.blur()} 
+                      onWheel={(e) => e.currentTarget.blur()}
                     />
                   </div>
                   <div className="space-y-2">
@@ -735,7 +769,9 @@ export default function GodownInwardPage() {
                     <TableHead>Reference No</TableHead>
                     <TableHead>Source</TableHead>
                     <TableHead>Birds</TableHead>
-                    <TableHead>Weight (Kg)</TableHead>
+                    <TableHead>Actual (Kg)</TableHead>
+                    <TableHead className="text-red-600">Loss (Kg)</TableHead>
+                    <TableHead className="text-green-700 font-bold">Final (Kg)</TableHead>
                     <TableHead>Rate/Kg</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Actions</TableHead>
@@ -748,7 +784,9 @@ export default function GodownInwardPage() {
                       <TableCell>{entry.purchaseInvoiceNo || "-"}</TableCell>
                       <TableCell>{entry.supplierName}</TableCell>
                       <TableCell>{entry.numberOfBirds}</TableCell>
-                      <TableCell>{entry.totalWeight ? Number(entry.totalWeight).toFixed(2) : "-"}</TableCell>
+                      <TableCell>{(entry as any).actualWeight ? Number((entry as any).actualWeight).toFixed(2) : "-"}</TableCell>
+                      <TableCell className="text-red-600 font-medium">{Number((entry as any).weightLoss || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-green-700 font-bold">{entry.totalWeight ? Number(entry.totalWeight).toFixed(2) : "-"}</TableCell>
                       <TableCell>₹{entry.ratePerKg ? Number(entry.ratePerKg).toFixed(2) : "0.00"}</TableCell>
                       <TableCell className="font-semibold">₹{entry.totalAmount ? Number(entry.totalAmount).toFixed(2) : "0.00"}</TableCell>
                       <TableCell>

@@ -14,7 +14,7 @@ import { Plus, Edit2, Trash2, X, Download, Printer } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
-import { expensesApi, type Expense as ApiExpense } from "@/lib/api"
+import { expensesApi, expenseCategoriesApi, type Expense as ApiExpense, type ExpenseCategory } from "@/lib/api"
 import { toast } from "sonner"
 
 export default function ExpensesPage() {
@@ -28,10 +28,11 @@ export default function ExpensesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
   const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
+  const [categories, setCategories] = useState<ExpenseCategory[]>([])
   const [formData, setFormData] = useState({
     expenseDate: new Date().toISOString().split("T")[0],
     expenseOwner: "",
-    category: "feed" as "feed" | "labor" | "medicine" | "utilities" | "equipment" | "maintenance" | "transportation" | "other",
+    categoryId: "",
     description: "",
     amount: "",
     paymentMethod: "cash" as "cash" | "bank_transfer" | "check" | "credit_card",
@@ -45,10 +46,23 @@ export default function ExpensesPage() {
       try {
         const user = JSON.parse(userData)
         setUserRole(user.role || "")
-      } catch {}
+      } catch { }
     }
     fetchExpenses()
+    fetchCategories()
   }, [])
+
+  const fetchCategories = async () => {
+    try {
+      const data = await expenseCategoriesApi.getAll()
+      setCategories(data)
+      if (data.length > 0 && !editingId) {
+        setFormData(prev => ({ ...prev, categoryId: data[0].id }))
+      }
+    } catch (e) {
+      console.error("Failed to fetch categories:", e)
+    }
+  }
 
   const fetchExpenses = async () => {
     try {
@@ -67,7 +81,7 @@ export default function ExpensesPage() {
     setFormData({
       expenseDate: new Date().toISOString().split("T")[0],
       expenseOwner: "",
-      category: "feed",
+      categoryId: categories.length > 0 ? categories[0].id : "",
       description: "",
       amount: "",
       paymentMethod: "cash",
@@ -80,7 +94,7 @@ export default function ExpensesPage() {
     setFormData({
       expenseDate: expense.expenseDate,
       expenseOwner: expense.expenseOwner || "",
-      category: expense.category || "other",
+      categoryId: expense.categoryId || (categories.find(c => c.name.toLowerCase() === expense.category?.toLowerCase())?.id) || "",
       description: expense.description,
       amount: String(expense.amount),
       paymentMethod: expense.paymentMethod,
@@ -91,7 +105,7 @@ export default function ExpensesPage() {
   }
 
   const handleSave = async () => {
-    if (!formData.description || !formData.amount) {
+    if (!formData.description || !formData.amount || !formData.categoryId) {
       toast.error("Please fill all required fields")
       return
     }
@@ -101,9 +115,9 @@ export default function ExpensesPage() {
       const expenseData = {
         expenseDate: formData.expenseDate,
         expenseOwner: formData.expenseOwner || undefined,
-        category: formData.category,
+        categoryId: formData.categoryId,
         description: formData.description,
-        amount: formData.amount, // Send as string
+        amount: formData.amount,
         paymentMethod: formData.paymentMethod,
         notes: formData.notes,
       }
@@ -150,34 +164,34 @@ export default function ExpensesPage() {
 
   const stats = useMemo(() => {
     const totalExpense = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0)
-    
+
+    // Group by category Id for more accurate stats with dynamic categories
+    const byCategory: Record<string, number> = {}
+    categories.forEach(cat => {
+      byCategory[cat.id] = expenses
+        .filter(e => e.categoryId === cat.id || (e.category && e.category.toLowerCase() === cat.name.toLowerCase()))
+        .reduce((sum, e) => sum + Number(e.amount), 0)
+    })
+
     return {
       total: totalExpense,
-      byCategory: {
-        feed: expenses.filter(e => e.category === 'feed').reduce((sum, e) => sum + Number(e.amount), 0),
-        labor: expenses.filter(e => e.category === 'labor').reduce((sum, e) => sum + Number(e.amount), 0),
-        medicine: expenses.filter(e => e.category === 'medicine').reduce((sum, e) => sum + Number(e.amount), 0),
-        equipment: expenses.filter(e => e.category === 'equipment').reduce((sum, e) => sum + Number(e.amount), 0),
-        maintenance: expenses.filter(e => e.category === 'maintenance').reduce((sum, e) => sum + Number(e.amount), 0),
-        transportation: expenses.filter(e => e.category === 'transportation').reduce((sum, e) => sum + Number(e.amount), 0),
-      }
+      byCategory
     }
-  }, [expenses])
+  }, [expenses, categories])
 
   const filteredExpenses = useMemo(() => {
     let filtered = [...expenses]
 
-    // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
       filtered = filtered.filter(
         (expense) =>
           (expense.expenseOwner && expense.expenseOwner.toLowerCase().includes(query)) ||
-          expense.description.toLowerCase().includes(query)
+          expense.description.toLowerCase().includes(query) ||
+          expense.expenseCategory?.name.toLowerCase().includes(query)
       )
     }
 
-    // Apply date range filter
     if (dateRangeStart && dateRangeEnd) {
       const start = new Date(dateRangeStart)
       const end = new Date(dateRangeEnd)
@@ -231,7 +245,7 @@ export default function ExpensesPage() {
                 <tr>
                   <td>${expense.expenseOwner || "N/A"}</td>
                   <td>${new Date(expense.expenseDate).toLocaleDateString()}</td>
-                  <td>${expense.category}</td>
+                  <td>${expense.expenseCategory?.name || expense.category}</td>
                   <td>${expense.description}</td>
                   <td>₹${Number(expense.amount).toFixed(2)}</td>
                   <td>${expense.paymentMethod.replace('_', ' ')}</td>
@@ -316,22 +330,17 @@ export default function ExpensesPage() {
                   <div className="space-y-2">
                     <Label>Category *</Label>
                     <Select
-                      value={formData.category}
-                      onValueChange={(value: any) => setFormData({ ...formData, category: value })}
+                      value={formData.categoryId}
+                      onValueChange={(value: any) => setFormData({ ...formData, categoryId: value })}
                       disabled={loading}
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="feed">Feed</SelectItem>
-                        <SelectItem value="labor">Labor</SelectItem>
-                        <SelectItem value="medicine">Medicine</SelectItem>
-                        <SelectItem value="utilities">Utilities</SelectItem>
-                        <SelectItem value="equipment">Equipment</SelectItem>
-                        <SelectItem value="maintenance">Maintenance</SelectItem>
-                        <SelectItem value="transportation">Transportation</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                        {categories.map(cat => (
+                          <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -414,7 +423,7 @@ export default function ExpensesPage() {
               <div className="text-3xl font-bold">₹{stats.total.toFixed(0)}</div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Expense By Category</CardTitle>
@@ -422,48 +431,16 @@ export default function ExpensesPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span>{getCategoryIcon('feed')}</span>
-                    <span className="text-sm">Feed</span>
+                {categories.slice(0, 6).map(cat => (
+                  <div key={cat.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span>{getCategoryIcon(cat.name.toLowerCase())}</span>
+                      <span className="text-sm">{cat.name}</span>
+                    </div>
+                    <span className="text-sm font-medium">₹{(stats.byCategory[cat.id] || 0).toFixed(0)}</span>
                   </div>
-                  <span className="text-sm font-medium">₹{stats.byCategory.feed.toFixed(0)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span>{getCategoryIcon('labor')}</span>
-                    <span className="text-sm">Labour</span>
-                  </div>
-                  <span className="text-sm font-medium">₹{stats.byCategory.labor.toFixed(0)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span>{getCategoryIcon('medicine')}</span>
-                    <span className="text-sm">Medicine</span>
-                  </div>
-                  <span className="text-sm font-medium">₹{stats.byCategory.medicine.toFixed(0)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span>{getCategoryIcon('equipment')}</span>
-                    <span className="text-sm">Equipment</span>
-                  </div>
-                  <span className="text-sm font-medium">₹{stats.byCategory.equipment.toFixed(0)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span>{getCategoryIcon('maintenance')}</span>
-                    <span className="text-sm">Maintenance</span>
-                  </div>
-                  <span className="text-sm font-medium">₹{stats.byCategory.maintenance.toFixed(0)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span>{getCategoryIcon('transportation')}</span>
-                    <span className="text-sm">Transportation</span>
-                  </div>
-                  <span className="text-sm font-medium">₹{stats.byCategory.transportation.toFixed(0)}</span>
-                </div>
+                ))}
+                {categories.length === 0 && <p className="text-sm text-muted-foreground animate-pulse">Loading categories...</p>}
               </div>
             </CardContent>
           </Card>
@@ -513,8 +490,8 @@ export default function ExpensesPage() {
               <p className="text-center py-8 text-muted-foreground">Loading...</p>
             ) : filteredExpenses.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">
-                {searchQuery || (dateRangeStart && dateRangeEnd) 
-                  ? "No expenses match your filters" 
+                {searchQuery || (dateRangeStart && dateRangeEnd)
+                  ? "No expenses match your filters"
                   : 'No expenses found. Click "Add New Expense" to get started.'}
               </p>
             ) : (
@@ -537,7 +514,7 @@ export default function ExpensesPage() {
                       <TableRow key={expense.id}>
                         <TableCell className="text-sm text-muted-foreground">{expense.expenseOwner || "-"}</TableCell>
                         <TableCell>{new Date(expense.expenseDate).toLocaleDateString()}</TableCell>
-                        <TableCell className="capitalize">{expense.category}</TableCell>
+                        <TableCell className="capitalize">{expense.expenseCategory?.name || expense.category || "-"}</TableCell>
                         <TableCell>{expense.description}</TableCell>
                         <TableCell className="font-semibold">₹{Number(expense.amount).toFixed(2)}</TableCell>
                         <TableCell className="capitalize">{expense.paymentMethod.replace('_', ' ')}</TableCell>
