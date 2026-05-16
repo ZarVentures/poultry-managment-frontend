@@ -108,9 +108,22 @@ export default function PurchasesPage() {
       let saved: ApiPurchaseOrder
       if (editingId) saved = await purchasesApi.update(editingId, payload)
       else saved = await purchasesApi.create(payload)
-      toast.success("Saved")
+      
+      // Update form with auto-generated order number if it was empty
+      if (saved?.orderNumber && !formData.orderNumber) {
+        setFormData(prev => ({ ...prev, orderNumber: saved.orderNumber }))
+        toast.success(`Saved - Bill No: ${saved.orderNumber}`)
+      } else {
+        toast.success("Saved")
+      }
+      
       if (invoiceFile && saved?.id) await purchasesApi.uploadInvoice(saved.id, invoiceFile)
-      fetchPurchases(); resetForm(); setShowDialog(false)
+      fetchPurchases()
+      // Don't reset form immediately so user can see the generated number
+      if (editingId) {
+        resetForm()
+        setShowDialog(false)
+      }
     } catch (err: any) { toast.error(err.message || "Failed to save") }
     finally { setLoading(false) }
   }
@@ -167,7 +180,12 @@ export default function PurchasesPage() {
                     <div className="space-y-2"><Label>Rate/Kg</Label><Input type="number" value={formData.ratePerKg} onChange={e => setFormData({ ...formData, ratePerKg: e.target.value })} /></div>
                   </div>
                 </Card>
-                <Button onClick={handleSave} disabled={loading}>{loading ? "Saving..." : "Save Order"}</Button>
+                <div className="flex gap-2">
+                  <Button onClick={handleSave} disabled={loading} className="flex-1">{loading ? "Saving..." : "Save Order"}</Button>
+                  {!editingId && formData.orderNumber && (
+                    <Button variant="outline" onClick={() => { resetForm(); setShowDialog(false) }} disabled={loading}>Close</Button>
+                  )}
+                </div>
               </div>
             </DialogContent>
           </Dialog>

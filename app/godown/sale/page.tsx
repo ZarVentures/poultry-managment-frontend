@@ -214,12 +214,28 @@ export default function GodownSalePage() {
           weightLoss: parseFloat(c.weightLoss) || 0,
         }))
       } as any
-      if (editingId) await godownApi.sales.update(editingId, data)
-      else await godownApi.sales.create(data)
-      toast.success(editingId ? "Sale updated" : "Sale recorded")
+      
+      let saved: any
+      if (editingId) {
+        saved = await godownApi.sales.update(editingId, data)
+        toast.success("Sale updated")
+      } else {
+        saved = await godownApi.sales.create(data)
+        // Update form with auto-generated sale number if it was empty
+        if (saved?.saleNo && !formData.saleNo) {
+          setFormData(prev => ({ ...prev, saleNo: saved.saleNo }))
+          toast.success(`Sale recorded - Sale No: ${saved.saleNo}`)
+        } else {
+          toast.success("Sale recorded")
+        }
+      }
+      
       await fetchSales()
-      resetForm()
-      setShowDialog(false)
+      // Don't reset form immediately for new sales so user can see the generated number
+      if (editingId) {
+        resetForm()
+        setShowDialog(false)
+      }
     } catch (e: any) { toast.error(e?.message || "Failed to save") }
     finally { setLoading(false) }
   }
@@ -359,7 +375,11 @@ export default function GodownSalePage() {
                 <div className="space-y-2"><Label>Total Amount</Label><Input value={formData.totalAmount} onChange={e => setFormData({ ...formData, totalAmount: e.target.value })} disabled={loading} /></div>
                 <div className="flex gap-2">
                   <Button onClick={handleSave} className="flex-1" disabled={loading}>{loading ? "Saving..." : "Save Sale"}</Button>
-                  <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}><X size={20} /></Button>
+                  {!editingId && formData.saleNo ? (
+                    <Button variant="outline" onClick={() => { resetForm(); setShowDialog(false) }} disabled={loading}>Close</Button>
+                  ) : (
+                    <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}><X size={20} /></Button>
+                  )}
                 </div>
               </div>
             </DialogContent>

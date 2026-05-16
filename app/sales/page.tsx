@@ -470,8 +470,20 @@ export default function SalesPage() {
         payments: validPayments,
       }
       let saved: ApiSale
-      if (editingId) { saved = await salesApi.update(editingId, payload); toast.success("Sale updated") }
-      else { saved = await salesApi.create(payload); toast.success("Sale created") }
+      if (editingId) { 
+        saved = await salesApi.update(editingId, payload)
+        toast.success("Sale updated")
+      } else { 
+        saved = await salesApi.create(payload)
+        // Update form with auto-generated invoice number if it was empty
+        if (saved?.invoiceNumber && !formData.invoiceNumber) {
+          setFormData(prev => ({ ...prev, invoiceNumber: saved.invoiceNumber, saleNo: saved.invoiceNumber }))
+          toast.success(`Sale created - Bill No: ${saved.invoiceNumber}`)
+        } else {
+          toast.success("Sale created")
+        }
+      }
+      
       if (saleFile && saved?.id) {
         try { setUploadingFile(true); await salesApi.uploadAttachment(saved.id, saleFile); toast.success("Attachment uploaded") }
         catch { toast.error("Sale saved but file upload failed") }
@@ -481,7 +493,12 @@ export default function SalesPage() {
         try { await purchasesApi.markCagesSold(Array.from(selectedCageIds)) }
         catch { toast.error("Sale saved but failed to update cage status") }
       }
-      await fetchSales(); resetForm(); setShowDialog(false)
+      await fetchSales()
+      // Don't reset form immediately for new sales so user can see the generated number
+      if (editingId) {
+        resetForm()
+        setShowDialog(false)
+      }
     } catch (e: any) { toast.error(e.message || "Failed to save sale") }
     finally { setLoading(false) }
   }
@@ -873,7 +890,11 @@ export default function SalesPage() {
                 </Card>
 
                 <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}>Cancel</Button>
+                  {!editingId && formData.invoiceNumber ? (
+                    <Button variant="outline" onClick={() => { resetForm(); setShowDialog(false) }} disabled={loading}>Close</Button>
+                  ) : (
+                    <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}>Cancel</Button>
+                  )}
                   <Button onClick={handleSave} disabled={loading || uploadingFile} className="bg-green-600 hover:bg-green-700">
                     {loading || uploadingFile ? "Saving..." : editingId ? "Update Sale" : "Create Sale"}
                   </Button>
