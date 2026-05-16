@@ -8,8 +8,8 @@ import { Card } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertTriangle, Download, Printer } from 'lucide-react'
-import { salesApi, retailersApi, godownApi } from '@/lib/api'
+import { AlertTriangle, Download, Printer, ChevronLeft, ChevronRight } from 'lucide-react'
+import { reportsApi } from '@/lib/api'
 
 interface RetailerOutstanding {
   id: string
@@ -25,40 +25,39 @@ const OutstandingReportPage = () => {
   const [data, setData] = useState<RetailerOutstanding[]>([])
   const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState('outstanding')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [totalItems, setTotalItems] = useState(0)
+  const [summary, setSummary] = useState<any>(null)
+
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      const res = await reportsApi.getOutstandingReport({
+        page: currentPage,
+        limit: pageSize,
+        sortBy
+      })
+      setData(res.data)
+      setTotalItems(res.total)
+      setSummary(res.summary)
+    } catch (err) {
+      console.error('Outstanding report error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    Promise.all([retailersApi.getAll(), salesApi.getAll(), godownApi.sales.getAll()])
-      .then(([retailers, regularSales, godownSales]) => {
-        const sales = [...(Array.isArray(regularSales) ? regularSales : []), ...(Array.isArray(godownSales) ? godownSales : [])]
-        const result: RetailerOutstanding[] = retailers.map(r => {
-          const retailerSales = sales.filter(s => s.retailerId === r.id)
-          const totalSales = retailerSales.reduce((s, x: any) => s + Number(x.netAmount || x.totalAmount || 0), 0)
-          const totalReceived = retailerSales.reduce((s, x) => s + Number(x.amountReceived || 0), 0)
-          return {
-            id: r.id,
-            name: r.name,
-            phone: r.phone || '',
-            totalSales,
-            totalReceived,
-            outstanding: totalSales - totalReceived,
-            salesCount: retailerSales.length,
-          }
-        })
-        setData(result)
-      })
-      .catch(err => console.error('Outstanding report error:', err))
-      .finally(() => setLoading(false))
-  }, [])
+    fetchData()
+  }, [currentPage, sortBy])
 
-  const sorted = [...data].sort((a, b) => {
-    if (sortBy === 'outstanding') return b.outstanding - a.outstanding
-    if (sortBy === 'name') return a.name.localeCompare(b.name)
-    return 0
-  })
+  const sorted = data // Already sorted by backend
 
-  const totalOutstanding = data.reduce((s, r) => s + Math.max(0, r.outstanding), 0)
-  const totalOverpaid = data.reduce((s, r) => s + Math.max(0, -r.outstanding), 0)
-  const overdueCount = data.filter(r => r.outstanding > 0).length
+  const totalOutstanding = summary?.totalOutstanding || 0
+  const totalOverpaid = summary?.totalOverpaid || 0
+  const overdueCount = summary?.overdueCount || 0
+  const totalRetailersCount = summary?.totalRetailers || 0
 
   const downloadCSV = () => {
     if (!sorted.length) return
@@ -110,7 +109,7 @@ const OutstandingReportPage = () => {
           </Card>
           <Card className="border border-green-200 bg-green-50 p-6">
             <p className="text-sm text-gray-600 font-medium">Total Retailers</p>
-            <p className="text-3xl font-bold text-green-600 mt-2">{data.length}</p>
+            <p className="text-3xl font-bold text-green-600 mt-2">{totalRetailersCount}</p>
           </Card>
         </div>
 
@@ -182,6 +181,32 @@ const OutstandingReportPage = () => {
               </TableBody>
             </Table>
           </div>
+
+          {totalItems > pageSize && (
+            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-200">
+              <div className="text-sm text-gray-500">
+                Showing <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-medium">{Math.min(currentPage * pageSize, totalItems)}</span> of <span className="font-medium">{totalItems}</span> retailers
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1 || loading}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  disabled={currentPage * pageSize >= totalItems || loading}
+                >
+                  Next <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
     </DashboardLayout>

@@ -526,7 +526,14 @@ export interface UpdateProductDto extends Partial<CreateProductDto> { }
 // FARMERS API
 // ============================================
 export const farmersApi = {
-  getAll: () => apiRequest<Farmer[]>('/farmers'),
+  getAll: (page?: number, limit?: number, search?: string, status?: string) => {
+    const params = new URLSearchParams();
+    if (page) params.append('page', String(page));
+    if (limit) params.append('limit', String(limit));
+    if (search) params.append('search', search);
+    if (status) params.append('status', status);
+    return apiRequest<any>(`/farmers?${params.toString()}`);
+  },
 
   getActive: () => apiRequest<Array<{ id: string; name: string; phone: string; address?: string }>>('/farmers/active/list'),
 
@@ -554,7 +561,13 @@ export const farmersApi = {
 // RETAILERS API
 // ============================================
 export const retailersApi = {
-  getAll: () => apiRequest<Retailer[]>('/retailers'),
+  getAll: (page?: number, limit?: number, search?: string) => {
+    const params = new URLSearchParams();
+    if (page) params.append('page', String(page));
+    if (limit) params.append('limit', String(limit));
+    if (search) params.append('search', search);
+    return apiRequest<any>(`/retailers?${params.toString()}`);
+  },
 
   getActive: () => apiRequest<Array<{ id: string; name: string; ownerName?: string; phone: string; address?: string }>>('/retailers/active/list'),
 
@@ -582,7 +595,13 @@ export const retailersApi = {
 // VEHICLES API
 // ============================================
 export const vehiclesApi = {
-  getAll: () => apiRequest<Vehicle[]>('/vehicles'),
+  getAll: (page?: number, limit?: number, search?: string) => {
+    const params = new URLSearchParams();
+    if (page) params.append('page', String(page));
+    if (limit) params.append('limit', String(limit));
+    if (search) params.append('search', search);
+    return apiRequest<any>(`/vehicles?${params.toString()}`);
+  },
 
   getActive: () => apiRequest<Array<{ id: string; vehicleNumber: string; driverName: string; phone: string }>>('/vehicles/active/list'),
 
@@ -712,7 +731,26 @@ export const inventoryApi = {
 // SALES API
 // ============================================
 export const salesApi = {
-  getAll: () => apiRequest<Sale[]>('/sales'),
+  getAll: (filters?: {
+    startDate?: string;
+    endDate?: string;
+    customer?: string;
+    productType?: string;
+    paymentStatus?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    const params = new URLSearchParams()
+    if (filters?.startDate) params.append('startDate', filters.startDate)
+    if (filters?.endDate) params.append('endDate', filters.endDate)
+    if (filters?.customer) params.append('customer', filters.customer)
+    if (filters?.productType) params.append('productType', filters.productType)
+    if (filters?.paymentStatus) params.append('paymentStatus', filters.paymentStatus)
+    if (filters?.page) params.append('page', String(filters.page))
+    if (filters?.limit) params.append('limit', String(filters.limit))
+    const qs = params.toString()
+    return apiRequest<any>(`/sales${qs ? `?${qs}` : ''}`)
+  },
 
   getInvoiceList: () => apiRequest<Array<{ id: string; invoiceNumber: string; saleDate: string; customerName: string }>>('/sales/invoices/list'),
 
@@ -814,7 +852,23 @@ export const expensesApi = {
 // PURCHASES API
 // ============================================
 export const purchasesApi = {
-  getAll: () => apiRequest<PurchaseOrder[]>('/purchases'),
+  getAll: (filters?: {
+    startDate?: string;
+    endDate?: string;
+    supplier?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    const params = new URLSearchParams();
+    if (filters?.startDate) params.append('startDate', filters.startDate);
+    if (filters?.endDate) params.append('endDate', filters.endDate);
+    if (filters?.supplier) params.append('supplier', filters.supplier);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.page) params.append('page', String(filters.page));
+    if (filters?.limit) params.append('limit', String(filters.limit));
+    return apiRequest<any>(`/purchases?${params.toString()}`);
+  },
 
   getInvoiceList: () => apiRequest<Array<{ id: string; orderNumber: string; orderDate: string; supplierName: string }>>('/purchases/invoices/list'),
 
@@ -913,7 +967,14 @@ export const settingsApi = {
 export const godownApi = {
   // Inward Entries
   inward: {
-    getAll: () => apiRequest<GodownInward[]>('/godown/inward'),
+    getAll: (page?: number, limit?: number, search?: string) => {
+      const q = new URLSearchParams();
+      if (page) q.set('page', String(page));
+      if (limit) q.set('limit', String(limit));
+      if (search) q.set('search', search);
+      const s = q.toString();
+      return apiRequest<any>(`/godown/inward${s ? `?${s}` : ''}`);
+    },
     getOne: (id: string) => apiRequest<GodownInward>(`/godown/inward/${id}`),
     create: (data: Omit<GodownInward, 'id' | 'createdAt' | 'updatedAt'>) =>
       apiRequest<GodownInward>('/godown/inward', {
@@ -933,7 +994,14 @@ export const godownApi = {
 
   // Sales
   sales: {
-    getAll: () => apiRequest<GodownSale[]>('/godown/sales'),
+    getAll: (page?: number, limit?: number, search?: string) => {
+      const q = new URLSearchParams();
+      if (page) q.set('page', String(page));
+      if (limit) q.set('limit', String(limit));
+      if (search) q.set('search', search);
+      const s = q.toString();
+      return apiRequest<any>(`/godown/sales${s ? `?${s}` : ''}`);
+    },
     getOne: (id: string) => apiRequest<GodownSale>(`/godown/sales/${id}`),
     create: (data: Omit<GodownSale, 'id' | 'createdAt' | 'updatedAt'>) =>
       apiRequest<GodownSale>('/godown/sales', {
@@ -953,7 +1021,14 @@ export const godownApi = {
 
   // Mortality
   mortality: {
-    getAll: () => apiRequest<GodownMortality[]>('/godown/mortality'),
+    getAll: (page?: number, limit?: number, search?: string) => {
+      const q = new URLSearchParams();
+      if (page) q.set('page', String(page));
+      if (limit) q.set('limit', String(limit));
+      if (search) q.set('search', search);
+      const s = q.toString();
+      return apiRequest<any>(`/godown/mortality${s ? `?${s}` : ''}`);
+    },
     getOne: (id: string) => apiRequest<GodownMortality>(`/godown/mortality/${id}`),
     create: (data: Omit<GodownMortality, 'id' | 'createdAt' | 'updatedAt'>) =>
       apiRequest<GodownMortality>('/godown/mortality', {
@@ -973,7 +1048,14 @@ export const godownApi = {
 
   // Expenses
   expenses: {
-    getAll: () => apiRequest<GodownExpense[]>('/godown/expenses'),
+    getAll: (page?: number, limit?: number, search?: string) => {
+      const q = new URLSearchParams();
+      if (page) q.set('page', String(page));
+      if (limit) q.set('limit', String(limit));
+      if (search) q.set('search', search);
+      const s = q.toString();
+      return apiRequest<any>(`/godown/expenses${s ? `?${s}` : ''}`);
+    },
     getOne: (id: string) => apiRequest<GodownExpense>(`/godown/expenses/${id}`),
     create: (data: Omit<GodownExpense, 'id' | 'createdAt' | 'updatedAt'>) =>
       apiRequest<GodownExpense>('/godown/expenses', {
@@ -1142,6 +1224,41 @@ export const permissionsApi = {
     apiRequest<{ message: string }>(`/permissions/roles/${role}`, {
       method: 'DELETE',
     }),
+};
+
+// ============================================
+// REPORTS API
+// ============================================
+export const reportsApi = {
+  getOutstandingReport: (filters?: { page?: number; limit?: number; sortBy?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.page) params.append('page', String(filters.page));
+    if (filters?.limit) params.append('limit', String(filters.limit));
+    if (filters?.sortBy) params.append('sortBy', filters.sortBy || 'outstanding');
+    return apiRequest<{
+      data: any[];
+      total: number;
+      page: number;
+      limit: number;
+      summary: any;
+    }>(`/reports/outstanding?${params.toString()}`);
+  },
+
+  getCollectionReport: (filters?: { startDate?: string; endDate?: string; mode?: string; page?: number; limit?: number }) => {
+    const params = new URLSearchParams();
+    if (filters?.startDate) params.append('startDate', filters.startDate);
+    if (filters?.endDate) params.append('endDate', filters.endDate);
+    if (filters?.mode) params.append('mode', filters.mode);
+    if (filters?.page) params.append('page', String(filters.page));
+    if (filters?.limit) params.append('limit', String(filters.limit));
+    return apiRequest<{
+      data: any[];
+      total: number;
+      page: number;
+      limit: number;
+      summary: any;
+    }>(`/reports/collection?${params.toString()}`);
+  },
 };
 
 

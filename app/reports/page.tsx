@@ -21,7 +21,7 @@ export default function ReportsPage() {
   const [endDate, setEndDate] = useState<string>("")
   const [loading, setLoading] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('table')
-  
+
   const [profitLossData, setProfitLossData] = useState<any>(null)
   const [expenseData, setExpenseData] = useState<any>(null)
   const [farmWiseData, setFarmWiseData] = useState<any>(null)
@@ -29,6 +29,7 @@ export default function ReportsPage() {
   const [purchaseData, setPurchaseData] = useState<any>(null)
   const [salesData, setSalesData] = useState<any>(null)
   const [mortalityData, setMortalityData] = useState<any>(null)
+  const [outstandingData, setOutstandingData] = useState<any>(null)
 
   const fetchReport = async (endpoint: string, setter: Function) => {
     try {
@@ -37,11 +38,11 @@ export default function ReportsPage() {
       const params = new URLSearchParams()
       if (startDate) params.append('startDate', startDate)
       if (endDate) params.append('endDate', endDate)
-      
+
       const response = await fetch(`${getApiBaseUrl()}/reports/${endpoint}?${params}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      
+
       if (!response.ok) throw new Error('Failed to fetch')
       const data = await response.json()
       setter(data)
@@ -74,6 +75,7 @@ export default function ReportsPage() {
     fetchReport('purchases', setPurchaseData)
     fetchReport('sales', setSalesData)
     fetchReport('mortality', setMortalityData)
+    fetchReport('outstanding', setOutstandingData)
   }
 
   return (
@@ -122,6 +124,7 @@ export default function ReportsPage() {
             <TabsTrigger value="expenses">Expenses</TabsTrigger>
             <TabsTrigger value="farm">Farm-wise</TabsTrigger>
             <TabsTrigger value="customer">Customer-wise</TabsTrigger>
+            <TabsTrigger value="outstanding">Outstanding</TabsTrigger>
           </TabsList>
 
           {/* Profit & Loss */}
@@ -190,7 +193,7 @@ export default function ReportsPage() {
                             { name: 'Cost', value: profitLossData.summary.totalCost },
                             { name: 'Expenses', value: profitLossData.summary.totalExpenses },
                           ]} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                            {[0,1,2].map((_, index) => <Cell key={index} fill={COLORS[index]} />)}
+                            {[0, 1, 2].map((_, index) => <Cell key={index} fill={COLORS[index]} />)}
                           </Pie>
                           <Tooltip />
                           <Legend />
@@ -254,11 +257,10 @@ export default function ReportsPage() {
                               <TableCell>{purchase.supplierName}</TableCell>
                               <TableCell>₹{parseFloat(purchase.netAmount).toFixed(2)}</TableCell>
                               <TableCell>
-                                <span className={`px-2 py-1 rounded text-xs ${
-                                  purchase.purchasePaymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                                  purchase.purchasePaymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-red-100 text-red-800'
-                                }`}>
+                                <span className={`px-2 py-1 rounded text-xs ${purchase.purchasePaymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                                    purchase.purchasePaymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-red-100 text-red-800'
+                                  }`}>
                                   {purchase.purchasePaymentStatus}
                                 </span>
                               </TableCell>
@@ -290,7 +292,7 @@ export default function ReportsPage() {
                             { name: 'Partial', value: purchaseData.summary.totalPartial },
                             { name: 'Pending', value: purchaseData.summary.totalPending },
                           ]} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                            {[0,1,2].map((_, index) => <Cell key={index} fill={COLORS[index]} />)}
+                            {[0, 1, 2].map((_, index) => <Cell key={index} fill={COLORS[index]} />)}
                           </Pie>
                           <Tooltip />
                           <Legend />
@@ -354,11 +356,10 @@ export default function ReportsPage() {
                               <TableCell>{sale.customerName}</TableCell>
                               <TableCell>₹{parseFloat(sale.netAmount).toFixed(2)}</TableCell>
                               <TableCell>
-                                <span className={`px-2 py-1 rounded text-xs ${
-                                  sale.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                                  sale.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-red-100 text-red-800'
-                                }`}>
+                                <span className={`px-2 py-1 rounded text-xs ${sale.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                                    sale.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-red-100 text-red-800'
+                                  }`}>
                                   {sale.paymentStatus}
                                 </span>
                               </TableCell>
@@ -390,7 +391,7 @@ export default function ReportsPage() {
                             { name: 'Partial', value: salesData.summary.totalPartial },
                             { name: 'Pending', value: salesData.summary.totalPending },
                           ]} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                            {[0,1,2].map((_, index) => <Cell key={index} fill={COLORS[index]} />)}
+                            {[0, 1, 2].map((_, index) => <Cell key={index} fill={COLORS[index]} />)}
                           </Pie>
                           <Tooltip />
                           <Legend />
@@ -676,6 +677,65 @@ export default function ReportsPage() {
                           <Legend />
                         </PieChart>
                       </ResponsiveContainer>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Outstanding */}
+          <TabsContent value="outstanding">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between">
+                  <CardTitle>Retailer Outstanding</CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => outstandingData && downloadCSV(outstandingData.data, 'outstanding')}>
+                    <Download className="mr-2" size={16} />CSV
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!outstandingData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="p-4 border rounded bg-red-50">
+                        <p className="text-sm text-muted-foreground">Total Outstanding</p>
+                        <p className="text-2xl font-bold text-red-600">₹{outstandingData.summary.totalOutstanding.toLocaleString('en-IN')}</p>
+                      </div>
+                      <div className="p-4 border rounded bg-blue-50">
+                        <p className="text-sm text-muted-foreground">Overpaid</p>
+                        <p className="text-2xl font-bold text-blue-600">₹{outstandingData.summary.totalOverpaid.toLocaleString('en-IN')}</p>
+                      </div>
+                      <div className="p-4 border rounded bg-green-50">
+                        <p className="text-sm text-muted-foreground">Total Retailers</p>
+                        <p className="text-2xl font-bold text-green-600">{outstandingData.summary.totalRetailers}</p>
+                      </div>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Retailer</TableHead>
+                          <TableHead className="text-right">Total Sales</TableHead>
+                          <TableHead className="text-right">Received</TableHead>
+                          <TableHead className="text-right font-bold">Outstanding</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {outstandingData.data.slice(0, 20).map((r: any, i: number) => (
+                          <TableRow key={i}>
+                            <TableCell className="font-medium">{r.name}</TableCell>
+                            <TableCell className="text-right">₹{r.totalSales.toLocaleString('en-IN')}</TableCell>
+                            <TableCell className="text-right text-green-600">₹{r.totalReceived.toLocaleString('en-IN')}</TableCell>
+                            <TableCell className="text-right font-bold text-red-600">₹{r.outstanding.toLocaleString('en-IN')}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    {outstandingData.total > 20 && (
+                      <p className="text-center text-sm text-muted-foreground py-2 border-t">
+                        Showing top 20 retailers. View full report in Billing {'>'} Reports {'>'} Outstanding.
+                      </p>
                     )}
                   </div>
                 )}

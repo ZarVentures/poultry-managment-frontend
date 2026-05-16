@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Package, Bird, FileText, Calendar, AlertCircle, Percent } from "lucide-react"
+import { Package, Bird, FileText, Calendar, AlertCircle, Percent, ChevronLeft, ChevronRight } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { godownApi, settingsApi } from "@/lib/api"
@@ -16,294 +16,135 @@ export default function InventoryPage() {
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [inwardEntries, setInwardEntries] = useState<any[]>([])
-  const [sales, setSales] = useState<any[]>([])
-  const [mortalities, setMortalities] = useState<any[]>([])
+  const [summary, setSummary] = useState<any>(null)
   const [capacity, setCapacity] = useState(DEFAULT_CAPACITY)
   const [capacityInput, setCapacityInput] = useState("")
 
+  // For the Invoice-wise table pagination
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(15)
+  const [totalInwardItems, setTotalInwardItems] = useState(0)
+
   useEffect(() => {
     setMounted(true)
-    fetchAllData()
+    fetchOverviewData()
   }, [])
 
-  const fetchAllData = async () => {
+  useEffect(() => {
+    if (mounted) fetchInwardData()
+  }, [mounted, currentPage])
+
+  const fetchOverviewData = async () => {
+    try {
+      const summaryData = await godownApi.getSummary()
+      setSummary(summaryData)
+
+      const capacitySetting = await settingsApi.getOne(CAPACITY_SETTING_KEY)
+      const cap = parseInt(capacitySetting.value, 10)
+      if (cap > 0) { setCapacity(cap); setCapacityInput(String(cap)) }
+      else setCapacityInput(String(DEFAULT_CAPACITY))
+    } catch {
+      setCapacityInput(String(DEFAULT_CAPACITY))
+    }
+  }
+
+  const fetchInwardData = async () => {
     try {
       setLoading(true)
-      
-      // Fetch godown data in parallel
-      const [inwardData, salesData, mortalityData] = await Promise.all([
-        godownApi.inward.getAll(),
-        godownApi.sales.getAll(),
-        godownApi.mortality.getAll(),
-      ])
-      
-      setInwardEntries(Array.isArray(inwardData) ? inwardData : [])
-      setSales(Array.isArray(salesData) ? salesData : [])
-      setMortalities(Array.isArray(mortalityData) ? mortalityData : [])
-      
-      // Fetch capacity from settings
-      try {
-        const capacitySetting = await settingsApi.getOne(CAPACITY_SETTING_KEY)
-        const cap = Number.parseInt(capacitySetting.value, 10)
-        if (!Number.isNaN(cap) && cap > 0) {
-          setCapacity(cap)
-          setCapacityInput(String(cap))
-        } else {
-          setCapacityInput(String(DEFAULT_CAPACITY))
-        }
-      } catch {
-        setCapacityInput(String(DEFAULT_CAPACITY))
+      const res = await godownApi.inward.getAll(currentPage, pageSize)
+      if (res && res.data) {
+        setInwardEntries(res.data)
+        setTotalInwardItems(res.total)
+      } else {
+        setInwardEntries(Array.isArray(res) ? res : [])
+        setTotalInwardItems(Array.isArray(res) ? res.length : 0)
       }
-    } catch (error: any) {
-      console.error("Failed to fetch data:", error)
-      toast.error("Failed to load godown data")
-    } finally {
-      setLoading(false)
-    }
+    } catch { toast.error("Failed to load invoice data") }
+    finally { setLoading(false) }
   }
 
   const handleSaveCapacity = async () => {
-    const n = Number.parseInt(capacityInput, 10)
-    if (Number.isNaN(n) || n < 0) {
-      toast.error("Please enter a valid capacity")
-      return
-    }
-
+    const n = parseInt(capacityInput, 10)
+    if (isNaN(n) || n < 0) return toast.error("Invalid capacity")
     try {
       setLoading(true)
-      await settingsApi.createOrUpdate({
-        key: CAPACITY_SETTING_KEY,
-        value: String(n),
-        category: "godown",
-        description: "Maximum godown capacity in number of birds"
-      })
-      setCapacity(n)
-      toast.success("Godown capacity updated")
-    } catch (error: any) {
-      console.error("Failed to save capacity:", error)
-      toast.error("Failed to update capacity")
-    } finally {
-      setLoading(false)
-    }
+      await settingsApi.createOrUpdate({ key: CAPACITY_SETTING_KEY, value: String(n), category: "godown" })
+      setCapacity(n); toast.success("Updated")
+    } catch { toast.error("Failed") }
+    finally { setLoading(false) }
   }
 
-  const totalInwardBirds = useMemo(
-    () => inwardEntries.reduce((sum, e) => sum + (Number(e.numberOfBirds) || 0), 0),
-    [inwardEntries]
-  )
-
-  const totalSoldBirds = useMemo(
-    () => sales.reduce((sum, s) => sum + (Number(s.numberOfBirds) || 0), 0),
-    [sales]
-  )
-
-  const totalMortality = useMemo(
-    () => mortalities.reduce((sum, m) => sum + (Number(m.numberOfBirdsDied) || 0), 0),
-    [mortalities]
-  )
-
-  const totalInwardWeight = useMemo(
-    () => inwardEntries.reduce((sum, e) => sum + (Number(e.totalWeight) || 0), 0),
-    [inwardEntries]
-  )
-
-  const totalSoldWeight = useMemo(
-    () => sales.reduce((sum, s) => sum + (Number(s.totalWeight) || 0), 0),
-    [sales]
-  )
-
-  const totalBirdsAvailable = useMemo(
-    () => Math.max(0, totalInwardBirds - totalSoldBirds - totalMortality),
-    [totalInwardBirds, totalSoldBirds, totalMortality]
-  )
-
-  const stockByInvoice = useMemo(() => {
-    // Birds received per invoice
-    const inwardMap: Record<string, { birds: number; weight: number }> = {}
-    inwardEntries.forEach((e) => {
-      const inv = e.purchaseInvoiceNo?.trim() || "—"
-      if (!inwardMap[inv]) inwardMap[inv] = { birds: 0, weight: 0 }
-      inwardMap[inv].birds += Number(e.numberOfBirds) || 0
-      inwardMap[inv].weight += Number(e.totalWeight) || 0
-    })
-    // Birds sold per invoice
-    const soldMap: Record<string, number> = {}
-    sales.forEach((s) => {
-      const inv = s.purchaseInvoiceNo?.trim() || s.invoiceNumber?.trim() || "—"
-      soldMap[inv] = (soldMap[inv] || 0) + (Number(s.numberOfBirds) || 0)
-    })
-    return Object.entries(inwardMap)
-      .map(([inv, data]) => ({
-        invoiceNo: inv,
-        inwardBirds: data.birds,
-        inwardWeight: data.weight,
-        soldBirds: soldMap[inv] || 0,
-        remaining: Math.max(0, data.birds - (soldMap[inv] || 0)),
-      }))
-      .sort((a, b) => b.remaining - a.remaining)
-  }, [inwardEntries, sales])
-
-  const ageOfBirdsDays = useMemo(() => {
-    if (inwardEntries.length === 0) return null
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    let totalDays = 0
-    let count = 0
-    inwardEntries.forEach((e) => {
-      if (e.entryDate) {
-        const d = new Date(e.entryDate)
-        d.setHours(0, 0, 0, 0)
-        totalDays += Math.floor((today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24))
-        count += 1
-      }
-    })
-    if (count === 0) return null
-    return Math.round(totalDays / count)
-  }, [inwardEntries])
-
-  const capacityUtilizationPercent = useMemo(() => {
-    if (capacity <= 0) return 0
-    return Math.min(100, Math.round((totalBirdsAvailable / capacity) * 100))
-  }, [totalBirdsAvailable, capacity])
+  const totalBirdsAvailable = summary?.currentStock || 0
+  const capacityUtilizationPercent = capacity > 0 ? Math.min(100, Math.round((totalBirdsAvailable / capacity) * 100)) : 0
 
   if (!mounted) return null
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Godown Overview</h1>
-          <p className="text-muted-foreground">Current status and capacity overview</p>
+        <div><h1 className="text-3xl font-bold">Godown Overview</h1><p className="text-muted-foreground">Current status and capacity</p></div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <Card className="p-4">
+            <p className="text-sm font-medium text-muted-foreground">Capacity</p>
+            <div className="text-2xl font-bold">{capacity}</div>
+            <div className="flex gap-1 mt-2">
+              <Input type="number" size={1} value={capacityInput} onChange={e => setCapacityInput(e.target.value)} className="h-7 text-xs" />
+              <Button size="sm" className="h-7 text-xs" onClick={handleSaveCapacity}>Set</Button>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <p className="text-sm font-medium text-muted-foreground">Available Birds</p>
+            <div className="text-2xl font-bold">{totalBirdsAvailable}</div>
+            <p className="text-xs text-muted-foreground">In Stock</p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-sm font-medium text-muted-foreground">Utilization</p>
+            <div className="text-2xl font-bold">{capacityUtilizationPercent}%</div>
+            <div className="w-full bg-gray-200 h-1.5 rounded-full mt-2"><div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${capacityUtilizationPercent}%` }} /></div>
+          </Card>
+          <Card className="p-4">
+            <p className="text-sm font-medium text-muted-foreground">Total Inward</p>
+            <div className="text-2xl font-bold">{summary?.totalInward || 0}</div>
+          </Card>
+          <Card className="p-4">
+            <p className="text-sm font-medium text-muted-foreground">Total Sold</p>
+            <div className="text-2xl font-bold">{summary?.totalSold || 0}</div>
+          </Card>
         </div>
 
-        {loading && inwardEntries.length === 0 ? (
-          <p className="text-center py-8 text-muted-foreground">Loading...</p>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Godown Capacity</CardTitle>
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{capacity.toLocaleString()}</div>
-                  <div className="flex gap-2 mt-2">
-                    <Input
-                      type="number"
-                      min={0}
-                      value={capacityInput}
-                      onChange={(e) => setCapacityInput(e.target.value)}
-                      placeholder="Max birds"
-                      className="h-8 text-sm"
-                      disabled={loading}
-                    />
-                    <Button size="sm" className="h-8" onClick={handleSaveCapacity} disabled={loading}>
-                      {loading ? "..." : "Set"}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Birds Available</CardTitle>
-                  <Bird className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{totalBirdsAvailable.toLocaleString()}</div>
-                  <p className="text-xs text-muted-foreground">
-                    In: {totalInwardBirds.toLocaleString()} | Sold: {totalSoldBirds.toLocaleString()} | Dead: {totalMortality.toLocaleString()}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Mortality</CardTitle>
-                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{totalMortality.toLocaleString()}</div>
-                  <p className="text-xs text-muted-foreground">Total birds died (godown mortality)</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Age of Birds (Days in Godown)</CardTitle>
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {ageOfBirdsDays !== null ? `${ageOfBirdsDays} days` : "—"}
-                  </div>
-                  <p className="text-xs text-muted-foreground">Average days since inward entry</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Capacity Utilization</CardTitle>
-                  <Percent className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{capacityUtilizationPercent}%</div>
-                  <p className="text-xs text-muted-foreground">
-                    {totalBirdsAvailable.toLocaleString()} / {capacity.toLocaleString()} birds
-                  </p>
-                </CardContent>
-              </Card>
+        <Card>
+          <CardHeader><CardTitle className="flex items-center gap-2"><FileText size={20} />Purchase Invoice Stock</CardTitle></CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Invoice No</TableHead><TableHead>Date</TableHead><TableHead>Birds</TableHead><TableHead>Weight</TableHead><TableHead>Supplier</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {inwardEntries.map(e => (
+                  <TableRow key={e.id}>
+                    <TableCell className="font-bold">{e.purchaseInvoiceNo}</TableCell>
+                    <TableCell>{new Date(e.entryDate).toLocaleDateString()}</TableCell>
+                    <TableCell>{e.numberOfBirds}</TableCell>
+                    <TableCell>{e.totalWeight}kg</TableCell>
+                    <TableCell>{e.supplierName || "-"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+          {totalInwardItems > pageSize && (
+            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t">
+              <div className="text-sm text-gray-500">Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalInwardItems)} of {totalInwardItems}</div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1 || loading}><ChevronLeft size={16} /></Button>
+                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage * pageSize >= totalInwardItems || loading}><ChevronRight size={16} /></Button>
+              </div>
             </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Purchase Bill No. wise stock
-                </CardTitle>
-                <CardDescription>Birds received per purchase bill (from godown inward entries)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {stockByInvoice.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4">No inward entries yet. Add entries from Godown Inward Entry.</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b bg-gray-50">
-                          <th className="text-left p-2 font-semibold">Purchase Bill No.</th>
-                          <th className="text-right p-2 font-semibold">Inward Birds</th>
-                          <th className="text-right p-2 font-semibold">Inward Wt (kg)</th>
-                          <th className="text-right p-2 font-semibold">Sold Birds</th>
-                          <th className="text-right p-2 font-semibold text-green-700">Remaining</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {stockByInvoice.map(({ invoiceNo, inwardBirds, inwardWeight, soldBirds, remaining }) => (
-                          <tr key={invoiceNo} className="border-b hover:bg-gray-50">
-                            <td className="p-2 font-medium">{invoiceNo}</td>
-                            <td className="p-2 text-right">{inwardBirds.toLocaleString()}</td>
-                            <td className="p-2 text-right">{inwardWeight.toFixed(2)}</td>
-                            <td className="p-2 text-right text-red-600">{soldBirds.toLocaleString()}</td>
-                            <td className="p-2 text-right font-bold text-green-700">{remaining.toLocaleString()}</td>
-                          </tr>
-                        ))}
-                        <tr className="border-t-2 bg-gray-100 font-semibold">
-                          <td className="p-2">TOTAL</td>
-                          <td className="p-2 text-right">{totalInwardBirds.toLocaleString()}</td>
-                          <td className="p-2 text-right">{totalInwardWeight.toFixed(2)}</td>
-                          <td className="p-2 text-right text-red-600">{totalSoldBirds.toLocaleString()}</td>
-                          <td className="p-2 text-right text-green-700">{totalBirdsAvailable.toLocaleString()}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </>
-        )}
+          )}
+        </Card>
       </div>
     </DashboardLayout>
   )

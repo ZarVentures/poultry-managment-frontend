@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Download, Printer, Search } from 'lucide-react'
+import { Download, Printer, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { purchasesApi } from '@/lib/api'
 
 const PendingPurchasesPage = () => {
@@ -28,36 +28,48 @@ const PendingPurchasesPage = () => {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const [pageSize] = useState(20)
+  const [summaryStats, setSummaryStats] = useState<any>(null)
+
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      const res = await purchasesApi.getAll({
+        supplier: searchQuery,
+        status: statusFilter === 'all' ? 'pending_or_partial' : statusFilter,
+        page: currentPage,
+        limit: pageSize
+      })
+
+      if (res && res.data) {
+        setPurchases(res.data)
+        setTotalItems(res.total)
+        setSummaryStats(res.summary)
+      } else {
+        setPurchases([])
+        setTotalItems(0)
+        setSummaryStats(null)
+      }
+    } catch (err) {
+      console.error('Failed to load pending purchases:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    purchasesApi.getAll()
-      .then((data) => {
-        // Only show pending or partial payment status
-        const pending = data.filter(
-          (p) => p.purchasePaymentStatus === 'pending' || p.purchasePaymentStatus === 'partial'
-        )
-        setPurchases(pending)
-      })
-      .catch((err) => console.error('Failed to load pending purchases:', err))
-      .finally(() => setLoading(false))
-  }, [])
+    fetchData()
+  }, [searchQuery, statusFilter, currentPage])
 
-  const filteredPurchases = purchases.filter((p) => {
-    const matchesSearch =
-      searchQuery === '' ||
-      (p.orderNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.supplierName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.farmerMobile || '').includes(searchQuery)
-    const matchesStatus = statusFilter === 'all' || p.purchasePaymentStatus === statusFilter
-    return matchesSearch && matchesStatus
-  })
+  const filteredPurchases = purchases
 
   const stats = {
-    totalPendingPurchases: filteredPurchases.length,
-    totalOutstandingAmount: filteredPurchases.reduce((sum, p) => sum + Number(p.balanceAmount || 0), 0),
-    totalAdvancePaid: filteredPurchases.reduce((sum, p) => sum + Number(p.totalPaymentMade || 0), 0),
-    pendingCount: filteredPurchases.filter((p) => p.purchasePaymentStatus === 'pending').length,
-    partialCount: filteredPurchases.filter((p) => p.purchasePaymentStatus === 'partial').length,
+    totalPendingPurchases: totalItems,
+    totalOutstandingAmount: summaryStats?.totalBalance || 0,
+    totalAdvancePaid: summaryStats?.totalPaid || 0,
+    totalWeight: summaryStats?.totalWeight || 0,
   }
 
   const getStatusColor = (status?: string) => {
@@ -157,12 +169,12 @@ const PendingPurchasesPage = () => {
             <p className="text-2xl font-bold text-blue-600 mt-2">₹{stats.totalAdvancePaid.toLocaleString('en-IN')}</p>
           </Card>
           <Card className="border border-purple-200 bg-purple-50 p-6">
-            <p className="text-sm text-gray-600 font-medium">Fully Pending</p>
-            <p className="text-3xl font-bold text-purple-600 mt-2">{stats.pendingCount}</p>
+            <p className="text-sm text-gray-600 font-medium">Total Weight</p>
+            <p className="text-3xl font-bold text-purple-600 mt-2">{stats.totalWeight.toLocaleString('en-IN')} kg</p>
           </Card>
           <Card className="border border-yellow-200 bg-yellow-50 p-6">
-            <p className="text-sm text-gray-600 font-medium">Partially Paid</p>
-            <p className="text-3xl font-bold text-yellow-600 mt-2">{stats.partialCount}</p>
+            <p className="text-sm text-gray-600 font-medium">Total Volume</p>
+            <p className="text-3xl font-bold text-yellow-600 mt-2">₹{summaryStats?.totalAmount?.toLocaleString('en-IN') || 0}</p>
           </Card>
         </div>
 
@@ -213,6 +225,32 @@ const PendingPurchasesPage = () => {
               </Table>
             )}
           </CardContent>
+
+          {totalItems > pageSize && (
+            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-200">
+              <div className="text-sm text-gray-500">
+                Showing <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-medium">{Math.min(currentPage * pageSize, totalItems)}</span> of <span className="font-medium">{totalItems}</span> orders
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1 || loading}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  disabled={currentPage * pageSize >= totalItems || loading}
+                >
+                  Next <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
     </DashboardLayout>

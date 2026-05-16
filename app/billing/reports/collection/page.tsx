@@ -7,62 +7,48 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Download, Printer, Calendar, Banknote, CreditCard, Smartphone, CheckCircle } from 'lucide-react'
-import { salesApi } from '@/lib/api'
+import { Download, Printer, Calendar, Banknote, CreditCard, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { reportsApi } from '@/lib/api'
 
 const CollectionReportPage = () => {
-  const [allSales, setAllSales] = useState<any[]>([])
+  const [collections, setCollections] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [dateFrom, setDateFrom] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0] })
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0])
   const [modeFilter, setModeFilter] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const [summary, setSummary] = useState<any>(null)
+  const pageSize = 20
+
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      const res = await reportsApi.getCollectionReport({
+        startDate: dateFrom,
+        endDate: dateTo,
+        mode: modeFilter,
+        page: currentPage,
+        limit: pageSize
+      })
+      setCollections(res.data)
+      setTotalItems(res.total)
+      setSummary(res.summary)
+    } catch (err) {
+      console.error('Collection report error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    salesApi.getAll()
-      .then(data => setAllSales(data))
-      .catch(err => console.error('Collection report error:', err))
-      .finally(() => setLoading(false))
-  }, [])
+    fetchData()
+  }, [dateFrom, dateTo, modeFilter, currentPage])
 
-  // Build collection entries from sales payments
-  const collectionEntries = allSales.flatMap(sale => {
-    if (!sale.payments || sale.payments.length === 0) {
-      // If no payment breakdown but amountReceived > 0, show as single entry
-      if (Number(sale.amountReceived) > 0) {
-        return [{
-          id: `${sale.id}-direct`,
-          saleId: sale.id,
-          invoiceNumber: sale.invoiceNumber,
-          customerName: sale.customerName,
-          date: sale.saleDate,
-          mode: 'Cash',
-          amount: Number(sale.amountReceived),
-          status: sale.paymentStatus === 'paid' ? 'Completed' : 'Partial',
-        }]
-      }
-      return []
-    }
-    return sale.payments.map((p: any) => ({
-      id: `${sale.id}-${p.id}`,
-      saleId: sale.id,
-      invoiceNumber: sale.invoiceNumber,
-      customerName: sale.customerName,
-      date: sale.saleDate,
-      mode: p.paymentMode || 'Cash',
-      amount: Number(p.amount),
-      status: 'Completed',
-    }))
-  })
+  const filtered = collections
 
-  const filtered = collectionEntries.filter(e => {
-    const inRange = new Date(e.date) >= new Date(dateFrom) && new Date(e.date) <= new Date(dateTo)
-    const matchesMode = modeFilter === 'all' || e.mode.toLowerCase() === modeFilter.toLowerCase()
-    return inRange && matchesMode
-  })
-
-  const totalCollected = filtered.reduce((s, e) => s + e.amount, 0)
-
-  const modeBreakdown = (mode: string) => filtered.filter(e => e.mode.toLowerCase() === mode.toLowerCase()).reduce((s, e) => s + e.amount, 0)
+  const totalCollected = summary?.totalAmount || 0
+  const modeBreakdown = (mode: string) => summary?.modeTotals?.[mode.toLowerCase()] || 0
 
   const downloadCSV = () => {
     if (!filtered.length) { alert('No data to export.'); return }
@@ -162,11 +148,11 @@ const CollectionReportPage = () => {
                   <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500">No collections found for the selected period</TableCell></TableRow>
                 ) : filtered.map(e => (
                   <TableRow key={e.id} className="border-b border-gray-200">
-                    <TableCell className="font-medium">{new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN')}</TableCell>
+                    <TableCell className="font-medium">{new Date(e.created_at).toLocaleDateString('en-IN')}</TableCell>
                     <TableCell className="font-mono text-sm">{e.invoiceNumber}</TableCell>
                     <TableCell className="font-semibold">{e.customerName}</TableCell>
                     <TableCell>
-                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getModeColor(e.mode)}`}>{e.mode}</span>
+                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getModeColor(e.payment_mode || e.mode)}`}>{e.payment_mode || e.mode}</span>
                     </TableCell>
                     <TableCell className="text-right font-bold">₹{e.amount.toLocaleString('en-IN')}</TableCell>
                     <TableCell className="text-center">
@@ -177,6 +163,32 @@ const CollectionReportPage = () => {
               </TableBody>
             </Table>
           </div>
+
+          {totalItems > pageSize && (
+            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-200">
+              <div className="text-sm text-gray-500">
+                Showing <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-medium">{Math.min(currentPage * pageSize, totalItems)}</span> of <span className="font-medium">{totalItems}</span> transactions
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1 || loading}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  disabled={currentPage * pageSize >= totalItems || loading}
+                >
+                  Next <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
     </DashboardLayout>

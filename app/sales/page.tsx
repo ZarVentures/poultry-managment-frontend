@@ -51,6 +51,12 @@ export default function SalesPage() {
   const [uploadingFile, setUploadingFile] = useState(false)
   const saleFileRef = useRef<HTMLInputElement>(null)
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalRecords, setTotalRecords] = useState(0)
+  const [serverStats, setServerStats] = useState<any>(null)
+
   const [formData, setFormData] = useState({
     invoiceNumber: "",
     saleNo: "",
@@ -86,13 +92,37 @@ export default function SalesPage() {
       try {
         const user = JSON.parse(userData)
         setUserRole(user.role || "")
-      } catch {}
+      } catch { }
     }
-    fetchSales(); fetchRetailers(); fetchVehicles(); fetchPurchaseBills()
+    fetchRetailers(); fetchVehicles(); fetchPurchaseBills()
   }, [])
 
+  useEffect(() => {
+    fetchSales()
+  }, [currentPage, pageSize, searchQuery, dateRangeStart, dateRangeEnd, filterPaymentStatus])
+
   const fetchSales = async () => {
-    try { setLoading(true); const d = await salesApi.getAll(); setSales(Array.isArray(d) ? d : []) }
+    try {
+      setLoading(true)
+      const res = await salesApi.getAll({
+        page: currentPage,
+        limit: pageSize,
+        customer: searchQuery || undefined,
+        startDate: dateRangeStart?.toISOString().split('T')[0],
+        endDate: dateRangeEnd?.toISOString().split('T')[0],
+        paymentStatus: filterPaymentStatus || undefined,
+      })
+
+      if (res && res.data) {
+        setSales(res.data)
+        setTotalRecords(res.total)
+        setServerStats(res.summary)
+      } else {
+        setSales(Array.isArray(res) ? res : [])
+        setTotalRecords(Array.isArray(res) ? res.length : 0)
+        setServerStats(null)
+      }
+    }
     catch { setSales([]); toast.error("Failed to load sales") }
     finally { setLoading(false) }
   }
@@ -365,7 +395,7 @@ export default function SalesPage() {
       setEditingId(full.id)
       setIsEditMode(false)
       setShowDialog(true)
-      
+
       const retailer = retailers.find(r => r.id === full.retailerId)
       setFormData({
         invoiceNumber: full.invoiceNumber || "",
@@ -393,9 +423,9 @@ export default function SalesPage() {
         amountReceived: String(full.amountReceived || ""),
         notes: full.notes || "",
       })
-      
-      setPayments(full.payments && full.payments.length > 0 
-        ? full.payments.map((p: any) => ({ ...p, id: p.id || crypto.randomUUID() })) 
+
+      setPayments(full.payments && full.payments.length > 0
+        ? full.payments.map((p: any) => ({ ...p, id: p.id || crypto.randomUUID() }))
         : [emptyPayment()])
       setShowDialog(true)
     } catch (error) {
@@ -462,37 +492,28 @@ export default function SalesPage() {
     finally { setLoading(false) }
   }
 
-  const stats = useMemo(() => ({
-    count: sales.length,
-    totalBirds: sales.reduce((s, x) => s + (parseFloat(String(x.quantity || 0))), 0),
-    totalRevenue: sales.reduce((s, x) => s + (parseFloat(String(x.netAmount || x.totalAmount || 0))), 0),
-    totalReceived: sales.reduce((s, x) => s + (parseFloat(String(x.amountReceived || 0))), 0),
-    totalPending: sales.reduce((s, x) => s + Math.max(0, parseFloat(String(x.netAmount || x.totalAmount || 0)) - parseFloat(String(x.amountReceived || 0))), 0),
-  }), [sales])
+  const stats = useMemo(() => {
+    if (serverStats) {
+      return {
+        count: totalRecords,
+        totalBirds: serverStats.totalBirds,
+        totalRevenue: serverStats.totalRevenue,
+        totalReceived: serverStats.totalReceived,
+        totalPending: serverStats.totalPending,
+      }
+    }
+    return {
+      count: sales.length,
+      totalBirds: sales.reduce((s, x) => s + (parseFloat(String(x.quantity || 0))), 0),
+      totalRevenue: sales.reduce((s, x) => s + (parseFloat(String(x.netAmount || x.totalAmount || 0))), 0),
+      totalReceived: sales.reduce((s, x) => s + (parseFloat(String(x.amountReceived || 0))), 0),
+      totalPending: sales.reduce((s, x) => s + Math.max(0, parseFloat(String(x.netAmount || x.totalAmount || 0)) - parseFloat(String(x.amountReceived || 0))), 0),
+    }
+  }, [sales, serverStats, totalRecords])
 
   const filtered = useMemo(() => {
-    let f = [...sales]
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      f = f.filter(s => s.invoiceNumber.toLowerCase().includes(q) || s.customerName.toLowerCase().includes(q) || (s as any).saleNo?.toLowerCase().includes(q))
-    }
-    if (dateRangeStart && dateRangeEnd) {
-      const s = new Date(dateRangeStart); s.setHours(0, 0, 0, 0)
-      const e = new Date(dateRangeEnd); e.setHours(23, 59, 59, 999)
-      f = f.filter(x => { const d = new Date(x.saleDate); return d >= s && d <= e })
-    }
-    if (filterRetailer) f = f.filter(s => s.retailerId === filterRetailer)
-    if (filterPaymentStatus) f = f.filter(s => s.paymentStatus === filterPaymentStatus)
-    if (filterSaleMode) f = f.filter(s => s.saleMode === filterSaleMode)
-    if (filterLocation.trim()) {
-      const loc = filterLocation.toLowerCase().trim()
-      f = f.filter(s => {
-        const retailer = retailers.find(r => r.id === s.retailerId)
-        return retailer?.address?.toLowerCase().includes(loc) || retailer?.name?.toLowerCase().includes(loc)
-      })
-    }
-    return f
-  }, [sales, searchQuery, dateRangeStart, dateRangeEnd, filterRetailer, filterPaymentStatus, filterSaleMode, filterLocation, retailers])
+    return sales
+  }, [sales])
 
   if (!mounted) return null
 
@@ -1030,6 +1051,72 @@ export default function SalesPage() {
                     ))}
                   </TableBody>
                 </Table>
+              </div>
+            )}
+
+            {/* Pagination UI */}
+            {totalRecords > 0 && (
+              <div className="flex items-center justify-between px-4 py-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                  Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalRecords)} of {totalRecords} entries
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setCurrentPage(p => Math.max(1, p - 1))
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                    disabled={currentPage === 1 || loading}
+                  >
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {[...Array(Math.ceil(totalRecords / pageSize))].map((_, i) => {
+                      const pageNum = i + 1;
+                      // Only show first, last, and pages around current
+                      if (
+                        pageNum === 1 ||
+                        pageNum === Math.ceil(totalRecords / pageSize) ||
+                        (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                      ) {
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            className="w-8"
+                            onClick={() => {
+                              setCurrentPage(pageNum)
+                              window.scrollTo({ top: 0, behavior: 'smooth' })
+                            }}
+                            disabled={loading}
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      } else if (
+                        (pageNum === 2 && currentPage > 3) ||
+                        (pageNum === Math.ceil(totalRecords / pageSize) - 1 && currentPage < Math.ceil(totalRecords / pageSize) - 2)
+                      ) {
+                        return <span key={pageNum} className="px-1 text-muted-foreground text-sm">...</span>;
+                      }
+                      return null;
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setCurrentPage(p => Math.min(Math.ceil(totalRecords / pageSize), p + 1))
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                    disabled={currentPage === Math.ceil(totalRecords / pageSize) || loading}
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>

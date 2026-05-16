@@ -19,7 +19,7 @@ import {
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Edit2, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download, Printer } from "lucide-react"
+import { Plus, Edit2, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download, Printer, ChevronLeft, ChevronRight } from "lucide-react"
 import { DateRangeFilter } from "@/components/date-range-filter"
 import { farmersApi, type Farmer as ApiFarmer } from "@/lib/api"
 import { toast } from "sonner"
@@ -52,6 +52,9 @@ export default function FarmersPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
   const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(20)
+  const [totalItems, setTotalItems] = useState(0)
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -62,23 +65,6 @@ export default function FarmersPage() {
     farmhouseName: "",
   })
 
-  // Fetch farmers from API
-  const fetchFarmers = async () => {
-    try {
-      setLoading(true)
-      const response = await farmersApi.getAll()
-      // Handle wrapped response {data: [...]} or direct array
-      const data = (response as any).data || response
-      setFarmers(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error('Failed to fetch farmers:', error)
-      toast.error('Failed to load farmers')
-      setFarmers([]) // Set empty array on error
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
     setMounted(true)
     const userData = localStorage.getItem("user")
@@ -86,10 +72,35 @@ export default function FarmersPage() {
       try {
         const user = JSON.parse(userData)
         setUserRole(user.role || "")
-      } catch {}
+      } catch { }
     }
-    fetchFarmers()
   }, [])
+
+  // Fetch farmers from API
+  const fetchFarmers = async () => {
+    try {
+      setLoading(true)
+      const response = await farmersApi.getAll(currentPage, pageSize, searchQuery)
+      if (response && response.data) {
+        setFarmers(response.data)
+        setTotalItems(response.total)
+      } else {
+        setFarmers(Array.isArray(response) ? response : [])
+        setTotalItems(Array.isArray(response) ? response.length : 0)
+      }
+    } catch (error) {
+      console.error('Failed to fetch farmers:', error)
+      toast.error('Failed to load farmers')
+      setFarmers([])
+      setTotalItems(0)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (mounted) fetchFarmers()
+  }, [mounted, currentPage, searchQuery])
 
   const handleSave = async () => {
     if (!formData.name || !formData.phone) {
@@ -99,9 +110,7 @@ export default function FarmersPage() {
 
     try {
       setLoading(true)
-      
       if (editingId) {
-        // Update existing farmer
         await farmersApi.update(editingId, {
           name: formData.name,
           phone: formData.phone,
@@ -112,7 +121,6 @@ export default function FarmersPage() {
         })
         toast.success("Farmer updated successfully")
       } else {
-        // Create new farmer
         await farmersApi.create({
           name: formData.name,
           phone: formData.phone,
@@ -123,8 +131,6 @@ export default function FarmersPage() {
         })
         toast.success("Farmer created successfully")
       }
-
-      // Refresh farmers list
       await fetchFarmers()
       resetForm()
       setShowDialog(false)
@@ -179,152 +185,33 @@ export default function FarmersPage() {
     }
   }
 
-  const handleDeleteOld = (id: string) => {
-    if (confirm("Are you sure you want to delete this farmer?")) {
-      const updated = farmers.filter((farmer) => farmer.id !== id)
-      setFarmers(updated)
-    }
-  }
-
   const handleView = (farmer: Farmer) => {
     setViewingFarmer(farmer)
     setShowViewDialog(true)
   }
 
   const handleSort = () => {
-    if (sortOrder === null) {
-      setSortOrder("asc")
-    } else if (sortOrder === "asc") {
-      setSortOrder("desc")
-    } else {
-      setSortOrder(null)
-    }
+    if (sortOrder === null) setSortOrder("asc")
+    else if (sortOrder === "asc") setSortOrder("desc")
+    else setSortOrder(null)
   }
 
-  const getFilteredAndSortedFarmers = () => {
-    if (!Array.isArray(farmers)) {
-      return []
-    }
-    
-    let filtered = farmers
-
-    // Apply date range filter
-    if (dateRangeStart && dateRangeEnd) {
-      const start = new Date(dateRangeStart)
-      const end = new Date(dateRangeEnd)
-      start.setHours(0, 0, 0, 0)
-      end.setHours(23, 59, 59, 999)
-
-      filtered = filtered.filter((farmer) => {
-        if (!farmer.joinDate) return false
-        const joinDate = new Date(farmer.joinDate)
-        joinDate.setHours(0, 0, 0, 0)
-        return joinDate >= start && joinDate <= end
-      })
-    }
-
-    // Apply search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      filtered = filtered.filter(
-        (farmer) =>
-          farmer.name.toLowerCase().includes(query) ||
-          (farmer.phone && farmer.phone.toLowerCase().includes(query)),
-      )
-    }
-
-    // Apply sorting
-    if (sortOrder) {
-      filtered = [...filtered].sort((a, b) => {
-        const nameA = a.name.toLowerCase()
-        const nameB = b.name.toLowerCase()
-        if (sortOrder === "asc") {
-          return nameA.localeCompare(nameB)
-        } else {
-          return nameB.localeCompare(nameA)
-        }
-      })
-    }
-
-    return filtered
-  }
-
-  const filteredFarmers = useMemo(() => getFilteredAndSortedFarmers(), [farmers, dateRangeStart, dateRangeEnd, searchQuery, sortOrder])
+  // Frontend sorting of current page data
+  const filteredFarmers = useMemo(() => {
+    if (!sortOrder) return farmers
+    return [...farmers].sort((a, b) => {
+      const nameA = a.name.toLowerCase()
+      const nameB = b.name.toLowerCase()
+      return sortOrder === "asc" ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA)
+    })
+  }, [farmers, sortOrder])
 
   const handleDateRangeChange = (start: Date | undefined, end: Date | undefined) => {
     setDateRangeStart(start)
     setDateRangeEnd(end)
   }
 
-  const handleDownloadPDF = () => {
-    const filtered = getFilteredAndSortedFarmers()
-    
-    // Create a printable HTML content
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Farmers Report</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            h1 { text-align: center; margin-bottom: 20px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; font-weight: bold; }
-            .header { margin-bottom: 20px; }
-            .date-range { margin-bottom: 10px; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>Farmers List Report</h1>
-            ${dateRangeStart && dateRangeEnd ? `<div class="date-range"><strong>Date Range:</strong> ${dateRangeStart.toLocaleDateString()} - ${dateRangeEnd.toLocaleDateString()}</div>` : ''}
-            <div><strong>Total Farmers:</strong> ${filtered.length}</div>
-            <div><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Farm House Name</th>
-                <th>Farmer Name</th>
-                <th>Phone</th>
-                <th>Address</th>
-                <th>Join Date</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filtered.map(farmer => `
-                <tr>
-                  <td>${farmer.farmhouseName || "N/A"}</td>
-                  <td>${farmer.name}</td>
-                  <td>${farmer.phone}</td>
-                  <td>${farmer.address || "N/A"}</td>
-                  <td>${farmer.joinDate}</td>
-                  <td>${(farmer.status || "active") === "active" ? "Active" : "Inactive"}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </body>
-      </html>
-    `
-
-    // Open new window and print
-    const printWindow = window.open('', '_blank')
-    if (printWindow) {
-      printWindow.document.write(printContent)
-      printWindow.document.close()
-      printWindow.onload = () => {
-        printWindow.print()
-      }
-    }
-  }
-
   const handlePrintReport = () => {
-    const filtered = getFilteredAndSortedFarmers()
-    
-    // Create a printable HTML content
     const printContent = `
       <!DOCTYPE html>
       <html>
@@ -338,17 +225,14 @@ export default function FarmersPage() {
             th { background-color: #f2f2f2; font-weight: bold; }
             .header { margin-bottom: 20px; }
             .date-range { margin-bottom: 10px; }
-            @media print {
-              body { margin: 0; }
-              .no-print { display: none; }
-            }
+            @media print { body { margin: 0; } .no-print { display: none; } }
           </style>
         </head>
         <body>
           <div class="header">
             <h1>Farmers List Report</h1>
             ${dateRangeStart && dateRangeEnd ? `<div class="date-range"><strong>Date Range:</strong> ${dateRangeStart.toLocaleDateString()} - ${dateRangeEnd.toLocaleDateString()}</div>` : ''}
-            <div><strong>Total Farmers:</strong> ${filtered.length}</div>
+            <div><strong>Total Farmers:</strong> ${totalItems}</div>
             <div><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
           </div>
           <table>
@@ -363,7 +247,7 @@ export default function FarmersPage() {
               </tr>
             </thead>
             <tbody>
-              ${filtered.map(farmer => `
+              ${filteredFarmers.map(farmer => `
                 <tr>
                   <td>${farmer.farmhouseName || "N/A"}</td>
                   <td>${farmer.name}</td>
@@ -378,15 +262,11 @@ export default function FarmersPage() {
         </body>
       </html>
     `
-
-    // Open new window and print
     const printWindow = window.open('', '_blank')
     if (printWindow) {
       printWindow.document.write(printContent)
       printWindow.document.close()
-      printWindow.onload = () => {
-        printWindow.print()
-      }
+      printWindow.onload = () => printWindow.print()
     }
   }
 
@@ -394,18 +274,18 @@ export default function FarmersPage() {
 
   return (
     <DashboardLayout>
-    <div className="space-y-6">
+      <div className="space-y-6">
         <div className="flex justify-between items-center">
-        <div>
+          <div>
             <h1 className="text-3xl font-bold">Farmers Management</h1>
             <p className="text-muted-foreground">Manage all farmers and their information</p>
-        </div>
+          </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
               <Button onClick={resetForm}>
                 <Plus className="mr-2" size={20} />
                 Add New Farmer
-        </Button>
+              </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
@@ -416,49 +296,24 @@ export default function FarmersPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Farmer Name *</Label>
-                    <Input
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Farmer name"
-                      disabled={loading}
-                    />
+                    <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Farmer name" disabled={loading} />
                   </div>
                   <div className="space-y-2">
                     <Label>Farm House Name</Label>
-                    <Input
-                      value={formData.farmhouseName}
-                      onChange={(e) => setFormData({ ...formData, farmhouseName: e.target.value })}
-                      placeholder="Farm House name"
-                      disabled={loading}
-                    />
+                    <Input value={formData.farmhouseName} onChange={(e) => setFormData({ ...formData, farmhouseName: e.target.value })} placeholder="Farm House name" disabled={loading} />
                   </div>
                   <div className="space-y-2">
                     <Label>Phone *</Label>
-                    <Input
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="Phone number"
-                      disabled={loading}
-                    />
+                    <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="Phone number" disabled={loading} />
                   </div>
                   <div className="space-y-2">
                     <Label>Join Date *</Label>
-                    <DatePicker
-                      value={formData.joinDate}
-                      onChange={(date) => setFormData({ ...formData, joinDate: date })}
-                      disabled={loading}
-                    />
+                    <DatePicker value={formData.joinDate} onChange={(date) => setFormData({ ...formData, joinDate: date })} disabled={loading} />
                   </div>
                   <div className="space-y-2">
                     <Label>Status *</Label>
-                    <Select
-                      value={formData.status}
-                      onValueChange={(value: "active" | "inactive") => setFormData({ ...formData, status: value })}
-                      disabled={loading}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Select value={formData.status} onValueChange={(value: "active" | "inactive") => setFormData({ ...formData, status: value })} disabled={loading}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="active">Active</SelectItem>
                         <SelectItem value="inactive">Inactive</SelectItem>
@@ -467,27 +322,14 @@ export default function FarmersPage() {
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label>Address</Label>
-                    <Input
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      placeholder="Farm address"
-                      disabled={loading}
-                    />
+                    <Input value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="Farm address" disabled={loading} />
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label>Note</Label>
-                    <Textarea
-                      value={formData.note}
-                      onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                      placeholder="Additional notes about the farmer"
-                      rows={3}
-                      disabled={loading}
-                    />
+                    <Textarea value={formData.note} onChange={(e) => setFormData({ ...formData, note: e.target.value })} placeholder="Additional notes about the farmer" rows={3} disabled={loading} />
                   </div>
                 </div>
-                <Button onClick={handleSave} className="w-full" disabled={loading}>
-                  {loading ? "Saving..." : editingId ? "Update" : "Add"} Farmer
-                </Button>
+                <Button onClick={handleSave} className="w-full" disabled={loading}>{loading ? "Saving..." : editingId ? "Update" : "Add"} Farmer</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -495,85 +337,29 @@ export default function FarmersPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Farmers</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{Array.isArray(farmers) ? farmers.length : 0}</div>
-            </CardContent>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Farmers</CardTitle></CardHeader>
+            <CardContent><div className="text-3xl font-bold">{totalItems}</div></CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Active Farmers</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {Array.isArray(farmers) ? farmers.filter((f) => (f.status || "active") === "active").length : 0}
-              </div>
-          </CardContent>
-        </Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">On Current Page</CardTitle></CardHeader>
+            <CardContent><div className="text-3xl font-bold">{farmers.length}</div></CardContent>
+          </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Inactive Farmers</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {Array.isArray(farmers) ? farmers.filter((f) => (f.status || "active") === "inactive").length : 0}
-              </div>
-            </CardContent>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Page</CardTitle></CardHeader>
+            <CardContent><div className="text-3xl font-bold">{currentPage}</div></CardContent>
           </Card>
         </div>
 
         <Card>
           <CardHeader>
             <div className="flex justify-between items-start">
-              {/* <div>
-                <CardTitle>Farmers List</CardTitle>
-                <CardDescription>View and manage all farmers</CardDescription>
-              </div> */}
               <div className="flex items-center gap-2 flex-wrap">
-                <DateRangeFilter
-                  startDate={dateRangeStart}
-                  endDate={dateRangeEnd}
-                  onDateRangeChange={handleDateRangeChange}
-                />
+                <DateRangeFilter startDate={dateRangeStart} endDate={dateRangeEnd} onDateRangeChange={handleDateRangeChange} />
                 <div className="flex items-center gap-2">
-                  <Label className="text-sm font-medium whitespace-nowrap">Filter:</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      placeholder="Search by name or phone..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-[200px]"
-                    />
-                    {searchQuery && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setSearchQuery("")}
-                        className="h-10 w-10"
-                      >
-                        <X size={16} />
-                      </Button>
-                    )}
-                  </div>
+                  <Input placeholder="Search by name or phone..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-[200px]" />
+                  {searchQuery && <Button variant="ghost" size="icon" onClick={() => setSearchQuery("")} className="h-10 w-10"><X size={16} /></Button>}
                 </div>
-                {/* <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownloadPDF}
-                >
-                  <Download className="mr-2" size={16} />
-                  Download PDF
-                </Button> */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePrintReport}
-                >
-                  <Printer className="mr-2" size={16} />
-                  Print Report
-                </Button>
+                <Button variant="outline" size="sm" onClick={handlePrintReport}><Printer className="mr-2" size={16} /> Print Report</Button>
               </div>
             </div>
           </CardHeader>
@@ -584,12 +370,7 @@ export default function FarmersPage() {
                   <TableRow>
                     <TableHead>Farm House Name</TableHead>
                     <TableHead>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2 lg:px-3"
-                        onClick={handleSort}
-                      >
+                      <Button variant="ghost" size="sm" onClick={handleSort}>
                         Farmer Name
                         {sortOrder === null && <ArrowUpDown className="ml-2 h-4 w-4" />}
                         {sortOrder === "asc" && <ArrowUp className="ml-2 h-4 w-4" />}
@@ -605,43 +386,25 @@ export default function FarmersPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredFarmers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                        {searchQuery || (dateRangeStart && dateRangeEnd) ? "No farmers found matching your filters." : "No farmers added yet. Click \"Add New Farmer\" to get started."}
-                      </TableCell>
-                    </TableRow>
-        ) : (
-          filteredFarmers.map((farmer) => (
-                      <TableRow 
-                        key={farmer.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => handleView(farmer)}
-                      >
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No farmers found.</TableCell></TableRow>
+                  ) : (
+                    filteredFarmers.map((farmer) => (
+                      <TableRow key={farmer.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleView(farmer)}>
                         <TableCell className="text-sm text-muted-foreground">{farmer.farmhouseName || "N/A"}</TableCell>
                         <TableCell className="font-medium">{farmer.name}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{farmer.phone}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{farmer.address || "N/A"}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{farmer.joinDate}</TableCell>
                         <TableCell>
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              (farmer.status || "active") === "active"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${(farmer.status || "active") === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
                             {(farmer.status || "active") === "active" ? "Active" : "Inactive"}
                           </span>
                         </TableCell>
                         <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
                           {userRole !== 'staff' && userRole !== 'Staff' && (
                             <>
-                              <Button variant="outline" size="icon" onClick={() => handleEdit(farmer)}>
-                                <Edit2 size={16} />
-                              </Button>
-                              <Button variant="outline" size="icon" onClick={() => handleDelete(farmer.id)}>
-                                <Trash2 size={16} />
-                              </Button>
+                              <Button variant="outline" size="icon" onClick={() => handleEdit(farmer)}><Edit2 size={16} /></Button>
+                              <Button variant="outline" size="icon" onClick={() => handleDelete(farmer.id)}><Trash2 size={16} /></Button>
                             </>
                           )}
                         </TableCell>
@@ -650,9 +413,24 @@ export default function FarmersPage() {
                   )}
                 </TableBody>
               </Table>
-                </div>
-              </CardContent>
-            </Card>
+            </div>
+          </CardContent>
+          {totalItems > pageSize && (
+            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-200">
+              <div className="text-sm text-gray-500">
+                Showing <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-medium">{Math.min(currentPage * pageSize, totalItems)}</span> of <span className="font-medium">{totalItems}</span> farmers
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1 || loading}>
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage * pageSize >= totalItems || loading}>
+                  Next <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
 
         {/* View Dialog */}
         <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
@@ -664,43 +442,21 @@ export default function FarmersPage() {
             {viewingFarmer && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground">Farmer Name</Label>
-                    <div className="text-sm font-medium">{viewingFarmer.name}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground">Farm House Name</Label>
-                    <div className="text-sm font-medium">{viewingFarmer.farmhouseName || "N/A"}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground">Phone</Label>
-                    <div className="text-sm font-medium">{viewingFarmer.phone}</div>
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label className="text-muted-foreground">Address</Label>
-                    <div className="text-sm font-medium">{viewingFarmer.address || "N/A"}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground">Join Date</Label>
-                    <div className="text-sm font-medium">{viewingFarmer.joinDate}</div>
-                  </div>
+                  <div className="space-y-2"><Label className="text-muted-foreground">Farmer Name</Label><div className="text-sm font-medium">{viewingFarmer.name}</div></div>
+                  <div className="space-y-2"><Label className="text-muted-foreground">Farm House Name</Label><div className="text-sm font-medium">{viewingFarmer.farmhouseName || "N/A"}</div></div>
+                  <div className="space-y-2"><Label className="text-muted-foreground">Phone</Label><div className="text-sm font-medium">{viewingFarmer.phone}</div></div>
+                  <div className="space-y-2 md:col-span-2"><Label className="text-muted-foreground">Address</Label><div className="text-sm font-medium">{viewingFarmer.address || "N/A"}</div></div>
+                  <div className="space-y-2"><Label className="text-muted-foreground">Join Date</Label><div className="text-sm font-medium">{viewingFarmer.joinDate}</div></div>
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Status</Label>
                     <div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        viewingFarmer.status === "active"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${viewingFarmer.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
                         {viewingFarmer.status === "active" ? "Active" : "Inactive"}
                       </span>
                     </div>
                   </div>
-                  {viewingFarmer.note && (
-                    <div className="space-y-2 md:col-span-2">
-                      <Label className="text-muted-foreground">Note</Label>
-                      <div className="text-sm font-medium whitespace-pre-wrap">{viewingFarmer.note}</div>
-                    </div>
+                  {(viewingFarmer.note || viewingFarmer.notes) && (
+                    <div className="space-y-2 md:col-span-2"><Label className="text-muted-foreground">Note</Label><div className="text-sm font-medium whitespace-pre-wrap">{viewingFarmer.note || viewingFarmer.notes}</div></div>
                   )}
                 </div>
               </div>
