@@ -45,6 +45,7 @@ export default function GodownSalePage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(20)
   const [totalItems, setTotalItems] = useState(0)
+  const [allowEditBillNo, setAllowEditBillNo] = useState(false)
 
   const [formData, setFormData] = useState({
     saleDate: new Date().toISOString().split("T")[0],
@@ -155,6 +156,7 @@ export default function GodownSalePage() {
     setPayments([emptyPayment()])
     setEditingId(null)
     fetchAvailableCages()
+    setAllowEditBillNo(false)
   }
 
   const handleEdit = (sale: GodownSale) => {
@@ -261,7 +263,16 @@ export default function GodownSalePage() {
               <div className="space-y-4 overflow-y-auto flex-1 pr-1 pb-2">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2"><Label>Date *</Label><DatePicker value={formData.saleDate} onChange={d => setFormData({ ...formData, saleDate: d })} disabled={loading} /></div>
-                  <div className="space-y-2"><Label>Sale No (Auto-generated)</Label><Input value={formData.saleNo} onChange={e => setFormData({ ...formData, saleNo: e.target.value })} placeholder="Auto-generated if empty" disabled={loading} /></div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Sale No (Auto-generated)</Label>
+                      <label className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input type="checkbox" checked={allowEditBillNo} onChange={e => setAllowEditBillNo(e.target.checked)} className="cursor-pointer" />
+                        <span>Edit manually</span>
+                      </label>
+                    </div>
+                    <Input value={formData.saleNo} onChange={e => setFormData({ ...formData, saleNo: e.target.value })} placeholder="Auto-generated on save" disabled={loading} readOnly={!allowEditBillNo} className={!allowEditBillNo ? "bg-gray-50" : ""} />
+                  </div>
                 </div>
                 <div className="space-y-2"><Label>Invoice No</Label><Input value={formData.invoiceNumber} onChange={e => setFormData({ ...formData, invoiceNumber: e.target.value })} placeholder="Invoice" disabled={loading} /></div>
                 <div className="space-y-2"><Label>Retailer</Label>

@@ -50,6 +50,7 @@ export default function SalesPage() {
   const [saleFile, setSaleFile] = useState<File | null>(null)
   const [uploadingFile, setUploadingFile] = useState(false)
   const saleFileRef = useRef<HTMLInputElement>(null)
+  const [allowEditBillNo, setAllowEditBillNo] = useState(false)
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
@@ -271,6 +272,7 @@ export default function SalesPage() {
     setSelectedCageIds(new Set())
     setIsEditMode(false)
     setEditingId(null); setSaleFile(null)
+    setAllowEditBillNo(false)
   }
 
   const handleRetailerChange = (id: string) => {
@@ -591,8 +593,14 @@ export default function SalesPage() {
                     {/* Sale No + Sale Date — 2 col */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Sale No. (Auto-generated if empty)</Label>
-                        <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value, invoiceNumber: e.target.value }))} placeholder="Leave empty for auto-generation" disabled={loading} />
+                        <div className="flex items-center justify-between">
+                          <Label>Sale No. (Auto-generated)</Label>
+                          <label className="flex items-center gap-2 text-xs cursor-pointer">
+                            <input type="checkbox" checked={allowEditBillNo} onChange={e => setAllowEditBillNo(e.target.checked)} className="cursor-pointer" />
+                            <span>Edit manually</span>
+                          </label>
+                        </div>
+                        <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value, invoiceNumber: e.target.value }))} placeholder="Auto-generated on save" disabled={loading} readOnly={!allowEditBillNo} className={!allowEditBillNo ? "bg-gray-50" : ""} />
                       </div>
                       <div className="space-y-2">
                         <Label>Sale Date *</Label>

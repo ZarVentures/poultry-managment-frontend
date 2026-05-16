@@ -43,6 +43,7 @@ export default function PurchasesPage() {
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null)
   const [uploadingFile, setUploadingFile] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [allowEditBillNo, setAllowEditBillNo] = useState(false)
 
   const [formData, setFormData] = useState({
     orderNumber: "", supplierName: "", orderDate: new Date().toISOString().split("T")[0], dueDate: "",
@@ -83,6 +84,7 @@ export default function PurchasesPage() {
   const resetForm = () => {
     setFormData({ orderNumber: "", supplierName: "", orderDate: new Date().toISOString().split("T")[0], dueDate: "", status: "pending", branch: "", farmerId: "", farmerMobile: "", farmLocation: "", vehicleId: "", purchasePaymentStatus: "pending", ratePerKg: "", transportCharges: "", otherCharges: "", notes: "" })
     setCages([emptyCage()]); setPayments([emptyPayment()]); setEditingId(null); setInvoiceFile(null)
+    setAllowEditBillNo(false)
   }
 
   const handleFarmerChange = (id: string) => {
@@ -148,7 +150,16 @@ export default function PurchasesPage() {
               <div className="space-y-4 overflow-y-auto flex-1 pr-1 pb-2">
                 <Card className="p-4 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label>Bill No (Auto-generated if empty)</Label><Input value={formData.orderNumber} onChange={e => setFormData({ ...formData, orderNumber: e.target.value })} placeholder="Leave empty for auto-generation" /></div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Bill No (Auto-generated)</Label>
+                        <label className="flex items-center gap-2 text-xs cursor-pointer">
+                          <input type="checkbox" checked={allowEditBillNo} onChange={e => setAllowEditBillNo(e.target.checked)} className="cursor-pointer" />
+                          <span>Edit manually</span>
+                        </label>
+                      </div>
+                      <Input value={formData.orderNumber} onChange={e => setFormData({ ...formData, orderNumber: e.target.value })} placeholder="Auto-generated on save" readOnly={!allowEditBillNo} className={!allowEditBillNo ? "bg-gray-50" : ""} />
+                    </div>
                     <div className="space-y-2"><Label>Date *</Label><DatePicker value={formData.orderDate} onChange={d => setFormData({ ...formData, orderDate: d })} /></div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
