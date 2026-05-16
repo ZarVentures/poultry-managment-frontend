@@ -28,6 +28,7 @@ export default function ReportsPage() {
   const [customerWiseData, setCustomerWiseData] = useState<any>(null)
   const [purchaseData, setPurchaseData] = useState<any>(null)
   const [salesData, setSalesData] = useState<any>(null)
+  const [godownSalesData, setGodownSalesData] = useState<any>(null)
   const [mortalityData, setMortalityData] = useState<any>(null)
   const [outstandingData, setOutstandingData] = useState<any>(null)
 
@@ -74,6 +75,7 @@ export default function ReportsPage() {
     fetchReport('customer-wise-sales', setCustomerWiseData)
     fetchReport('purchases', setPurchaseData)
     fetchReport('sales', setSalesData)
+    fetchReport('godown-sales', setGodownSalesData)
     fetchReport('mortality', setMortalityData)
     fetchReport('outstanding', setOutstandingData)
   }
@@ -116,10 +118,11 @@ export default function ReportsPage() {
         </div>
 
         <Tabs defaultValue="profitloss">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="profitloss">Profit & Loss</TabsTrigger>
             <TabsTrigger value="purchases">Purchases</TabsTrigger>
             <TabsTrigger value="sales">Sales</TabsTrigger>
+            <TabsTrigger value="godownsales">Godown Sales</TabsTrigger>
             <TabsTrigger value="mortality">Mortality</TabsTrigger>
             <TabsTrigger value="expenses">Expenses</TabsTrigger>
             <TabsTrigger value="farm">Farm-wise</TabsTrigger>
@@ -319,7 +322,7 @@ export default function ReportsPage() {
               <CardContent>
                 {!salesData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-5 gap-4">
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Total Sales</p>
                         <p className="text-2xl font-bold">{salesData.summary.totalSales}</p>
@@ -327,6 +330,10 @@ export default function ReportsPage() {
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Total Revenue</p>
                         <p className="text-2xl font-bold">₹{salesData.summary.totalNetAmount.toFixed(2)}</p>
+                      </div>
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Weight Shortage</p>
+                        <p className="text-2xl font-bold text-orange-600">{salesData.summary.totalWeightShortage?.toFixed(2) || '0.00'} kg</p>
                       </div>
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Paid</p>
@@ -344,6 +351,7 @@ export default function ReportsPage() {
                             <TableHead>Bill No</TableHead>
                             <TableHead>Date</TableHead>
                             <TableHead>Customer</TableHead>
+                            <TableHead>Weight Shortage</TableHead>
                             <TableHead>Amount</TableHead>
                             <TableHead>Status</TableHead>
                           </TableRow>
@@ -354,6 +362,7 @@ export default function ReportsPage() {
                               <TableCell>{sale.invoiceNumber}</TableCell>
                               <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
                               <TableCell>{sale.customerName}</TableCell>
+                              <TableCell className="text-orange-600">{parseFloat(sale.weightShortage || 0).toFixed(2)} kg</TableCell>
                               <TableCell>₹{parseFloat(sale.netAmount).toFixed(2)}</TableCell>
                               <TableCell>
                                 <span className={`px-2 py-1 rounded text-xs ${sale.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
@@ -396,6 +405,79 @@ export default function ReportsPage() {
                           <Tooltip />
                           <Legend />
                         </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Godown Sales Report */}
+          <TabsContent value="godownsales">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between">
+                  <CardTitle>Godown Sales Report</CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => godownSalesData && downloadCSV(godownSalesData.sales, 'godown-sales')}>
+                    <Download className="mr-2" size={16} />CSV
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!godownSalesData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Total Sales</p>
+                        <p className="text-2xl font-bold">{godownSalesData.summary.totalSales}</p>
+                      </div>
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Total Weight Loss</p>
+                        <p className="text-2xl font-bold text-orange-600">{godownSalesData.summary.totalWeightLoss?.toFixed(2) || '0.00'} kg</p>
+                      </div>
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Total Amount</p>
+                        <p className="text-2xl font-bold">₹{godownSalesData.summary.totalAmount?.toFixed(2) || '0.00'}</p>
+                      </div>
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Avg Loss/Sale</p>
+                        <p className="text-2xl font-bold">{godownSalesData.summary.avgWeightLoss?.toFixed(2) || '0.00'} kg</p>
+                      </div>
+                    </div>
+                    {viewMode === 'table' && (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Sale No</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Cages</TableHead>
+                            <TableHead>Weight Loss</TableHead>
+                            <TableHead>Amount</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {godownSalesData.sales.map((sale: any) => (
+                            <TableRow key={sale.id}>
+                              <TableCell>{sale.saleNo}</TableCell>
+                              <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
+                              <TableCell>{sale.cageCount}</TableCell>
+                              <TableCell className="text-orange-600">{parseFloat(sale.weightLoss || 0).toFixed(2)} kg</TableCell>
+                              <TableCell>₹{parseFloat(sale.totalAmount || 0).toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                    {viewMode === 'chart' && (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={godownSalesData.sales.slice(0, 10)}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="saleNo" />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="weightLoss" fill="#FF8042" name="Weight Loss (kg)" />
+                        </BarChart>
                       </ResponsiveContainer>
                     )}
                   </div>

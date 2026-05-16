@@ -373,12 +373,12 @@ export default function GodownSalePage() {
           </CardHeader>
           <CardContent>
             <Table>
-              <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Invoice</TableHead><TableHead>Customer</TableHead><TableHead>Birds</TableHead><TableHead>Weight</TableHead><TableHead>Total</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Invoice</TableHead><TableHead>Customer</TableHead><TableHead>Birds</TableHead><TableHead>Weight</TableHead><TableHead>Weight Loss</TableHead><TableHead>Total</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
               <TableBody>
                 {sales.map(s => (
                   <TableRow key={s.id}>
                     <TableCell>{new Date(s.saleDate).toLocaleDateString()}</TableCell><TableCell>{(s as any).invoiceNumber || "-"}</TableCell><TableCell>{s.customerName}</TableCell>
-                    <TableCell>{s.numberOfBirds}</TableCell><TableCell>{s.totalWeight}</TableCell><TableCell className="font-bold">₹{s.totalAmount}</TableCell>
+                    <TableCell>{s.numberOfBirds}</TableCell><TableCell>{s.totalWeight}</TableCell><TableCell className="text-orange-600">{parseFloat((s as any).weightLoss || 0).toFixed(2)} kg</TableCell><TableCell className="font-bold">₹{s.totalAmount}</TableCell>
                     <TableCell>
                       {userRole !== 'staff' && userRole !== 'Staff' && (
                         <div className="flex gap-1"><Button variant="ghost" size="sm" onClick={() => handleEdit(s)}><Edit2 size={16} /></Button><Button variant="ghost" size="sm" onClick={() => handleDelete(s.id)}><Trash2 size={16} /></Button></div>
