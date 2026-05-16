@@ -28,11 +28,11 @@ export default function BillingDashboard() {
 
   useEffect(() => {
     Promise.all([retailersApi.getAll(), salesApi.getAll(), purchasesApi.getAll()])
-      .then(([retailers, sales, purchases]) => {
-        const totalSales = sales.reduce((s, x) => s + Number(x.netAmount || x.totalAmount || 0), 0)
-        const outstanding = sales.reduce((s, x) => s + Math.max(0, Number(x.netAmount || x.totalAmount || 0) - Number(x.amountReceived || 0)), 0)
-        const pendingPurchases = purchases.filter(p => p.purchasePaymentStatus === 'pending' || p.purchasePaymentStatus === 'partial')
-          .reduce((s, p) => s + Number(p.balanceAmount || 0), 0)
+      .then(([retailers, sales, purchases]: [any[], any[], any[]]) => {
+        const totalSales = sales.reduce((s: number, x: any) => s + Number(x.netAmount || x.totalAmount || 0), 0)
+        const outstanding = sales.reduce((s: number, x: any) => s + Math.max(0, Number(x.netAmount || x.totalAmount || 0) - Number(x.amountReceived || 0)), 0)
+        const pendingPurchases = purchases.filter((p: any) => p.purchasePaymentStatus === 'pending' || p.purchasePaymentStatus === 'partial')
+          .reduce((s: number, p: any) => s + Number(p.balanceAmount || 0), 0)
         setStats({
           totalParties: retailers.length,
           totalSales,
