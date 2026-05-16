@@ -383,7 +383,7 @@ export interface CreatePurchaseOrderDto {
   paymentMode?: string;
   totalPaymentMade?: string;
   invoiceAttachment?: string;
-  items: CreatePurchaseOrderItemDto[];
+  items?: CreatePurchaseOrderItemDto[];
   cages?: CreatePurchaseOrderCageDto[];
 }
 
