@@ -48,7 +48,7 @@ export default function GodownSalePage() {
 
   const [formData, setFormData] = useState({
     saleDate: new Date().toISOString().split("T")[0],
-    purchaseBillNo: "", invoiceNumber: "", retailerId: "",
+    saleNo: "", purchaseBillNo: "", invoiceNumber: "", retailerId: "",
     customerName: "", numberOfBirds: "", totalWeight: "",
     weightLoss: "", ratePerKg: "", totalAmount: "",
     paymentStatus: "pending" as "paid" | "pending" | "partial", notes: "",
@@ -147,7 +147,7 @@ export default function GodownSalePage() {
   const resetForm = () => {
     setFormData({
       saleDate: new Date().toISOString().split("T")[0],
-      purchaseBillNo: "", invoiceNumber: "", retailerId: "",
+      saleNo: "", purchaseBillNo: "", invoiceNumber: "", retailerId: "",
       customerName: "", numberOfBirds: "", totalWeight: "",
       weightLoss: "", ratePerKg: "", totalAmount: "",
       paymentStatus: "pending", notes: "",
@@ -160,6 +160,7 @@ export default function GodownSalePage() {
   const handleEdit = (sale: GodownSale) => {
     setFormData({
       saleDate: sale.saleDate,
+      saleNo: (sale as any).saleNo || "",
       purchaseBillNo: (sale as any).purchaseBillNo || "",
       invoiceNumber: (sale as any).invoiceNumber || "",
       retailerId: (sale as any).retailerId || "",
@@ -244,8 +245,9 @@ export default function GodownSalePage() {
               <div className="space-y-4 overflow-y-auto flex-1 pr-1 pb-2">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2"><Label>Date *</Label><DatePicker value={formData.saleDate} onChange={d => setFormData({ ...formData, saleDate: d })} disabled={loading} /></div>
-                  <div className="space-y-2"><Label>Invoice No</Label><Input value={formData.invoiceNumber} onChange={e => setFormData({ ...formData, invoiceNumber: e.target.value })} placeholder="Invoice" disabled={loading} /></div>
+                  <div className="space-y-2"><Label>Sale No (Auto-generated)</Label><Input value={formData.saleNo} onChange={e => setFormData({ ...formData, saleNo: e.target.value })} placeholder="Auto-generated if empty" disabled={loading} /></div>
                 </div>
+                <div className="space-y-2"><Label>Invoice No</Label><Input value={formData.invoiceNumber} onChange={e => setFormData({ ...formData, invoiceNumber: e.target.value })} placeholder="Invoice" disabled={loading} /></div>
                 <div className="space-y-2"><Label>Retailer</Label>
                   <Select value={formData.retailerId || "__none__"} onValueChange={v => { const r = retailers.find(it => it.id === v); setFormData({ ...formData, retailerId: v === "__none__" ? "" : v, customerName: r ? r.name : "" }) }} disabled={loading}>
                     <SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__none__">None</SelectItem>{retailers.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>

@@ -434,8 +434,9 @@ export default function SalesPage() {
   }
 
   const handleSave = async () => {
-    if (!formData.invoiceNumber || !formData.customerName) {
-      toast.error("Bill number and customer name are required"); return
+    // invoiceNumber is now optional - backend will auto-generate if not provided
+    if (!formData.customerName) {
+      toast.error("Customer name is required"); return
     }
     if (totalWeight <= 0) {
       toast.error("Enter total weight"); return
@@ -573,8 +574,8 @@ export default function SalesPage() {
                     {/* Sale No + Sale Date — 2 col */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Sale No. * (unique per sale)</Label>
-                        <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value, invoiceNumber: e.target.value }))} placeholder="e.g. SI-416" disabled={loading} />
+                        <Label>Sale No. (Auto-generated if empty)</Label>
+                        <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value, invoiceNumber: e.target.value }))} placeholder="Leave empty for auto-generation" disabled={loading} />
                       </div>
                       <div className="space-y-2">
                         <Label>Sale Date *</Label>

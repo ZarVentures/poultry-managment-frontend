@@ -100,7 +100,8 @@ export default function PurchasesPage() {
   }
 
   const handleSave = async () => {
-    if (!formData.orderNumber || !formData.supplierName) { toast.error("Bill No and Supplier are required"); return }
+    // orderNumber is now optional - backend will auto-generate if not provided
+    if (!formData.supplierName) { toast.error("Supplier is required"); return }
     try {
       setLoading(true)
       const payload = { ...formData, totalWeight: String(cages.reduce((s, c) => s + (parseFloat(c.cageWeight) || 0), 0)), cages: cages.filter(c => c.numberOfBirds).map(c => ({ cageId: c.cageId || undefined, numberOfBirds: parseInt(c.numberOfBirds), cageWeight: parseFloat(c.cageWeight) })), payments: payments.filter(p => parseFloat(p.amount) > 0).map(p => ({ paymentMode: p.mode, amount: p.amount, isAdvance: p.isAdvance })) }
@@ -134,7 +135,7 @@ export default function PurchasesPage() {
               <div className="space-y-4 overflow-y-auto flex-1 pr-1 pb-2">
                 <Card className="p-4 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label>Bill No *</Label><Input value={formData.orderNumber} onChange={e => setFormData({ ...formData, orderNumber: e.target.value })} /></div>
+                    <div className="space-y-2"><Label>Bill No (Auto-generated if empty)</Label><Input value={formData.orderNumber} onChange={e => setFormData({ ...formData, orderNumber: e.target.value })} placeholder="Leave empty for auto-generation" /></div>
                     <div className="space-y-2"><Label>Date *</Label><DatePicker value={formData.orderDate} onChange={d => setFormData({ ...formData, orderDate: d })} /></div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
