@@ -140,9 +140,12 @@ export default function GodownSalePage() {
       setLoading(true)
       const data = {
         ...formData,
-        numberOfBirds: parseInt(formData.numberOfBirds),
-        totalWeight: parseFloat(formData.totalWeight),
-        totalAmount: parseFloat(formData.totalAmount),
+        numberOfBirds: parseInt(formData.numberOfBirds) || 0,
+        totalWeight: parseFloat(formData.totalWeight) || 0,
+        totalAmount: parseFloat(formData.totalAmount) || 0,
+        ratePerKg: parseFloat(formData.ratePerKg) || 0,
+        weightLoss: parseFloat(formData.weightLoss) || 0,
+        amountReceived: payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0),
         payments: payments.filter(p => parseFloat(p.amount) > 0).map(p => ({ paymentMode: p.mode, amount: parseFloat(p.amount) })),
         cages: Array.from(selectedCageIds).map(id => {
           const c = availableCages.find(it => it.id === id);
