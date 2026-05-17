@@ -54,10 +54,10 @@ export default function ExpensesPage() {
 
   const fetchCategories = async () => {
     try {
-      const data = await expenseCategoriesApi.getAll()
+      const data = await expenseCategoriesApi.getActive() // Only fetch active categories
       setCategories(data)
       if (data.length > 0 && !editingId) {
-        setFormData(prev => ({ ...prev, categoryId: data[0].id }))
+        setFormData(prev => ({ ...prev, categoryId: String(data[0].id) }))
       }
     } catch (e) {
       console.error("Failed to fetch categories:", e)
@@ -81,7 +81,7 @@ export default function ExpensesPage() {
     setFormData({
       expenseDate: new Date().toISOString().split("T")[0],
       expenseOwner: "",
-      categoryId: categories.length > 0 ? categories[0].id : "",
+      categoryId: categories.length > 0 ? String(categories[0].id) : "",
       description: "",
       amount: "",
       paymentMethod: "cash",
@@ -94,7 +94,7 @@ export default function ExpensesPage() {
     setFormData({
       expenseDate: expense.expenseDate,
       expenseOwner: expense.expenseOwner || "",
-      categoryId: expense.categoryId || (categories.find(c => c.name.toLowerCase() === expense.category?.toLowerCase())?.id) || "",
+      categoryId: expense.categoryId || (categories.find(c => c.name.toLowerCase() === expense.category?.toLowerCase())?.id ? String(categories.find(c => c.name.toLowerCase() === expense.category?.toLowerCase())!.id) : ""),
       description: expense.description,
       amount: String(expense.amount),
       paymentMethod: expense.paymentMethod,
@@ -338,8 +338,8 @@ export default function ExpensesPage() {
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
-                        {categories.map(cat => (
-                          <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                        {categories.filter(c => c.isActive).map(cat => (
+                          <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
