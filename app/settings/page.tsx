@@ -105,7 +105,7 @@ export default function SettingsPage() {
   const fetchCategories = async () => {
     try {
       setCategoriesLoading(true)
-      const data = await expenseCategoriesApi.getAll(true) // include inactive
+      const data = await expenseCategoriesApi.getAll()
       setCategories(data)
     } catch { toast.error("Failed to fetch categories") }
     finally { setCategoriesLoading(false) }
@@ -128,8 +128,8 @@ export default function SettingsPage() {
     finally { setLoading(false) }
   }
 
-  const handleDeleteCategory = async (id: string, isSystem: boolean) => {
-    if (isSystem) { toast.error("System categories cannot be deleted"); return }
+  const handleDeleteCategory = async (id: number, isDefault: boolean) => {
+    if (isDefault) { toast.error("Default categories cannot be deleted"); return }
     if (!window.confirm("Are you sure?")) return
     try {
       await expenseCategoriesApi.delete(id)
@@ -138,10 +138,13 @@ export default function SettingsPage() {
     } catch { toast.error("Failed to delete") }
   }
 
-  const handleToggleCategory = async (id: string) => {
+  const handleToggleCategory = async (id: number) => {
     try {
-      await expenseCategoriesApi.toggleActive(id)
+      const category = categories.find(c => c.id === id)
+      if (!category) return
+      await expenseCategoriesApi.update(id, { isActive: !category.isActive })
       fetchCategories()
+      toast.success(`Category ${!category.isActive ? 'activated' : 'deactivated'}`)
     } catch { toast.error("Failed to toggle status") }
   }
 
@@ -662,7 +665,7 @@ export default function SettingsPage() {
                                 </div>
                                 <div>
                                   <p className="font-medium">{cat.name}</p>
-                                  {cat.isSystem && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold uppercase">System</span>}
+                                  {cat.isDefault && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold uppercase">Default</span>}
                                 </div>
                               </div>
                             </td>
@@ -680,7 +683,7 @@ export default function SettingsPage() {
                                 <button
                                   onClick={() => {
                                     setEditingCategory(cat)
-                                    setCategoryFormData({ name: cat.name, description: cat.description || "", icon: cat.icon || "tag", isActive: cat.isActive })
+                                    setCategoryFormData({ name: cat.name, description: cat.description || "", icon: "tag", isActive: cat.isActive })
                                     setShowCategoryModal(true)
                                   }}
                                   className="p-2 text-muted-foreground hover:text-primary transition-colors"
@@ -688,9 +691,9 @@ export default function SettingsPage() {
                                 >
                                   <Edit2 size={14} />
                                 </button>
-                                {!cat.isSystem && (
+                                {!cat.isDefault && (
                                   <button
-                                    onClick={() => handleDeleteCategory(cat.id, cat.isSystem)}
+                                    onClick={() => handleDeleteCategory(cat.id, cat.isDefault)}
                                     className="p-2 text-muted-foreground hover:text-red-500 transition-colors"
                                     title="Delete"
                                   >
@@ -793,7 +796,7 @@ export default function SettingsPage() {
                 placeholder="e.g. Electricity Bill"
                 value={categoryFormData.name}
                 onChange={e => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
-                disabled={editingCategory?.isSystem}
+                disabled={editingCategory?.isDefault}
               />
             </div>
             <div className="space-y-2">
