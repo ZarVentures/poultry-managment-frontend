@@ -1379,4 +1379,5 @@ export const billingApi = {
 
   // Ledger
   getLedger: (partyId: string) => apiRequest<any[]>(`/billing/ledger/${partyId}`),
+  getLedgerByName: (name: string) => apiRequest<any[]>(`/billing/ledger-by-name/${encodeURIComponent(name)}`),
 };

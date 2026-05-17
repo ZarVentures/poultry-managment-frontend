@@ -9,119 +9,82 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Download, Printer, ArrowLeft, Calendar } from 'lucide-react'
-import { purchasesApi, farmersApi } from '@/lib/api'
+import { purchasesApi, farmersApi, billingApi } from '@/lib/api'
 
 const FarmLedgerPage = () => {
   const [farmers, setFarmers] = useState<any[]>([])
   const [selectedId, setSelectedId] = useState('')
-  const [purchases, setPurchases] = useState<any[]>([])
+  const [ledgerEntries, setLedgerEntries] = useState<any[]>([])
   const [loadingFarmers, setLoadingFarmers] = useState(true)
-  const [loadingPurchases, setLoadingPurchases] = useState(false)
+  const [loadingLedger, setLoadingLedger] = useState(false)
   const [dateFrom, setDateFrom] = useState(() => { const d = new Date(); d.setMonth(0); d.setDate(1); return d.toISOString().split('T')[0] })
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0])
 
   useEffect(() => {
-  Promise.all([farmersApi.getAll(), purchasesApi.getAll()])
-    .then(([farmerList, allPurchases]: any) => {
+    farmersApi.getAll()
+      .then((farmerList: any) => {
+        const safeFarmers = Array.isArray(farmerList) ? farmerList : farmerList?.data || []
+        setFarmers(safeFarmers)
+        if (safeFarmers.length > 0) {
+          setSelectedId(String(safeFarmers[0].id))
+        }
+      })
+      .catch(err => console.error('Farmers load error:', err))
+      .finally(() => setLoadingFarmers(false))
+  }, [])
 
-      // ✅ safe data extraction
-      const safeFarmers = Array.isArray(farmerList)
-        ? farmerList
-        : farmerList?.data || []
+  useEffect(() => {
+    if (!selectedId) return
+    const selectedFarmer = farmers.find(f => f.id === selectedId)
+    if (!selectedFarmer) return
 
-      const safePurchases = Array.isArray(allPurchases)
-        ? allPurchases
-        : allPurchases?.data || []
-
-      // ✅ active farmers filter
-      const farmerIdsWithPO = new Set(
-        safePurchases.map((p: any) => p.farmerId).filter(Boolean)
-      )
-
-      const farmerNamesWithPO = new Set(
-        safePurchases.map((p: any) => (p.supplierName || '').toLowerCase().trim())
-      )
-
-      const activeFarmers = safeFarmers.filter((f: any) =>
-        farmerIdsWithPO.has(f.id) ||
-        farmerNamesWithPO.has((f.name || '').toLowerCase().trim())
-      )
-
-      const list = activeFarmers.length > 0 ? activeFarmers : safeFarmers
-
-      setFarmers(list)
-
-      if (list.length > 0) {
-        setSelectedId(String(list[0].id)) // 🔥 string fix
-      }
-
-      setPurchases(safePurchases)
-    })
-    .catch(err => console.error('Farm ledger error:', err))
-    .finally(() => setLoadingFarmers(false))
-}, [])
+    setLoadingLedger(true)
+    // Fetch ledger entries from billing API using farmer name
+    billingApi.getLedgerByName(selectedFarmer.name)
+      .then(entries => {
+        setLedgerEntries(entries || [])
+      })
+      .catch(err => {
+        console.error('Ledger load error:', err)
+        setLedgerEntries([])
+      })
+      .finally(() => setLoadingLedger(false))
+  }, [selectedId, farmers])
 
   const selectedFarmer = farmers.find(f => f.id === selectedId)
-  const farmerPurchases = purchases.filter(p =>
-    p.farmerId === selectedId ||
-    (selectedFarmer && (p.supplierName || '').toLowerCase().trim() === (selectedFarmer.name || '').toLowerCase().trim())
-  )
-    .sort((a: any, b: any) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime())
 
-  // Build ledger entries
-  const ledgerEntries: any[] = [];
-  let openingBalance = Number(selectedFarmer?.openingBalance || 0);
-  let runningBalance = Number(selectedFarmer?.openingBalance || 0);
+  // Filter ledger entries by date range
   const fromDateObj = new Date(dateFrom); fromDateObj.setHours(0,0,0,0);
   const toDateObj = new Date(dateTo); toDateObj.setHours(23,59,59,999);
 
-  for (const po of farmerPurchases) {
-    const poDateObj = new Date(po.orderDate);
-    poDateObj.setHours(0,0,0,0);
-    const amt = Number(po.netAmount || po.totalAmount || 0);
-    const paid = Number(po.totalPaymentMade || 0);
+  const filteredEntries = ledgerEntries.filter(entry => {
+    const entryDate = new Date(entry.date);
+    entryDate.setHours(0,0,0,0);
+    return entryDate >= fromDateObj && entryDate <= toDateObj;
+  });
 
-    if (poDateObj < fromDateObj) {
-      openingBalance += (amt - paid);
-      runningBalance += (amt - paid);
-    } else if (poDateObj >= fromDateObj && poDateObj <= toDateObj) {
-      // Purchase row
-      if (amt > 0) {
-        runningBalance += amt;
-        ledgerEntries.push({
-          date: po.orderDate,
-          type: 'Purchase',
-          reference: po.orderNumber,
-          debit: amt,
-          credit: 0,
-          balance: runningBalance,
-          remarks: po.notes || po.remarks || ''
-        });
-      }
-      // Payment row
-      if (paid > 0) {
-        runningBalance -= paid;
-        ledgerEntries.push({
-          date: po.orderDate,
-          type: 'Payment Made',
-          reference: po.orderNumber,
-          debit: 0,
-          credit: paid,
-          balance: runningBalance,
-          remarks: po.notes || po.remarks || ''
-        });
-      }
-    }
-  }
+  // Calculate opening balance (all entries before start date)
+  const openingBalance = ledgerEntries
+    .filter(entry => {
+      const entryDate = new Date(entry.date);
+      entryDate.setHours(0,0,0,0);
+      return entryDate < fromDateObj;
+    })
+    .reduce((acc, entry) => acc + Number(entry.debit || 0) - Number(entry.credit || 0), 0);
 
-  const totalDebit = ledgerEntries.reduce((s, e) => s + e.debit, 0)
-  const totalCredit = ledgerEntries.reduce((s, e) => s + e.credit, 0)
-  const closingBalance = runningBalance
+  // Calculate totals for the period
+  const totalDebit = filteredEntries.reduce((s, e) => s + Number(e.debit || 0), 0)
+  const totalCredit = filteredEntries.reduce((s, e) => s + Number(e.credit || 0), 0)
+  
+  // Closing balance is the last entry's balance, or opening balance if no entries
+  const closingBalance = filteredEntries.length > 0 
+    ? Number(filteredEntries[filteredEntries.length - 1].balance || 0)
+    : openingBalance
 
   const downloadCSV = () => {
-    if (!ledgerEntries.length) { alert('No data to export.'); return }
+    if (!filteredEntries.length) { alert('No data to export.'); return }
     const headers = 'Date,Type,Reference,Debit,Credit,Balance'
-    const rows = ledgerEntries.map(e => `${e.date},${e.type},${e.reference},${e.debit},${e.credit},${e.balance}`).join('\n')
+    const rows = filteredEntries.map(e => `${e.date},${e.referenceType},${e.referenceId || ''},${e.debit},${e.credit},${e.balance}`).join('\n')
     const blob = new Blob([`${headers}\n${rows}`], { type: 'text/csv;charset=utf-8;' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -136,7 +99,7 @@ const FarmLedgerPage = () => {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Farm Ledger</h1>
-            <p className="text-gray-600 mt-2">Purchase and payment ledger per farmer</p>
+            <p className="text-gray-600 mt-2">Complete ledger including purchases, payments, and vouchers</p>
           </div>
           <Link href="/billing" className="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 print:hidden">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back
@@ -208,29 +171,38 @@ const FarmLedgerPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loadingFarmers ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500">Loading...</TableCell></TableRow>
+                {loadingLedger ? (
+                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500">Loading...</TableCell></TableRow>
                 ) : (
                   <>
                     <TableRow className="bg-gray-100 font-medium">
                       <TableCell colSpan={6} className="text-right">Opening Balance </TableCell>
                       <TableCell className="text-right font-bold">₹{openingBalance.toLocaleString('en-IN')}</TableCell>
                     </TableRow>
-                    {ledgerEntries.length === 0 ? (
-                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500">No purchase orders found in this date range</TableCell></TableRow>
-                    ) : ledgerEntries.map((e, idx) => (
-                      <TableRow key={idx} className={`border-b border-gray-200 ${e.type === 'Payment Made' ? 'bg-green-50' : ''}`}>
-                        <TableCell>{new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN')}</TableCell>
-                        <TableCell>
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${e.type === 'Purchase' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>{e.type}</span>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">{e.reference}</TableCell>
-                        <TableCell className="text-gray-600 text-sm max-w-[150px] truncate" title={e.remarks}>{e.remarks || '-'}</TableCell>
-                        <TableCell className="text-right text-red-600">{e.debit > 0 ? `₹${e.debit.toLocaleString('en-IN')}` : '–'}</TableCell>
-                        <TableCell className="text-right text-green-600">{e.credit > 0 ? `₹${e.credit.toLocaleString('en-IN')}` : '–'}</TableCell>
-                        <TableCell className="text-right font-bold">₹{e.balance.toLocaleString('en-IN')}</TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredEntries.length === 0 ? (
+                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500">No transactions found in this date range</TableCell></TableRow>
+                    ) : filteredEntries.map((e, idx) => {
+                      const typeLabel = e.referenceType || 'Unknown';
+                      const typeColor = 
+                        typeLabel === 'Sale' ? 'bg-orange-100 text-orange-800' :
+                        typeLabel === 'Payment' ? 'bg-green-100 text-green-800' :
+                        typeLabel === 'Voucher' ? 'bg-purple-100 text-purple-800' :
+                        'bg-gray-100 text-gray-800';
+                      
+                      return (
+                        <TableRow key={idx} className={`border-b border-gray-200 ${typeLabel === 'Payment' ? 'bg-green-50' : typeLabel === 'Voucher' ? 'bg-purple-50' : ''}`}>
+                          <TableCell>{new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN')}</TableCell>
+                          <TableCell>
+                            <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${typeColor}`}>{typeLabel}</span>
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">{e.referenceId || '-'}</TableCell>
+                          <TableCell className="text-gray-600 text-sm max-w-[150px] truncate">-</TableCell>
+                          <TableCell className="text-right text-red-600">{Number(e.debit) > 0 ? `₹${Number(e.debit).toLocaleString('en-IN')}` : '–'}</TableCell>
+                          <TableCell className="text-right text-green-600">{Number(e.credit) > 0 ? `₹${Number(e.credit).toLocaleString('en-IN')}` : '–'}</TableCell>
+                          <TableCell className="text-right font-bold">₹{Number(e.balance).toLocaleString('en-IN')}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                     <TableRow className="bg-gray-50 border-t border-gray-300 font-bold">
                       <TableCell colSpan={4} className="text-right">TOTAL FOR PERIOD</TableCell>
                       <TableCell className="text-right text-red-600">₹{totalDebit.toLocaleString('en-IN')}</TableCell>

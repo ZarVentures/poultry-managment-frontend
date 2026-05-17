@@ -10,15 +10,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Download, Printer, ArrowLeft, Calendar } from 'lucide-react'
-import { salesApi, retailersApi, godownApi } from '@/lib/api'
+import { salesApi, retailersApi, godownApi, billingApi } from '@/lib/api'
 
 const RetailerLedgerContent = () => {
   const searchParams = useSearchParams()
   const [retailers, setRetailers] = useState<any[]>([])
   const [selectedId, setSelectedId] = useState('')
-  const [sales, setSales] = useState<any[]>([])
+  const [ledgerEntries, setLedgerEntries] = useState<any[]>([])
   const [loadingRetailers, setLoadingRetailers] = useState(true)
-  const [loadingSales, setLoadingSales] = useState(false)
+  const [loadingLedger, setLoadingLedger] = useState(false)
   const [dateFrom, setDateFrom] = useState(() => { const d = new Date(); d.setMonth(0); d.setDate(1); return d.toISOString().split('T')[0] })
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0])
 
@@ -36,73 +36,56 @@ const RetailerLedgerContent = () => {
 
   useEffect(() => {
     if (!selectedId) return
-    setLoadingSales(true)
-    Promise.all([salesApi.getAll(), godownApi.sales.getAll()])
-      .then(([regularSales, godownSales]) => {
-        const allSales = [...(Array.isArray(regularSales) ? regularSales : []), ...(Array.isArray(godownSales) ? godownSales : [])]
-        setSales(allSales.filter(s => s.retailerId === selectedId))
+    const selectedRetailer = retailers.find(r => r.id === selectedId)
+    if (!selectedRetailer) return
+
+    setLoadingLedger(true)
+    // Fetch ledger entries from billing API using retailer name
+    billingApi.getLedgerByName(selectedRetailer.name)
+      .then(entries => {
+        setLedgerEntries(entries || [])
       })
-      .catch(err => console.error('Sales load error:', err))
-      .finally(() => setLoadingSales(false))
-  }, [selectedId])
+      .catch(err => {
+        console.error('Ledger load error:', err)
+        setLedgerEntries([])
+      })
+      .finally(() => setLoadingLedger(false))
+  }, [selectedId, retailers])
 
   const selectedRetailer = retailers.find(r => r.id === selectedId)
 
-  const ledgerEntries: any[] = [];
-  let openingBalance = Number(selectedRetailer?.openingBalance || 0);
-  let runningBalance = Number(selectedRetailer?.openingBalance || 0);
-  const sortedSales = [...sales].sort((a, b) => new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime());
+  // Filter ledger entries by date range
   const fromDateObj = new Date(dateFrom); fromDateObj.setHours(0,0,0,0);
   const toDateObj = new Date(dateTo); toDateObj.setHours(23,59,59,999);
 
-  for (const sale of sortedSales) {
-    const saleDateObj = new Date(sale.saleDate);
-    saleDateObj.setHours(0,0,0,0);
-    const saleAmt = Number(sale.netAmount || sale.totalAmount || 0);
-    const received = Number(sale.amountReceived || 0);
+  const filteredEntries = ledgerEntries.filter(entry => {
+    const entryDate = new Date(entry.date);
+    entryDate.setHours(0,0,0,0);
+    return entryDate >= fromDateObj && entryDate <= toDateObj;
+  });
 
-    if (saleDateObj < fromDateObj) {
-      openingBalance += (saleAmt - received);
-      runningBalance += (saleAmt - received);
-    } else if (saleDateObj >= fromDateObj && saleDateObj <= toDateObj) {
-      // Sale row
-      if (saleAmt > 0) {
-        runningBalance += saleAmt;
-        ledgerEntries.push({
-          date: sale.saleDate,
-          type: 'Sale',
-          reference: sale.invoiceNumber,
-          debit: saleAmt,
-          credit: 0,
-          balance: runningBalance,
-          remarks: sale.notes || sale.remarks || ''
-        });
-      }
-      // Payment row
-      if (received > 0) {
-        runningBalance -= received;
-        ledgerEntries.push({
-          date: sale.saleDate,
-          type: 'Payment',
-          reference: sale.invoiceNumber,
-          debit: 0,
-          credit: received,
-          balance: runningBalance,
-          remarks: sale.notes || sale.remarks || ''
-        });
-      }
-    }
-  }
+  // Calculate opening balance (all entries before start date)
+  const openingBalance = ledgerEntries
+    .filter(entry => {
+      const entryDate = new Date(entry.date);
+      entryDate.setHours(0,0,0,0);
+      return entryDate < fromDateObj;
+    })
+    .reduce((acc, entry) => acc + Number(entry.debit || 0) - Number(entry.credit || 0), 0);
 
-  const totalDebit = ledgerEntries.reduce((s, e) => s + e.debit, 0)
-  const totalCredit = ledgerEntries.reduce((s, e) => s + e.credit, 0)
-  const closingBalance = runningBalance
-  const trueCurrentBalance = sales.reduce((acc, sale) => acc + Number(sale.netAmount || sale.totalAmount || 0) - Number(sale.amountReceived || 0), 0)
+  // Calculate totals for the period
+  const totalDebit = filteredEntries.reduce((s, e) => s + Number(e.debit || 0), 0)
+  const totalCredit = filteredEntries.reduce((s, e) => s + Number(e.credit || 0), 0)
+  
+  // Closing balance is the last entry's balance, or opening balance if no entries
+  const closingBalance = filteredEntries.length > 0 
+    ? Number(filteredEntries[filteredEntries.length - 1].balance || 0)
+    : openingBalance
 
   const downloadCSV = () => {
-    if (!ledgerEntries.length) { alert('No data to export.'); return }
+    if (!filteredEntries.length) { alert('No data to export.'); return }
     const headers = 'Date,Type,Reference,Debit,Credit,Balance'
-    const rows = ledgerEntries.map(e => `${e.date},${e.type},${e.reference},${e.debit},${e.credit},${e.balance}`).join('\n')
+    const rows = filteredEntries.map(e => `${e.date},${e.referenceType},${e.referenceId || ''},${e.debit},${e.credit},${e.balance}`).join('\n')
     const blob = new Blob([`${headers}\n${rows}`], { type: 'text/csv;charset=utf-8;' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -117,7 +100,7 @@ const RetailerLedgerContent = () => {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Retailer Ledger</h1>
-            <p className="text-gray-600 mt-2">Sales and payment ledger per retailer</p>
+            <p className="text-gray-600 mt-2">Complete ledger including sales, payments, and vouchers</p>
           </div>
           <Link href="/billing" className="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 print:hidden">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back
@@ -187,29 +170,38 @@ const RetailerLedgerContent = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loadingSales ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500">Loading...</TableCell></TableRow>
+                {loadingLedger ? (
+                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500">Loading...</TableCell></TableRow>
                 ) : (
                   <>
                     <TableRow className="bg-gray-100 font-medium">
                       <TableCell colSpan={6} className="text-right">Opening Balance</TableCell>
                       <TableCell className="text-right font-bold">₹{openingBalance.toLocaleString('en-IN')}</TableCell>
                     </TableRow>
-                    {ledgerEntries.length === 0 ? (
+                    {filteredEntries.length === 0 ? (
                       <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500">No transactions found in this date range</TableCell></TableRow>
-                    ) : ledgerEntries.map((e, idx) => (
-                      <TableRow key={idx} className={`border-b border-gray-200 ${e.type === 'Payment' ? 'bg-green-50' : ''}`}>
-                        <TableCell>{new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN')}</TableCell>
-                        <TableCell>
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${e.type === 'Sale' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{e.type}</span>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">{e.reference}</TableCell>
-                        <TableCell className="text-gray-600 text-sm max-w-[150px] truncate" title={e.remarks}>{e.remarks || '-'}</TableCell>
-                        <TableCell className="text-right text-red-600">{e.debit > 0 ? `₹${e.debit.toLocaleString('en-IN')}` : '–'}</TableCell>
-                        <TableCell className="text-right text-green-600">{e.credit > 0 ? `₹${e.credit.toLocaleString('en-IN')}` : '–'}</TableCell>
-                        <TableCell className="text-right font-bold">₹{e.balance.toLocaleString('en-IN')}</TableCell>
-                      </TableRow>
-                    ))}
+                    ) : filteredEntries.map((e, idx) => {
+                      const typeLabel = e.referenceType || 'Unknown';
+                      const typeColor = 
+                        typeLabel === 'Sale' ? 'bg-orange-100 text-orange-800' :
+                        typeLabel === 'Payment' ? 'bg-green-100 text-green-800' :
+                        typeLabel === 'Voucher' ? 'bg-purple-100 text-purple-800' :
+                        'bg-gray-100 text-gray-800';
+                      
+                      return (
+                        <TableRow key={idx} className={`border-b border-gray-200 ${typeLabel === 'Payment' ? 'bg-green-50' : typeLabel === 'Voucher' ? 'bg-purple-50' : ''}`}>
+                          <TableCell>{new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN')}</TableCell>
+                          <TableCell>
+                            <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${typeColor}`}>{typeLabel}</span>
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">{e.referenceId || '-'}</TableCell>
+                          <TableCell className="text-gray-600 text-sm max-w-[150px] truncate">-</TableCell>
+                          <TableCell className="text-right text-red-600">{Number(e.debit) > 0 ? `₹${Number(e.debit).toLocaleString('en-IN')}` : '–'}</TableCell>
+                          <TableCell className="text-right text-green-600">{Number(e.credit) > 0 ? `₹${Number(e.credit).toLocaleString('en-IN')}` : '–'}</TableCell>
+                          <TableCell className="text-right font-bold">₹{Number(e.balance).toLocaleString('en-IN')}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                     <TableRow className="bg-gray-50 border-t border-gray-300 font-bold">
                       <TableCell colSpan={4} className="text-right">TOTAL FOR PERIOD</TableCell>
                       <TableCell className="text-right text-red-600">₹{totalDebit.toLocaleString('en-IN')}</TableCell>
