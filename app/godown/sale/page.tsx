@@ -124,7 +124,7 @@ export default function GodownSalePage() {
   const fetchNextSaleNumber = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${getApiBaseUrl()}/godown/sales/next-sale-number`, {
+      const response = await fetch(`${getApiBaseUrl()}/godown/sales/generate/next-sale-number`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (response.ok) {

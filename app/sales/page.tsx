@@ -152,7 +152,7 @@ export default function SalesPage() {
   const fetchNextInvoiceNumber = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${getApiBaseUrl()}/sales/next-invoice-number`, {
+      const response = await fetch(`${getApiBaseUrl()}/sales/generate/next-invoice-number`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (response.ok) {

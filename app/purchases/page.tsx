@@ -85,7 +85,7 @@ export default function PurchasesPage() {
   const fetchNextOrderNumber = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${getApiBaseUrl()}/purchases/next-order-number`, {
+      const response = await fetch(`${getApiBaseUrl()}/purchases/generate/next-order-number`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (response.ok) {
