@@ -791,38 +791,6 @@ export const salesApi = {
 };
 
 // ============================================
-// EXPENSE CATEGORIES API
-// ============================================
-export const expenseCategoriesApi = {
-  getAll: (includeInactive = false) =>
-    apiRequest<ExpenseCategory[]>(`/expense-categories?includeInactive=${includeInactive}`),
-
-  getOne: (id: string) => apiRequest<ExpenseCategory>(`/expense-categories/${id}`),
-
-  create: (data: CreateExpenseCategoryDto) =>
-    apiRequest<ExpenseCategory>('/expense-categories', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
-  update: (id: string, data: UpdateExpenseCategoryDto) =>
-    apiRequest<ExpenseCategory>(`/expense-categories/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    }),
-
-  delete: (id: string) =>
-    apiRequest<void>(`/expense-categories/${id}`, {
-      method: 'DELETE',
-    }),
-
-  toggleActive: (id: string) =>
-    apiRequest<ExpenseCategory>(`/expense-categories/${id}/toggle-active`, {
-      method: 'PATCH',
-    }),
-};
-
-// ============================================
 // EXPENSES API
 // ============================================
 export const expensesApi = {
@@ -845,6 +813,64 @@ export const expensesApi = {
   delete: (id: string) =>
     apiRequest<void>(`/expenses/${id}`, {
       method: 'DELETE',
+    }),
+};
+
+// ============================================
+// EXPENSE CATEGORIES API
+// ============================================
+export interface ExpenseCategory {
+  id: number;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  isDefault: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateExpenseCategoryDto {
+  name: string;
+  description?: string;
+  isActive?: boolean;
+  sortOrder?: number;
+}
+
+export interface UpdateExpenseCategoryDto {
+  name?: string;
+  description?: string;
+  isActive?: boolean;
+  sortOrder?: number;
+}
+
+export const expenseCategoriesApi = {
+  getAll: () => apiRequest<ExpenseCategory[]>('/expense-categories'),
+
+  getActive: () => apiRequest<ExpenseCategory[]>('/expense-categories/active'),
+
+  getOne: (id: number) => apiRequest<ExpenseCategory>(`/expense-categories/${id}`),
+
+  create: (data: CreateExpenseCategoryDto) =>
+    apiRequest<ExpenseCategory>('/expense-categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: number, data: UpdateExpenseCategoryDto) =>
+    apiRequest<ExpenseCategory>(`/expense-categories/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: number) =>
+    apiRequest<void>(`/expense-categories/${id}`, {
+      method: 'DELETE',
+    }),
+
+  seed: () =>
+    apiRequest<void>('/expense-categories/seed', {
+      method: 'POST',
     }),
 };
 

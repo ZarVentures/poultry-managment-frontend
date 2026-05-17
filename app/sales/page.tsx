@@ -1060,6 +1060,7 @@ export default function SalesPage() {
                       <TableHead className="font-bold">Date</TableHead>
                       <TableHead className="font-bold">Customer</TableHead>
                       <TableHead className="font-bold">Mode</TableHead>
+                      <TableHead className="font-bold">Birds</TableHead>
                       <TableHead className="font-bold">Weight</TableHead>
                       <TableHead className="font-bold">Net Amount</TableHead>
                       <TableHead className="font-bold">Payment</TableHead>
@@ -1077,6 +1078,7 @@ export default function SalesPage() {
                         <TableCell>{new Date(s.saleDate).toLocaleDateString()}</TableCell>
                         <TableCell>{s.customerName}</TableCell>
                         <TableCell><span className="text-xs px-2 py-0.5 rounded bg-gray-100">{s.saleMode === 'from_vehicle' ? 'Vehicle' : 'Godown'}</span></TableCell>
+                        <TableCell className="font-medium">{(s as any).numberOfBirds || '-'}</TableCell>
                         <TableCell>{Number(s.quantity || 0).toFixed(2)} kg</TableCell>
                         <TableCell>₹{Number(s.netAmount || s.totalAmount || 0).toFixed(2)}</TableCell>
                         <TableCell>
