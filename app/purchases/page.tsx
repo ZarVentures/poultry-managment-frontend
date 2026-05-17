@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { purchasesApi, farmersApi, vehiclesApi, type PurchaseOrder as ApiPurchaseOrder, type Farmer } from "@/lib/api"
 import { toast } from "sonner"
+import { getApiBaseUrl } from "@/lib/api-base-url"
 
 const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer"] as const
 type PaymentMode = typeof PAYMENT_MODES[number]
@@ -81,8 +82,25 @@ export default function PurchasesPage() {
   const fetchFarmers = async () => { try { const data = await farmersApi.getActive(); setFarmers(Array.isArray(data) ? data as Farmer[] : []) } catch { setFarmers([]) } }
   const fetchVehicles = async () => { try { const data = await vehiclesApi.getAll(); setVehicles(Array.isArray(data) ? data : []) } catch { setVehicles([]) } }
 
-  const resetForm = () => {
-    setFormData({ orderNumber: "", supplierName: "", orderDate: new Date().toISOString().split("T")[0], dueDate: "", status: "pending", branch: "", farmerId: "", farmerMobile: "", farmLocation: "", vehicleId: "", purchasePaymentStatus: "pending", ratePerKg: "", transportCharges: "", otherCharges: "", notes: "" })
+  const fetchNextOrderNumber = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${getApiBaseUrl()}/purchases/next-order-number`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        return data.nextOrderNumber || ""
+      }
+    } catch (error) {
+      console.error('Failed to fetch next order number:', error)
+    }
+    return ""
+  }
+
+  const resetForm = async () => {
+    const nextNumber = editingId ? "" : await fetchNextOrderNumber()
+    setFormData({ orderNumber: nextNumber, supplierName: "", orderDate: new Date().toISOString().split("T")[0], dueDate: "", status: "pending", branch: "", farmerId: "", farmerMobile: "", farmLocation: "", vehicleId: "", purchasePaymentStatus: "pending", ratePerKg: "", transportCharges: "", otherCharges: "", notes: "" })
     setCages([emptyCage()]); setPayments([emptyPayment()]); setEditingId(null); setInvoiceFile(null)
     setAllowEditBillNo(false)
   }

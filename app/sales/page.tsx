@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
 import { salesApi, retailersApi, vehiclesApi, purchasesApi, type Sale as ApiSale } from "@/lib/api"
 import { toast } from "sonner"
+import { getApiBaseUrl } from "@/lib/api-base-url"
 
 const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer", "advance"] as const
 type PaymentMode = typeof PAYMENT_MODES[number]
@@ -148,6 +149,22 @@ export default function SalesPage() {
     catch { setPurchaseBills([]) }
   }
 
+  const fetchNextInvoiceNumber = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${getApiBaseUrl()}/sales/next-invoice-number`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        return data.nextInvoiceNumber || ""
+      }
+    } catch (error) {
+      console.error('Failed to fetch next invoice number:', error)
+    }
+    return ""
+  }
+
   const handlePurchaseBillChange = async (orderNumber: string) => {
     const billNo = orderNumber === '__none__' ? '' : orderNumber
     setFormData(f => ({ ...f, purchaseBillNo: billNo }))
@@ -257,9 +274,10 @@ export default function SalesPage() {
   const totalPaymentMade = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
   const balance = Math.max(0, netAmount - totalPaymentMade)
 
-  const resetForm = () => {
+  const resetForm = async () => {
+    const nextNumber = editingId ? "" : await fetchNextInvoiceNumber()
     setFormData({
-      invoiceNumber: "", saleNo: "", purchaseBillNo: "", cageNo: "",
+      invoiceNumber: nextNumber, saleNo: nextNumber, purchaseBillNo: "", cageNo: "",
       numBirds: "", totalWeight: "",
       saleDate: new Date().toISOString().split("T")[0],
       retailerId: "", customerName: "", ownerName: "", phone: "", address: "",

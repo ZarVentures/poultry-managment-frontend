@@ -14,6 +14,7 @@ import { Plus, Edit2, Trash2, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { godownApi, retailersApi, purchasesApi, type GodownSale, type Retailer } from "@/lib/api"
 import { toast } from "sonner"
+import { getApiBaseUrl } from "@/lib/api-base-url"
 
 const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer", "advance"] as const
 type PaymentMode = typeof PAYMENT_MODES[number]
@@ -120,6 +121,22 @@ export default function GodownSalePage() {
     } catch { }
   }
 
+  const fetchNextSaleNumber = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${getApiBaseUrl()}/godown/sales/next-sale-number`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        return data.nextSaleNumber || ""
+      }
+    } catch (error) {
+      console.error('Failed to fetch next sale number:', error)
+    }
+    return ""
+  }
+
   // Re-aggregate form totals whenever selected cages or their sell values change
   const recalcTotals = (rows: CageRow[], ratePerKg: string) => {
     const sel = rows.filter(r => r.selected)
@@ -145,10 +162,11 @@ export default function GodownSalePage() {
     })
   }
 
-  const resetForm = () => {
+  const resetForm = async () => {
+    const nextNumber = editingId ? "" : await fetchNextSaleNumber()
     setFormData({
       saleDate: new Date().toISOString().split("T")[0],
-      saleNo: "", purchaseBillNo: "", invoiceNumber: "", retailerId: "",
+      saleNo: nextNumber, purchaseBillNo: "", invoiceNumber: "", retailerId: "",
       customerName: "", numberOfBirds: "", totalWeight: "",
       weightLoss: "", ratePerKg: "", totalAmount: "",
       paymentStatus: "pending", notes: "",
