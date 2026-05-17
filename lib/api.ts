@@ -788,6 +788,126 @@ export const salesApi = {
     }
     return response.json();
   },
+
+  generateNextInvoiceNumber: () =>
+    apiRequest<{ nextInvoiceNumber: string }>('/sales/generate/next-invoice-number'),
+};
+
+// ============================================
+// BIRD RETURNS API
+// ============================================
+export interface BirdReturn {
+  id: string;
+  returnNumber: string;
+  returnDate: string;
+  saleId: string;
+  sale?: Sale;
+  customerName: string;
+  retailerId?: string;
+  retailer?: Retailer;
+  numberOfBirdsReturned: number;
+  weightReturned?: number;
+  returnReason: 'dead' | 'sick' | 'underweight' | 'quality_issue' | 'customer_request' | 'other';
+  reasonDescription?: string;
+  refundAmount: number;
+  adjustmentAmount: number;
+  status: 'pending' | 'approved' | 'rejected' | 'processed';
+  returnedToInventory: boolean;
+  inventoryLocation?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  processedBy?: string;
+  processedAt?: string;
+  notes?: string;
+  attachmentUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateBirdReturnDto {
+  returnDate: string;
+  saleId: string;
+  customerName: string;
+  retailerId?: string;
+  numberOfBirdsReturned: number;
+  weightReturned?: string;
+  returnReason: 'dead' | 'sick' | 'underweight' | 'quality_issue' | 'customer_request' | 'other';
+  reasonDescription?: string;
+  refundAmount?: string;
+  adjustmentAmount?: string;
+  status?: 'pending' | 'approved' | 'rejected' | 'processed';
+  returnedToInventory?: boolean;
+  inventoryLocation?: string;
+  notes?: string;
+}
+
+export interface UpdateBirdReturnDto extends Partial<CreateBirdReturnDto> {}
+
+export const birdReturnsApi = {
+  getAll: (filters?: {
+    startDate?: string;
+    endDate?: string;
+    saleId?: string;
+    status?: string;
+    customerId?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    const params = new URLSearchParams();
+    if (filters?.startDate) params.append('startDate', filters.startDate);
+    if (filters?.endDate) params.append('endDate', filters.endDate);
+    if (filters?.saleId) params.append('saleId', filters.saleId);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.customerId) params.append('customerId', filters.customerId);
+    if (filters?.page) params.append('page', String(filters.page));
+    if (filters?.limit) params.append('limit', String(filters.limit));
+    return apiRequest<any>(`/bird-returns?${params.toString()}`);
+  },
+
+  getStats: (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    return apiRequest<any>(`/bird-returns/stats?${params.toString()}`);
+  },
+
+  getBySaleId: (saleId: string) =>
+    apiRequest<BirdReturn[]>(`/bird-returns/by-sale/${saleId}`),
+
+  getOne: (id: string) => apiRequest<BirdReturn>(`/bird-returns/${id}`),
+
+  create: (data: CreateBirdReturnDto) =>
+    apiRequest<BirdReturn>('/bird-returns', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: UpdateBirdReturnDto) =>
+    apiRequest<BirdReturn>(`/bird-returns/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  approve: (id: string) =>
+    apiRequest<BirdReturn>(`/bird-returns/${id}/approve`, {
+      method: 'PATCH',
+    }),
+
+  reject: (id: string, reason: string) =>
+    apiRequest<BirdReturn>(`/bird-returns/${id}/reject`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reason }),
+    }),
+
+  process: (id: string) =>
+    apiRequest<BirdReturn>(`/bird-returns/${id}/process`, {
+      method: 'PATCH',
+    }),
+
+  delete: (id: string) =>
+    apiRequest<void>(`/bird-returns/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 // ============================================
