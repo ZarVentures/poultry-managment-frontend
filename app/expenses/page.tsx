@@ -32,7 +32,7 @@ export default function ExpensesPage() {
   const [formData, setFormData] = useState({
     expenseDate: new Date().toISOString().split("T")[0],
     expenseOwner: "",
-    categoryId: "",
+    categoryId: undefined as number | undefined,
     description: "",
     amount: "",
     paymentMethod: "cash" as "cash" | "bank_transfer" | "check" | "credit_card",
@@ -57,7 +57,7 @@ export default function ExpensesPage() {
       const data = await expenseCategoriesApi.getActive() // Only fetch active categories
       setCategories(data)
       if (data.length > 0 && !editingId) {
-        setFormData(prev => ({ ...prev, categoryId: String(data[0].id) }))
+        setFormData(prev => ({ ...prev, categoryId: data[0].id }))
       }
     } catch (e) {
       console.error("Failed to fetch categories:", e)
@@ -81,7 +81,7 @@ export default function ExpensesPage() {
     setFormData({
       expenseDate: new Date().toISOString().split("T")[0],
       expenseOwner: "",
-      categoryId: categories.length > 0 ? String(categories[0].id) : "",
+      categoryId: categories.length > 0 ? categories[0].id : undefined,
       description: "",
       amount: "",
       paymentMethod: "cash",
@@ -94,7 +94,7 @@ export default function ExpensesPage() {
     setFormData({
       expenseDate: expense.expenseDate,
       expenseOwner: expense.expenseOwner || "",
-      categoryId: expense.categoryId || (categories.find(c => c.name.toLowerCase() === expense.category?.toLowerCase())?.id ? String(categories.find(c => c.name.toLowerCase() === expense.category?.toLowerCase())!.id) : ""),
+      categoryId: expense.categoryId || categories.find(c => c.name.toLowerCase() === expense.category?.toLowerCase())?.id,
       description: expense.description,
       amount: String(expense.amount),
       paymentMethod: expense.paymentMethod,
@@ -330,8 +330,8 @@ export default function ExpensesPage() {
                   <div className="space-y-2">
                     <Label>Category *</Label>
                     <Select
-                      value={formData.categoryId}
-                      onValueChange={(value: any) => setFormData({ ...formData, categoryId: value })}
+                      value={formData.categoryId ? String(formData.categoryId) : undefined}
+                      onValueChange={(value: string) => setFormData({ ...formData, categoryId: Number(value) })}
                       disabled={loading}
                     >
                       <SelectTrigger>

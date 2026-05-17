@@ -233,24 +233,19 @@ export interface CreateSaleDto {
 export interface UpdateSaleDto extends Partial<CreateSaleDto> { }
 
 // Expense Interface
-export interface ExpenseCategory {
-  id: string;
-  name: string;
-  description?: string;
-  icon?: string;
-  isActive: boolean;
-  isSystem: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
 export interface Expense {
   id: string;
   expenseDate: string;
   expenseOwner?: string;
   category?: 'feed' | 'labor' | 'medicine' | 'utilities' | 'equipment' | 'maintenance' | 'transportation' | 'other';
-  categoryId?: string;
-  expenseCategory?: ExpenseCategory;
+  categoryId?: number;
+  expenseCategory?: {
+    id: number;
+    name: string;
+    description?: string;
+    isActive: boolean;
+    isDefault: boolean;
+  };
   description: string;
   amount: number;
   paymentMethod: 'cash' | 'bank_transfer' | 'check' | 'credit_card';
@@ -263,7 +258,7 @@ export interface Expense {
 export interface CreateExpenseDto {
   expenseDate: string;
   expenseOwner?: string;
-  categoryId?: string;
+  categoryId?: number;
   category?: 'feed' | 'labor' | 'medicine' | 'utilities' | 'equipment' | 'maintenance' | 'transportation' | 'other';
   description: string;
   amount: string;
@@ -272,15 +267,6 @@ export interface CreateExpenseDto {
 }
 
 export interface UpdateExpenseDto extends Partial<CreateExpenseDto> { }
-
-export interface CreateExpenseCategoryDto {
-  name: string;
-  description?: string;
-  icon?: string;
-  isActive?: boolean;
-}
-
-export interface UpdateExpenseCategoryDto extends Partial<CreateExpenseCategoryDto> { }
 
 // Purchase Order Interface
 export interface PurchaseOrderItem {
