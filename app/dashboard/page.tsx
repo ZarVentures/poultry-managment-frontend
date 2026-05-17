@@ -253,10 +253,17 @@ export default function DashboardPage() {
         </div>
 
         {/* Row 2 - Master Data Counts */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <StatCard title="Farmers" value={loading ? "..." : farmerCount} sub="Registered" icon={Tractor} />
           <StatCard title="Retailers" value={loading ? "..." : retailerCount} sub="Registered" icon={Users} />
           <StatCard title="Active Vehicles" value={loading ? "..." : vehicleCount} sub="On fleet" icon={Truck} />
+          <StatCard
+            title="Birds Sold"
+            value={loading ? "..." : (kpis?.totalBirdsSold || 0).toLocaleString()}
+            sub="Total birds this month"
+            icon={Bird}
+            color="text-blue-600"
+          />
           <StatCard
             title="Birds Mortality"
             value={loading ? "..." : (mortalityStats?.totalBirdsDeath || 0).toLocaleString()}
