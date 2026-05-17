@@ -548,8 +548,10 @@ export default function BirdReturnsPage() {
               <DateRangeFilter
                 startDate={dateRangeStart}
                 endDate={dateRangeEnd}
-                onStartDateChange={setDateRangeStart}
-                onEndDateChange={setDateRangeEnd}
+                onDateRangeChange={(start, end) => {
+                  setDateRangeStart(start)
+                  setDateRangeEnd(end)
+                }}
               />
             </div>
           </CardContent>
