@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,9 +9,11 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X, ChevronLeft, ChevronRight, Wallet, ShoppingCart, TrendingUp, Clock } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Printer } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { godownApi, retailersApi, purchasesApi, type GodownSale, type Retailer } from "@/lib/api"
+import { Textarea } from "@/components/ui/textarea"
+import { DateRangeFilter } from "@/components/date-range-filter"
+import { godownApi, retailersApi, purchasesApi, type GodownSale, type GodownCage, type Retailer } from "@/lib/api"
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
 
@@ -20,22 +21,9 @@ const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer", "advanc
 type PaymentMode = typeof PAYMENT_MODES[number]
 interface PaymentRow { mode: PaymentMode; amount: string }
 const emptyPayment = (): PaymentRow => ({ mode: "cash", amount: "" })
-
-// Represents a cage row with editable partial-sale fields
-interface CageRow {
-  id: string
-  cageId: string
-  totalBirds: number
-  totalWeight: number
-  sellBirds: string   // editable: how many birds to sell
-  sellWeight: string  // editable: weight to sell (after loss)
-  weightLoss: string  // editable: weight loss for this cage
-  selected: boolean
-}
+const emptyCage = (): GodownCage => ({ cageId: "", birdType: "", numberOfBirds: 0, cageWeight: 0 })
 
 export default function GodownSalePage() {
-  const router = useRouter()
-  const [userRole, setUserRole] = useState<string>("")
   const [sales, setSales] = useState<GodownSale[]>([])
   const [retailers, setRetailers] = useState<Retailer[]>([])
   const [loading, setLoading] = useState(false)
@@ -43,82 +31,58 @@ export default function GodownSalePage() {
   const [showDialog, setShowDialog] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize] = useState(20)
-  const [totalItems, setTotalItems] = useState(0)
+  const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
+  const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [allowEditBillNo, setAllowEditBillNo] = useState(false)
-
   const [formData, setFormData] = useState({
     saleDate: new Date().toISOString().split("T")[0],
-    saleNo: "", purchaseBillNo: "", invoiceNumber: "", retailerId: "",
-    customerName: "", numberOfBirds: "", totalWeight: "",
-    weightLoss: "", ratePerKg: "", totalAmount: "",
-    paymentStatus: "pending" as "paid" | "pending" | "partial", notes: "",
+    purchaseBillNo: "",
+    invoiceNumber: "",
+    retailerId: "",
+    customerName: "",
+    numberOfBirds: "",
+    totalWeight: "",
+    ratePerKg: "",
+    totalAmount: "",
+    paymentStatus: "pending" as "paid" | "pending" | "partial",
+    notes: "",
   })
   const [payments, setPayments] = useState<PaymentRow[]>([emptyPayment()])
-  const [cageRows, setCageRows] = useState<CageRow[]>([])
-  const [loadingCages, setLoadingCages] = useState(false)
+  const [cages, setCages] = useState<GodownCage[]>([emptyCage()])
 
   useEffect(() => {
     setMounted(true)
-    const userData = localStorage.getItem("user")
-    if (userData) {
-      try {
-        const user = JSON.parse(userData)
-        setUserRole(user.role || "")
-      } catch { }
-    }
+    fetchSales()
     fetchRetailers()
-    fetchAvailableCages()
   }, [])
 
   const fetchSales = async () => {
     try {
       setLoading(true)
-      const res = await godownApi.sales.getAll(currentPage, pageSize, searchQuery)
-      if (res && res.data) {
-        setSales(res.data)
-        setTotalItems(res.total)
-      } else {
-        setSales(Array.isArray(res) ? res : [])
-        setTotalItems(Array.isArray(res) ? res.length : 0)
-      }
-    } catch { toast.error("Failed to load sales") }
-    finally { setLoading(false) }
-  }
-
-  useEffect(() => {
-    if (mounted) fetchSales()
-  }, [mounted, currentPage, searchQuery])
-
-  const fetchAvailableCages = async () => {
-    try {
-      setLoadingCages(true)
-      const data = await purchasesApi.getInGodownCages()
-      if (Array.isArray(data)) {
-        setCageRows(data.map(c => {
-          const tw = Number(c.godownInwardWeight || c.purchaseWeight || 0)
-          return {
-            id: String(c.id),
-            cageId: c.cageId || String(c.id),
-            totalBirds: Number(c.numberOfBirds) || 0,
-            totalWeight: tw,
-            sellBirds: String(c.numberOfBirds || 0),
-            sellWeight: tw.toFixed(2),
-            weightLoss: "0.00",
-            selected: false,
-          } as CageRow
-        }))
-      }
-    } catch { }
-    finally { setLoadingCages(false) }
+      const data = await godownApi.sales.getAll()
+      setSales(data)
+    } catch (error: any) {
+      console.error("Failed to fetch sales:", error)
+      toast.error("Failed to load sales")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const fetchRetailers = async () => {
     try {
       const data = await retailersApi.getAll()
-      if (Array.isArray(data)) setRetailers(data.filter(r => r.status === "active"))
-    } catch { }
+      if (Array.isArray(data)) {
+        const activeRetailers = data.filter(r => r.status === "active")
+        // Ensure uniqueness by name to prevent UI duplicates
+        const uniqueRetailers = activeRetailers.filter((v, i, a) => 
+          a.findIndex(t => t.name === v.name) === i
+        )
+        setRetailers(uniqueRetailers)
+      }
+    } catch (error) {
+      console.error("Failed to fetch retailers:", error)
+    }
   }
 
   const fetchNextSaleNumber = async () => {
@@ -137,40 +101,6 @@ export default function GodownSalePage() {
     return ""
   }
 
-  // Dynamic values based on form inputs & selected cages
-  const selectedCages = useMemo(() => cageRows.filter(c => c.selected), [cageRows])
-  const rate = parseFloat(formData.ratePerKg) || 0
-
-  const totalBirds = useMemo(() => {
-    return selectedCages.length > 0
-      ? selectedCages.reduce((s, c) => s + (parseInt(c.sellBirds) || 0), 0)
-      : (parseInt(formData.numberOfBirds) || 0)
-  }, [selectedCages, formData.numberOfBirds])
-
-  const totalWeight = useMemo(() => {
-    return selectedCages.length > 0
-      ? selectedCages.reduce((s, c) => s + (parseFloat(c.sellWeight) || 0), 0)
-      : (parseFloat(formData.totalWeight) || 0)
-  }, [selectedCages, formData.totalWeight])
-
-  const totalLoss = useMemo(() => {
-    return selectedCages.length > 0
-      ? selectedCages.reduce((s, c) => s + (parseFloat(c.weightLoss) || 0), 0)
-      : (parseFloat(formData.weightLoss) || 0)
-  }, [selectedCages, formData.weightLoss])
-
-  const totalAmount = useMemo(() => totalWeight * rate, [totalWeight, rate])
-
-  const totalPaymentMade = useMemo(() => {
-    return payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
-  }, [payments])
-
-  const balance = useMemo(() => Math.max(0, totalAmount - totalPaymentMade), [totalAmount, totalPaymentMade])
-
-  const updateCageRow = (id: string, patch: Partial<CageRow>) => {
-    setCageRows(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r))
-  }
-
   const addPayment = () => setPayments(p => [...p, emptyPayment()])
   const removePayment = (i: number) => setPayments(p => p.filter((_, idx) => idx !== i))
   const updatePayment = (i: number, field: keyof PaymentRow, value: string) =>
@@ -180,120 +110,241 @@ export default function GodownSalePage() {
     const nextNumber = editingId ? "" : await fetchNextSaleNumber()
     setFormData({
       saleDate: new Date().toISOString().split("T")[0],
-      saleNo: nextNumber, purchaseBillNo: "", invoiceNumber: nextNumber, retailerId: "",
-      customerName: "", numberOfBirds: "", totalWeight: "",
-      weightLoss: "", ratePerKg: "", totalAmount: "",
-      paymentStatus: "pending", notes: "",
+      purchaseBillNo: "",
+      invoiceNumber: nextNumber,
+      retailerId: "",
+      customerName: "",
+      numberOfBirds: "",
+      totalWeight: "",
+      ratePerKg: "",
+      totalAmount: "",
+      paymentStatus: "pending",
+      notes: "",
     })
     setPayments([emptyPayment()])
+    setCages([emptyCage()])
     setEditingId(null)
-    fetchAvailableCages()
     setAllowEditBillNo(false)
   }
 
   const handleEdit = (sale: GodownSale) => {
     setFormData({
       saleDate: sale.saleDate,
-      saleNo: (sale as any).saleNo || "",
       purchaseBillNo: (sale as any).purchaseBillNo || "",
       invoiceNumber: (sale as any).invoiceNumber || "",
       retailerId: (sale as any).retailerId || "",
       customerName: sale.customerName,
       numberOfBirds: String(sale.numberOfBirds || ""),
       totalWeight: String(sale.totalWeight || ""),
-      weightLoss: String((sale as any).weightLoss || ""),
       ratePerKg: String(sale.ratePerKg || ""),
       totalAmount: String(sale.totalAmount || ""),
       paymentStatus: (sale as any).paymentStatus || "pending",
       notes: sale.notes || "",
     })
+    
+    // Load payments from sale data
     const salePayments = (sale as any).payments
-    if (salePayments?.length) {
-      setPayments(salePayments.map((p: any) => ({ mode: p.paymentMode || "cash", amount: String(p.amount) })))
+    if (salePayments && salePayments.length > 0) {
+      setPayments(salePayments.map((p: any) => ({ 
+        mode: (p.paymentMode || "cash") as PaymentMode, 
+        amount: String(p.amount) 
+      })))
     } else {
       setPayments([emptyPayment()])
     }
-    // Deselect cages when editing (cage editing post-sale not supported)
-    setCageRows(prev => prev.map(r => ({ ...r, selected: false })))
+    
+    setCages(sale.cages && sale.cages.length > 0 ? sale.cages : [emptyCage()])
     setEditingId(sale.id)
+    setAllowEditBillNo(false)
     setShowDialog(true)
   }
 
+  const calculateTotal = () => {
+    const weight = parseFloat(formData.totalWeight) || 0
+    const rate = parseFloat(formData.ratePerKg) || 0
+    return (weight * rate).toFixed(2)
+  }
+
+  const totalPaymentMade = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
+  const balanceAmount = Math.max(0, parseFloat(formData.totalAmount || calculateTotal()) - totalPaymentMade)
+
   const handleSave = async () => {
-    if (!formData.customerName || totalBirds <= 0) { toast.error("Required fields missing"); return }
-    if (!editingId && selectedCages.length === 0) { toast.error("Please select at least one cage"); return }
-    
-    // Validate per-cage: sellBirds must not exceed total
-    for (const c of selectedCages) {
-      const sb = parseInt(c.sellBirds) || 0
-      if (sb <= 0) { toast.error(`Enter birds to sell for cage ${c.cageId}`); return }
-      if (sb > c.totalBirds) { toast.error(`Birds to sell (${sb}) cannot exceed total birds (${c.totalBirds}) for cage ${c.cageId}`); return }
-      const sw = parseFloat(c.sellWeight) || 0
-      if (sw > c.totalWeight) { toast.error(`Weight to sell (${sw}) cannot exceed total weight (${c.totalWeight}) for cage ${c.cageId}`); return }
+    if (!formData.customerName || !formData.numberOfBirds || !formData.paymentStatus) {
+      toast.error("Please fill all required fields")
+      return
     }
-    
+
     try {
       setLoading(true)
-      const data = {
-        ...formData,
-        invoiceNumber: formData.saleNo || formData.invoiceNumber,
-        numberOfBirds: totalBirds,
-        totalWeight: totalWeight,
-        totalAmount: totalAmount,
-        ratePerKg: rate,
-        weightLoss: totalLoss,
-        amountReceived: totalPaymentMade,
-        payments: payments.filter(p => parseFloat(p.amount) > 0).map(p => ({ paymentMode: p.mode, amount: parseFloat(p.amount) })),
-        cages: selectedCages.map(c => ({
-          id: c.id,
-          soldBirds: parseInt(c.sellBirds) || 0,
-          numberOfBirds: parseInt(c.sellBirds) || 0,
-          soldWeight: parseFloat(c.sellWeight) || 0,
-          cageWeight: parseFloat(c.sellWeight) || 0,
-          weightLoss: parseFloat(c.weightLoss) || 0,
-        }))
-      } as any
+      const validPayments = payments.filter(p => parseFloat(p.amount) > 0).map(p => ({ 
+        paymentMode: p.mode, 
+        amount: p.amount 
+      }))
       
-      let saved: any
+      const saleData = {
+        saleDate: formData.saleDate,
+        invoiceNumber: formData.invoiceNumber || undefined,
+        customerName: formData.customerName,
+        numberOfBirds: parseInt(formData.numberOfBirds) || 0,
+        totalWeight: parseFloat(formData.totalWeight) || undefined,
+        ratePerKg: parseFloat(formData.ratePerKg) || undefined,
+        totalAmount: parseFloat(formData.totalAmount) || parseFloat(calculateTotal()) || 0,
+        paymentStatus: formData.paymentStatus,
+        amountReceived: totalPaymentMade,
+        notes: formData.notes,
+        payments: validPayments,
+        cages: cages
+          .filter(c => c.numberOfBirds > 0 || c.cageWeight > 0)
+          .map(c => ({
+            cageId: c.cageId || undefined,
+            numberOfBirds: Number(c.numberOfBirds) || 0,
+            cageWeight: Number(c.cageWeight) || 0,
+          })),
+      }
+
       if (editingId) {
-        saved = await godownApi.sales.update(editingId, data)
-        toast.success("Sale updated")
+        await godownApi.sales.update(editingId, saleData)
+        toast.success("Sale updated successfully")
       } else {
-        saved = await godownApi.sales.create(data)
-        if (saved?.saleNo && !formData.saleNo) {
-          setFormData(prev => ({ ...prev, saleNo: saved.saleNo, invoiceNumber: saved.saleNo }))
-          toast.success(`Sale recorded - Sale No: ${saved.saleNo}`)
+        const saved = await godownApi.sales.create(saleData)
+        if (saved?.invoiceNumber) {
+          toast.success(`Sale created successfully - GDS No: ${saved.invoiceNumber}`)
         } else {
-          toast.success("Sale recorded")
+          toast.success("Sale created successfully")
         }
       }
-      
+
       await fetchSales()
-      if (editingId) {
-        resetForm()
-        setShowDialog(false)
-      }
-    } catch (e: any) { toast.error(e?.message || "Failed to save") }
-    finally { setLoading(false) }
+      resetForm()
+      setShowDialog(false)
+    } catch (error: any) {
+      console.error("Failed to save sale:", error)
+      toast.error(error.message || "Failed to save sale")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure?")) return
-    try { setLoading(true); await godownApi.sales.delete(id); toast.success("Deleted"); await fetchSales() }
-    catch { toast.error("Failed to delete") }
-    finally { setLoading(false) }
+    if (!confirm("Are you sure you want to delete this sale?")) return
+
+    try {
+      setLoading(true)
+      await godownApi.sales.delete(id)
+      toast.success("Sale deleted successfully")
+      await fetchSales()
+    } catch (error: any) {
+      console.error("Failed to delete sale:", error)
+      toast.error("Failed to delete sale")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  // Calculate mini-dashboard stats
-  const stats = useMemo(() => {
-    return {
-      count: sales.length,
-      totalBirds: sales.reduce((s, x) => s + (parseFloat(String(x.totalWeight || 0))), 0),
-      totalRevenue: sales.reduce((s, x) => s + (parseFloat(String(x.totalAmount || 0))), 0),
-      totalReceived: sales.reduce((s, x) => s + (parseFloat(String(x.amountReceived || 0))), 0),
-      totalPending: sales.reduce((s, x) => s + Math.max(0, parseFloat(String(x.totalAmount || 0)) - parseFloat(String(x.amountReceived || 0))), 0),
+  const handleRetailerChange = (retailerId: string) => {
+    const retailer = retailers.find(r => r.id === retailerId)
+    if (retailer) {
+      setFormData({
+        ...formData,
+        retailerId,
+        customerName: retailer.name,
+      })
+    } else {
+      setFormData({ ...formData, retailerId: '', customerName: '' })
     }
-  }, [sales])
+  }
+
+  const handleDateRangeChange = (start: Date | undefined, end: Date | undefined) => {
+    setDateRangeStart(start)
+    setDateRangeEnd(end)
+  }
+
+  const filteredSales = useMemo(() => {
+    let filtered = [...sales]
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter(
+        (sale) =>
+          sale.customerName.toLowerCase().includes(query)
+      )
+    }
+
+    // Apply date range filter
+    if (dateRangeStart && dateRangeEnd) {
+      const start = new Date(dateRangeStart)
+      const end = new Date(dateRangeEnd)
+      start.setHours(0, 0, 0, 0)
+      end.setHours(23, 59, 59, 999)
+
+      filtered = filtered.filter((sale) => {
+        const saleDate = new Date(sale.saleDate)
+        saleDate.setHours(0, 0, 0, 0)
+        return saleDate >= start && saleDate <= end
+      })
+    }
+
+    return filtered
+  }, [sales, searchQuery, dateRangeStart, dateRangeEnd])
+
+  const handlePrintReport = () => {
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Godown Sales Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1 { text-align: center; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+            .header { margin-bottom: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Godown Sales Report</h1>
+            <div><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>GDS No</th>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Quantity</th>
+                <th>Rate</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredSales.map(sale => `
+                <tr>
+                  <td>${sale.invoiceNumber || "-"}</td>
+                  <td>${new Date(sale.saleDate).toLocaleDateString()}</td>
+                  <td>${sale.customerName}</td>
+                  <td>${sale.numberOfBirds} birds</td>
+                  <td>₹${Number(sale.ratePerKg || 0).toFixed(2)}/kg</td>
+                  <td>₹${Number(sale.totalAmount || 0).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `
+
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.onload = () => {
+        printWindow.print()
+      }
+    }
+  }
 
   if (!mounted) return null
 
@@ -301,199 +352,174 @@ export default function GodownSalePage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <div><h1 className="text-3xl font-bold">Godown Sales</h1><p className="text-muted-foreground">Record sales from godown</p></div>
+          <div>
+            <h1 className="text-3xl font-bold">Godown Sales</h1>
+            <p className="text-muted-foreground">Record sales from godown</p>
+          </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
-            <DialogTrigger asChild><Button onClick={resetForm}><Plus className="mr-2" size={20} />New Sale</Button></DialogTrigger>
-            <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
-              <DialogHeader><DialogTitle>{editingId ? "Edit Sale" : "New Sale"}</DialogTitle></DialogHeader>
-              <div className="space-y-5 overflow-y-auto flex-1 pr-1 pb-2">
-                
-                {/* Section 1: Header Information */}
-                <Card className="border-blue-200">
-                  <CardHeader className="bg-blue-50 border-b border-blue-100 py-3">
-                    <CardTitle className="text-blue-900 text-base">Section 1: Header Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4 pt-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Date *</Label>
-                        <DatePicker value={formData.saleDate} onChange={d => setFormData({ ...formData, saleDate: d })} disabled={loading} />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label>Sale No. (Auto-generated)</Label>
-                          <label className="flex items-center gap-2 text-xs cursor-pointer">
-                            <input type="checkbox" checked={allowEditBillNo} onChange={e => setAllowEditBillNo(e.target.checked)} className="cursor-pointer" />
-                            <span>Edit manually</span>
-                          </label>
-                        </div>
-                        <Input value={formData.saleNo} onChange={e => setFormData({ ...formData, saleNo: e.target.value, invoiceNumber: e.target.value })} placeholder="Auto-generated on save" disabled={loading} readOnly={!allowEditBillNo} className={!allowEditBillNo ? "bg-gray-50" : ""} />
-                      </div>
+            <DialogTrigger asChild>
+              <Button onClick={resetForm}>
+                <Plus className="mr-2" size={20} />
+                New Sale
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col" aria-describedby="dialog-description">
+              <DialogHeader>
+                <DialogTitle>{editingId ? "Edit Sale" : "New Sale"}</DialogTitle>
+                <p id="dialog-description" className="sr-only">
+                  {editingId ? "Edit godown sale details" : "Create a new godown sale"}
+                </p>
+              </DialogHeader>
+              <div className="space-y-4 overflow-y-auto flex-1 pr-1 pb-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Sale Date *</Label>
+                    <DatePicker
+                      value={formData.saleDate}
+                      onChange={(date) => setFormData({ ...formData, saleDate: date })}
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Godown Sale No</Label>
+                      <label className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={allowEditBillNo}
+                          onChange={(e) => setAllowEditBillNo(e.target.checked)}
+                          className="cursor-pointer"
+                        />
+                        <span>Edit manually</span>
+                      </label>
                     </div>
+                    <Input
+                      value={formData.invoiceNumber}
+                      onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
+                      placeholder="Auto-generated on save"
+                      disabled={loading}
+                      readOnly={!allowEditBillNo}
+                      className={!allowEditBillNo ? "bg-gray-50" : ""}
+                    />
+                  </div>
+                </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Shop / Retailer *</Label>
-                        <Select value={formData.retailerId || "__none__"} onValueChange={v => {
-                          const r = retailers.find(it => it.id === v)
-                          setFormData({ ...formData, retailerId: v === "__none__" ? "" : v, customerName: r ? r.name : "" })
-                        }} disabled={loading}>
-                          <SelectTrigger><SelectValue placeholder="Select retailer" /></SelectTrigger>
-                          <SelectContent className="max-h-60 overflow-y-auto">
-                            <SelectItem value="__none__">Select retailer...</SelectItem>
-                            {retailers.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Customer Name *</Label>
-                        <Input value={formData.customerName} onChange={e => setFormData({ ...formData, customerName: e.target.value })} placeholder="Customer Name" disabled={loading} />
-                      </div>
-                    </div>
+                <div className="space-y-2">
+                  <Label>Retailer (Optional)</Label>
+                  <Select
+                    value={formData.retailerId || '__none__'}
+                    onValueChange={(v) => handleRetailerChange(v === '__none__' ? '' : v)}
+                    disabled={loading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select retailer" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                      <SelectItem value="__none__">Select retailer...</SelectItem>
+                      {retailers.map((retailer) => (
+                        <SelectItem key={retailer.id} value={retailer.id}>
+                          {retailer.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label>Notes</Label>
-                      <Input value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder="Optional" disabled={loading} />
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="space-y-2">
+                  <Label>Customer Name *</Label>
+                  <Input
+                    value={formData.customerName}
+                    onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+                    placeholder="Customer name"
+                    disabled={loading}
+                  />
+                </div>
 
-                {/* Section 2: Cage Selection & Customer Details */}
-                <Card className="border-green-200">
-                  <CardHeader className="bg-green-50 border-b border-green-100 py-3">
-                    <CardTitle className="text-green-900 text-base">Section 2: Cage Selection & Customer Details</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-4 space-y-4">
-                    {/* Cage Selection Panel with partial-sale support */}
-                    {cageRows.length > 0 && !editingId && (
-                      <div className="border rounded-lg bg-purple-50/60 p-3 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <strong className="text-xs font-semibold text-purple-900">Available Cages ({selectedCages.length} selected)</strong>
-                          <span className="text-xs text-muted-foreground">Edit birds/weight to sell partial cage</span>
-                        </div>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr className="text-left text-muted-foreground border-b bg-purple-100/50">
-                                <th className="pb-1 p-2"></th>
-                                <th className="pb-1 p-2">Cage ID</th>
-                                <th className="pb-1 p-2">Total Birds</th>
-                                <th className="pb-1 p-2 w-24">Birds to Sell</th>
-                                <th className="pb-1 p-2">Total Weight</th>
-                                <th className="pb-1 p-2 w-28">Weight to Sell (kg)</th>
-                                <th className="pb-1 p-2 w-24">Loss (kg)</th>
-                                <th className="pb-1 p-2">Remaining</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {cageRows.map(cage => {
-                                const remBirds = cage.totalBirds - (parseInt(cage.sellBirds) || 0)
-                                const remWeight = cage.totalWeight - (parseFloat(cage.sellWeight) || 0)
-                                const isPartial = cage.selected && (parseInt(cage.sellBirds) || 0) < cage.totalBirds
-                                return (
-                                  <tr key={cage.id} className={`border-b last:border-0 transition-colors ${cage.selected ? 'bg-green-50' : 'hover:bg-white/70'}`}>
-                                    <td className="p-2">
-                                      <input
-                                        type="checkbox"
-                                        className="h-4 w-4 rounded cursor-pointer"
-                                        checked={cage.selected}
-                                        onChange={() => updateCageRow(cage.id, { selected: !cage.selected })}
-                                      />
-                                    </td>
-                                    <td className="p-2 font-medium">{cage.cageId}</td>
-                                    <td className="p-2 text-muted-foreground">{cage.totalBirds}</td>
-                                    <td className="p-1">
-                                      <Input
-                                        type="number" min="1" max={cage.totalBirds}
-                                        className="h-8 text-xs text-center"
-                                        value={cage.sellBirds}
-                                        disabled={!cage.selected || loading}
-                                        onChange={e => updateCageRow(cage.id, { sellBirds: e.target.value })}
-                                      />
-                                    </td>
-                                    <td className="p-2 text-muted-foreground">{cage.totalWeight.toFixed(2)} kg</td>
-                                    <td className="p-1">
-                                      <Input
-                                        type="number" min="0" step="0.01" max={cage.totalWeight}
-                                        className="h-8 text-xs"
-                                        value={cage.sellWeight}
-                                        disabled={!cage.selected || loading}
-                                        onChange={e => updateCageRow(cage.id, { sellWeight: e.target.value })}
-                                      />
-                                    </td>
-                                    <td className="p-1">
-                                      <Input
-                                        type="number" min="0" step="0.01"
-                                        className="h-8 text-xs"
-                                        value={cage.weightLoss}
-                                        disabled={!cage.selected || loading}
-                                        onChange={e => updateCageRow(cage.id, { weightLoss: e.target.value })}
-                                      />
-                                    </td>
-                                    <td className="p-2">
-                                      {cage.selected ? (
-                                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${isPartial ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>
-                                          {remBirds}🐔 / {remWeight.toFixed(1)}kg
-                                        </span>
-                                      ) : <span className="text-muted-foreground">—</span>}
-                                    </td>
-                                  </tr>
-                                )
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Number of Birds *</Label>
+                    <Input
+                      type="number"
+                      value={formData.numberOfBirds}
+                      onChange={(e) => setFormData({ ...formData, numberOfBirds: e.target.value })}
+                      placeholder="0"
+                      disabled={loading}
+                      onWheel={(e) => e.currentTarget.blur()}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Rate per Kg (₹)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.ratePerKg}
+                      onChange={(e) => {
+                        const rate = e.target.value
+                        const total = (parseFloat(formData.totalWeight || "0") * parseFloat(rate || "0")).toFixed(2)
+                        setFormData({ ...formData, ratePerKg: rate, totalAmount: total })
+                      }}
+                      placeholder="0.00"
+                      disabled={loading}
+                      onWheel={(e) => e.currentTarget.blur()} 
+                    />
+                  </div>
+                </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Birds *</Label>
-                        <Input type="number" value={formData.numberOfBirds} onChange={e => setFormData({ ...formData, numberOfBirds: e.target.value })} disabled={loading || selectedCages.length > 0} className={selectedCages.length > 0 ? "bg-gray-50 font-semibold" : ""} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Rate per KG (₹) *</Label>
-                        <Input type="number" step="0.01" value={formData.ratePerKg} onChange={e => setFormData({ ...formData, ratePerKg: e.target.value })} placeholder="e.g. 146" disabled={loading} />
-                      </div>
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Total Weight (kg)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.totalWeight}
+                      onChange={(e) => {
+                        const weight = e.target.value
+                        const total = (parseFloat(weight || "0") * parseFloat(formData.ratePerKg || "0")).toFixed(2)
+                        setFormData({ ...formData, totalWeight: weight, totalAmount: total })
+                      }}
+                      placeholder="0.00"
+                      disabled={loading}
+                      onWheel={(e) => e.currentTarget.blur()} 
+                    />
+                  </div>
+                </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Weight (kg) *</Label>
-                        <Input type="number" step="0.01" value={formData.totalWeight} onChange={e => setFormData({ ...formData, totalWeight: e.target.value })} placeholder="0.00" disabled={loading || selectedCages.length > 0} className={selectedCages.length > 0 ? "bg-gray-50 font-semibold" : ""} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Total Weight Loss (kg)</Label>
-                        <Input type="number" step="0.01" value={formData.weightLoss} onChange={e => setFormData({ ...formData, weightLoss: e.target.value })} placeholder="0.00" disabled={loading || selectedCages.length > 0} className={selectedCages.length > 0 ? "bg-gray-50 font-semibold" : ""} />
-                      </div>
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Total Amount (₹)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.totalAmount}
+                      onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
+                      placeholder="0.00"
+                      disabled={loading}
+                      onWheel={(e) => e.currentTarget.blur()} 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Payment Status *</Label>
+                    <Select
+                      value={formData.paymentStatus}
+                      onValueChange={(v: any) => setFormData({ ...formData, paymentStatus: v })}
+                      disabled={loading}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="partial">Partial</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
 
-                    {/* Calculated Summary Box */}
-                    <div className="flex justify-between items-center bg-green-50 border border-green-200 rounded p-3">
-                      <span className="font-semibold text-green-900">Total Calculated Amount</span>
-                      <span className="text-xl font-bold text-green-700">₹{totalAmount.toFixed(2)}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Section 3: Payment Summary */}
+                {/* Payment Breakdown Card */}
                 <Card className="border-purple-200">
                   <CardHeader className="bg-purple-50 border-b border-purple-100 py-3">
-                    <CardTitle className="text-purple-900 text-base">Section 3: Payment Summary</CardTitle>
+                    <CardTitle className="text-purple-900 text-sm">Payment Breakdown</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4 pt-4">
-                    <div className="space-y-2">
-                      <Label>Payment Status</Label>
-                      <Select value={formData.paymentStatus} onValueChange={(v: any) => setFormData(f => ({ ...f, paymentStatus: v }))} disabled={loading}>
-                        <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="paid">Paid</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="partial">Partial</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
+                  <CardContent className="space-y-3 pt-4">
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-4">
                         <Label className="text-sm font-medium">Payment Mode</Label>
@@ -512,40 +538,79 @@ export default function GodownSalePage() {
                               <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                             </SelectContent>
                           </Select>
-                          <div className="flex gap-2">
-                            <Input type="number" step="0.01" placeholder="0.00" value={p.amount} onChange={e => updatePayment(i, "amount", e.target.value)} disabled={loading} />
+                          <div className="flex gap-1">
+                            <Input 
+                              type="number" 
+                              step="0.01" 
+                              placeholder="0.00" 
+                              value={p.amount} 
+                              onChange={e => updatePayment(i, "amount", e.target.value)} 
+                              disabled={loading}  
+                              onWheel={(e) => e.currentTarget.blur()}
+                            />
                             {payments.length > 1 && (
-                              <Button type="button" variant="ghost" size="sm" onClick={() => removePayment(i)} className="px-2 text-red-500 hover:text-red-700">
-                                <X size={16} />
+                              <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => removePayment(i)} 
+                                className="px-2 text-red-500"
+                              >
+                                <X size={14} />
                               </Button>
                             )}
                           </div>
                         </div>
                       ))}
-                      <Button type="button" variant="outline" size="sm" onClick={addPayment} disabled={loading}><Plus size={14} className="mr-1" /> Add Payment Mode</Button>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={addPayment} 
+                        disabled={loading}
+                      >
+                        <Plus size={14} className="mr-1" /> Add Payment Mode
+                      </Button>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-4 pt-3 border-t">
+                    <div className="grid grid-cols-2 gap-4 pt-2 border-t">
                       <div className="space-y-2">
                         <Label>Total Received (₹)</Label>
-                        <Input value={`₹${totalPaymentMade.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-green-700" />
+                        <Input 
+                          value={`₹${totalPaymentMade.toFixed(2)}`} 
+                          disabled 
+                          className="bg-gray-50 font-semibold text-green-700" 
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Balance (₹)</Label>
-                        <Input value={`₹${balance.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-red-600" />
+                        <Input 
+                          value={`₹${balanceAmount.toFixed(2)}`} 
+                          disabled 
+                          className="bg-gray-50 font-semibold text-red-600" 
+                        />
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <div className="flex gap-2 justify-end">
-                  {!editingId && formData.saleNo ? (
-                    <Button variant="outline" onClick={() => { resetForm(); setShowDialog(false) }} disabled={loading}>Close</Button>
-                  ) : (
-                    <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}>Cancel</Button>
-                  )}
-                  <Button onClick={handleSave} disabled={loading} className="bg-green-600 hover:bg-green-700 text-white">
-                    {loading ? "Saving..." : editingId ? "Update Sale" : "Create Sale"}
+                <div className="space-y-2">
+                  <Label>Notes</Label>
+                  <Textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    placeholder="Additional notes"
+                    rows={3}
+                    disabled={loading}
+                    onWheel={(e) => e.currentTarget.blur()} 
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button onClick={handleSave} className="flex-1" disabled={loading}>
+                    {loading ? "Saving..." : editingId ? "Update" : "Create"}
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}>
+                    <X size={20} />
                   </Button>
                 </div>
               </div>
@@ -553,109 +618,108 @@ export default function GodownSalePage() {
           </Dialog>
         </div>
 
-        {/* Mini Dashboard */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-                <ShoppingCart size={14} className="text-blue-600" />
-                Total Sales
-              </CardTitle>
-            </CardHeader>
-            <CardContent><div className="text-2xl font-bold text-blue-600">{stats.count}</div></CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-semibold text-muted-foreground">Total Weight</CardTitle>
-            </CardHeader>
-            <CardContent><div className="text-2xl font-bold text-purple-600">{stats.totalBirds.toFixed(2)} kg</div></CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-                <TrendingUp size={14} className="text-orange-600" />
-                Revenue
-              </CardTitle>
-            </CardHeader>
-            <CardContent><div className="text-2xl font-bold text-orange-600">₹{stats.totalRevenue.toFixed(2)}</div></CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-                <Wallet size={14} className="text-green-600" />
-                Received
-              </CardTitle>
-            </CardHeader>
-            <CardContent><div className="text-2xl font-bold text-green-600">₹{stats.totalReceived.toFixed(2)}</div></CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-                <Clock size={14} className="text-red-600" />
-                Pending
-              </CardTitle>
-            </CardHeader>
-            <CardContent><div className="text-2xl font-bold text-red-600">₹{stats.totalPending.toFixed(2)}</div></CardContent>
-          </Card>
-        </div>
-
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center flex-wrap gap-2">
-              <CardTitle>Sales List</CardTitle>
-              <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[250px]" />
+            <div className="flex justify-between items-start">
+              {/* <div>
+                <CardTitle>Sales List</CardTitle>
+                <p className="text-sm text-muted-foreground">View and manage godown sales</p>
+              </div> */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <DateRangeFilter
+                  startDate={dateRangeStart}
+                  endDate={dateRangeEnd}
+                  onDateRangeChange={handleDateRangeChange}
+                />
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium whitespace-nowrap">Filter:</Label>
+                  <Input
+                    placeholder="Search by customer..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-[250px]"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrintReport}
+                >
+                  <Printer className="mr-2" size={16} />
+                  Print Report
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Invoice</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Birds</TableHead>
-                  <TableHead>Weight</TableHead>
-                  <TableHead>Weight Loss</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sales.map(s => (
-                  <TableRow key={s.id}>
-                    <TableCell>{new Date(s.saleDate).toLocaleDateString()}</TableCell>
-                    <TableCell>{(s as any).invoiceNumber || "-"}</TableCell>
-                    <TableCell>{s.customerName}</TableCell>
-                    <TableCell>{s.numberOfBirds} Birds</TableCell>
-                    <TableCell>{s.totalWeight} kg</TableCell>
-                    <TableCell className="text-orange-600">{parseFloat((s as any).weightLoss || 0).toFixed(2)} kg</TableCell>
-                    <TableCell className="font-bold">₹{s.totalAmount}</TableCell>
-                    <TableCell>
-                      {userRole !== 'staff' && userRole !== 'Staff' && (
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(s)}><Edit2 size={16} /></Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(s.id)}><Trash2 size={16} /></Button>
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-          {totalItems > pageSize && (
-            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t">
-              <div className="text-sm text-gray-500">Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalItems)} of {totalItems}</div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1 || loading}><ChevronLeft size={16} /></Button>
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage * pageSize >= totalItems || loading}><ChevronRight size={16} /></Button>
+            {loading && sales.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">Loading...</p>
+            ) : filteredSales.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">
+                {searchQuery || (dateRangeStart && dateRangeEnd) 
+                  ? "No sales match your filters" 
+                  : "No sales found"}
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="font-bold">GDS No</TableHead>
+                      <TableHead className="font-bold">Date</TableHead>
+                      <TableHead className="font-bold">Customer</TableHead>
+                      <TableHead className="font-bold">Quantity</TableHead>
+                      <TableHead className="font-bold">Rate</TableHead>
+                      <TableHead className="font-bold">Total</TableHead>
+                      <TableHead className="font-bold">Received</TableHead>
+                      <TableHead className="font-bold">Balance</TableHead>
+                      <TableHead className="font-bold">Status</TableHead>
+                      <TableHead className="font-bold">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSales.map((sale) => {
+                      const totalAmount = Number(sale.totalAmount || 0)
+                      const amountReceived = Number((sale as any).amountReceived || 0)
+                      const balance = Math.max(0, totalAmount - amountReceived)
+                      
+                      return (
+                        <TableRow key={sale.id}>
+                          <TableCell>{sale.invoiceNumber || "-"}</TableCell>
+                          <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
+                          <TableCell>{sale.customerName}</TableCell>
+                          <TableCell>{sale.numberOfBirds} birds</TableCell>
+                          <TableCell>₹{Number(sale.ratePerKg || 0).toFixed(2)}/kg</TableCell>
+                          <TableCell>₹{totalAmount.toFixed(2)}</TableCell>
+                          <TableCell className="text-green-700 font-medium">₹{amountReceived.toFixed(2)}</TableCell>
+                          <TableCell className="text-red-600 font-medium">₹{balance.toFixed(2)}</TableCell>
+                          <TableCell>
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                              (sale as any).paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                              (sale as any).paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {(sale as any).paymentStatus || 'pending'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(sale)}>
+                                <Edit2 size={16} />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(sale.id)}>
+                                <Trash2 size={16} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
               </div>
-            </div>
-          )}
+            )}
+          </CardContent>
         </Card>
       </div>
     </DashboardLayout>
