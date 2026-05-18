@@ -562,7 +562,7 @@ export default function GodownSalePage() {
                       <SelectItem value="__none__">Select Inward Entry...</SelectItem>
                       {inwardEntries.map((entry) => (
                         <SelectItem key={entry.id} value={entry.id}>
-                          {new Date(entry.entryDate).toLocaleDateString()} — {entry.supplierName} ({entry.numberOfBirds} birds, {Number(entry.totalWeight).toFixed(2)} kg)
+                          {entry.inwardNo || 'GDI'} — {new Date(entry.entryDate).toLocaleDateString()} — {entry.supplierName} ({entry.numberOfBirds} birds, {Number(entry.totalWeight).toFixed(2)} kg)
                         </SelectItem>
                       ))}
                     </SelectContent>

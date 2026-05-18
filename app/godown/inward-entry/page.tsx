@@ -34,8 +34,10 @@ export default function GodownInwardPage() {
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [allowEditInwardNo, setAllowEditInwardNo] = useState(false)
   const [formData, setFormData] = useState({
     entryDate: new Date().toISOString().split("T")[0],
+    inwardNo: "",
     purchaseInvoiceNo: "",
     purchaseBillNo: "",
     purchaseBillId: "",
@@ -54,6 +56,16 @@ export default function GodownInwardPage() {
   const [purchaseCages, setPurchaseCages] = useState<Array<{ id: string; cageId?: string; numberOfBirds: number; purchaseWeight: number; godownWeight: string }>>([])
   const [selectedCageIds, setSelectedCageIds] = useState<Set<string>>(new Set())
   const [loadingCages, setLoadingCages] = useState(false)
+
+  const fetchNextInwardNumber = async () => {
+    try {
+      const data = await godownApi.inward.getNextInwardNumber()
+      return data?.nextInwardNumber || ""
+    } catch (error) {
+      console.error('Failed to fetch next inward number:', error)
+    }
+    return ""
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -207,9 +219,11 @@ export default function GodownInwardPage() {
     }
   }
 
-  const resetForm = () => {
+  const resetForm = async () => {
+    const nextNumber = editingId ? "" : await fetchNextInwardNumber()
     setFormData({
       entryDate: new Date().toISOString().split("T")[0],
+      inwardNo: nextNumber,
       purchaseInvoiceNo: "",
       purchaseBillNo: "",
       purchaseBillId: "",
@@ -227,11 +241,13 @@ export default function GodownInwardPage() {
     setPurchaseCages([])
     setSelectedCageIds(new Set())
     setEditingId(null)
+    setAllowEditInwardNo(false)
   }
 
   const handleEdit = (entry: GodownInward) => {
     setFormData({
       entryDate: entry.entryDate,
+      inwardNo: entry.inwardNo || "",
       purchaseInvoiceNo: entry.purchaseInvoiceNo || "",
       purchaseBillNo: "",
       purchaseBillId: "",
@@ -247,6 +263,7 @@ export default function GodownInwardPage() {
     })
     setCages(entry.cages && entry.cages.length > 0 ? entry.cages : [emptyCage()])
     setEditingId(entry.id)
+    setAllowEditInwardNo(false)
     setShowDialog(true)
   }
 
@@ -279,6 +296,7 @@ export default function GodownInwardPage() {
 
       const entryData = {
         entryDate: formData.entryDate,
+        inwardNo: formData.inwardNo || undefined,
         purchaseInvoiceNo: formData.purchaseInvoiceNo || undefined,
         supplierName: formData.supplierName,
         vehicleId: formData.vehicleId || undefined,
@@ -431,14 +449,37 @@ export default function GodownInwardPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Purchase Bill No</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>Godown Inward No</Label>
+                      <label className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={allowEditInwardNo}
+                          onChange={(e) => setAllowEditInwardNo(e.target.checked)}
+                          className="cursor-pointer"
+                        />
+                        <span>Edit manually</span>
+                      </label>
+                    </div>
                     <Input
-                      value={formData.purchaseInvoiceNo}
-                      readOnly
-                      placeholder="Auto-filled from Purchase Bill"
-                      className={formData.purchaseInvoiceNo ? "bg-green-50 border-green-300" : "bg-gray-50"}
+                      value={formData.inwardNo}
+                      onChange={(e) => setFormData({ ...formData, inwardNo: e.target.value })}
+                      placeholder="Auto-generated on save"
+                      disabled={loading}
+                      readOnly={!allowEditInwardNo}
+                      className={!allowEditInwardNo ? "bg-gray-50" : ""}
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Purchase Bill No (Auto-filled from Purchase Bill)</Label>
+                  <Input
+                    value={formData.purchaseInvoiceNo}
+                    readOnly
+                    placeholder="None"
+                    className={formData.purchaseInvoiceNo ? "bg-green-50 border-green-300 text-green-800" : "bg-gray-50"}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -748,6 +789,7 @@ export default function GodownInwardPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Entry Date</TableHead>
+                    <TableHead>Inward No</TableHead>
                     <TableHead>Reference No</TableHead>
                     <TableHead>Source</TableHead>
                     <TableHead>Birds</TableHead>
@@ -761,6 +803,7 @@ export default function GodownInwardPage() {
                   {filteredEntries.map((entry) => (
                     <TableRow key={entry.id}>
                       <TableCell>{new Date(entry.entryDate).toLocaleDateString()}</TableCell>
+                      <TableCell className="font-semibold text-blue-600">{entry.inwardNo || "-"}</TableCell>
                       <TableCell>{entry.purchaseInvoiceNo || "-"}</TableCell>
                       <TableCell>{entry.supplierName}</TableCell>
                       <TableCell>{entry.numberOfBirds}</TableCell>

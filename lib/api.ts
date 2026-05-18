@@ -391,6 +391,7 @@ export interface Setting {
 export interface GodownInward {
   id: string;
   entryDate: string;
+  inwardNo?: string;
   purchaseInvoiceNo?: string;
   supplierName?: string;
   vehicleId?: string;
@@ -1124,6 +1125,8 @@ export const godownApi = {
       return apiRequest<any>(`/godown/inward${s ? `?${s}` : ''}`);
     },
     getOne: (id: string) => apiRequest<GodownInward>(`/godown/inward/${id}`),
+    getNextInwardNumber: () =>
+      apiRequest<{ nextInwardNumber: string }>('/godown/inward/generate/next-inward-number'),
     create: (data: Omit<GodownInward, 'id' | 'createdAt' | 'updatedAt'>) =>
       apiRequest<GodownInward>('/godown/inward', {
         method: 'POST',
