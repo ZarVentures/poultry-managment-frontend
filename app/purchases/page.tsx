@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
 import { purchasesApi, farmersApi, vehiclesApi, type PurchaseOrder as ApiPurchaseOrder, type Farmer } from "@/lib/api"
 import { toast } from "sonner"
+import { getApiBaseUrl } from "@/lib/api-base-url"
 
 const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer"] as const
 type PaymentMode = typeof PAYMENT_MODES[number]
@@ -45,6 +46,7 @@ export default function PurchasesPage() {
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null)
   const [uploadingFile, setUploadingFile] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [allowEditBillNo, setAllowEditBillNo] = useState(false)
 
   const [formData, setFormData] = useState({
     orderNumber: "",
@@ -105,9 +107,26 @@ export default function PurchasesPage() {
     catch { setVehicles([]) }
   }
 
-  const resetForm = () => {
+  const fetchNextOrderNumber = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${getApiBaseUrl()}/purchases/generate/next-order-number`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        return data.nextOrderNumber || ""
+      }
+    } catch (error) {
+      console.error('Failed to fetch next order number:', error)
+    }
+    return ""
+  }
+
+  const resetForm = async () => {
+    const nextNumber = editingId ? "" : await fetchNextOrderNumber()
     setFormData({
-      orderNumber: "", supplierName: "",
+      orderNumber: nextNumber, supplierName: "",
       orderDate: new Date().toISOString().split("T")[0],
       dueDate: "", status: "pending", branch: "",
       farmerId: "", farmerMobile: "", farmLocation: "", vehicleId: "",
@@ -118,6 +137,7 @@ export default function PurchasesPage() {
     setPayments([emptyPayment()])
     setEditingId(null)
     setInvoiceFile(null)
+    setAllowEditBillNo(false)
   }
 
   const handleFarmerChange = (farmerId: string) => {
@@ -232,7 +252,7 @@ export default function PurchasesPage() {
       }
 
       await fetchPurchases()
-      resetForm()
+      await resetForm()
       setShowDialog(false)
     } catch (error: any) {
       toast.error(error.message || "Failed to save purchase order")
@@ -335,15 +355,22 @@ export default function PurchasesPage() {
                   <CardContent className="space-y-4 pt-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Purchase Bill No *</Label>
+                        <div className="flex items-center justify-between">
+                          <Label>Purchase Bill No *</Label>
+                          <label className="flex items-center gap-2 text-xs cursor-pointer">
+                            <input type="checkbox" checked={allowEditBillNo} onChange={e => setAllowEditBillNo(e.target.checked)} className="cursor-pointer" />
+                            <span>Edit manually</span>
+                          </label>
+                        </div>
                         <div className="flex">
                           <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">PO-</span>
                           <Input
                             value={formData.orderNumber.replace('PO-', '')}
                             onChange={e => setFormData(prev => ({ ...prev, orderNumber: 'PO-' + e.target.value }))}
-                            placeholder="001, 002..."
-                            className="rounded-l-none"
-                            disabled={loading}
+                            placeholder="Auto-generating..."
+                            className="rounded-l-none bg-gray-50"
+                            disabled={loading || !allowEditBillNo}
+                            readOnly={!allowEditBillNo}
                           />
                         </div>
                       </div>
