@@ -485,6 +485,7 @@ export default function GodownInwardPage() {
                               <th className="text-right p-1">Birds</th>
                               <th className="text-right p-1">Purchase Wt (kg)</th>
                               <th className="text-right p-1">Godown Wt (kg) *</th>
+                              <th className="text-right p-1 text-orange-700">Wt Loss (Kg)</th>
                               <th className="text-right p-1 text-orange-700">Wt Loss %</th>
                             </tr>
                           </thead>
@@ -537,6 +538,13 @@ export default function GodownInwardPage() {
                                   />
                                 </td>
                                 <td className="p-1 text-right">
+                                  {purchaseWt > 0 && godownWt > 0 ? (
+                                    <span className={`font-medium ${lossPct !== null && lossPct > 5 ? 'text-red-600' : 'text-green-600'}`}>
+                                      {lossKg.toFixed(2)} kg
+                                    </span>
+                                  ) : <span className="text-muted-foreground">-</span>}
+                                </td>
+                                <td className="p-1 text-right">
                                   {lossPct !== null ? (
                                     <span className={`font-medium ${lossPct > 5 ? 'text-red-600' : 'text-green-600'}`}>
                                       {lossPct.toFixed(1)}%
@@ -552,8 +560,9 @@ export default function GodownInwardPage() {
                               const selCages = purchaseCages.filter(c => selectedCageIds.has(c.id))
                               const totalPurchaseWt = selCages.reduce((s, c) => s + Number(c.purchaseWeight), 0)
                               const totalGodownWt = selCages.reduce((s, c) => s + (Number(c.godownWeight) || 0), 0)
+                              const totalLossKg = totalPurchaseWt - totalGodownWt
                               const totalLossPct = totalPurchaseWt > 0 && totalGodownWt > 0
-                                ? ((totalPurchaseWt - totalGodownWt) / totalPurchaseWt) * 100
+                                ? (totalLossKg / totalPurchaseWt) * 100
                                 : null
                               return (
                                 <tr className="border-t font-semibold bg-blue-100">
@@ -561,6 +570,13 @@ export default function GodownInwardPage() {
                                   <td className="p-1 text-right">{selCages.reduce((s, c) => s + c.numberOfBirds, 0)}</td>
                                   <td className="p-1 text-right">{totalPurchaseWt.toFixed(2)}</td>
                                   <td className="p-1 text-right">{totalGodownWt.toFixed(2)}</td>
+                                  <td className="p-1 text-right">
+                                    {totalPurchaseWt > 0 && totalGodownWt > 0 ? (
+                                      <span className={totalLossPct !== null && totalLossPct > 5 ? 'text-red-600' : 'text-green-600'}>
+                                        {totalLossKg.toFixed(2)} kg
+                                      </span>
+                                    ) : '-'}
+                                  </td>
                                   <td className="p-1 text-right">
                                     {totalLossPct !== null ? (
                                       <span className={totalLossPct > 5 ? 'text-red-600' : 'text-green-600'}>
