@@ -289,6 +289,9 @@ export interface PurchaseOrderCage {
   godownSaleWeight?: number;
   status?: 'pending' | 'sold' | 'in_godown' | 'godown_sold' | 'on_vehicle';
   saleId?: string;          // set when cage is sold
+  godownSaleId?: string;
+  godownSaleBirds?: number;
+  godownInwardId?: string;
 }
 
 // Purchase Order DTO Items (backend expects strings for quantity and unitCost)
@@ -430,6 +433,9 @@ export interface GodownCage {
   cageWeight: number;
   purchaseOrderId?: string;
   godownInwardId?: string;
+  soldBirds?: number;
+  soldWeight?: number;
+  weightLoss?: number;
 }
 
 export interface GodownMortality {
@@ -1063,6 +1069,16 @@ export const purchasesApi = {
 
   // Get all cages currently in godown
   getInGodownCages: () => apiRequest<PurchaseOrderCage[]>('/cages/in-godown'),
+
+  // Get cages by godown inward entry ID
+  getCagesByInwardId: (inwardId: string, status?: string) =>
+    apiRequest<PurchaseOrderCage[]>(`/cages/by-inward/${encodeURIComponent(inwardId)}${status ? `?status=${status}` : ''}`),
+
+  // Get cages by godown sale ID
+  getCagesBySaleId: (saleId: string) =>
+    apiRequest<PurchaseOrderCage[]>(`/cages/by-godown-sale/${encodeURIComponent(saleId)}`),
+
+
 
   // Partial godown sale
   partialGodownSale: (cageId: string, godownSaleId: string, soldBirds: number, soldWeight: number) =>
