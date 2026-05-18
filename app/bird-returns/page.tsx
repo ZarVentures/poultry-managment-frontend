@@ -27,6 +27,7 @@ export default function BirdReturnsPage() {
   const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
   const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [salesList, setSalesList] = useState<Array<{ id: string; invoiceNumber: string; saleDate: string; customerName: string }>>([])
+  const [saleUnitPrice, setSaleUnitPrice] = useState<number>(0)
   
   const [formData, setFormData] = useState<CreateBirdReturnDto>({
     returnDate: new Date().toISOString().split("T")[0],
@@ -45,11 +46,38 @@ export default function BirdReturnsPage() {
     notes: "",
   })
 
+  const STANDARD_LOCATIONS = [
+    "Godown A, Cage 1",
+    "Godown A, Cage 2",
+    "Godown A, Cage 3",
+    "Godown A, Cage 4",
+    "Godown A, Cage 5",
+    "Godown B, Cage 1",
+    "Godown B, Cage 2",
+    "Godown B, Cage 3",
+    "Godown B, Cage 4",
+    "Godown B, Cage 5",
+    "Main Warehouse",
+    "Custom Location..."
+  ]
+
   useEffect(() => {
     setMounted(true)
     fetchReturns()
     fetchSalesList()
   }, [])
+
+  // Auto-calculate refund amount based on returned weight and sale unit price
+  useEffect(() => {
+    if (saleUnitPrice > 0 && formData.weightReturned) {
+      const weight = parseFloat(formData.weightReturned) || 0
+      const calculatedRefund = (weight * saleUnitPrice).toFixed(2)
+      setFormData(prev => ({
+        ...prev,
+        refundAmount: calculatedRefund,
+      }))
+    }
+  }, [formData.weightReturned, saleUnitPrice])
 
   const fetchSalesList = async () => {
     try {
@@ -197,14 +225,32 @@ export default function BirdReturnsPage() {
     }
   }
 
-  const handleSaleChange = (saleId: string) => {
-    const sale = salesList.find(s => s.id === saleId)
-    if (sale) {
-      setFormData(prev => ({
-        ...prev,
-        saleId,
-        customerName: sale.customerName,
-      }))
+  const handleSaleChange = async (saleId: string) => {
+    const saleBrief = salesList.find(s => s.id === saleId)
+    if (!saleBrief) return
+
+    setFormData(prev => ({
+      ...prev,
+      saleId,
+      customerName: saleBrief.customerName,
+    }))
+
+    try {
+      setLoading(true)
+      const fullSale = await salesApi.getOne(saleId)
+      if (fullSale) {
+        setSaleUnitPrice(Number(fullSale.unitPrice) || 0)
+        setFormData(prev => ({
+          ...prev,
+          retailerId: fullSale.retailerId || "",
+          customerName: fullSale.customerName,
+        }))
+        toast.success(`Loaded sale details! Rate: ₹${Number(fullSale.unitPrice).toFixed(2)}/kg`)
+      }
+    } catch (error) {
+      console.error("Failed to load full sale details:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -435,14 +481,49 @@ export default function BirdReturnsPage() {
                 </div>
 
                 {formData.returnedToInventory && (
-                  <div className="space-y-2">
-                    <Label>Inventory Location</Label>
-                    <Input
-                      value={formData.inventoryLocation}
-                      onChange={(e) => setFormData({ ...formData, inventoryLocation: e.target.value })}
-                      placeholder="e.g., Godown A, Cage 5"
-                      disabled={loading}
-                    />
+                  <div className="space-y-4 border p-3 rounded-lg bg-gray-50/50">
+                    <div className="space-y-2">
+                      <Label>Inventory Location *</Label>
+                      <Select
+                        value={
+                          STANDARD_LOCATIONS.includes(formData.inventoryLocation || "")
+                            ? (formData.inventoryLocation || "")
+                            : (formData.inventoryLocation ? "custom" : "")
+                        }
+                        onValueChange={(val) => {
+                          if (val === "custom") {
+                            setFormData(prev => ({ ...prev, inventoryLocation: "" }))
+                          } else {
+                            setFormData(prev => ({ ...prev, inventoryLocation: val }))
+                          }
+                        }}
+                        disabled={loading}
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue placeholder="Select inventory location" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STANDARD_LOCATIONS.map(loc => (
+                            <SelectItem key={loc} value={loc === "Custom Location..." ? "custom" : loc}>
+                              {loc}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {(!STANDARD_LOCATIONS.includes(formData.inventoryLocation || "") || formData.inventoryLocation === "custom" || !formData.inventoryLocation) && (
+                      <div className="space-y-2">
+                        <Label>Specify Custom Location *</Label>
+                        <Input
+                          value={formData.inventoryLocation}
+                          onChange={(e) => setFormData({ ...formData, inventoryLocation: e.target.value })}
+                          placeholder="e.g., Godown C, Cage 12"
+                          disabled={loading}
+                          className="bg-white"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 
