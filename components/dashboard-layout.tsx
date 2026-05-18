@@ -183,7 +183,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                   <SidebarLink href="/farmers" icon={Tractor} label="Farmers" open={true} isSubItem={true} />
                   <SidebarLink href="/retailers" icon={Users} label="Retailers" open={true} isSubItem={true} />
                   <SidebarLink href="/vehicles" icon={Truck} label="Vehicles" open={true} isSubItem={true} />
-                  <SidebarLink href="/products" icon={Package} label="Products" open={true} isSubItem={true} />
+                  {/* <SidebarLink href="/products" icon={Package} label="Products" open={true} isSubItem={true} /> */}
                 </div>
               )}
             </div>
