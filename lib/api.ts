@@ -1180,11 +1180,13 @@ export const godownApi = {
 
   // Expenses
   expenses: {
-    getAll: (page?: number, limit?: number, search?: string) => {
+    getAll: (page?: number, limit?: number, search?: string, startDate?: string, endDate?: string) => {
       const q = new URLSearchParams();
       if (page) q.set('page', String(page));
       if (limit) q.set('limit', String(limit));
       if (search) q.set('search', search);
+      if (startDate) q.set('startDate', startDate);
+      if (endDate) q.set('endDate', endDate);
       const s = q.toString();
       return apiRequest<any>(`/godown/expenses${s ? `?${s}` : ''}`);
     },
