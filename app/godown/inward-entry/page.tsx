@@ -86,7 +86,7 @@ export default function GodownInwardPage() {
   const fetchVehicles = async () => {
     try {
       const data = await vehiclesApi.getAll()
-      setVehicles(data.filter(v => v.status === "active"))
+      setVehicles(data.filter((v: any) => v.status === "active"))
     } catch (error) {
       console.error("Failed to fetch vehicles:", error)
     }
