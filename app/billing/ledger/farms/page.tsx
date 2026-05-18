@@ -138,11 +138,11 @@ const FarmLedgerPage = () => {
             <p className="text-2xl font-bold text-gray-900 mt-2">₹{openingBalance.toLocaleString('en-IN')}</p>
           </Card>
           <Card className="p-4 border border-red-200 bg-red-50">
-            <p className="text-sm font-medium text-red-800">Net Amount (₹)</p>
+            <p className="text-sm font-medium text-red-800">Total Paid (Debit) (₹)</p>
             <p className="text-2xl font-bold text-red-600 mt-2">₹{totalDebit.toLocaleString('en-IN')}</p>
           </Card>
           <Card className="p-4 border border-green-200 bg-green-50">
-            <p className="text-sm font-medium text-green-800">Total Payment Received (₹)</p>
+            <p className="text-sm font-medium text-green-800">Total Purchases (Credit) (₹)</p>
             <p className="text-2xl font-bold text-green-600 mt-2">₹{totalCredit.toLocaleString('en-IN')}</p>
           </Card>
           <Card className="p-4 border border-blue-200 bg-blue-50">
@@ -185,12 +185,13 @@ const FarmLedgerPage = () => {
                       const typeLabel = e.referenceType || 'Unknown';
                       const typeColor = 
                         typeLabel === 'Sale' ? 'bg-orange-100 text-orange-800' :
+                        typeLabel === 'Purchase' ? 'bg-blue-100 text-blue-800' :
                         typeLabel === 'Payment' ? 'bg-green-100 text-green-800' :
                         typeLabel === 'Voucher' ? 'bg-purple-100 text-purple-800' :
                         'bg-gray-100 text-gray-800';
                       
                       return (
-                        <TableRow key={idx} className={`border-b border-gray-200 ${typeLabel === 'Payment' ? 'bg-green-50' : typeLabel === 'Voucher' ? 'bg-purple-50' : ''}`}>
+                        <TableRow key={idx} className={`border-b border-gray-200 ${typeLabel === 'Payment' ? 'bg-green-50' : typeLabel === 'Voucher' ? 'bg-purple-50' : typeLabel === 'Purchase' ? 'bg-blue-50/30' : ''}`}>
                           <TableCell>{new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN')}</TableCell>
                           <TableCell>
                             <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${typeColor}`}>{typeLabel}</span>
