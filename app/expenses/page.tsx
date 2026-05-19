@@ -276,9 +276,11 @@ export default function ExpensesPage() {
       feed: '🌾',
       labor: '👷',
       medicine: '💊',
+      utilities: '💡',
       equipment: '🔧',
       maintenance: '🔨',
       transportation: '🚚',
+      other: '📝',
     }
     return icons[category] || '📝'
   }
