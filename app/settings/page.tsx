@@ -13,7 +13,7 @@ import {
   Shield, ShieldCheck, ShieldOff, Building2, User, ChevronRight,
   Tag, Plus, Edit2, Trash2, CheckCircle2, AlertCircle, MessageSquare, Mail, Phone
 } from "lucide-react"
-import { settingsApi, authApi, permissionsApi, expenseCategoriesApi, notificationsApi, type Setting, type ExpenseCategory } from "@/lib/api"
+import { settingsApi, authApi, permissionsApi, expenseCategoriesApi, notificationsApi, type Setting, type ExpenseCategory, type CommunicationLog } from "@/lib/api"
 import { useDevMode } from "@/lib/dev-mode"
 import { toast } from "sonner"
 import { useDispatch } from "react-redux"
@@ -52,14 +52,23 @@ export default function SettingsPage() {
     emailAlerts: true,
     bearableLossType: "percentage" as "percentage" | "weight",
     bearableLossValue: "2.0",
-    awsAccessKeyId: "",
-    awsSecretAccessKey: "",
-    awsRegion: "us-east-1",
-    sesSenderEmail: "",
-    smsEnabled: true,
-    emailEnabled: true,
-    alertOnCriticalLoss: true,
-    alertOnLowInventory: true,
+
+    // Routing destinations and channels per workflow
+    invoiceEmail: "",
+    invoicePhone: "",
+    invoiceChannel: "both" as "both" | "email" | "sms" | "none",
+
+    inventoryEmail: "",
+    inventoryPhone: "",
+    inventoryChannel: "both" as "both" | "email" | "sms" | "none",
+
+    lossEmail: "",
+    lossPhone: "",
+    lossChannel: "both" as "both" | "email" | "sms" | "none",
+
+    mortalityEmail: "",
+    mortalityPhone: "",
+    mortalityChannel: "both" as "both" | "email" | "sms" | "none",
   })
 
   const { isDevMode, enableDevMode, disableDevMode } = useDevMode()
@@ -83,6 +92,9 @@ export default function SettingsPage() {
   const [testPhoneTarget, setTestPhoneTarget] = useState("")
   const [testingEmail, setTestingEmail] = useState(false)
   const [testingSMS, setTestingSMS] = useState(false)
+  const [commLogs, setCommLogs] = useState<CommunicationLog[]>([])
+  const [commCounts, setCommCounts] = useState({ emailCount: 0, smsCount: 0 })
+  const [logsLoading, setLogsLoading] = useState(false)
   const [allRolePermissions, setAllRolePermissions] = useState<any[]>([])
   const [permissionsLoading, setPermissionsLoading] = useState(false)
   const [showAddRoleModal, setShowAddRoleModal] = useState(false)
@@ -134,20 +146,28 @@ export default function SettingsPage() {
           theme: (map['theme'] as any) || f.theme,
           bearableLossType: (map['bearableLossType'] || map['bearable_loss_type'] || f.bearableLossType) as any,
           bearableLossValue: map['bearableLossValue'] || map['bearable_loss_value'] || f.bearableLossValue,
-          awsAccessKeyId: map['awsAccessKeyId'] || f.awsAccessKeyId,
-          awsSecretAccessKey: map['awsSecretAccessKey'] || f.awsSecretAccessKey,
-          awsRegion: map['awsRegion'] || f.awsRegion,
-          sesSenderEmail: map['sesSenderEmail'] || f.sesSenderEmail,
-          smsEnabled: map['smsEnabled'] !== undefined ? map['smsEnabled'] === 'true' : f.smsEnabled,
-          emailEnabled: map['emailEnabled'] !== undefined ? map['emailEnabled'] === 'true' : f.emailEnabled,
-          alertOnCriticalLoss: map['alertOnCriticalLoss'] !== undefined ? map['alertOnCriticalLoss'] === 'true' : f.alertOnCriticalLoss,
-          alertOnLowInventory: map['alertOnLowInventory'] !== undefined ? map['alertOnLowInventory'] === 'true' : f.alertOnLowInventory,
+          invoiceEmail: map['invoiceEmail'] || f.invoiceEmail,
+          invoicePhone: map['invoicePhone'] || f.invoicePhone,
+          invoiceChannel: (map['invoiceChannel'] || f.invoiceChannel) as any,
+
+          inventoryEmail: map['inventoryEmail'] || f.inventoryEmail,
+          inventoryPhone: map['inventoryPhone'] || f.inventoryPhone,
+          inventoryChannel: (map['inventoryChannel'] || f.inventoryChannel) as any,
+
+          lossEmail: map['lossEmail'] || f.lossEmail,
+          lossPhone: map['lossPhone'] || f.lossPhone,
+          lossChannel: (map['lossChannel'] || f.lossChannel) as any,
+
+          mortalityEmail: map['mortalityEmail'] || f.mortalityEmail,
+          mortalityPhone: map['mortalityPhone'] || f.mortalityPhone,
+          mortalityChannel: (map['mortalityChannel'] || f.mortalityChannel) as any,
         }))
       }
     }).catch(() => { })
 
     fetchPermissions()
     fetchCategories()
+    fetchCommLogs()
   }, [])
 
   const fetchCategories = async () => {
@@ -157,6 +177,20 @@ export default function SettingsPage() {
       setCategories(data)
     } catch { toast.error("Failed to fetch categories") }
     finally { setCategoriesLoading(false) }
+  }
+
+  const fetchCommLogs = async () => {
+    try {
+      setLogsLoading(true)
+      const logs = await notificationsApi.getLogs(15)
+      setCommLogs(logs)
+      const counts = await notificationsApi.getCounts()
+      setCommCounts(counts)
+    } catch { 
+      // Silently catch so it doesn't break the page if backend is offline
+    } finally {
+      setLogsLoading(false)
+    }
   }
 
   const handleSaveCategory = async () => {
@@ -615,100 +649,155 @@ export default function SettingsPage() {
             {/* Communication Hub */}
             {activeSection === "communication" && (
               <div className="space-y-6">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-4 rounded-xl flex items-start gap-3">
-                  <MessageSquare className="text-primary shrink-0 mt-0.5" size={20} />
+                <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border border-purple-200 p-4 rounded-xl flex items-start gap-3">
+                  <MessageSquare className="text-purple-600 shrink-0 mt-0.5" size={20} />
                   <div>
-                    <p className="text-sm font-semibold text-blue-900">AWS Communication Integration</p>
-                    <p className="text-xs text-blue-700 mt-0.5">
-                      Configure your AWS SES (Email) and AWS SNS (SMS) credentials to enable automated farmer invoices, mortality reports, and critical warnings.
+                    <p className="text-sm font-semibold text-purple-900">Communication & Alert Orchestration Hub</p>
+                    <p className="text-xs text-purple-700 mt-0.5">
+                      Configure alert targets and distribution channels. AWS integration is securely handled on the backend for maximum safety.
                     </p>
                   </div>
                 </div>
 
-                {/* AWS Credentials */}
-                <div className="border rounded-xl p-5 space-y-4">
-                  <h3 className="font-semibold text-sm text-gray-800">AWS Configuration</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5 col-span-2">
-                      <Label>AWS Access Key ID</Label>
-                      <Input 
-                        type="password"
-                        value={formData.awsAccessKeyId} 
-                        onChange={e => setFormData(f => ({ ...f, awsAccessKeyId: e.target.value }))} 
-                        placeholder="AKIAIOSFODNN7EXAMPLE" 
-                        disabled={loading} 
-                      />
+                {/* Sent Communication Analytics Overview */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="border border-blue-100 bg-blue-50/30 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-blue-600 uppercase tracking-wider">Emails Transmitted</p>
+                      <p className="text-2xl font-bold text-blue-900">{commCounts.emailCount}</p>
                     </div>
-                    <div className="space-y-1.5 col-span-2">
-                      <Label>AWS Secret Access Key</Label>
-                      <Input 
-                        type="password" 
-                        value={formData.awsSecretAccessKey} 
-                        onChange={e => setFormData(f => ({ ...f, awsSecretAccessKey: e.target.value }))} 
-                        placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" 
-                        disabled={loading} 
-                      />
+                    <div className="bg-blue-100 p-2.5 rounded-lg text-blue-600">
+                      <Mail size={22} />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>AWS Region</Label>
-                      <Input 
-                        value={formData.awsRegion} 
-                        onChange={e => setFormData(f => ({ ...f, awsRegion: e.target.value }))} 
-                        placeholder="us-east-1" 
-                        disabled={loading} 
-                      />
+                  </div>
+
+                  <div className="border border-green-100 bg-green-50/30 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-green-600 uppercase tracking-wider">SMS Messages Dispatched</p>
+                      <p className="text-2xl font-bold text-green-900">{commCounts.smsCount}</p>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>SES Verified Sender Email</Label>
-                      <Input 
-                        type="email"
-                        value={formData.sesSenderEmail} 
-                        onChange={e => setFormData(f => ({ ...f, sesSenderEmail: e.target.value }))} 
-                        placeholder="alerts@azizpoultry.com" 
-                        disabled={loading} 
-                      />
+                    <div className="bg-green-100 p-2.5 rounded-lg text-green-600">
+                      <Phone size={22} />
                     </div>
                   </div>
                 </div>
 
-                {/* Automation Toggles */}
-                <div className="border rounded-xl p-5 space-y-4">
-                  <h3 className="font-semibold text-sm text-gray-800">Automated Messaging Workflows</h3>
+                {/* Routing & Alert Pathways Form */}
+                <div className="border rounded-xl p-5 space-y-5 bg-background shadow-sm">
+                  <h3 className="font-semibold text-sm text-gray-800 border-b pb-2 flex items-center gap-2">
+                    <Bell size={16} className="text-purple-500" /> Alert Pathways & Channels
+                  </h3>
                   
-                  <div className="space-y-3">
+                  <div className="space-y-6">
                     {[
-                      { key: "emailEnabled" as const, label: "Enable AWS SES Email Service", desc: "Allow system to send automated emails" },
-                      { key: "smsEnabled" as const, label: "Enable AWS SNS SMS Service", desc: "Allow system to send SMS notifications to mobile devices" },
-                      { key: "alertOnCriticalLoss" as const, label: "SMS Alert Admin on Critical Cage Weight Loss", desc: "Immediately page administrators if high weight loss is billed" },
-                      { key: "alertOnLowInventory" as const, label: "Email Manager on Low Inventory Levels", desc: "Auto-notify managers when feed/medicine quantities drop" },
-                    ].map(item => (
-                      <label key={item.key} className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                        <div>
-                          <p className="font-medium text-xs text-gray-700">{item.label}</p>
-                          <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+                      {
+                        title: "Sales Invoices & Receipts",
+                        desc: "Send instant transactional receipts to customers upon billing a sale",
+                        emailKey: "invoiceEmail" as const,
+                        phoneKey: "invoicePhone" as const,
+                        channelKey: "invoiceChannel" as const,
+                      },
+                      {
+                        title: "Low Inventory Alerts",
+                        desc: "Warn management when feed or medicine stocks drop below critical minimums",
+                        emailKey: "inventoryEmail" as const,
+                        phoneKey: "inventoryPhone" as const,
+                        channelKey: "inventoryChannel" as const,
+                      },
+                      {
+                        title: "Critical Cage Weight Loss Alerts",
+                        desc: "Instantly alert farm owners if cage weight loss exceeds bearable loss margins",
+                        emailKey: "lossEmail" as const,
+                        phoneKey: "lossPhone" as const,
+                        channelKey: "lossChannel" as const,
+                      },
+                      {
+                        title: "Daily Mortality Alerts",
+                        desc: "Send daily mortality counts and percentage summaries to stakeholders",
+                        emailKey: "mortalityEmail" as const,
+                        phoneKey: "mortalityPhone" as const,
+                        channelKey: "mortalityChannel" as const,
+                      }
+                    ].map(workflow => (
+                      <div key={workflow.title} className="p-4 border border-slate-100 rounded-xl bg-slate-50/50 space-y-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="text-xs font-semibold text-gray-800">{workflow.title}</h4>
+                            <p className="text-[10px] text-muted-foreground">{workflow.desc}</p>
+                          </div>
+                          
+                          {/* Channel Select Pills */}
+                          <div className="flex items-center gap-1 bg-slate-200/60 p-0.5 rounded-lg text-[10px]">
+                            {([
+                              { value: "both", label: "Both" },
+                              { value: "email", label: "Email" },
+                              { value: "sms", label: "SMS" },
+                              { value: "none", label: "Off" }
+                            ] as const).map(opt => (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => setFormData(f => ({ ...f, [workflow.channelKey]: opt.value }))}
+                                className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                                  formData[workflow.channelKey] === opt.value
+                                    ? "bg-white text-gray-800 shadow-sm"
+                                    : "text-muted-foreground hover:text-gray-700"
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                        <div className={`relative w-9 h-5 rounded-full transition-colors ${formData[item.key] ? 'bg-primary' : 'bg-muted-foreground/30'}`}
-                          onClick={() => setFormData(f => ({ ...f, [item.key]: !f[item.key] }))}>
-                          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${formData[item.key] ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                        </div>
-                      </label>
+
+                        {formData[workflow.channelKey] !== "none" && (
+                          <div className="grid grid-cols-2 gap-4 pt-2">
+                            {(formData[workflow.channelKey] === "email" || formData[workflow.channelKey] === "both") && (
+                              <div className="space-y-1">
+                                <Label className="text-[10px]">Target Email Address</Label>
+                                <Input
+                                  type="email"
+                                  placeholder="recipient@example.com"
+                                  value={formData[workflow.emailKey]}
+                                  onChange={e => setFormData(f => ({ ...f, [workflow.emailKey]: e.target.value }))}
+                                  className="text-xs h-8.5"
+                                />
+                              </div>
+                            )}
+                            {(formData[workflow.channelKey] === "sms" || formData[workflow.channelKey] === "both") && (
+                              <div className="space-y-1">
+                                <Label className="text-[10px]">Target Phone Number</Label>
+                                <Input
+                                  type="text"
+                                  placeholder="+919876543210"
+                                  value={formData[workflow.phoneKey]}
+                                  onChange={e => setFormData(f => ({ ...f, [workflow.phoneKey]: e.target.value }))}
+                                  className="text-xs h-8.5"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
 
                 {/* Connection Test Controls */}
-                <div className="border rounded-xl p-5 space-y-4 bg-muted/20">
-                  <h3 className="font-semibold text-sm text-gray-800">Connection Verification</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Send a real-time test transmission to verify that your AWS credentials, permissions, and network settings are 100% verified.
+                <div className="border border-purple-100 rounded-xl p-5 space-y-4 bg-purple-50/10 shadow-sm">
+                  <h3 className="font-semibold text-sm text-purple-950 flex items-center gap-1.5">
+                    <ShieldCheck size={16} className="text-purple-600" /> Pipeline Verification Tests
+                  </h3>
+                  <p className="text-xs text-purple-800">
+                    Verify connection pathways instantly by triggering secure dispatches directly from the backend services.
                   </p>
                   
                   <div className="grid grid-cols-2 gap-4 pt-2">
                     {/* Test Email */}
-                    <div className="border rounded-lg p-3 space-y-3 bg-background">
+                    <div className="border rounded-lg p-3 space-y-3 bg-background shadow-xs">
                       <div className="flex items-center gap-2">
-                        <Mail className="text-blue-600" size={16} />
-                        <span className="text-xs font-semibold">Test AWS SES (Email)</span>
+                        <Mail className="text-blue-600" size={15} />
+                        <span className="text-xs font-semibold">Test SES Email Gateway</span>
                       </div>
                       <div className="flex gap-2">
                         <Input 
@@ -730,10 +819,10 @@ export default function SettingsPage() {
                     </div>
 
                     {/* Test SMS */}
-                    <div className="border rounded-lg p-3 space-y-3 bg-background">
+                    <div className="border rounded-lg p-3 space-y-3 bg-background shadow-xs">
                       <div className="flex items-center gap-2">
-                        <Phone className="text-green-600" size={16} />
-                        <span className="text-xs font-semibold">Test AWS SNS (SMS)</span>
+                        <Phone className="text-green-600" size={15} />
+                        <span className="text-xs font-semibold">Test SNS SMS Gateway</span>
                       </div>
                       <div className="flex gap-2">
                         <Input 
@@ -756,9 +845,93 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <Button onClick={handleSave} disabled={loading}>
-                  <Save size={16} className="mr-2" />{loading ? "Saving..." : "Save Communication Settings"}
-                </Button>
+                {/* Sent Communication Logs Table */}
+                <div className="border border-slate-200 rounded-xl p-5 space-y-4 bg-background shadow-sm">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <h3 className="font-semibold text-sm text-gray-800 flex items-center gap-2">
+                      <Terminal size={16} className="text-slate-500" /> Recent Dispatch Audit Logs
+                    </h3>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={fetchCommLogs}
+                      disabled={logsLoading}
+                      className="text-xs h-7 px-2.5"
+                    >
+                      {logsLoading ? "Refreshing..." : "Refresh Logs"}
+                    </Button>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-100 bg-slate-50 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                          <th className="py-2.5 px-3">Recipient</th>
+                          <th className="py-2.5 px-3 text-center">Channel</th>
+                          <th className="py-2.5 px-3">Message Type</th>
+                          <th className="py-2.5 px-3">Timestamp</th>
+                          <th className="py-2.5 px-3 text-right">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {commLogs.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="py-8 text-center text-muted-foreground text-xs">
+                              No recent dispatches registered in database audits.
+                            </td>
+                          </tr>
+                        ) : (
+                          commLogs.map(log => (
+                            <tr key={log.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                              <td className="py-3 px-3 font-medium text-gray-800 max-w-[180px] truncate" title={log.recipient}>
+                                {log.recipient}
+                              </td>
+                              <td className="py-3 px-3">
+                                <div className="flex justify-center">
+                                  {log.channel === "email" ? (
+                                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                                      <Mail size={10} /> Email
+                                    </span>
+                                  ) : (
+                                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-50 text-green-700 border border-green-100">
+                                      <Phone size={10} /> SMS
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-3 font-medium capitalize text-gray-700">
+                                {log.messageType.replace("_", " ")}
+                              </td>
+                              <td className="py-3 px-3 text-muted-foreground text-[11px]">
+                                {new Date(log.sentAt).toLocaleString()}
+                              </td>
+                              <td className="py-3 px-3 text-right">
+                                {log.status === "sent" ? (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800">
+                                    Dispatched
+                                  </span>
+                                ) : (
+                                  <span 
+                                    className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-800 cursor-help"
+                                    title={log.errorMessage || "Unknown transmission failure"}
+                                  >
+                                    Failed ⚠️
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <Button onClick={handleSave} disabled={loading} className="px-6">
+                    <Save size={16} className="mr-2" />{loading ? "Saving..." : "Save Communication Settings"}
+                  </Button>
+                </div>
               </div>
             )}
 

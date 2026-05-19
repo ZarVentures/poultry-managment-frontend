@@ -1113,10 +1113,24 @@ export const settingsApi = {
     }),
 };
 
-// ============================================
-// NOTIFICATIONS API
-// ============================================
+export interface CommunicationLog {
+  id: string;
+  recipient: string;
+  channel: 'email' | 'sms';
+  messageType: string;
+  contentPreview?: string;
+  status: 'sent' | 'failed';
+  errorMessage?: string;
+  sentAt: string;
+}
+
 export const notificationsApi = {
+  getLogs: (limit: number = 50) =>
+    apiRequest<CommunicationLog[]>(`/notifications/logs?limit=${limit}`),
+
+  getCounts: () =>
+    apiRequest<{ emailCount: number; smsCount: number }>('/notifications/counts'),
+
   testEmail: (email: string) =>
     apiRequest<{ success: boolean; message: string }>('/notifications/test-email', {
       method: 'POST',
