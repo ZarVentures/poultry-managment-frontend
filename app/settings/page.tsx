@@ -674,11 +674,11 @@ export default function SettingsPage() {
                             <td className="p-4 text-muted-foreground text-xs leading-relaxed max-w-xs">{cat.description || "-"}</td>
                             <td className="p-4 text-center">
                               <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                                cat.appliesTo === 'main' ? 'bg-blue-100 text-blue-700' :
-                                cat.appliesTo === 'godown' ? 'bg-orange-100 text-orange-700' :
+                                (cat.appliesTo || 'both') === 'main' ? 'bg-blue-100 text-blue-700' :
+                                (cat.appliesTo || 'both') === 'godown' ? 'bg-orange-100 text-orange-700' :
                                 'bg-purple-100 text-purple-700'
                               }`}>
-                                {cat.appliesTo === 'both' ? 'Both' : cat.appliesTo === 'main' ? 'Main' : 'Godown'}
+                                {(cat.appliesTo || 'both') === 'both' ? 'Both' : (cat.appliesTo || 'both') === 'main' ? 'Main' : 'Godown'}
                               </span>
                             </td>
                             <td className="p-4 text-center">
