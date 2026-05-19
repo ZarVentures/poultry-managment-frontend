@@ -46,6 +46,7 @@ export default function GodownSalePage() {
     ratePerKg: "",
     totalAmount: "",
     paymentStatus: "pending" as "paid" | "pending" | "partial",
+    notes: "",
     weightLoss: "",
   })
   const [payments, setPayments] = useState<PaymentRow[]>([emptyPayment()])
