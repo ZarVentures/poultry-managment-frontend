@@ -452,7 +452,7 @@ export interface GodownMortality {
 export interface GodownExpense {
   id: string;
   expenseDate: string;
-  category: 'feed' | 'labor' | 'medicine' | 'utilities' | 'equipment' | 'maintenance' | 'transportation' | 'other';
+  category: string;
   description: string;
   amount: number;
   paymentMethod: 'cash' | 'bank_transfer' | 'check' | 'credit_card';

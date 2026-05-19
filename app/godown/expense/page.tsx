@@ -13,13 +13,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Edit2, Trash2, X, Printer, ChevronLeft, ChevronRight, Download } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
-import { godownApi, type GodownExpense } from "@/lib/api"
+import { godownApi, expenseCategoriesApi, type GodownExpense, type ExpenseCategory } from "@/lib/api"
 import { toast } from "sonner"
 
 export default function GodownExpensePage() {
   const router = useRouter()
   const [userRole, setUserRole] = useState<string>("")
   const [expenses, setExpenses] = useState<GodownExpense[]>([])
+  const [categories, setCategories] = useState<ExpenseCategory[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
@@ -34,7 +35,7 @@ export default function GodownExpensePage() {
 
   const [formData, setFormData] = useState({
     expenseDate: new Date().toISOString().split("T")[0],
-    category: "other" as GodownExpense['category'],
+    category: "other" as string,
     description: "", amount: "", paymentMethod: "cash" as GodownExpense['paymentMethod'], notes: "",
   })
 
@@ -47,7 +48,20 @@ export default function GodownExpensePage() {
         setUserRole(user.role || "")
       } catch { }
     }
+    fetchCategories()
   }, [])
+
+  const fetchCategories = async () => {
+    try {
+      const data = await expenseCategoriesApi.getActive()
+      setCategories(data)
+      if (data.length > 0 && !editingId) {
+        setFormData(prev => ({ ...prev, category: data[0].name.toLowerCase() }))
+      }
+    } catch (e) {
+      console.error("Failed to fetch categories:", e)
+    }
+  }
 
   const fetchExpenses = async () => {
     try {
@@ -84,14 +98,14 @@ export default function GodownExpensePage() {
   const stats = useMemo(() => {
     const total = allExpensesForStats.reduce((sum, exp) => sum + Number(exp.amount), 0)
     const byCategory: Record<string, number> = {}
-    const categories = ['feed', 'labor', 'medicine', 'utilities', 'equipment', 'maintenance', 'transportation', 'other']
     categories.forEach(cat => {
-      byCategory[cat] = allExpensesForStats
-        .filter(e => (e.category || '').toLowerCase() === cat)
+      const catKey = cat.name.toLowerCase()
+      byCategory[catKey] = allExpensesForStats
+        .filter(e => (e.category || '').toLowerCase() === catKey)
         .reduce((sum, e) => sum + Number(e.amount), 0)
     })
     return { total, byCategory }
-  }, [allExpensesForStats])
+  }, [allExpensesForStats, categories])
 
   const getCategoryIcon = (category: string) => {
     const icons: Record<string, string> = { feed: '🌾', labor: '👷', medicine: '💊', utilities: '💡', equipment: '🔧', maintenance: '🔨', transportation: '🚚' }
@@ -153,7 +167,7 @@ export default function GodownExpensePage() {
   }
 
   const resetForm = () => {
-    setFormData({ expenseDate: new Date().toISOString().split("T")[0], category: "other", description: "", amount: "", paymentMethod: "cash", notes: "" })
+    setFormData({ expenseDate: new Date().toISOString().split("T")[0], category: categories.length > 0 ? categories[0].name.toLowerCase() : "other", description: "", amount: "", paymentMethod: "cash", notes: "" })
     setEditingId(null)
   }
 
@@ -198,9 +212,10 @@ export default function GodownExpensePage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2"><Label>Date *</Label><DatePicker value={formData.expenseDate} onChange={d => setFormData({ ...formData, expenseDate: d })} /></div>
                   <div className="space-y-2"><Label>Category *</Label>
-                    <select className="w-full border rounded p-2" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value as any })}>
-                      <option value="feed">Feed</option><option value="labor">Labor</option><option value="medicine">Medicine</option><option value="utilities">Utilities</option>
-                      <option value="equipment">Equipment</option><option value="maintenance">Maintenance</option><option value="transportation">Transportation</option><option value="other">Other</option>
+                    <select className="w-full border rounded p-2 capitalize" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.name.toLowerCase()}>{cat.name}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -238,15 +253,18 @@ export default function GodownExpensePage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {['feed', 'labor', 'medicine', 'utilities', 'equipment', 'maintenance', 'transportation', 'other'].map(cat => (
-                  <div key={cat} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span>{getCategoryIcon(cat)}</span>
-                      <span className="text-sm capitalize">{cat}</span>
+                {categories.map(cat => {
+                  const catKey = cat.name.toLowerCase()
+                  return (
+                    <div key={cat.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span>{getCategoryIcon(catKey)}</span>
+                        <span className="text-sm capitalize">{cat.name}</span>
+                      </div>
+                      <span className="text-sm font-medium">₹{(stats.byCategory[catKey] || 0).toFixed(0)}</span>
                     </div>
-                    <span className="text-sm font-medium">₹{(stats.byCategory[cat] || 0).toFixed(0)}</span>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </CardContent>
           </Card>
