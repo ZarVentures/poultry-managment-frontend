@@ -13,7 +13,7 @@ import { Plus, Edit2, Trash2, X, Printer } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
-import { godownApi, retailersApi, purchasesApi, type GodownSale, type GodownCage, type Retailer, type GodownInward } from "@/lib/api"
+import { godownApi, retailersApi, purchasesApi, type GodownSale, type Retailer } from "@/lib/api"
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
 
@@ -21,25 +21,12 @@ const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer", "advanc
 type PaymentMode = typeof PAYMENT_MODES[number]
 interface PaymentRow { mode: PaymentMode; amount: string }
 const emptyPayment = (): PaymentRow => ({ mode: "cash", amount: "" })
-const emptyCage = (): GodownCage => ({ cageId: "", birdType: "", numberOfBirds: 0, cageWeight: 0 })
 
-interface CageRow {
-  id: string;
-  cageId: string;
-  availableBirds: number;
-  availableWeight: number;
-  soldBirds: string;
-  soldWeight: string;
-  selected: boolean;
-}
 
 export default function GodownSalePage() {
   const [sales, setSales] = useState<GodownSale[]>([])
   const [retailers, setRetailers] = useState<Retailer[]>([])
-  const [inwardEntries, setInwardEntries] = useState<GodownInward[]>([])
-  const [selectedInwardId, setSelectedInwardId] = useState<string>("")
-  const [cageRows, setCageRows] = useState<CageRow[]>([])
-  const [loadingCages, setLoadingCages] = useState(false)
+
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
@@ -59,29 +46,16 @@ export default function GodownSalePage() {
     ratePerKg: "",
     totalAmount: "",
     paymentStatus: "pending" as "paid" | "pending" | "partial",
-    notes: "",
+    weightLoss: "",
   })
   const [payments, setPayments] = useState<PaymentRow[]>([emptyPayment()])
-  const [cages, setCages] = useState<GodownCage[]>([emptyCage()])
 
 
   useEffect(() => {
     setMounted(true)
     fetchSales()
     fetchRetailers()
-    fetchInwardEntries()
   }, [])
-
-  const fetchInwardEntries = async () => {
-    try {
-      const data = await godownApi.inward.getAll()
-      setInwardEntries(Array.isArray(data) ? data : (data as any).data || [])
-    } catch (error) {
-      console.error("Failed to fetch inward entries:", error)
-    }
-  }
-
-
   const fetchSales = async () => {
     try {
       setLoading(true)
@@ -146,11 +120,9 @@ export default function GodownSalePage() {
       totalAmount: "",
       paymentStatus: "pending",
       notes: "",
+      weightLoss: "",
     })
     setPayments([emptyPayment()])
-    setCages([emptyCage()])
-    setCageRows([])
-    setSelectedInwardId("")
     setEditingId(null)
     setAllowEditBillNo(false)
   }
@@ -168,6 +140,7 @@ export default function GodownSalePage() {
       totalAmount: String(sale.totalAmount || ""),
       paymentStatus: (sale as any).paymentStatus || "pending",
       notes: sale.notes || "",
+      weightLoss: String((sale as any).weightLoss || ""),
     })
     
     // Load payments from sale data
@@ -181,123 +154,12 @@ export default function GodownSalePage() {
       setPayments([emptyPayment()])
     }
     
-    setCages(sale.cages && sale.cages.length > 0 ? sale.cages : [emptyCage()])
     setEditingId(sale.id)
     setAllowEditBillNo(false)
     setShowDialog(true)
-
-    // Load cages for this sale and inward entry
-    if (sale.id) {
-      try {
-        setLoadingCages(true)
-        const soldCages = await purchasesApi.getCagesBySaleId(sale.id)
-        if (soldCages && soldCages.length > 0) {
-          const inwardId = soldCages[0].godownInwardId
-          if (inwardId) {
-            setSelectedInwardId(inwardId)
-            const allInwardCages = await purchasesApi.getCagesByInwardId(inwardId)
-            setCageRows(
-              Array.isArray(allInwardCages)
-                ? allInwardCages
-                    .filter(c => c.status === 'in_godown' || c.godownSaleId === sale.id)
-                    .map(c => {
-                      const isSold = c.godownSaleId === sale.id
-                      return {
-                        id: c.id ?? "",
-                        cageId: c.cageId ?? "",
-                        availableBirds: Number(c.numberOfBirds) + (isSold ? 0 : 0),
-                        availableWeight: Number(c.godownInwardWeight || c.purchaseWeight),
-                        soldBirds: isSold ? String(c.numberOfBirds) : String(c.numberOfBirds),
-                        soldWeight: isSold ? String(c.godownSaleWeight || c.godownInwardWeight || c.purchaseWeight) : String(c.godownInwardWeight || c.purchaseWeight),
-                        selected: isSold ? true : false,
-                      }
-                    })
-                : []
-            )
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load sold cages for edit:", err)
-      } finally {
-        setLoadingCages(false)
-      }
-    }
   }
 
-  const handleInwardChange = async (inwardId: string) => {
-    setSelectedInwardId(inwardId)
-    if (!inwardId || inwardId === '__none__') {
-      setCageRows([])
-      return
-    }
 
-    const inward = inwardEntries.find(e => e.id === inwardId)
-    if (inward) {
-      setFormData(f => ({
-        ...f,
-        customerName: inward.supplierName || f.customerName,
-        purchaseBillNo: inward.purchaseInvoiceNo || f.purchaseBillNo,
-      }))
-    }
-
-    try {
-      setLoadingCages(true)
-      const cageData = await purchasesApi.getCagesByInwardId(inwardId)
-      setCageRows(
-        Array.isArray(cageData)
-          ? cageData
-              .filter(c => c.status === 'in_godown' || (editingId && c.status === 'godown_sold' && c.godownSaleId === editingId))
-              .map(c => {
-                const isSold = editingId && c.status === 'godown_sold' && c.godownSaleId === editingId
-                const birds = isSold ? Number(c.numberOfBirds) : Number(c.numberOfBirds)
-                const wt = isSold ? Number(c.godownSaleWeight || c.godownInwardWeight || c.purchaseWeight) : Number(c.godownInwardWeight || c.purchaseWeight)
-                return {
-                  id: c.id ?? "",
-                  cageId: c.cageId ?? "",
-                  availableBirds: Number(c.numberOfBirds) + (isSold ? 0 : 0),
-                  availableWeight: Number(c.godownInwardWeight || c.purchaseWeight),
-                  soldBirds: String(birds),
-                  soldWeight: wt.toFixed(2),
-                  selected: isSold ? true : false,
-                }
-              })
-          : []
-      )
-    } catch (err) {
-      console.error("Failed to load inward cages:", err)
-      toast.error("Failed to load cages for this inward entry")
-    } finally {
-      setLoadingCages(false)
-    }
-  }
-
-  const toggleCage = (id: string) => {
-    setCageRows(prev => prev.map(r => r.id === id ? { ...r, selected: !r.selected } : r))
-  }
-
-  const updateCageRow = (id: string, field: 'soldBirds' | 'soldWeight', value: string) => {
-    setCageRows(prev => prev.map(r => {
-      if (r.id !== id) return r
-      const updated = { ...r, [field]: value }
-      if (value) updated.selected = true
-      return updated
-    }))
-  }
-
-  useEffect(() => {
-    const selected = cageRows.filter(r => r.selected)
-    if (selected.length > 0) {
-      const birds = selected.reduce((s, r) => s + (parseInt(r.soldBirds) || 0), 0)
-      const weight = selected.reduce((s, r) => s + (parseFloat(r.soldWeight) || 0), 0)
-      
-      setFormData(prev => ({
-        ...prev,
-        numberOfBirds: String(birds),
-        totalWeight: weight.toFixed(2),
-        totalAmount: (weight * (parseFloat(prev.ratePerKg) || 0)).toFixed(2)
-      }))
-    }
-  }, [cageRows, formData.ratePerKg])
 
   const calculateTotal = () => {
     const weight = parseFloat(formData.totalWeight) || 0
@@ -332,18 +194,8 @@ export default function GodownSalePage() {
         paymentStatus: formData.paymentStatus,
         amountReceived: totalPaymentMade,
         notes: formData.notes,
+        weightLoss: parseFloat(formData.weightLoss) || 0,
         payments: validPayments,
-        cages: cageRows
-          .filter(r => r.selected)
-          .map(r => ({
-            id: r.id,
-            cageId: r.cageId || undefined,
-            numberOfBirds: Number(r.soldBirds) || 0,
-            cageWeight: Number(r.soldWeight) || 0,
-            soldBirds: Number(r.soldBirds) || 0,
-            soldWeight: Number(r.soldWeight) || 0,
-            weightLoss: Math.max(0, Number(r.availableWeight) - Number(r.soldWeight)),
-          })),
       }
 
       if (editingId) {
@@ -548,103 +400,7 @@ export default function GodownSalePage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Link to Godown Inward Entry *</Label>
-                  <Select
-                    value={selectedInwardId || '__none__'}
-                    onValueChange={handleInwardChange}
-                    disabled={loading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Godown Inward Entry" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60 overflow-y-auto">
-                      <SelectItem value="__none__">Select Inward Entry...</SelectItem>
-                      {inwardEntries.map((entry) => (
-                        <SelectItem key={entry.id} value={entry.id}>
-                          {entry.inwardNo || 'GDI'} — {new Date(entry.entryDate).toLocaleDateString()} — {entry.supplierName} ({entry.numberOfBirds} birds, {Number(entry.totalWeight).toFixed(2)} kg)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
 
-                {selectedInwardId && selectedInwardId !== '__none__' && (
-                  <Card className="border-green-200">
-                    <CardHeader className="bg-green-50/50 py-3">
-                      <CardTitle className="text-sm font-semibold text-green-800">
-                        Available Cages in Selected Inward Entry
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3">
-                      {loadingCages ? (
-                        <div className="text-center py-4 text-sm text-muted-foreground">Loading cages...</div>
-                      ) : cageRows.length === 0 ? (
-                        <div className="text-center py-4 text-sm text-muted-foreground">No available cages found in this inward entry.</div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="bg-gray-50/50">
-                                <TableHead className="w-[50px]"></TableHead>
-                                <TableHead>Cage ID</TableHead>
-                                <TableHead className="text-right">Avail. Birds</TableHead>
-                                <TableHead className="text-right">Avail. Wt (kg)</TableHead>
-                                <TableHead className="text-right w-[110px]">Sell Birds</TableHead>
-                                <TableHead className="text-right w-[120px]">Sell Wt (kg)</TableHead>
-                                <TableHead className="text-right">Loss (kg)</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {cageRows.map((row) => {
-                                const loss = Math.max(0, Number(row.availableWeight) - (parseFloat(row.soldWeight) || 0))
-                                return (
-                                  <TableRow key={row.id} className={row.selected ? "bg-green-50/20" : ""}>
-                                    <TableCell>
-                                      <input
-                                        type="checkbox"
-                                        checked={row.selected}
-                                        onChange={() => toggleCage(row.id)}
-                                        className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
-                                      />
-                                    </TableCell>
-                                    <TableCell className="font-medium text-gray-900">{row.cageId}</TableCell>
-                                    <TableCell className="text-right text-gray-500">{row.availableBirds}</TableCell>
-                                    <TableCell className="text-right text-gray-500">{row.availableWeight.toFixed(2)}</TableCell>
-                                    <TableCell>
-                                      <Input
-                                        type="number"
-                                        value={row.soldBirds}
-                                        onChange={(e) => updateCageRow(row.id, 'soldBirds', e.target.value)}
-                                        className="h-8 text-right px-2"
-                                        disabled={loading}
-                                        onWheel={(e) => e.currentTarget.blur()}
-                                      />
-                                    </TableCell>
-                                    <TableCell>
-                                      <Input
-                                        type="number"
-                                        step="0.01"
-                                        value={row.soldWeight}
-                                        onChange={(e) => updateCageRow(row.id, 'soldWeight', e.target.value)}
-                                        className="h-8 text-right px-2"
-                                        disabled={loading}
-                                        onWheel={(e) => e.currentTarget.blur()}
-                                      />
-                                    </TableCell>
-                                    <TableCell className="text-right font-medium text-amber-600">
-                                      {loss.toFixed(2)}
-                                    </TableCell>
-                                  </TableRow>
-                                )
-                              })}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
 
                 <div className="space-y-2">
                   <Label>Retailer (Optional)</Label>
@@ -720,6 +476,18 @@ export default function GodownSalePage() {
                         const total = (parseFloat(weight || "0") * parseFloat(formData.ratePerKg || "0")).toFixed(2)
                         setFormData({ ...formData, totalWeight: weight, totalAmount: total })
                       }}
+                      placeholder="0.00"
+                      disabled={loading}
+                      onWheel={(e) => e.currentTarget.blur()} 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Weight Loss (kg)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.weightLoss}
+                      onChange={(e) => setFormData({ ...formData, weightLoss: e.target.value })}
                       placeholder="0.00"
                       disabled={loading}
                       onWheel={(e) => e.currentTarget.blur()} 
