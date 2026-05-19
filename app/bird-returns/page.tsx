@@ -13,7 +13,7 @@ import { Plus, Edit2, Trash2, CheckCircle, XCircle, Clock, Package, AlertTriangl
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
-import { birdReturnsApi, salesApi, type BirdReturn, type CreateBirdReturnDto } from "@/lib/api"
+import { birdReturnsApi, salesApi, godownApi, type BirdReturn, type CreateBirdReturnDto } from "@/lib/api"
 import { toast } from "sonner"
 
 export default function BirdReturnsPage() {
@@ -81,8 +81,15 @@ export default function BirdReturnsPage() {
 
   const fetchSalesList = async () => {
     try {
-      const data = await salesApi.getInvoiceList()
-      setSalesList(data)
+      const res = await godownApi.sales.getAll(1, 100)
+      const rawSales = Array.isArray(res) ? res : res.data || []
+      const mapped = rawSales.map((s: any) => ({
+        id: s.id,
+        invoiceNumber: s.invoiceNumber || s.saleNo || `Sale #${s.id}`,
+        saleDate: s.saleDate,
+        customerName: s.customerName,
+      }))
+      setSalesList(mapped)
     } catch (error) {
       console.error("Failed to fetch sales list:", error)
     }
@@ -237,15 +244,16 @@ export default function BirdReturnsPage() {
 
     try {
       setLoading(true)
-      const fullSale = await salesApi.getOne(saleId)
+      const fullSale = await godownApi.sales.getOne(saleId)
       if (fullSale) {
-        setSaleUnitPrice(Number(fullSale.unitPrice) || 0)
+        const rate = Number(fullSale.ratePerKg || 0)
+        setSaleUnitPrice(rate)
         setFormData(prev => ({
           ...prev,
           retailerId: fullSale.retailerId || "",
           customerName: fullSale.customerName,
         }))
-        toast.success(`Loaded sale details! Rate: ₹${Number(fullSale.unitPrice).toFixed(2)}/kg`)
+        toast.success(`Loaded godown sale details! Rate: ₹${rate.toFixed(2)}/kg`)
       }
     } catch (error) {
       console.error("Failed to load full sale details:", error)
