@@ -54,7 +54,7 @@ export default function ExpensesPage() {
 
   const fetchCategories = async () => {
     try {
-      const data = await expenseCategoriesApi.getActive() // Only fetch active categories
+      const data = await expenseCategoriesApi.getActive('main') // Only fetch active categories for main
       setCategories(data)
       if (data.length > 0 && !editingId) {
         setFormData(prev => ({ ...prev, categoryId: data[0].id }))

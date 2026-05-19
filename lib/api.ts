@@ -939,6 +939,7 @@ export interface ExpenseCategory {
   isActive: boolean;
   isDefault: boolean;
   sortOrder: number;
+  appliesTo: 'main' | 'godown' | 'both';
   createdAt: string;
   updatedAt: string;
 }
@@ -948,6 +949,7 @@ export interface CreateExpenseCategoryDto {
   description?: string;
   isActive?: boolean;
   sortOrder?: number;
+  appliesTo?: 'main' | 'godown' | 'both';
 }
 
 export interface UpdateExpenseCategoryDto {
@@ -955,12 +957,13 @@ export interface UpdateExpenseCategoryDto {
   description?: string;
   isActive?: boolean;
   sortOrder?: number;
+  appliesTo?: 'main' | 'godown' | 'both';
 }
 
 export const expenseCategoriesApi = {
   getAll: () => apiRequest<ExpenseCategory[]>('/expense-categories'),
 
-  getActive: () => apiRequest<ExpenseCategory[]>('/expense-categories/active'),
+  getActive: (type?: 'main' | 'godown') => apiRequest<ExpenseCategory[]>(`/expense-categories/active${type ? `?type=${type}` : ''}`),
 
   getOne: (id: number) => apiRequest<ExpenseCategory>(`/expense-categories/${id}`),
 

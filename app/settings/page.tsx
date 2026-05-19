@@ -79,6 +79,7 @@ export default function SettingsPage() {
     name: "",
     description: "",
     icon: "tag",
+    appliesTo: "both" as 'both' | 'main' | 'godown',
     isActive: true
   })
 
@@ -637,7 +638,7 @@ export default function SettingsPage() {
                   </div>
                   <Button size="sm" onClick={() => {
                     setEditingCategory(null)
-                    setCategoryFormData({ name: "", description: "", icon: "tag", isActive: true })
+                    setCategoryFormData({ name: "", description: "", icon: "tag", appliesTo: "both", isActive: true })
                     setShowCategoryModal(true)
                   }}>+ New Category</Button>
                 </div>
@@ -651,6 +652,7 @@ export default function SettingsPage() {
                         <tr className="text-xs uppercase text-muted-foreground">
                           <th className="text-left p-4 font-semibold">Category</th>
                           <th className="text-left p-4 font-semibold">Description</th>
+                          <th className="text-center p-4 font-semibold">Applies To</th>
                           <th className="text-center p-4 font-semibold">Status</th>
                           <th className="text-right p-4 font-semibold">Actions</th>
                         </tr>
@@ -671,6 +673,15 @@ export default function SettingsPage() {
                             </td>
                             <td className="p-4 text-muted-foreground text-xs leading-relaxed max-w-xs">{cat.description || "-"}</td>
                             <td className="p-4 text-center">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                                cat.appliesTo === 'main' ? 'bg-blue-100 text-blue-700' :
+                                cat.appliesTo === 'godown' ? 'bg-orange-100 text-orange-700' :
+                                'bg-purple-100 text-purple-700'
+                              }`}>
+                                {cat.appliesTo === 'both' ? 'Both' : cat.appliesTo === 'main' ? 'Main' : 'Godown'}
+                              </span>
+                            </td>
+                            <td className="p-4 text-center">
                               <button
                                 onClick={() => handleToggleCategory(cat.id)}
                                 className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${cat.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
@@ -683,7 +694,7 @@ export default function SettingsPage() {
                                 <button
                                   onClick={() => {
                                     setEditingCategory(cat)
-                                    setCategoryFormData({ name: cat.name, description: cat.description || "", icon: "tag", isActive: cat.isActive })
+                                    setCategoryFormData({ name: cat.name, description: cat.description || "", icon: "tag", appliesTo: cat.appliesTo || "both", isActive: cat.isActive })
                                     setShowCategoryModal(true)
                                   }}
                                   className="p-2 text-muted-foreground hover:text-primary transition-colors"
@@ -806,6 +817,18 @@ export default function SettingsPage() {
                 value={categoryFormData.description}
                 onChange={e => setCategoryFormData({ ...categoryFormData, description: e.target.value })}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Applies To *</Label>
+              <select
+                className="w-full border rounded p-2 text-sm bg-background text-foreground"
+                value={categoryFormData.appliesTo}
+                onChange={e => setCategoryFormData({ ...categoryFormData, appliesTo: e.target.value as any })}
+              >
+                <option value="both">Both (Main & Godown)</option>
+                <option value="main">Main Expenses Only</option>
+                <option value="godown">Godown Expenses Only</option>
+              </select>
             </div>
             {/* <div className="space-y-2">
               <Label>Icon Name (Lucide)</Label>

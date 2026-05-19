@@ -53,7 +53,7 @@ export default function GodownExpensePage() {
 
   const fetchCategories = async () => {
     try {
-      const data = await expenseCategoriesApi.getActive()
+      const data = await expenseCategoriesApi.getActive('godown')
       setCategories(data)
       if (data.length > 0 && !editingId) {
         setFormData(prev => ({ ...prev, category: data[0].name.toLowerCase() }))
