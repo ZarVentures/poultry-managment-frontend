@@ -32,7 +32,7 @@ export default function SalesPage() {
   const [retailers, setRetailers] = useState<any[]>([])
   const [vehicles, setVehicles] = useState<any[]>([])
   const [purchaseBills, setPurchaseBills] = useState<Array<{ id: string; orderNumber: string; supplierName: string }>>([])
-  const [purchaseCages, setPurchaseCages] = useState<Array<{ id: string; cageId?: string; numberOfBirds: number; purchaseWeight: number; status?: string; saleId?: string }>>([])
+  const [purchaseCages, setPurchaseCages] = useState<any[]>([])
   const [billSearch, setBillSearch] = useState("");
   const [selectedCageIds, setSelectedCageIds] = useState<Set<string>>(new Set())
   const [loadingCages, setLoadingCages] = useState(false)
@@ -181,7 +181,20 @@ export default function SalesPage() {
       const allCages = await purchasesApi.getCagesByOrderNumber(billNo)
       console.log('Cages received:', allCages)
       const mapped = Array.isArray(allCages)
-        ? allCages.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) }))
+        ? (allCages as any[]).map((c: any) => {
+            const availBirds = Number(c.numberOfBirds ?? 0)
+            const availWt = Number(c.purchaseWeight ?? c.cageWeight ?? 0)
+            return {
+              ...c,
+              id: c.id ?? '',
+              purchaseWeight: availWt,
+              initialBirds: availBirds,
+              initialWeight: availWt,
+              soldBirds: String(c.soldBirds ?? availBirds),
+              soldWeight: String(c.purchaseWeight ?? availWt),
+              weightLoss: '0',
+            }
+          })
         : []
 
       if (isEditMode && editingId) {
@@ -217,32 +230,10 @@ export default function SalesPage() {
     }
   }
 
-  const toggleCage = (id: string) => {
-    setSelectedCageIds(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      syncFormFromCages(next)
-      return next
-    })
-  }
-
-  const toggleAllCages = () => {
-    if (selectedCageIds.size === purchaseCages.length) {
-      const empty = new Set<string>()
-      setSelectedCageIds(empty)
-      syncFormFromCages(empty)
-    } else {
-      const allIds = new Set(purchaseCages.map(c => c.id!))
-      setSelectedCageIds(allIds)
-      syncFormFromCages(allIds)
-    }
-  }
-
-  const syncFormFromCages = (ids: Set<string>) => {
-    const selected = purchaseCages.filter(c => ids.has(c.id!))
-    const totalBirds = selected.reduce((s, c) => s + c.numberOfBirds, 0)
-    const totalWt = selected.reduce((s, c) => s + Number(c.purchaseWeight), 0)
+  const syncFormFromCagesList = (ids: Set<string>, updatedList: any[]) => {
+    const selected = updatedList.filter(c => ids.has(c.id!))
+    const totalBirds = selected.reduce((s, c) => s + (parseInt(c.soldBirds) || 0), 0)
+    const totalWt = selected.reduce((s, c) => s + (parseFloat(c.soldWeight) || 0), 0)
     const cageIds = selected.map(c => c.cageId).filter(Boolean).join(', ')
     setFormData(f => ({
       ...f,
@@ -252,13 +243,42 @@ export default function SalesPage() {
     }))
   }
 
+  const toggleCage = (id: string) => {
+    setSelectedCageIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      syncFormFromCagesList(next, purchaseCages)
+      return next
+    })
+  }
+
+  const toggleAllCages = () => {
+    const visible = purchaseCages.filter(cage => {
+      if (isEditMode && editingId) {
+        return String(cage.saleId) === String(editingId) || !cage.status || cage.status === 'pending'
+      }
+      return !cage.status || cage.status === 'pending'
+    })
+    
+    if (selectedCageIds.size === visible.length) {
+      const empty = new Set<string>()
+      setSelectedCageIds(empty)
+      syncFormFromCagesList(empty, purchaseCages)
+    } else {
+      const allIds = new Set(visible.map(c => c.id!))
+      setSelectedCageIds(allIds)
+      syncFormFromCagesList(allIds, purchaseCages)
+    }
+  }
+
   const rate = parseFloat(formData.ratePerKg) || 0
   const selectedCageList = purchaseCages.filter(c => selectedCageIds.has(c.id!))
   const totalBirds = selectedCageList.length > 0
-    ? selectedCageList.reduce((s, c) => s + c.numberOfBirds, 0)
+    ? selectedCageList.reduce((s, c) => s + (parseInt(c.soldBirds) || 0), 0)
     : (parseInt(formData.numBirds) || 0)
   const totalWeight = selectedCageList.length > 0
-    ? selectedCageList.reduce((s, c) => s + Number(c.purchaseWeight), 0)
+    ? selectedCageList.reduce((s, c) => s + (parseFloat(c.soldWeight) || 0), 0)
     : (parseFloat(formData.totalWeight) || 0)
   const totalAmount = totalWeight * rate
   const avgWeight = totalBirds > 0 ? totalWeight / totalBirds : 0
@@ -375,7 +395,21 @@ export default function SalesPage() {
         const allCages = await purchasesApi.getCagesByOrderNumber(purchaseBillNo)
         console.log('All cages received:', allCages)
         const mapped = Array.isArray(allCages)
-          ? allCages.map(c => ({ ...c, id: c.id ?? '', purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0) }))
+          ? (allCages as any[]).map((c: any) => {
+              const isThisSale = String(c.saleId) === String(full.id) || (c.status === 'sold' && !c.saleId)
+              const availBirds = Number(c.numberOfBirds ?? 0)
+              const availWt = Number(c.purchaseWeight ?? c.cageWeight ?? 0)
+              return {
+                ...c,
+                id: c.id ?? '',
+                purchaseWeight: availWt,
+                initialBirds: availBirds,
+                initialWeight: availWt,
+                soldBirds: String(isThisSale ? (c.numberOfBirds ?? availBirds) : availBirds),
+                soldWeight: String(isThisSale ? (c.purchaseWeight ?? availWt) : availWt),
+                weightLoss: String(isThisSale ? (c.weightLoss ?? '0') : '0'),
+              }
+            })
           : []
 
         // Filter: 
@@ -637,48 +671,57 @@ export default function SalesPage() {
                       <Input value={formData.cageNo} readOnly placeholder="Auto-filled from cage selection" className={formData.cageNo ? "bg-green-50 border-green-300 text-sm" : "bg-gray-50 text-sm"} />
                     </div>
 
-
                     {/* Cage panel — pending cages (create mode) or sold cages for this sale (edit mode) */}
-                    {formData.purchaseBillNo && formData.purchaseBillNo !== '__none__' && (
-                      <div className="border rounded-lg p-3 bg-blue-50 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label className="text-blue-900 font-semibold">
-                              Cages from {formData.purchaseBillNo}
-                            </Label>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {isEditMode
-                                ? <span className="text-blue-700 font-medium">Select additional pending cages to add to this sale</span>
-                                : <>Checked cages will be marked as <span className="text-green-700 font-medium">SOLD</span> when you create the sale</>
-                              }
-                            </p>
+                    {formData.purchaseBillNo && formData.purchaseBillNo !== '__none__' && (() => {
+                      const visibleCages = purchaseCages.filter(cage => {
+                        if (isEditMode && editingId) {
+                          return String(cage.saleId) === String(editingId) || !cage.status || cage.status === 'pending'
+                        }
+                        return !cage.status || cage.status === 'pending'
+                      })
+
+                      return (
+                        <div className="border rounded-lg p-3 bg-blue-50 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label className="text-blue-900 font-semibold">
+                                Cages from {formData.purchaseBillNo}
+                              </Label>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {isEditMode
+                                  ? <span className="text-blue-700 font-medium">Select additional pending cages to add to this sale</span>
+                                  : <>Checked cages will be marked as <span className="text-green-700 font-medium">SOLD</span> when you create the sale</>
+                                }
+                              </p>
+                            </div>
+                            {loadingCages && <span className="text-xs text-muted-foreground">Loading cages...</span>}
+                            {!loadingCages && visibleCages.length > 0 && (
+                              <button type="button" onClick={toggleAllCages} className="text-xs text-blue-700 underline">
+                                {selectedCageIds.size === visibleCages.length ? 'Deselect All' : 'Select All'}
+                              </button>
+                            )}
                           </div>
-                          {loadingCages && <span className="text-xs text-muted-foreground">Loading cages...</span>}
-                          {!loadingCages && purchaseCages.length > 0 && (
-                            <button type="button" onClick={toggleAllCages} className="text-xs text-blue-700 underline">
-                              {selectedCageIds.size === purchaseCages.length ? 'Deselect All' : 'Select All'}
-                            </button>
+                          {!loadingCages && visibleCages.length === 0 && (
+                            <p className="text-xs text-muted-foreground">No cages found for this purchase bill.</p>
                           )}
-                        </div>
-                        {!loadingCages && purchaseCages.length === 0 && (
-                          <p className="text-xs text-muted-foreground">No cages found for this purchase bill.</p>
-                        )}
-                        {!loadingCages && purchaseCages.length > 0 && (
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-xs">
-                              <thead>
-                                <tr className="border-b bg-blue-100">
-                                  <th className="p-1 w-8"></th>
-                                  <th className="text-left p-1">Cage ID</th>
-                                  <th className="text-right p-1">Birds</th>
-                                  <th className="text-right p-1">Weight (kg)</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {purchaseCages
-                                  .filter(cage => !cage.status || cage.status === 'pending') // Section 1: Show ONLY pending cages
-                                  .map(cage => {
-                                    const isDisabled = false // Pending cages are never disabled
+                          {!loadingCages && visibleCages.length > 0 && (
+                            <div className="overflow-x-auto max-h-60 overflow-y-auto">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="border-b bg-blue-100 sticky top-0">
+                                    <th className="p-1 w-8"></th>
+                                    <th className="text-left p-1">Cage ID</th>
+                                    <th className="text-right p-1">Avail. Birds</th>
+                                    <th className="text-right p-1">Avail. Wt</th>
+                                    <th className="text-right p-1 text-blue-900">Birds to Sell *</th>
+                                    <th className="text-right p-1 text-blue-900">Wt to Sell (kg) *</th>
+                                    <th className="text-right p-1 text-orange-700">Wt Loss (kg)</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {visibleCages.map(cage => {
+                                    const availBirds = cage.initialBirds || cage.numberOfBirds
+                                    const availWt = cage.initialWeight || cage.purchaseWeight
 
                                     return (
                                       <tr
@@ -695,24 +738,95 @@ export default function SalesPage() {
                                           />
                                         </td>
                                         <td className="p-1 font-medium">{cage.cageId || '-'}</td>
-                                        <td className="p-1 text-right">{cage.numberOfBirds}</td>
-                                        <td className="p-1 text-right">{Number(cage.purchaseWeight).toFixed(2)}</td>
+                                        <td className="p-1 text-right">{availBirds}</td>
+                                        <td className="p-1 text-right">{Number(availWt).toFixed(2)}</td>
+                                        <td className="p-1 text-right" onClick={e => e.stopPropagation()}>
+                                          <input
+                                            type="number"
+                                            placeholder="0"
+                                            value={cage.soldBirds}
+                                            onChange={e => {
+                                              const val = e.target.value
+                                              const enteredBirds = parseInt(val) || 0
+                                              if (enteredBirds > availBirds) {
+                                                toast.error(`Cannot sell ${enteredBirds} birds. Only ${availBirds} available in cage ${cage.cageId}.`)
+                                                return
+                                              }
+                                              const updatedList = purchaseCages.map(c => c.id === cage.id ? { ...c, soldBirds: val } : c)
+                                              setPurchaseCages(updatedList)
+                                              if (selectedCageIds.has(cage.id)) {
+                                                syncFormFromCagesList(selectedCageIds, updatedList)
+                                              }
+                                            }}
+                                            className="w-16 text-right border rounded px-1 py-0.5 text-xs font-semibold"
+                                          />
+                                        </td>
+                                        <td className="p-1 text-right" onClick={e => e.stopPropagation()}>
+                                          <input
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="0.00"
+                                            value={cage.soldWeight}
+                                            onChange={e => {
+                                              const val = e.target.value
+                                              const enteredWt = parseFloat(val) || 0
+                                              if (enteredWt > availWt) {
+                                                toast.error(`Cannot sell ${enteredWt} kg. Only ${availWt.toFixed(2)} kg available in cage ${cage.cageId}.`)
+                                                return
+                                              }
+                                              const updatedList = purchaseCages.map(c => c.id === cage.id ? { ...c, soldWeight: val } : c)
+                                              setPurchaseCages(updatedList)
+                                              if (selectedCageIds.has(cage.id)) {
+                                                syncFormFromCagesList(selectedCageIds, updatedList)
+                                              }
+                                            }}
+                                            className="w-20 text-right border rounded px-1 py-0.5 text-xs font-semibold"
+                                          />
+                                        </td>
+                                        <td className="p-1 text-right" onClick={e => e.stopPropagation()}>
+                                          <input
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="0.00"
+                                            value={cage.weightLoss}
+                                            onChange={e => {
+                                              const val = e.target.value
+                                              const updatedList = purchaseCages.map(c => c.id === cage.id ? { ...c, weightLoss: val } : c)
+                                              setPurchaseCages(updatedList)
+                                              if (selectedCageIds.has(cage.id)) {
+                                                syncFormFromCagesList(selectedCageIds, updatedList)
+                                              }
+                                            }}
+                                            className="w-16 text-right border rounded px-1 py-0.5 text-xs font-semibold"
+                                          />
+                                        </td>
                                       </tr>
                                     )
                                   })}
-                              </tbody>
-                              <tfoot>
-                                <tr className="border-t font-semibold bg-blue-100">
-                                  <td colSpan={2} className="p-1">{selectedCageIds.size} selected / {purchaseCages.filter(c => !c.status || c.status === 'pending').length} pending</td>
-                                  <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id!)).reduce((s, c) => s + c.numberOfBirds, 0)}</td>
-                                  <td className="p-1 text-right">{purchaseCages.filter(c => selectedCageIds.has(c.id!)).reduce((s, c) => s + Number(c.purchaseWeight), 0).toFixed(2)}</td>
-                                </tr>
-                              </tfoot>
-                            </table>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                                </tbody>
+                                <tfoot>
+                                  {(() => {
+                                    const selCages = purchaseCages.filter(c => selectedCageIds.has(c.id!))
+                                    const totalSoldBirds = selCages.reduce((s, c) => s + (parseInt(c.soldBirds) || 0), 0)
+                                    const totalSoldWt = selCages.reduce((s, c) => s + (parseFloat(c.soldWeight) || 0), 0)
+                                    const totalLossWt = selCages.reduce((s, c) => s + (parseFloat(c.weightLoss) || 0), 0)
+                                    return (
+                                      <tr className="border-t font-semibold bg-blue-100 sticky bottom-0">
+                                        <td colSpan={2} className="p-1">{selectedCageIds.size} selected</td>
+                                        <td colSpan={2} className="p-1 text-right">Totals:</td>
+                                        <td className="p-1 text-right">{totalSoldBirds}</td>
+                                        <td className="p-1 text-right">{totalSoldWt.toFixed(2)}</td>
+                                        <td className="p-1 text-right">{totalLossWt.toFixed(2)}</td>
+                                      </tr>
+                                    )
+                                  })()}
+                                </tfoot>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
 
                     <div className="grid grid-cols-2 gap-4 mt-2">
                       <div className="space-y-2">
@@ -799,40 +913,13 @@ export default function SalesPage() {
                         <tbody>
                           {selectedCageIds.size > 0 ? (
                             purchaseCages.filter(c => selectedCageIds.has(c.id!)).map((cage) => {
-                              const wt = Number(cage.purchaseWeight)
+                              const wt = parseFloat(cage.soldWeight) || 0
                               const amt = wt * rate
                               return (
                                 <tr key={cage.id} className="border-b hover:bg-gray-50">
                                   <td className="p-1 font-medium text-xs">{cage.cageId || '-'}</td>
-                                  <td className="p-1">
-                                    <Input
-                                      type="number"
-                                      defaultValue={cage.numberOfBirds}
-                                      onChange={e => {
-                                        // Update the cage's bird count in the state
-                                        const newBirds = parseInt(e.target.value) || 0
-                                        setPurchaseCages(prev => prev.map(c =>
-                                          c.id === cage.id ? { ...c, numberOfBirds: newBirds } : c
-                                        ))
-                                      }}
-                                      className="h-8 text-sm text-center"
-                                      disabled={loading}
-                                      onWheel={(e) => e.currentTarget.blur()}
-                                    />
-                                  </td>
-                                  <td className="p-1">
-                                    <Input type="number" step="0.001" defaultValue={wt.toFixed(3)}
-                                      onChange={e => {
-                                        const newWt = parseFloat(e.target.value) || 0
-                                        // Update the cage's weight in the state
-                                        setPurchaseCages(prev => prev.map(c =>
-                                          c.id === cage.id ? { ...c, purchaseWeight: newWt } : c
-                                        ))
-                                        const others = purchaseCages.filter(c => selectedCageIds.has(c.id!) && c.id !== cage.id).reduce((s, c) => s + Number(c.purchaseWeight), 0)
-                                        setFormData(f => ({ ...f, totalWeight: (others + newWt).toFixed(3) }))
-                                      }}
-                                      className="h-8 text-sm" disabled={loading} onWheel={(e) => e.currentTarget.blur()} />
-                                  </td>
+                                  <td className="p-1 text-center font-semibold">{cage.soldBirds}</td>
+                                  <td className="p-1 text-center font-semibold">{wt.toFixed(2)}</td>
                                   <td className="p-1 text-right font-medium">{amt > 0 ? `₹${amt.toFixed(0)}` : '-'}</td>
                                 </tr>
                               )
