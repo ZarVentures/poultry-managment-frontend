@@ -464,6 +464,15 @@ export default function SalesPage() {
     try {
       setLoading(true)
       const validPayments = payments.filter(p => parseFloat(p.amount) > 0).map(p => ({ paymentMode: p.mode, amount: p.amount }))
+      
+      const selectedCages = purchaseCages.filter(c => selectedCageIds.has(c.id!))
+      const cageMapping = selectedCages.map(c => ({
+        cageId: c.id,
+        soldBirds: parseInt(String(c.numberOfBirds)) || 0,
+        soldWeight: parseFloat(String(c.purchaseWeight)) || 0,
+        weightLoss: 0,
+      }))
+
       const payload: any = {
         invoiceNumber: formData.invoiceNumber,
         saleNo: formData.saleNo || undefined,
@@ -488,6 +497,7 @@ export default function SalesPage() {
         notes: formData.notes || undefined,
         retailerId: formData.retailerId || undefined,
         payments: validPayments,
+        cages: cageMapping,
       }
       let saved: ApiSale
       if (editingId) { 
@@ -508,10 +518,6 @@ export default function SalesPage() {
         try { setUploadingFile(true); await salesApi.uploadAttachment(saved.id, saleFile); toast.success("Attachment uploaded") }
         catch { toast.error("Sale saved but file upload failed") }
         finally { setUploadingFile(false) }
-      }
-      if (selectedCageIds.size > 0) {
-        try { await purchasesApi.markCagesSold(Array.from(selectedCageIds)) }
-        catch { toast.error("Sale saved but failed to update cage status") }
       }
       await fetchSales()
       // Don't reset form immediately for new sales so user can see the generated number
