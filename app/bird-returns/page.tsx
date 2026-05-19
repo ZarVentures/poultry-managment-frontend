@@ -41,8 +41,8 @@ export default function BirdReturnsPage() {
     refundAmount: "",
     adjustmentAmount: "",
     status: "pending",
-    returnedToInventory: false,
-    inventoryLocation: "",
+    returnedToInventory: true,
+    inventoryLocation: "Godown",
     notes: "",
   })
 
@@ -114,8 +114,8 @@ export default function BirdReturnsPage() {
       refundAmount: "",
       adjustmentAmount: "",
       status: "pending",
-      returnedToInventory: false,
-      inventoryLocation: "",
+      returnedToInventory: true,
+      inventoryLocation: "Godown",
       notes: "",
     })
     setEditingId(null)
@@ -134,8 +134,8 @@ export default function BirdReturnsPage() {
       refundAmount: String(birdReturn.refundAmount || ""),
       adjustmentAmount: String(birdReturn.adjustmentAmount || ""),
       status: birdReturn.status,
-      returnedToInventory: birdReturn.returnedToInventory,
-      inventoryLocation: birdReturn.inventoryLocation,
+      returnedToInventory: birdReturn.returnedToInventory ?? true,
+      inventoryLocation: birdReturn.inventoryLocation || "Godown",
       notes: birdReturn.notes,
     })
     setEditingId(birdReturn.id)
@@ -369,7 +369,7 @@ export default function BirdReturnsPage() {
                       <SelectTrigger>
                         <SelectValue placeholder="Select sale" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-60 overflow-y-auto">
                         {salesList.map(sale => (
                           <SelectItem key={sale.id} value={sale.id}>
                             {sale.invoiceNumber} - {sale.customerName}
@@ -467,65 +467,7 @@ export default function BirdReturnsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.returnedToInventory}
-                      onChange={(e) => setFormData({ ...formData, returnedToInventory: e.target.checked })}
-                      className="h-4 w-4 rounded"
-                      disabled={loading}
-                    />
-                    <span className="text-sm">Returned to Inventory</span>
-                  </label>
-                </div>
-
-                {formData.returnedToInventory && (
-                  <div className="space-y-4 border p-3 rounded-lg bg-gray-50/50">
-                    <div className="space-y-2">
-                      <Label>Inventory Location *</Label>
-                      <Select
-                        value={
-                          STANDARD_LOCATIONS.includes(formData.inventoryLocation || "")
-                            ? (formData.inventoryLocation || "")
-                            : (formData.inventoryLocation ? "custom" : "")
-                        }
-                        onValueChange={(val) => {
-                          if (val === "custom") {
-                            setFormData(prev => ({ ...prev, inventoryLocation: "" }))
-                          } else {
-                            setFormData(prev => ({ ...prev, inventoryLocation: val }))
-                          }
-                        }}
-                        disabled={loading}
-                      >
-                        <SelectTrigger className="bg-white">
-                          <SelectValue placeholder="Select inventory location" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STANDARD_LOCATIONS.map(loc => (
-                            <SelectItem key={loc} value={loc === "Custom Location..." ? "custom" : loc}>
-                              {loc}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {(!STANDARD_LOCATIONS.includes(formData.inventoryLocation || "") || formData.inventoryLocation === "custom" || !formData.inventoryLocation) && (
-                      <div className="space-y-2">
-                        <Label>Specify Custom Location *</Label>
-                        <Input
-                          value={formData.inventoryLocation}
-                          onChange={(e) => setFormData({ ...formData, inventoryLocation: e.target.value })}
-                          placeholder="e.g., Godown C, Cage 12"
-                          disabled={loading}
-                          className="bg-white"
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
+                {/* Automatically returned to Godown Inventory */}
 
                 <div className="space-y-2">
                   <Label>Notes</Label>
