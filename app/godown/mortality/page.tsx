@@ -118,7 +118,14 @@ export default function GodownMortalityPage() {
                 <div className="space-y-2"><Label>Inward Entry</Label>
                   <Select value={formData.godownInwardId || "__none__"} onValueChange={v => setFormData({ ...formData, godownInwardId: v === "__none__" ? "" : v })} disabled={loading}>
                     <SelectTrigger><SelectValue placeholder="Select entry" /></SelectTrigger>
-                    <SelectContent>{inwardEntries.map(e => <SelectItem key={e.id} value={e.id}>{e.purchaseInvoiceNo || e.id}</SelectItem>)}</SelectContent>
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                      <SelectItem value="__none__">None</SelectItem>
+                      {inwardEntries.map(e => (
+                        <SelectItem key={e.id} value={e.id}>
+                          Inward No: {e.inwardNo || 'N/A'} {e.purchaseInvoiceNo ? `(Inv: ${e.purchaseInvoiceNo})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
