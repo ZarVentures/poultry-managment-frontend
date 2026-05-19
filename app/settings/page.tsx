@@ -49,6 +49,8 @@ export default function SettingsPage() {
     theme: "light" as "light" | "dark",
     notifications: true,
     emailAlerts: true,
+    bearableLossType: "percentage" as "percentage" | "weight",
+    bearableLossValue: "2.0",
   })
 
   const { isDevMode, enableDevMode, disableDevMode } = useDevMode()
@@ -99,6 +101,29 @@ export default function SettingsPage() {
       } catch { }
     }
     authApi.get2FAStatus().then(d => setIs2FAEnabled(d.isTwoFactorEnabled)).catch(() => { })
+    
+    // Load general settings from DB
+    settingsApi.getAll().then(list => {
+      if (Array.isArray(list)) {
+        const map: any = {}
+        list.forEach(s => {
+          map[s.key] = s.value
+        })
+        setFormData(f => ({
+          ...f,
+          farmName: map['farmName'] || map['company_name'] || f.farmName,
+          farmLocation: map['farmLocation'] || map['company_address'] || f.farmLocation,
+          farmEmail: map['farmEmail'] || map['company_email'] || f.farmEmail,
+          farmPhone: map['farmPhone'] || map['company_phone'] || f.farmPhone,
+          currency: map['currency'] || f.currency,
+          countryCode: map['countryCode'] || f.countryCode,
+          theme: (map['theme'] as any) || f.theme,
+          bearableLossType: (map['bearableLossType'] || map['bearable_loss_type'] || f.bearableLossType) as any,
+          bearableLossValue: map['bearableLossValue'] || map['bearable_loss_value'] || f.bearableLossValue,
+        }))
+      }
+    }).catch(() => { })
+
     fetchPermissions()
     fetchCategories()
   }, [])
@@ -371,6 +396,31 @@ export default function SettingsPage() {
                     </Select>
                   </div>
                 </div>
+
+                {/* Bearable Loss Settings */}
+                <div className="border-t pt-4 space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-800">Cage Weight Loss Controls</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Max Bearable Loss Type</Label>
+                      <Select value={formData.bearableLossType} onValueChange={v => setFormData(f => ({ ...f, bearableLossType: v as any }))} disabled={loading}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percentage">Percentage (%) of expected weight</SelectItem>
+                          <SelectItem value="weight">Fixed Weight (kg) per cage</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Max Bearable Loss Value</Label>
+                      <Input type="number" step="0.01" value={formData.bearableLossValue} onChange={e => setFormData(f => ({ ...f, bearableLossValue: e.target.value }))} placeholder={formData.bearableLossType === 'percentage' ? "e.g. 2.0%" : "e.g. 1.0 kg"} disabled={loading} onWheel={(e) => e.currentTarget.blur()} />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    If an operator enters a weight loss exceeding this limit, the system highlights the row in soft warning red and alerts them.
+                  </p>
+                </div>
+
                 <Button onClick={handleSave} disabled={loading} className="mt-2">
                   <Save size={16} className="mr-2" />{loading ? "Saving..." : "Save Changes"}
                 </Button>

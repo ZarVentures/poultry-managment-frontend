@@ -14,7 +14,7 @@ import { Plus, Edit2, Trash2, X, Paperclip, Wallet, TrendingUp, ShoppingCart, Cl
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
-import { salesApi, retailersApi, vehiclesApi, purchasesApi, type Sale as ApiSale } from "@/lib/api"
+import { salesApi, retailersApi, vehiclesApi, purchasesApi, settingsApi, type Sale as ApiSale } from "@/lib/api"
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
 
@@ -52,6 +52,8 @@ export default function SalesPage() {
   const [uploadingFile, setUploadingFile] = useState(false)
   const saleFileRef = useRef<HTMLInputElement>(null)
   const [allowEditBillNo, setAllowEditBillNo] = useState(false)
+  const [bearableLossType, setBearableLossType] = useState<'percentage' | 'weight'>('percentage')
+  const [bearableLossValue, setBearableLossValue] = useState<number>(2.0)
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
@@ -97,6 +99,16 @@ export default function SalesPage() {
       } catch { }
     }
     fetchRetailers(); fetchVehicles(); fetchPurchaseBills()
+    
+    // Load bearable loss settings
+    settingsApi.getAll().then(list => {
+      if (Array.isArray(list)) {
+        const typeSetting = list.find(s => s.key === 'bearableLossType' || s.key === 'bearable_loss_type')
+        const valSetting = list.find(s => s.key === 'bearableLossValue' || s.key === 'bearable_loss_value')
+        if (typeSetting) setBearableLossType(typeSetting.value as any)
+        if (valSetting) setBearableLossValue(parseFloat(valSetting.value) || 2.0)
+      }
+    }).catch(() => { })
   }, [])
 
   useEffect(() => {
@@ -723,10 +735,26 @@ export default function SalesPage() {
                                     const availBirds = cage.initialBirds || cage.numberOfBirds
                                     const availWt = cage.initialWeight || cage.purchaseWeight
 
+                                    const avgWt = availBirds > 0 ? availWt / availBirds : 0
+                                    const enteredBirdsCount = parseInt(cage.soldBirds) || 0
+                                    const expectedSoldWt = avgWt * enteredBirdsCount
+                                    const currentLoss = parseFloat(cage.weightLoss) || 0
+
+                                    let isHighLoss = false
+                                    let maxAllowed = 0
+                                    if (currentLoss > 0.01) {
+                                      if (bearableLossType === 'percentage') {
+                                        maxAllowed = expectedSoldWt * (bearableLossValue / 100)
+                                      } else {
+                                        maxAllowed = bearableLossValue
+                                      }
+                                      isHighLoss = currentLoss > maxAllowed + 0.001
+                                    }
+
                                     return (
                                       <tr
                                         key={cage.id}
-                                        className={`border-b cursor-pointer hover:bg-blue-100 ${selectedCageIds.has(cage.id!) ? 'bg-green-50' : ''}`}
+                                        className={`border-b cursor-pointer hover:bg-blue-100 ${selectedCageIds.has(cage.id!) ? (isHighLoss ? 'bg-red-50 hover:bg-red-100' : 'bg-green-50') : ''}`}
                                         onClick={() => toggleCage(cage.id!)}
                                       >
                                         <td className="p-1 text-center">
@@ -752,7 +780,20 @@ export default function SalesPage() {
                                                 toast.error(`Cannot sell ${enteredBirds} birds. Only ${availBirds} available in cage ${cage.cageId}.`)
                                                 return
                                               }
-                                              const updatedList = purchaseCages.map(c => c.id === cage.id ? { ...c, soldBirds: val } : c)
+                                              // Auto-calculate proportional weight to sell
+                                              const calculatedWt = enteredBirds === availBirds 
+                                                ? availWt 
+                                                : (avgWt * enteredBirds)
+                                              
+                                              const updatedList = purchaseCages.map(c => c.id === cage.id 
+                                                ? { 
+                                                    ...c, 
+                                                    soldBirds: val, 
+                                                    soldWeight: calculatedWt.toFixed(2),
+                                                    weightLoss: '0.00' 
+                                                  } 
+                                                : c
+                                              )
                                               setPurchaseCages(updatedList)
                                               if (selectedCageIds.has(cage.id)) {
                                                 syncFormFromCagesList(selectedCageIds, updatedList)
@@ -774,7 +815,17 @@ export default function SalesPage() {
                                                 toast.error(`Cannot sell ${enteredWt} kg. Only ${availWt.toFixed(2)} kg available in cage ${cage.cageId}.`)
                                                 return
                                               }
-                                              const updatedList = purchaseCages.map(c => c.id === cage.id ? { ...c, soldWeight: val } : c)
+                                              // Auto-calculate weight loss based on difference from expected weight
+                                              const calculatedLoss = Math.max(0, expectedSoldWt - enteredWt)
+                                              
+                                              const updatedList = purchaseCages.map(c => c.id === cage.id 
+                                                ? { 
+                                                    ...c, 
+                                                    soldWeight: val,
+                                                    weightLoss: calculatedLoss.toFixed(2)
+                                                  } 
+                                                : c
+                                              )
                                               setPurchaseCages(updatedList)
                                               if (selectedCageIds.has(cage.id)) {
                                                 syncFormFromCagesList(selectedCageIds, updatedList)
@@ -784,21 +835,28 @@ export default function SalesPage() {
                                           />
                                         </td>
                                         <td className="p-1 text-right" onClick={e => e.stopPropagation()}>
-                                          <input
-                                            type="number"
-                                            step="0.01"
-                                            placeholder="0.00"
-                                            value={cage.weightLoss}
-                                            onChange={e => {
-                                              const val = e.target.value
-                                              const updatedList = purchaseCages.map(c => c.id === cage.id ? { ...c, weightLoss: val } : c)
-                                              setPurchaseCages(updatedList)
-                                              if (selectedCageIds.has(cage.id)) {
-                                                syncFormFromCagesList(selectedCageIds, updatedList)
-                                              }
-                                            }}
-                                            className="w-16 text-right border rounded px-1 py-0.5 text-xs font-semibold"
-                                          />
+                                          <div className="flex flex-col items-end">
+                                            <input
+                                              type="number"
+                                              step="0.01"
+                                              placeholder="0.00"
+                                              value={cage.weightLoss}
+                                              onChange={e => {
+                                                const val = e.target.value
+                                                const updatedList = purchaseCages.map(c => c.id === cage.id ? { ...c, weightLoss: val } : c)
+                                                setPurchaseCages(updatedList)
+                                                if (selectedCageIds.has(cage.id)) {
+                                                  syncFormFromCagesList(selectedCageIds, updatedList)
+                                                }
+                                              }}
+                                              className={`w-16 text-right border rounded px-1 py-0.5 text-xs font-semibold ${isHighLoss ? 'bg-red-100 border-red-400 text-red-700 animate-pulse' : ''}`}
+                                            />
+                                            {isHighLoss && (
+                                              <span className="text-[9px] text-red-600 font-bold block mt-0.5" title={`Allowed loss: ${maxAllowed.toFixed(2)} kg`}>
+                                                ⚠️ High Loss
+                                              </span>
+                                            )}
+                                          </div>
                                         </td>
                                       </tr>
                                     )
