@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   Save, Lock, Bell, Palette, Terminal, Eye, EyeOff,
   Shield, ShieldCheck, ShieldOff, Building2, User, ChevronRight,
-  Tag, Plus, Edit2, Trash2, CheckCircle2, AlertCircle
+  Tag, Plus, Edit2, Trash2, CheckCircle2, AlertCircle, MessageSquare
 } from "lucide-react"
 import { settingsApi, authApi, permissionsApi, expenseCategoriesApi, type Setting, type ExpenseCategory } from "@/lib/api"
 import { useDevMode } from "@/lib/dev-mode"
@@ -19,10 +19,11 @@ import { toast } from "sonner"
 import { useDispatch } from "react-redux"
 import { setTheme } from "@/app/redux/slices/themeSlice"
 
-type Section = "general" | "display" | "notifications" | "security" | "permissions" | "categories" | "developer"
+type Section = "general" | "display" | "notifications" | "security" | "permissions" | "categories" | "developer" | "communication"
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType; description: string }[] = [
   { id: "general", label: "General", icon: Building2, description: "Farm info & currency" },
+  { id: "communication", label: "Communication Hub", icon: MessageSquare, description: "AWS SES/SNS & alerts" },
   { id: "display", label: "Appearance", icon: Palette, description: "Theme & display" },
   { id: "notifications", label: "Notifications", icon: Bell, description: "Alerts & preferences" },
   { id: "security", label: "Security", icon: Lock, description: "2FA & account security" },
@@ -51,6 +52,14 @@ export default function SettingsPage() {
     emailAlerts: true,
     bearableLossType: "percentage" as "percentage" | "weight",
     bearableLossValue: "2.0",
+    awsAccessKeyId: "",
+    awsSecretAccessKey: "",
+    awsRegion: "us-east-1",
+    sesSenderEmail: "",
+    smsEnabled: true,
+    emailEnabled: true,
+    alertOnCriticalLoss: true,
+    alertOnLowInventory: true,
   })
 
   const { isDevMode, enableDevMode, disableDevMode } = useDevMode()
@@ -120,6 +129,14 @@ export default function SettingsPage() {
           theme: (map['theme'] as any) || f.theme,
           bearableLossType: (map['bearableLossType'] || map['bearable_loss_type'] || f.bearableLossType) as any,
           bearableLossValue: map['bearableLossValue'] || map['bearable_loss_value'] || f.bearableLossValue,
+          awsAccessKeyId: map['awsAccessKeyId'] || f.awsAccessKeyId,
+          awsSecretAccessKey: map['awsSecretAccessKey'] || f.awsSecretAccessKey,
+          awsRegion: map['awsRegion'] || f.awsRegion,
+          sesSenderEmail: map['sesSenderEmail'] || f.sesSenderEmail,
+          smsEnabled: map['smsEnabled'] !== undefined ? map['smsEnabled'] === 'true' : f.smsEnabled,
+          emailEnabled: map['emailEnabled'] !== undefined ? map['emailEnabled'] === 'true' : f.emailEnabled,
+          alertOnCriticalLoss: map['alertOnCriticalLoss'] !== undefined ? map['alertOnCriticalLoss'] === 'true' : f.alertOnCriticalLoss,
+          alertOnLowInventory: map['alertOnLowInventory'] !== undefined ? map['alertOnLowInventory'] === 'true' : f.alertOnLowInventory,
         }))
       }
     }).catch(() => { })
@@ -553,6 +570,96 @@ export default function SettingsPage() {
                   )}
                   {devError && <p className="text-xs text-red-500 mt-2">{devError}</p>}
                 </div>
+              </div>
+            )}
+
+            {/* Communication Hub */}
+            {activeSection === "communication" && (
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-4 rounded-xl flex items-start gap-3">
+                  <MessageSquare className="text-primary shrink-0 mt-0.5" size={20} />
+                  <div>
+                    <p className="text-sm font-semibold text-blue-900">AWS Communication Integration</p>
+                    <p className="text-xs text-blue-700 mt-0.5">
+                      Configure your AWS SES (Email) and AWS SNS (SMS) credentials to enable automated farmer invoices, mortality reports, and critical warnings.
+                    </p>
+                  </div>
+                </div>
+
+                {/* AWS Credentials */}
+                <div className="border rounded-xl p-5 space-y-4">
+                  <h3 className="font-semibold text-sm text-gray-800">AWS Configuration</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5 col-span-2">
+                      <Label>AWS Access Key ID</Label>
+                      <Input 
+                        type="password"
+                        value={formData.awsAccessKeyId} 
+                        onChange={e => setFormData(f => ({ ...f, awsAccessKeyId: e.target.value }))} 
+                        placeholder="AKIAIOSFODNN7EXAMPLE" 
+                        disabled={loading} 
+                      />
+                    </div>
+                    <div className="space-y-1.5 col-span-2">
+                      <Label>AWS Secret Access Key</Label>
+                      <Input 
+                        type="password" 
+                        value={formData.awsSecretAccessKey} 
+                        onChange={e => setFormData(f => ({ ...f, awsSecretAccessKey: e.target.value }))} 
+                        placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" 
+                        disabled={loading} 
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>AWS Region</Label>
+                      <Input 
+                        value={formData.awsRegion} 
+                        onChange={e => setFormData(f => ({ ...f, awsRegion: e.target.value }))} 
+                        placeholder="us-east-1" 
+                        disabled={loading} 
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>SES Verified Sender Email</Label>
+                      <Input 
+                        type="email"
+                        value={formData.sesSenderEmail} 
+                        onChange={e => setFormData(f => ({ ...f, sesSenderEmail: e.target.value }))} 
+                        placeholder="alerts@azizpoultry.com" 
+                        disabled={loading} 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Automation Toggles */}
+                <div className="border rounded-xl p-5 space-y-4">
+                  <h3 className="font-semibold text-sm text-gray-800">Automated Messaging Workflows</h3>
+                  
+                  <div className="space-y-3">
+                    {[
+                      { key: "emailEnabled" as const, label: "Enable AWS SES Email Service", desc: "Allow system to send automated emails" },
+                      { key: "smsEnabled" as const, label: "Enable AWS SNS SMS Service", desc: "Allow system to send SMS notifications to mobile devices" },
+                      { key: "alertOnCriticalLoss" as const, label: "SMS Alert Admin on Critical Cage Weight Loss", desc: "Immediately page administrators if high weight loss is billed" },
+                      { key: "alertOnLowInventory" as const, label: "Email Manager on Low Inventory Levels", desc: "Auto-notify managers when feed/medicine quantities drop" },
+                    ].map(item => (
+                      <label key={item.key} className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                        <div>
+                          <p className="font-medium text-xs text-gray-700">{item.label}</p>
+                          <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+                        </div>
+                        <div className={`relative w-9 h-5 rounded-full transition-colors ${formData[item.key] ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                          onClick={() => setFormData(f => ({ ...f, [item.key]: !f[item.key] }))}>
+                          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${formData[item.key] ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <Button onClick={handleSave} disabled={loading}>
+                  <Save size={16} className="mr-2" />{loading ? "Saving..." : "Save Communication Settings"}
+                </Button>
               </div>
             )}
 
