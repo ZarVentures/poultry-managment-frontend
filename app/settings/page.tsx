@@ -11,9 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   Save, Lock, Bell, Palette, Terminal, Eye, EyeOff,
   Shield, ShieldCheck, ShieldOff, Building2, User, ChevronRight,
-  Tag, Plus, Edit2, Trash2, CheckCircle2, AlertCircle, MessageSquare
+  Tag, Plus, Edit2, Trash2, CheckCircle2, AlertCircle, MessageSquare, Mail, Phone
 } from "lucide-react"
-import { settingsApi, authApi, permissionsApi, expenseCategoriesApi, type Setting, type ExpenseCategory } from "@/lib/api"
+import { settingsApi, authApi, permissionsApi, expenseCategoriesApi, notificationsApi, type Setting, type ExpenseCategory } from "@/lib/api"
 import { useDevMode } from "@/lib/dev-mode"
 import { toast } from "sonner"
 import { useDispatch } from "react-redux"
@@ -78,6 +78,11 @@ export default function SettingsPage() {
   const [setupCode, setSetupCode] = useState("")
   const [disableCode, setDisableCode] = useState("")
   const [twoFALoading, setTwoFALoading] = useState(false)
+
+  const [testEmailTarget, setTestEmailTarget] = useState("")
+  const [testPhoneTarget, setTestPhoneTarget] = useState("")
+  const [testingEmail, setTestingEmail] = useState(false)
+  const [testingSMS, setTestingSMS] = useState(false)
   const [allRolePermissions, setAllRolePermissions] = useState<any[]>([])
   const [permissionsLoading, setPermissionsLoading] = useState(false)
   const [showAddRoleModal, setShowAddRoleModal] = useState(false)
@@ -258,6 +263,40 @@ export default function SettingsPage() {
       toast.success("Settings saved!")
     } catch { toast.error("Failed to save settings") }
     finally { setLoading(false) }
+  }
+
+  const handleTestEmail = async () => {
+    if (!testEmailTarget) { toast.error("Please enter a valid target email"); return }
+    try {
+      setTestingEmail(true)
+      const res = await notificationsApi.testEmail(testEmailTarget)
+      if (res && res.success) {
+        toast.success(res.message || "Test email dispatched successfully!")
+      } else {
+        toast.error("Failed to dispatch test email")
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Email dispatch failed. Verify your AWS credentials are saved.")
+    } finally {
+      setTestingEmail(false)
+    }
+  }
+
+  const handleTestSMS = async () => {
+    if (!testPhoneTarget) { toast.error("Please enter a valid phone number (with country code)"); return }
+    try {
+      setTestingSMS(true)
+      const res = await notificationsApi.testSMS(testPhoneTarget)
+      if (res && res.success) {
+        toast.success(res.message || "Test SMS dispatched successfully!")
+      } else {
+        toast.error("Failed to dispatch test SMS")
+      }
+    } catch (e: any) {
+      toast.error(e.message || "SMS dispatch failed. Verify your AWS credentials are saved.")
+    } finally {
+      setTestingSMS(false)
+    }
   }
 
   const handle2FAEnable = async () => {
@@ -654,6 +693,66 @@ export default function SettingsPage() {
                         </div>
                       </label>
                     ))}
+                  </div>
+                </div>
+
+                {/* Connection Test Controls */}
+                <div className="border rounded-xl p-5 space-y-4 bg-muted/20">
+                  <h3 className="font-semibold text-sm text-gray-800">Connection Verification</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Send a real-time test transmission to verify that your AWS credentials, permissions, and network settings are 100% verified.
+                  </p>
+                  
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    {/* Test Email */}
+                    <div className="border rounded-lg p-3 space-y-3 bg-background">
+                      <div className="flex items-center gap-2">
+                        <Mail className="text-blue-600" size={16} />
+                        <span className="text-xs font-semibold">Test AWS SES (Email)</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input 
+                          type="email"
+                          placeholder="test@example.com"
+                          value={testEmailTarget}
+                          onChange={e => setTestEmailTarget(e.target.value)}
+                          className="text-xs h-8"
+                        />
+                        <Button 
+                          size="sm" 
+                          onClick={handleTestEmail}
+                          disabled={testingEmail || !testEmailTarget}
+                          className="text-xs h-8 whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          {testingEmail ? "Sending..." : "Test Email"}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Test SMS */}
+                    <div className="border rounded-lg p-3 space-y-3 bg-background">
+                      <div className="flex items-center gap-2">
+                        <Phone className="text-green-600" size={16} />
+                        <span className="text-xs font-semibold">Test AWS SNS (SMS)</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input 
+                          type="text"
+                          placeholder="+919876543210"
+                          value={testPhoneTarget}
+                          onChange={e => setTestPhoneTarget(e.target.value)}
+                          className="text-xs h-8"
+                        />
+                        <Button 
+                          size="sm" 
+                          onClick={handleTestSMS}
+                          disabled={testingSMS || !testPhoneTarget}
+                          className="text-xs h-8 whitespace-nowrap bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          {testingSMS ? "Sending..." : "Test SMS"}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

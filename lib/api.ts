@@ -1114,6 +1114,23 @@ export const settingsApi = {
 };
 
 // ============================================
+// NOTIFICATIONS API
+// ============================================
+export const notificationsApi = {
+  testEmail: (email: string) =>
+    apiRequest<{ success: boolean; message: string }>('/notifications/test-email', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  testSMS: (phone: string) =>
+    apiRequest<{ success: boolean; message: string }>('/notifications/test-sms', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+    }),
+};
+
+// ============================================
 // GODOWN API
 // ============================================
 export const godownApi = {
