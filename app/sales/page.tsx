@@ -597,6 +597,8 @@ export default function SalesPage() {
             totalBearableLoss,
             netExcessLoss,
             netExcessLossAmount,
+            totalBirds,
+            totalWeight,
           }
         })
       }
@@ -1381,7 +1383,23 @@ export default function SalesPage() {
                         <TableCell>{new Date(s.saleDate).toLocaleDateString()}</TableCell>
                         <TableCell>{s.customerName}</TableCell>
                         <TableCell><span className="text-xs px-2 py-0.5 rounded bg-gray-100">{s.saleMode === 'from_vehicle' ? 'Vehicle' : 'Godown'}</span></TableCell>
-                        <TableCell className="font-medium">{(s as any).numberOfBirds || '-'}</TableCell>
+                        <TableCell className="font-medium">
+                          {(() => {
+                            if ((s as any).numberOfBirds && Number((s as any).numberOfBirds) > 0) {
+                              return (s as any).numberOfBirds
+                            }
+                            try {
+                              const parsed = JSON.parse(s.notes || "")
+                              if (parsed?.weightLoss?.totalBirds) {
+                                return parsed.weightLoss.totalBirds
+                              }
+                              if (parsed?.customerRows?.[0]?.numBirds) {
+                                return parsed.customerRows[0].numBirds
+                              }
+                            } catch {}
+                            return '-'
+                          })()}
+                        </TableCell>
                         <TableCell>{Number(s.quantity || 0).toFixed(2)} kg</TableCell>
                         <TableCell>
                           {(() => {
