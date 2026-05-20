@@ -284,6 +284,16 @@ export default function SalesPage() {
     }
   }
 
+  const parseWeightLossDetails = (notesStr: string) => {
+    try {
+      const parsed = JSON.parse(notesStr)
+      if (parsed && parsed.weightLoss) {
+        return parsed.weightLoss
+      }
+    } catch {}
+    return null
+  }
+
   const rate = parseFloat(formData.ratePerKg) || 0
   const selectedCageList = purchaseCages.filter(c => selectedCageIds.has(c.id!))
   const totalBirds = selectedCageList.length > 0
@@ -475,7 +485,13 @@ export default function SalesPage() {
       deductions: String(full.mortalityDeduction || 0),
       paymentStatus: full.paymentStatus,
       amountReceived: String(full.amountReceived || ""),
-      notes: "",
+      notes: (() => {
+        try {
+          const parsed = JSON.parse(full.notes || "")
+          if (parsed && typeof parsed.text === 'string') return parsed.text
+        } catch {}
+        return full.notes || ""
+      })(),
     })
 
     const salePayments = (full as any).payments
@@ -527,7 +543,13 @@ export default function SalesPage() {
         deductions: String(full.mortalityDeduction || 0),
         paymentStatus: full.paymentStatus,
         amountReceived: String(full.amountReceived || ""),
-        notes: full.notes || "",
+        notes: (() => {
+          try {
+            const parsed = JSON.parse(full.notes || "")
+            if (parsed && typeof parsed.text === 'string') return parsed.text
+          } catch {}
+          return full.notes || ""
+        })(),
       })
 
       setPayments(full.payments && full.payments.length > 0
@@ -566,6 +588,19 @@ export default function SalesPage() {
         weightLoss: parseFloat(String(c.weightLoss)) || 0,
       }))
 
+      let finalNotesString = formData.notes || ""
+      if (selectedCages.length > 0) {
+        finalNotesString = JSON.stringify({
+          text: formData.notes || "",
+          weightLoss: {
+            totalWeightLoss,
+            totalBearableLoss,
+            netExcessLoss,
+            netExcessLossAmount,
+          }
+        })
+      }
+
       const payload: any = {
         invoiceNumber: formData.invoiceNumber,
         saleNo: formData.saleNo || undefined,
@@ -582,12 +617,12 @@ export default function SalesPage() {
         loadingCharges: formData.loadingCharges || "0",
         commission: formData.commission || "0",
         otherCharges: formData.otherCharges || "0",
-        weightShortage: "0",
+        weightShortage: String(netExcessLossAmount),
         mortalityDeduction: formData.deductions || "0",
         otherDeduction: "0",
         paymentStatus: formData.paymentStatus,
         amountReceived: String(totalPaymentMade),
-        notes: formData.notes || undefined,
+        notes: finalNotesString || undefined,
         retailerId: formData.retailerId || undefined,
         payments: validPayments,
         cages: cageMapping,
@@ -1328,6 +1363,7 @@ export default function SalesPage() {
                       <TableHead className="font-bold">Mode</TableHead>
                       <TableHead className="font-bold">Birds</TableHead>
                       <TableHead className="font-bold">Weight</TableHead>
+                      <TableHead className="font-bold text-orange-800">Loss / Adj</TableHead>
                       <TableHead className="font-bold">Net Amount</TableHead>
                       <TableHead className="font-bold">Payment</TableHead>
                       <TableHead className="font-bold">Balance</TableHead>
@@ -1346,6 +1382,26 @@ export default function SalesPage() {
                         <TableCell><span className="text-xs px-2 py-0.5 rounded bg-gray-100">{s.saleMode === 'from_vehicle' ? 'Vehicle' : 'Godown'}</span></TableCell>
                         <TableCell className="font-medium">{(s as any).numberOfBirds || '-'}</TableCell>
                         <TableCell>{Number(s.quantity || 0).toFixed(2)} kg</TableCell>
+                        <TableCell>
+                          {(() => {
+                            const details = parseWeightLossDetails(s.notes || "")
+                            if (!details || details.totalWeightLoss <= 0.01) {
+                              return <span className="text-muted-foreground text-xs">-</span>
+                            }
+                            return (
+                              <div className="text-xs space-y-0.5">
+                                <div className="font-medium text-gray-700">Loss: {details.totalWeightLoss.toFixed(2)} kg</div>
+                                {details.netExcessLoss > 0.01 ? (
+                                  <div className="text-[10px] text-red-700 font-bold bg-red-50 border border-red-100 rounded px-1.5 py-0.2 w-fit">
+                                    Adj: -₹{details.netExcessLossAmount.toFixed(0)} ({details.netExcessLoss.toFixed(2)} kg)
+                                  </div>
+                                ) : (
+                                  <div className="text-[9px] text-green-700 font-semibold bg-green-50 px-1 py-0.2 rounded w-fit">Within Limit</div>
+                                )}
+                              </div>
+                            )
+                          })()}
+                        </TableCell>
                         <TableCell>₹{Number(s.netAmount || s.totalAmount || 0).toFixed(2)}</TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${s.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' : s.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
