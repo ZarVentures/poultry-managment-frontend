@@ -622,7 +622,7 @@ export default function SalesPage() {
         otherDeduction: "0",
         paymentStatus: formData.paymentStatus,
         amountReceived: String(totalPaymentMade),
-        numberOfBirds: totalBirds,
+        totalBirds: totalBirds,
         notes: finalNotesString || undefined,
         retailerId: formData.retailerId || undefined,
         payments: validPayments,
