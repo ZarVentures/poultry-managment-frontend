@@ -671,7 +671,8 @@ export default function SalesPage() {
     if (serverStats) {
       return {
         count: totalRecords,
-        totalBirds: serverStats.totalBirds,
+        totalBirds: serverStats.totalBirds ?? 0,
+        totalWeight: (serverStats as any).totalWeight ?? serverStats.totalBirds ?? 0,
         totalRevenue: serverStats.totalRevenue,
         totalReceived: serverStats.totalReceived,
         totalPending: serverStats.totalPending,
@@ -679,9 +680,10 @@ export default function SalesPage() {
     }
     return {
       count: sales.length,
-      totalBirds: sales.reduce((s, x) => s + (parseFloat(String(x.quantity || 0))), 0),
-      totalRevenue: sales.reduce((s, x) => s + (parseFloat(String(x.netAmount || x.totalAmount || 0))), 0),
-      totalReceived: sales.reduce((s, x) => s + (parseFloat(String(x.amountReceived || 0))), 0),
+      totalBirds: sales.reduce((s, x) => s + Number((x as any).numberOfBirds || 0), 0),
+      totalWeight: sales.reduce((s, x) => s + parseFloat(String(x.quantity || 0)), 0),
+      totalRevenue: sales.reduce((s, x) => s + parseFloat(String(x.netAmount || x.totalAmount || 0)), 0),
+      totalReceived: sales.reduce((s, x) => s + parseFloat(String(x.amountReceived || 0)), 0),
       totalPending: sales.reduce((s, x) => s + Math.max(0, parseFloat(String(x.netAmount || x.totalAmount || 0)) - parseFloat(String(x.amountReceived || 0))), 0),
     }
   }, [sales, serverStats, totalRecords])
@@ -1254,12 +1256,12 @@ export default function SalesPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-medium text-muted-foreground">
-                Total Birds
+                Total Weight
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-purple-600">
-                {stats.totalBirds.toFixed(0)} kg
+                {((stats as any).totalWeight ?? stats.totalBirds ?? 0).toFixed(0)} kg
               </div>
             </CardContent>
           </Card>
