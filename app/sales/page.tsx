@@ -295,6 +295,94 @@ export default function SalesPage() {
   const totalAmount = totalWeight * rate
   const avgWeight = totalBirds > 0 ? totalWeight / totalBirds : 0
 
+  const isReadOnly = !isEditMode && !!editingId
+
+  const totalWeightLoss = useMemo(() => {
+    if (selectedCageList.length === 0) return 0
+    return selectedCageList.reduce((s, c) => s + (parseFloat(c.weightLoss) || 0), 0)
+  }, [selectedCageList])
+
+  const totalWeightLossAmount = useMemo(() => {
+    return totalWeightLoss * rate
+  }, [totalWeightLoss, rate])
+
+  const totalBearableLoss = useMemo(() => {
+    if (selectedCageList.length === 0) return 0
+    return selectedCageList.reduce((sum, cage) => {
+      const availBirds = cage.initialBirds || cage.numberOfBirds
+      const availWt = cage.initialWeight || cage.purchaseWeight
+      const avgWt = availBirds > 0 ? availWt / availBirds : 0
+      const enteredBirdsCount = parseInt(cage.soldBirds) || 0
+      const expectedSoldWt = avgWt * enteredBirdsCount
+      
+      let maxAllowed = 0
+      if (bearableLossType === 'percentage') {
+        maxAllowed = expectedSoldWt * (bearableLossValue / 100)
+      } else {
+        maxAllowed = bearableLossValue
+      }
+      return sum + maxAllowed
+    }, 0)
+  }, [selectedCageList, bearableLossType, bearableLossValue])
+
+  const totalBearableLossAmount = useMemo(() => {
+    return totalBearableLoss * rate
+  }, [totalBearableLoss, rate])
+
+  const netExcessLoss = useMemo(() => {
+    return Math.max(0, totalWeightLoss - totalBearableLoss)
+  }, [totalWeightLoss, totalBearableLoss])
+
+  const netExcessLossAmount = useMemo(() => {
+    return netExcessLoss * rate
+  }, [netExcessLoss, rate])
+
+  const loadCagesForSale = async (purchaseBillNo: string, saleId: string) => {
+    if (!purchaseBillNo) {
+      setPurchaseCages([])
+      setSelectedCageIds(new Set())
+      return
+    }
+    try {
+      setLoadingCages(true)
+      console.log('Loading cages for:', purchaseBillNo, 'sale ID:', saleId)
+      const allCages = await purchasesApi.getCagesByOrderNumber(purchaseBillNo)
+      console.log('All cages received:', allCages)
+      const mapped = Array.isArray(allCages)
+        ? (allCages as any[]).map((c: any) => {
+            const isThisSale = String(c.saleId) === String(saleId) || (c.status === 'sold' && !c.saleId)
+            const availBirds = Number(c.numberOfBirds ?? 0)
+            const availWt = Number(c.purchaseWeight ?? c.cageWeight ?? 0)
+            return {
+              ...c,
+              id: c.id ?? '',
+              purchaseWeight: availWt,
+              initialBirds: availBirds,
+              initialWeight: availWt,
+              soldBirds: String(isThisSale ? (c.numberOfBirds ?? availBirds) : availBirds),
+              soldWeight: String(isThisSale ? (c.saleWeight ?? c.purchaseWeight ?? availWt) : availWt),
+              weightLoss: String(isThisSale ? (Number(c.purchaseWeight || 0) - Number(c.saleWeight || c.purchaseWeight || 0)).toFixed(2) : '0.00'),
+            }
+          })
+        : []
+
+      const cagesForThisSale = mapped.filter(c =>
+        String(c.saleId) === String(saleId) ||
+        (c.status === 'sold' && !c.saleId)
+      )
+      const pendingCages = mapped.filter(c => !c.status || c.status === 'pending')
+      console.log('Cages for this sale:', cagesForThisSale.length, 'Pending cages:', pendingCages.length)
+
+      const combinedCages = [...cagesForThisSale, ...pendingCages]
+      setPurchaseCages(combinedCages)
+      setSelectedCageIds(new Set(cagesForThisSale.map(c => c.id)))
+    } catch (error) {
+      console.error('Failed to load cages:', error)
+    } finally {
+      setLoadingCages(false)
+    }
+  }
+
   const addPayment = () => setPayments(p => [...p, emptyPayment()])
   const removePayment = (i: number) => setPayments(p => p.filter((_, idx) => idx !== i))
   const updatePayment = (i: number, field: keyof PaymentRow, value: string) =>
@@ -399,57 +487,9 @@ export default function SalesPage() {
 
     setSaleFile(null)
 
-    // Load cages for this purchase bill: show cages for THIS sale + pending cages only
     if (purchaseBillNo) {
-      try {
-        setLoadingCages(true)
-        console.log('Loading cages for purchase bill:', purchaseBillNo, 'sale ID:', full.id)
-        const allCages = await purchasesApi.getCagesByOrderNumber(purchaseBillNo)
-        console.log('All cages received:', allCages)
-        const mapped = Array.isArray(allCages)
-          ? (allCages as any[]).map((c: any) => {
-              const isThisSale = String(c.saleId) === String(full.id) || (c.status === 'sold' && !c.saleId)
-              const availBirds = Number(c.numberOfBirds ?? 0)
-              const availWt = Number(c.purchaseWeight ?? c.cageWeight ?? 0)
-              return {
-                ...c,
-                id: c.id ?? '',
-                purchaseWeight: availWt,
-                initialBirds: availBirds,
-                initialWeight: availWt,
-                soldBirds: String(isThisSale ? (c.numberOfBirds ?? availBirds) : availBirds),
-                soldWeight: String(isThisSale ? (c.purchaseWeight ?? availWt) : availWt),
-                weightLoss: String(isThisSale ? (c.weightLoss ?? '0') : '0'),
-              }
-            })
-          : []
-
-        // Filter: 
-        // - Keep ALL cages (sold + pending) in state for Section 2
-        // - Section 1 will filter to show only pending cages
-        // - Section 2 shows all selected cages (sold + newly selected pending)
-        // For backward compatibility: if cage is sold but has no saleId, assume it belongs to this sale
-        const cagesForThisSale = mapped.filter(c =>
-          String(c.saleId) === String(full.id) ||
-          (c.status === 'sold' && !c.saleId)
-        )
-        const pendingCages = mapped.filter(c => !c.status || c.status === 'pending')
-        console.log('Cages for this sale:', cagesForThisSale.length, 'Pending cages:', pendingCages.length)
-
-        // Keep ALL cages (sold + pending) in state
-        const combinedCages = [...cagesForThisSale, ...pendingCages]
-        setPurchaseCages(combinedCages)
-
-        // Pre-select the sold cages (they will appear in Section 2)
-        setSelectedCageIds(new Set(cagesForThisSale.map(c => c.id)))
-      } catch (error) {
-        console.error('Failed to load cages:', error)
-        // non-critical — form still works without cage list
-      } finally {
-        setLoadingCages(false)
-      }
+      await loadCagesForSale(purchaseBillNo, full.id)
     } else {
-      console.log('No purchase bill number for this sale')
       setPurchaseCages([])
       setSelectedCageIds(new Set())
     }
@@ -493,7 +533,14 @@ export default function SalesPage() {
       setPayments(full.payments && full.payments.length > 0
         ? full.payments.map((p: any) => ({ ...p, id: p.id || crypto.randomUUID() }))
         : [emptyPayment()])
-      setShowDialog(true)
+
+      const purchaseBillNo = (full as any).purchaseBillNo || ""
+      if (purchaseBillNo) {
+        await loadCagesForSale(purchaseBillNo, full.id)
+      } else {
+        setPurchaseCages([])
+        setSelectedCageIds(new Set())
+      }
     } catch (error) {
       toast.error("Failed to load sale details")
     }
@@ -514,9 +561,9 @@ export default function SalesPage() {
       const selectedCages = purchaseCages.filter(c => selectedCageIds.has(c.id!))
       const cageMapping = selectedCages.map(c => ({
         cageId: c.id,
-        soldBirds: parseInt(String(c.numberOfBirds)) || 0,
-        soldWeight: parseFloat(String(c.purchaseWeight)) || 0,
-        weightLoss: 0,
+        soldBirds: parseInt(String(c.soldBirds)) || 0,
+        soldWeight: parseFloat(String(c.soldWeight)) || 0,
+        weightLoss: parseFloat(String(c.weightLoss)) || 0,
       }))
 
       const payload: any = {
@@ -635,7 +682,7 @@ export default function SalesPage() {
                     {/* Purchase Bill No — full width */}
                     <div className="space-y-2">
                       <Label>Purchase Bill No *</Label>
-                      <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading}>
+                      <Select value={formData.purchaseBillNo || '__none__'} onValueChange={handlePurchaseBillChange} disabled={loading || isReadOnly}>
                         <SelectTrigger><SelectValue placeholder="Select purchase bill" /></SelectTrigger>
                         <SelectContent className="max-h-60 overflow-y-auto">
                           {/* Search box inside dropdown */}
@@ -665,16 +712,18 @@ export default function SalesPage() {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <Label>Sale No. (Auto-generated)</Label>
-                          <label className="flex items-center gap-2 text-xs cursor-pointer">
-                            <input type="checkbox" checked={allowEditBillNo} onChange={e => setAllowEditBillNo(e.target.checked)} className="cursor-pointer" />
-                            <span>Edit manually</span>
-                          </label>
+                          {!isReadOnly && (
+                            <label className="flex items-center gap-2 text-xs cursor-pointer">
+                              <input type="checkbox" checked={allowEditBillNo} onChange={e => setAllowEditBillNo(e.target.checked)} className="cursor-pointer" />
+                              <span>Edit manually</span>
+                            </label>
+                          )}
                         </div>
-                        <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value, invoiceNumber: e.target.value }))} placeholder="Auto-generated on save" disabled={loading} readOnly={!allowEditBillNo} className={!allowEditBillNo ? "bg-gray-50" : ""} />
+                        <Input value={formData.saleNo} onChange={e => setFormData(f => ({ ...f, saleNo: e.target.value, invoiceNumber: e.target.value }))} placeholder="Auto-generated on save" disabled={loading || isReadOnly} readOnly={!allowEditBillNo || isReadOnly} className={!allowEditBillNo || isReadOnly ? "bg-gray-50" : ""} />
                       </div>
                       <div className="space-y-2">
                         <Label>Sale Date *</Label>
-                        <DatePicker value={formData.saleDate} onChange={d => setFormData(f => ({ ...f, saleDate: d }))} disabled={loading} />
+                        <DatePicker value={formData.saleDate} onChange={d => setFormData(f => ({ ...f, saleDate: d }))} disabled={loading || isReadOnly} />
                       </div>
                     </div>
 
@@ -707,7 +756,7 @@ export default function SalesPage() {
                               </p>
                             </div>
                             {loadingCages && <span className="text-xs text-muted-foreground">Loading cages...</span>}
-                            {!loadingCages && visibleCages.length > 0 && (
+                            {!loadingCages && visibleCages.length > 0 && !isReadOnly && (
                               <button type="button" onClick={toggleAllCages} className="text-xs text-blue-700 underline">
                                 {selectedCageIds.size === visibleCages.length ? 'Deselect All' : 'Select All'}
                               </button>
@@ -754,15 +803,16 @@ export default function SalesPage() {
                                     return (
                                       <tr
                                         key={cage.id}
-                                        className={`border-b cursor-pointer hover:bg-blue-100 ${selectedCageIds.has(cage.id!) ? (isHighLoss ? 'bg-red-50 hover:bg-red-100' : 'bg-green-50') : ''}`}
-                                        onClick={() => toggleCage(cage.id!)}
+                                        className={`border-b hover:bg-blue-100 ${selectedCageIds.has(cage.id!) ? (isHighLoss ? 'bg-red-50 hover:bg-red-100' : 'bg-green-50') : ''} ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}
+                                        onClick={() => !isReadOnly && toggleCage(cage.id!)}
                                       >
                                         <td className="p-1 text-center">
                                           <input
                                             type="checkbox"
                                             checked={selectedCageIds.has(cage.id!)}
-                                            onChange={() => toggleCage(cage.id!)}
+                                            onChange={() => !isReadOnly && toggleCage(cage.id!)}
                                             onClick={e => e.stopPropagation()}
+                                            disabled={isReadOnly}
                                           />
                                         </td>
                                         <td className="p-1 font-medium">{cage.cageId || '-'}</td>
@@ -773,6 +823,7 @@ export default function SalesPage() {
                                             type="number"
                                             placeholder="0"
                                             value={cage.soldBirds}
+                                             disabled={loading || isReadOnly}
                                             onChange={e => {
                                               const val = e.target.value
                                               const enteredBirds = parseInt(val) || 0
@@ -799,7 +850,7 @@ export default function SalesPage() {
                                                 syncFormFromCagesList(selectedCageIds, updatedList)
                                               }
                                             }}
-                                            className="w-16 text-right border rounded px-1 py-0.5 text-xs font-semibold"
+                                            className="w-16 text-right border rounded px-1 py-0.5 text-xs font-semibold disabled:bg-gray-50 disabled:border-gray-200"
                                           />
                                         </td>
                                         <td className="p-1 text-right" onClick={e => e.stopPropagation()}>
@@ -808,6 +859,7 @@ export default function SalesPage() {
                                             step="0.01"
                                             placeholder="0.00"
                                             value={cage.soldWeight}
+                                             disabled={loading || isReadOnly}
                                             onChange={e => {
                                               const val = e.target.value
                                               const enteredWt = parseFloat(val) || 0
@@ -831,7 +883,7 @@ export default function SalesPage() {
                                                 syncFormFromCagesList(selectedCageIds, updatedList)
                                               }
                                             }}
-                                            className="w-20 text-right border rounded px-1 py-0.5 text-xs font-semibold"
+                                            className="w-20 text-right border rounded px-1 py-0.5 text-xs font-semibold disabled:bg-gray-50 disabled:border-gray-200"
                                           />
                                         </td>
                                         <td className="p-1 text-right" onClick={e => e.stopPropagation()}>
@@ -841,6 +893,7 @@ export default function SalesPage() {
                                               step="0.01"
                                               placeholder="0.00"
                                               value={cage.weightLoss}
+                                               disabled={loading || isReadOnly}
                                               onChange={e => {
                                                 const val = e.target.value
                                                 const updatedList = purchaseCages.map(c => c.id === cage.id ? { ...c, weightLoss: val } : c)
@@ -849,7 +902,7 @@ export default function SalesPage() {
                                                   syncFormFromCagesList(selectedCageIds, updatedList)
                                                 }
                                               }}
-                                              className={`w-16 text-right border rounded px-1 py-0.5 text-xs font-semibold ${isHighLoss ? 'bg-red-100 border-red-400 text-red-700 animate-pulse' : ''}`}
+                                              className={`w-16 text-right border rounded px-1 py-0.5 text-xs font-semibold disabled:bg-gray-50 disabled:border-gray-200 ${isHighLoss ? 'bg-red-100 border-red-400 text-red-700 animate-pulse' : ''}`}
                                             />
                                             {isHighLoss && (
                                               <span className="text-[9px] text-red-600 font-bold block mt-0.5" title={`Allowed loss: ${maxAllowed.toFixed(2)} kg`}>
@@ -889,7 +942,7 @@ export default function SalesPage() {
                     <div className="grid grid-cols-2 gap-4 mt-2">
                       <div className="space-y-2">
                         <Label>Shop / Retailer *</Label>
-                        <Select value={formData.retailerId || '__none__'} onValueChange={v => handleRetailerChange(v === '__none__' ? '' : v)} disabled={loading}>
+                        <Select value={formData.retailerId || '__none__'} onValueChange={v => handleRetailerChange(v === '__none__' ? '' : v)} disabled={loading || isReadOnly}>
                           <SelectTrigger><SelectValue placeholder="Select shop" /></SelectTrigger>
                           <SelectContent className="max-h-60 overflow-y-auto">
                             <SelectItem value="__none__">Select shop / retailer...</SelectItem>
@@ -906,7 +959,7 @@ export default function SalesPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Sale Mode</Label>
-                        <Select value={formData.saleMode} onValueChange={(v: any) => setFormData(f => ({ ...f, saleMode: v }))} disabled={loading}>
+                        <Select value={formData.saleMode} onValueChange={(v: any) => setFormData(f => ({ ...f, saleMode: v }))} disabled={loading || isReadOnly}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="from_vehicle">From Vehicle</SelectItem>
@@ -916,7 +969,7 @@ export default function SalesPage() {
                       </div>
                       <div className="space-y-2">
                         <Label>Vehicle</Label>
-                        <Select value={formData.vehicleId || '__none__'} onValueChange={v => setFormData(f => ({ ...f, vehicleId: v === '__none__' ? '' : v }))} disabled={loading}>
+                        <Select value={formData.vehicleId || '__none__'} onValueChange={v => setFormData(f => ({ ...f, vehicleId: v === '__none__' ? '' : v }))} disabled={loading || isReadOnly}>
                           <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
                           <SelectContent className="max-h-60 overflow-y-auto">
                             <SelectItem value="__none__">Select vehicle...</SelectItem>
@@ -930,14 +983,14 @@ export default function SalesPage() {
                       <Label>Attach Sales Sheet (PDF/JPG/PNG)</Label>
                       <div className="flex items-center gap-3">
                         <input ref={saleFileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => setSaleFile(e.target.files?.[0] || null)} />
-                        <Button type="button" variant="outline" size="sm" onClick={() => saleFileRef.current?.click()} disabled={loading}><Paperclip size={14} className="mr-1" /> Choose File</Button>
-                        {saleFile && <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-1 rounded"><span>{saleFile.name}</span><button onClick={() => setSaleFile(null)}><X size={12} /></button></div>}
+                        <Button type="button" variant="outline" size="sm" onClick={() => saleFileRef.current?.click()} disabled={loading || isReadOnly}><Paperclip size={14} className="mr-1" /> Choose File</Button>
+                        {saleFile && <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-1 rounded"><span>{saleFile.name}</span>{!isReadOnly && <button onClick={() => setSaleFile(null)}><X size={12} /></button>}</div>}
                       </div>
                     </div>
 
                     <div className="space-y-2">
                       <Label>Notes</Label>
-                      <Input value={formData.notes} onChange={e => setFormData(f => ({ ...f, notes: e.target.value }))} placeholder="Optional" disabled={loading} />
+                      <Input value={formData.notes} onChange={e => setFormData(f => ({ ...f, notes: e.target.value }))} placeholder="Optional" disabled={loading || isReadOnly} />
                     </div>
                   </CardContent>
                 </Card>
@@ -951,11 +1004,11 @@ export default function SalesPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <Label>Customer Name *</Label>
-                        <Input value={formData.customerName} onChange={e => setFormData(f => ({ ...f, customerName: e.target.value }))} placeholder="Customer name" disabled={loading} />
+                        <Input value={formData.customerName} onChange={e => setFormData(f => ({ ...f, customerName: e.target.value }))} placeholder="Customer name" disabled={loading || isReadOnly} />
                       </div>
                       <div className="space-y-1">
                         <Label>Rate per KG *</Label>
-                        <Input type="number" step="0.01" value={formData.ratePerKg} onChange={e => setFormData(f => ({ ...f, ratePerKg: e.target.value }))} placeholder="e.g. 146" disabled={loading} onWheel={(e) => e.currentTarget.blur()} />
+                        <Input type="number" step="0.01" value={formData.ratePerKg} onChange={e => setFormData(f => ({ ...f, ratePerKg: e.target.value }))} placeholder="e.g. 146" disabled={loading || isReadOnly} onWheel={(e) => e.currentTarget.blur()} />
                       </div>
                     </div>
                     <div className="overflow-x-auto">
@@ -986,10 +1039,10 @@ export default function SalesPage() {
                             <tr className="border-b">
                               <td className="p-1 text-xs text-muted-foreground">-</td>
                               <td className="p-1">
-                                <Input type="number" value={formData.numBirds} onChange={e => setFormData(f => ({ ...f, numBirds: e.target.value }))} placeholder="0" className="h-8 text-sm" disabled={loading} onWheel={(e) => e.currentTarget.blur()} />
+                                <Input type="number" value={formData.numBirds} onChange={e => setFormData(f => ({ ...f, numBirds: e.target.value }))} placeholder="0" className="h-8 text-sm" disabled={loading || isReadOnly} onWheel={(e) => e.currentTarget.blur()} />
                               </td>
                               <td className="p-1">
-                                <Input type="number" step="0.001" value={formData.totalWeight} onChange={e => setFormData(f => ({ ...f, totalWeight: e.target.value }))} placeholder="0.000" className="h-8 text-sm" disabled={loading} onWheel={(e) => e.currentTarget.blur()} />
+                                <Input type="number" step="0.001" value={formData.totalWeight} onChange={e => setFormData(f => ({ ...f, totalWeight: e.target.value }))} placeholder="0.000" className="h-8 text-sm" disabled={loading || isReadOnly} onWheel={(e) => e.currentTarget.blur()} />
                               </td>
                               <td className="p-1 text-right font-medium">{totalAmount > 0 ? `₹${totalAmount.toFixed(0)}` : '-'}</td>
                             </tr>
@@ -1008,6 +1061,62 @@ export default function SalesPage() {
                         </tfoot>
                       </table>
                     </div>
+                    {/* Weight Loss & Bearable Limit Analysis Card */}
+                    {selectedCageList.length > 0 && (
+                      <div className="border border-orange-200 rounded-lg p-4 bg-orange-50/50 space-y-3">
+                        <div className="flex justify-between items-center">
+                          <h4 className="text-sm font-bold text-orange-900 flex items-center gap-1.5">
+                            ⚖️ Cage Weight Loss & Bearable Limit Analysis
+                          </h4>
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-orange-100 text-orange-800">
+                            Limit: {bearableLossType === 'percentage' ? `${bearableLossValue}%` : `${bearableLossValue} kg`}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-3 gap-4 text-xs">
+                          <div className="space-y-1 bg-white p-2.5 rounded border border-orange-100 shadow-sm">
+                            <span className="text-muted-foreground font-medium block">Total Weight Loss</span>
+                            <span className="text-sm font-bold text-gray-900 block">{totalWeightLoss.toFixed(2)} kg</span>
+                            <span className="text-[10px] text-gray-500 font-medium">Cost: ₹{totalWeightLossAmount.toFixed(2)}</span>
+                          </div>
+                          
+                          <div className="space-y-1 bg-white p-2.5 rounded border border-orange-100 shadow-sm">
+                            <span className="text-muted-foreground font-medium block">Bearable Limit</span>
+                            <span className="text-sm font-bold text-green-700 block">{totalBearableLoss.toFixed(2)} kg</span>
+                            <span className="text-[10px] text-green-600 font-medium">Cost: ₹{totalBearableLossAmount.toFixed(2)}</span>
+                          </div>
+                          
+                          <div className={`space-y-1 p-2.5 rounded border shadow-sm ${netExcessLoss > 0.01 ? 'bg-red-50 border-red-200 text-red-900' : 'bg-green-50 border-green-200 text-green-900'}`}>
+                            <span className="text-muted-foreground font-medium block">Excess (Unbearable) Loss</span>
+                            <span className={`text-sm font-bold block ${netExcessLoss > 0.01 ? 'text-red-700' : 'text-green-700'}`}>{netExcessLoss.toFixed(2)} kg</span>
+                            <span className="text-[10px] font-medium">Cost: ₹{netExcessLossAmount.toFixed(2)}</span>
+                          </div>
+                        </div>
+
+                        {netExcessLoss > 0.01 ? (
+                          <div className="text-xs bg-red-100/80 border border-red-200 text-red-900 rounded p-2 flex items-start gap-1.5">
+                            <span className="text-sm">⚠️</span>
+                            <div>
+                              <p className="font-bold">Excess weight loss detected!</p>
+                              <p className="text-red-800 text-[11px] mt-0.5">
+                                The cages have lost <strong className="font-semibold">{totalWeightLoss.toFixed(2)} kg</strong> which exceeds your bearable limit of <strong className="font-semibold">{totalBearableLoss.toFixed(2)} kg</strong> by <strong className="font-semibold">{netExcessLoss.toFixed(2)} kg</strong> (Value: <strong className="font-semibold">₹{netExcessLossAmount.toFixed(0)}</strong>). You should consider adjusting the bill or deducting this amount from the farmer/transporter.
+                              </p>
+                            </div>
+                          </div>
+                        ) : totalWeightLoss > 0.01 ? (
+                          <div className="text-xs bg-green-100/80 border border-green-200 text-green-900 rounded p-2 flex items-start gap-1.5">
+                            <span className="text-sm">✅</span>
+                            <div>
+                              <p className="font-bold">Weight loss is within bearable limit.</p>
+                              <p className="text-green-800 text-[11px] mt-0.5">
+                                Total weight loss of <strong className="font-semibold">{totalWeightLoss.toFixed(2)} kg</strong> is fully within your acceptable threshold of <strong className="font-semibold">{totalBearableLoss.toFixed(2)} kg</strong>.
+                              </p>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+
                     {/* Total Amount display */}
                     <div className="flex justify-between items-center bg-green-50 border border-green-200 rounded p-3">
                       <span className="font-semibold text-green-900">Total Amount</span>
@@ -1024,7 +1133,7 @@ export default function SalesPage() {
                   <CardContent className="space-y-4 pt-4">
                     <div className="space-y-2">
                       <Label>Payment Status</Label>
-                      <Select value={formData.paymentStatus} onValueChange={(v: any) => setFormData(f => ({ ...f, paymentStatus: v }))} disabled={loading}>
+                      <Select value={formData.paymentStatus} onValueChange={(v: any) => setFormData(f => ({ ...f, paymentStatus: v }))} disabled={loading || isReadOnly}>
                         <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="paid">Paid</SelectItem>
@@ -1040,7 +1149,7 @@ export default function SalesPage() {
                       </div>
                       {payments.map((p, i) => (
                         <div key={i} className="grid grid-cols-2 gap-4">
-                          <Select value={p.mode} onValueChange={v => updatePayment(i, "mode", v)} disabled={loading}>
+                          <Select value={p.mode} onValueChange={v => updatePayment(i, "mode", v)} disabled={loading || isReadOnly}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="advance">Advance</SelectItem>
@@ -1052,12 +1161,12 @@ export default function SalesPage() {
                             </SelectContent>
                           </Select>
                           <div className="flex gap-1">
-                            <Input type="number" step="0.01" placeholder="0.00" value={p.amount} onChange={e => updatePayment(i, "amount", e.target.value)} disabled={loading} onWheel={(e) => e.currentTarget.blur()} />
-                            {payments.length > 1 && <Button type="button" variant="ghost" size="sm" onClick={() => removePayment(i)} className="px-2 text-red-500"><X size={14} /></Button>}
+                            <Input type="number" step="0.01" placeholder="0.00" value={p.amount} onChange={e => updatePayment(i, "amount", e.target.value)} disabled={loading || isReadOnly} onWheel={(e) => e.currentTarget.blur()} />
+                            {payments.length > 1 && !isReadOnly && <Button type="button" variant="ghost" size="sm" onClick={() => removePayment(i)} className="px-2 text-red-500"><X size={14} /></Button>}
                           </div>
                         </div>
                       ))}
-                      <Button type="button" variant="outline" size="sm" onClick={addPayment} disabled={loading}><Plus size={14} className="mr-1" /> Add Payment Mode</Button>
+                      {!isReadOnly && <Button type="button" variant="outline" size="sm" onClick={addPayment} disabled={loading}><Plus size={14} className="mr-1" /> Add Payment Mode</Button>}
                     </div>
                     <div className="grid grid-cols-2 gap-4 pt-2 border-t">
                       <div className="space-y-2"><Label>Total Received (₹)</Label><Input value={`₹${totalPaymentMade.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-green-700" /></div>
@@ -1067,14 +1176,20 @@ export default function SalesPage() {
                 </Card>
 
                 <div className="flex gap-2 justify-end">
-                  {!editingId && formData.invoiceNumber ? (
-                    <Button variant="outline" onClick={() => { resetForm(); setShowDialog(false) }} disabled={loading}>Close</Button>
+                  {isReadOnly ? (
+                    <Button onClick={() => setShowDialog(false)} className="bg-blue-600 hover:bg-blue-700">Close</Button>
                   ) : (
-                    <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}>Cancel</Button>
+                    <>
+                      {!editingId && formData.invoiceNumber ? (
+                        <Button variant="outline" onClick={() => { resetForm(); setShowDialog(false) }} disabled={loading}>Close</Button>
+                      ) : (
+                        <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}>Cancel</Button>
+                      )}
+                      <Button onClick={handleSave} disabled={loading || uploadingFile} className="bg-green-600 hover:bg-green-700">
+                        {loading || uploadingFile ? "Saving..." : editingId ? "Update Sale" : "Create Sale"}
+                      </Button>
+                    </>
                   )}
-                  <Button onClick={handleSave} disabled={loading || uploadingFile} className="bg-green-600 hover:bg-green-700">
-                    {loading || uploadingFile ? "Saving..." : editingId ? "Update Sale" : "Create Sale"}
-                  </Button>
                 </div>
               </div>
             </DialogContent>
