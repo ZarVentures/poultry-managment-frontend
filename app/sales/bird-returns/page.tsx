@@ -13,11 +13,11 @@ import { Plus, Edit2, Trash2, CheckCircle, XCircle, Clock, Package, AlertTriangl
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
-import { birdReturnsApi, salesApi, godownApi, type BirdReturn, type CreateBirdReturnDto } from "@/lib/api"
+import { vehicleBirdReturnsApi, salesApi, type VehicleBirdReturn, type CreateVehicleBirdReturnDto } from "@/lib/api"
 import { toast } from "sonner"
 
-export default function BirdReturnsPage() {
-  const [returns, setReturns] = useState<BirdReturn[]>([])
+export default function VehicleBirdReturnsPage() {
+  const [returns, setReturns] = useState<VehicleBirdReturn[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
@@ -29,7 +29,7 @@ export default function BirdReturnsPage() {
   const [salesList, setSalesList] = useState<Array<{ id: string; invoiceNumber: string; saleDate: string; customerName: string }>>([])
   const [saleUnitPrice, setSaleUnitPrice] = useState<number>(0)
   
-  const [formData, setFormData] = useState<CreateBirdReturnDto>({
+  const [formData, setFormData] = useState<CreateVehicleBirdReturnDto>({
     returnDate: new Date().toISOString().split("T")[0],
     saleId: "",
     customerName: "",
@@ -50,14 +50,10 @@ export default function BirdReturnsPage() {
     "Godown A, Cage 1",
     "Godown A, Cage 2",
     "Godown A, Cage 3",
-    "Godown A, Cage 4",
-    "Godown A, Cage 5",
     "Godown B, Cage 1",
     "Godown B, Cage 2",
-    "Godown B, Cage 3",
-    "Godown B, Cage 4",
-    "Godown B, Cage 5",
     "Main Warehouse",
+    "Isolation Pen",
     "Custom Location..."
   ]
 
@@ -81,11 +77,11 @@ export default function BirdReturnsPage() {
 
   const fetchSalesList = async () => {
     try {
-      const res = await godownApi.sales.getAll(1, 100)
+      const res = await salesApi.getAll({ limit: 100 })
       const rawSales = Array.isArray(res) ? res : res.data || []
       const mapped = rawSales.map((s: any) => ({
         id: s.id,
-        invoiceNumber: s.invoiceNumber || s.saleNo || `Sale #${s.id}`,
+        invoiceNumber: s.invoiceNumber || s.saleNo || `Invoice #${s.id}`,
         saleDate: s.saleDate,
         customerName: s.customerName,
       }))
@@ -98,11 +94,11 @@ export default function BirdReturnsPage() {
   const fetchReturns = async () => {
     try {
       setLoading(true)
-      const data = await birdReturnsApi.getAll()
+      const data = await vehicleBirdReturnsApi.getAll()
       setReturns(Array.isArray(data) ? data : data.data || [])
     } catch (error: any) {
-      console.error("Failed to fetch returns:", error)
-      toast.error("Failed to load bird returns")
+      console.error("Failed to fetch vehicle returns:", error)
+      toast.error("Failed to load vehicle returns")
     } finally {
       setLoading(false)
     }
@@ -126,9 +122,10 @@ export default function BirdReturnsPage() {
       notes: "",
     })
     setEditingId(null)
+    setSaleUnitPrice(0)
   }
 
-  const handleEdit = (birdReturn: BirdReturn) => {
+  const handleEdit = (birdReturn: VehicleBirdReturn) => {
     setFormData({
       returnDate: birdReturn.returnDate,
       saleId: birdReturn.saleId,
@@ -146,6 +143,9 @@ export default function BirdReturnsPage() {
       notes: birdReturn.notes,
     })
     setEditingId(birdReturn.id)
+    if (birdReturn.sale) {
+      setSaleUnitPrice(Number(birdReturn.sale.unitPrice || 0))
+    }
     setShowDialog(true)
   }
 
@@ -158,11 +158,11 @@ export default function BirdReturnsPage() {
     try {
       setLoading(true)
       if (editingId) {
-        await birdReturnsApi.update(editingId, formData)
-        toast.success("Return updated successfully")
+        await vehicleBirdReturnsApi.update(editingId, formData)
+        toast.success("Vehicle return updated successfully")
       } else {
-        await birdReturnsApi.create(formData)
-        toast.success("Return created successfully")
+        await vehicleBirdReturnsApi.create(formData)
+        toast.success("Vehicle return recorded successfully")
       }
       await fetchReturns()
       resetForm()
@@ -179,8 +179,8 @@ export default function BirdReturnsPage() {
     if (!confirm("Approve this return?")) return
     try {
       setLoading(true)
-      await birdReturnsApi.approve(id)
-      toast.success("Return approved")
+      await vehicleBirdReturnsApi.approve(id)
+      toast.success("Vehicle return approved")
       await fetchReturns()
     } catch (error: any) {
       toast.error(error.message || "Failed to approve")
@@ -194,8 +194,8 @@ export default function BirdReturnsPage() {
     if (!reason) return
     try {
       setLoading(true)
-      await birdReturnsApi.reject(id, reason)
-      toast.success("Return rejected")
+      await vehicleBirdReturnsApi.reject(id, reason)
+      toast.success("Vehicle return rejected")
       await fetchReturns()
     } catch (error: any) {
       toast.error(error.message || "Failed to reject")
@@ -205,11 +205,11 @@ export default function BirdReturnsPage() {
   }
 
   const handleProcess = async (id: string) => {
-    if (!confirm("Process this return? This will update inventory and ledger.")) return
+    if (!confirm("Process this return? This will update vehicle sale records and customer ledger.")) return
     try {
       setLoading(true)
-      await birdReturnsApi.process(id)
-      toast.success("Return processed successfully")
+      await vehicleBirdReturnsApi.process(id)
+      toast.success("Vehicle return processed successfully")
       await fetchReturns()
     } catch (error: any) {
       toast.error(error.message || "Failed to process")
@@ -222,8 +222,8 @@ export default function BirdReturnsPage() {
     if (!confirm("Are you sure you want to delete this return?")) return
     try {
       setLoading(true)
-      await birdReturnsApi.delete(id)
-      toast.success("Return deleted successfully")
+      await vehicleBirdReturnsApi.delete(id)
+      toast.success("Vehicle return deleted successfully")
       await fetchReturns()
     } catch (error: any) {
       toast.error(error.message || "Failed to delete")
@@ -244,16 +244,16 @@ export default function BirdReturnsPage() {
 
     try {
       setLoading(true)
-      const fullSale = await godownApi.sales.getOne(saleId)
+      const fullSale = await salesApi.getOne(saleId)
       if (fullSale) {
-        const rate = Number(fullSale.ratePerKg || 0)
+        const rate = Number(fullSale.unitPrice || 0)
         setSaleUnitPrice(rate)
         setFormData(prev => ({
           ...prev,
           retailerId: fullSale.retailerId || "",
           customerName: fullSale.customerName,
         }))
-        toast.success(`Loaded godown sale details! Rate: ₹${rate.toFixed(2)}/kg`)
+        toast.success(`Loaded vehicle sale details! Rate: ₹${rate.toFixed(2)}/kg`)
       }
     } catch (error) {
       console.error("Failed to load full sale details:", error)
@@ -340,21 +340,21 @@ export default function BirdReturnsPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold">Godown Bird Returns & Tracking</h1>
-            <p className="text-muted-foreground">Manage returned birds and track refunds</p>
+            <h1 className="text-3xl font-bold">Vehicle Bird Returns & Tracking</h1>
+            <p className="text-muted-foreground">Manage returned birds and track credits from vehicle sales</p>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
               <Button onClick={resetForm}>
                 <Plus className="mr-2" size={20} />
-                Record Return
+                Record Vehicle Return
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" aria-describedby="dialog-description">
               <DialogHeader>
-                <DialogTitle>{editingId ? "Edit Return" : "Record Bird Return"}</DialogTitle>
+                <DialogTitle>{editingId ? "Edit Vehicle Return" : "Record Vehicle Bird Return"}</DialogTitle>
                 <p id="dialog-description" className="sr-only">
-                  {editingId ? "Edit bird return details" : "Record a new bird return"}
+                  {editingId ? "Edit vehicle bird return details" : "Record a new vehicle bird return"}
                 </p>
               </DialogHeader>
               <div className="space-y-4">
@@ -375,7 +375,7 @@ export default function BirdReturnsPage() {
                       disabled={loading || !!editingId}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select sale" />
+                        <SelectValue placeholder="Select vehicle sale invoice" />
                       </SelectTrigger>
                       <SelectContent className="max-h-60 overflow-y-auto">
                         {salesList.map(sale => (
@@ -446,7 +446,7 @@ export default function BirdReturnsPage() {
                   <Textarea
                     value={formData.reasonDescription}
                     onChange={(e) => setFormData({ ...formData, reasonDescription: e.target.value })}
-                    placeholder="Provide details about the return reason"
+                    placeholder="Provide details about the vehicle return reason"
                     disabled={loading}
                     rows={3}
                   />
@@ -475,7 +475,43 @@ export default function BirdReturnsPage() {
                   </div>
                 </div>
 
-                {/* Automatically returned to Godown Inventory */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Return to Inventory?</Label>
+                    <Select
+                      value={formData.returnedToInventory ? "yes" : "no"}
+                      onValueChange={(val) => setFormData({ ...formData, returnedToInventory: val === "yes" })}
+                      disabled={loading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="yes">Yes (Restock)</SelectItem>
+                        <SelectItem value="no">No (Mortality/Discard)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {formData.returnedToInventory && (
+                    <div className="space-y-2">
+                      <Label>Restock Location</Label>
+                      <Select
+                        value={formData.inventoryLocation}
+                        onValueChange={(val) => setFormData({ ...formData, inventoryLocation: val })}
+                        disabled={loading}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select coop location" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STANDARD_LOCATIONS.map(loc => (
+                            <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
 
                 <div className="space-y-2">
                   <Label>Notes</Label>
@@ -490,7 +526,7 @@ export default function BirdReturnsPage() {
 
                 <div className="flex gap-2 pt-4">
                   <Button onClick={handleSave} disabled={loading} className="flex-1">
-                    {loading ? "Saving..." : editingId ? "Update Return" : "Record Return"}
+                    {loading ? "Saving..." : editingId ? "Update Return" : "Record Vehicle Return"}
                   </Button>
                   <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}>
                     Cancel
@@ -592,11 +628,11 @@ export default function BirdReturnsPage() {
         <Card>
           <CardContent className="pt-6">
             {loading && !returns.length ? (
-              <div className="text-center py-8 text-muted-foreground">Loading returns...</div>
+              <div className="text-center py-8 text-muted-foreground">Loading vehicle returns...</div>
             ) : filteredReturns.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <AlertTriangle className="mx-auto mb-2" size={48} />
-                <p>No returns found</p>
+                <p>No vehicle returns found</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -605,7 +641,7 @@ export default function BirdReturnsPage() {
                     <TableRow>
                       <TableHead>Return #</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead>Sale Invoice</TableHead>
+                      <TableHead>Invoice</TableHead>
                       <TableHead>Customer</TableHead>
                       <TableHead className="text-right">Birds</TableHead>
                       <TableHead>Reason</TableHead>
@@ -657,7 +693,7 @@ export default function BirdReturnsPage() {
                                 variant="outline"
                                 onClick={() => handleProcess(birdReturn.id)}
                                 disabled={loading}
-                                className="text-blue-600 hover:text-blue-700"
+                                  className="text-blue-600 hover:text-blue-700"
                               >
                                 <Package size={14} className="mr-1" />
                                 Process

@@ -107,7 +107,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 )}
                 <SidebarLink href="/godown/inward-entry" icon={PackagePlus} label="Godown Inward Entry" open={true} isSubItem={true} />
                 <SidebarLink href="/godown/sale" icon={PackageCheck} label="Godown Sale" open={true} isSubItem={true} />
-                <SidebarLink href="/bird-returns" icon={TrendingDown} label="Bird Returns" open={true} isSubItem={true} />
+                <SidebarLink href="/bird-returns" icon={TrendingDown} label="Godown Bird Returns & Tracking" open={true} isSubItem={true} />
                 <SidebarLink href="/godown/mortality" icon={PackageX} label="Godown Mortality" open={true} isSubItem={true} />
                 <SidebarLink href="/godown/expense" icon={PackageSearch} label="Godown Expense" open={true} isSubItem={true} />
               </div>
@@ -154,6 +154,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                   <div className="ml-4 space-y-1 border-l border-sidebar-border">
                     <SidebarLink href="/sales" icon={TrendingUp} label="Sales Overview" open={true} isSubItem={true} />
                     <SidebarLink href="/sales/payment-in/voucher" icon={CreditCard} label="Payment In Voucher" open={true} isSubItem={true} />
+                    <SidebarLink href="/sales/bird-returns" icon={TrendingDown} label="Vehicle Bird Returns" open={true} isSubItem={true} />
                   </div>
                 )}
               </div>
