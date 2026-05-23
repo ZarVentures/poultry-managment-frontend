@@ -33,7 +33,7 @@ export default function UsersPage() {
     email: "",
     phone: "",
     password: "",
-    role: "staff" as "admin" | "manager" | "staff",
+    role: "staff" as string,
     status: "active" as "active" | "inactive",
     joinDate: new Date().toISOString().split("T")[0],
     notes: "",
@@ -270,14 +270,16 @@ export default function UsersPage() {
                   Add New User
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-lg max-h-[90vh] flex flex-col" aria-describedby="dialog-description">
-                <DialogHeader>
-                  <DialogTitle>{editingId ? "Edit User" : "Add New User"}</DialogTitle>
+              <DialogContent className="max-w-lg max-h-[90vh] flex flex-col overflow-hidden" aria-describedby="dialog-description">
+                <DialogHeader className="pb-2 border-b">
+                  <DialogTitle className="text-xl font-bold">{editingId ? "Edit User" : "Add New User"}</DialogTitle>
                   <p id="dialog-description" className="sr-only">
                     {editingId ? "Edit user details" : "Add a new user to the system"}
                   </p>
                 </DialogHeader>
-                <div className="space-y-4 overflow-y-auto flex-1 pr-1 pb-2">
+                
+                {/* Scrollable form fields with extra padding to avoid clipping */}
+                <div className="space-y-4 overflow-y-auto flex-1 pr-3 pl-1 pb-4 pt-2 min-h-0">
                   <div className="space-y-2">
                     <Label>Full Name *</Label>
                     <Input
@@ -371,14 +373,16 @@ export default function UsersPage() {
                       disabled={loading}
                     />
                   </div>
-                  <div className="flex gap-2">
-                    <Button onClick={handleSave} className="flex-1" disabled={loading}>
-                      {loading ? "Saving..." : editingId ? "Update" : "Create"}
-                    </Button>
-                    <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}>
-                      <X size={20} />
-                    </Button>
-                  </div>
+                </div>
+
+                {/* Sticky Action Footer */}
+                <div className="flex gap-2 pt-4 border-t mt-auto">
+                  <Button onClick={handleSave} className="flex-1 bg-green-600 hover:bg-green-700 text-white" disabled={loading}>
+                    {loading ? "Saving..." : editingId ? "Update User" : "Create"}
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}>
+                    Cancel
+                  </Button>
                 </div>
               </DialogContent>
             </Dialog>

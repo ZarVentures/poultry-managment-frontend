@@ -143,7 +143,7 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
-  role: 'admin' | 'manager' | 'staff';
+  role: string;
   status: 'active' | 'inactive';
   joinDate: string;
   lastLogin?: string;
