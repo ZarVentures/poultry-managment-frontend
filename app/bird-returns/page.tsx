@@ -616,13 +616,32 @@ export default function BirdReturnsPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredReturns.map((birdReturn) => (
-                      <TableRow key={birdReturn.id}>
+                      <TableRow 
+                        key={birdReturn.id}
+                        className={
+                          birdReturn.returnReason === 'sick'
+                            ? "bg-amber-50/70 hover:bg-amber-100/70 dark:bg-amber-950/20 dark:hover:bg-amber-950/30"
+                            : ""
+                        }
+                      >
                         <TableCell className="font-medium">{birdReturn.returnNumber}</TableCell>
                         <TableCell>{new Date(birdReturn.returnDate).toLocaleDateString()}</TableCell>
                         <TableCell>{birdReturn.sale?.invoiceNumber || '-'}</TableCell>
                         <TableCell>{birdReturn.customerName}</TableCell>
                         <TableCell className="text-right">{birdReturn.numberOfBirdsReturned}</TableCell>
-                        <TableCell>{getReasonLabel(birdReturn.returnReason)}</TableCell>
+                        <TableCell>
+                          {birdReturn.returnReason === 'sick' ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                              Sick
+                            </span>
+                          ) : birdReturn.returnReason === 'dead' ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                              Dead
+                            </span>
+                          ) : (
+                            <span className="text-sm font-medium">{getReasonLabel(birdReturn.returnReason)}</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">₹{Number(birdReturn.refundAmount || 0).toFixed(2)}</TableCell>
                         <TableCell>{getStatusBadge(birdReturn.status)}</TableCell>
                         <TableCell className="text-right">

@@ -800,16 +800,34 @@ export default function GodownInwardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredEntries.map((entry) => (
-                    <TableRow key={entry.id}>
-                      <TableCell>{new Date(entry.entryDate).toLocaleDateString()}</TableCell>
-                      <TableCell className="font-semibold text-blue-600">{entry.inwardNo || "-"}</TableCell>
-                      <TableCell>{entry.purchaseInvoiceNo || "-"}</TableCell>
-                      <TableCell>{entry.supplierName}</TableCell>
-                      <TableCell>{entry.numberOfBirds}</TableCell>
-                      <TableCell>{entry.totalWeight ? Number(entry.totalWeight).toFixed(2) : "-"}</TableCell>
-                      <TableCell>₹{entry.ratePerKg ? Number(entry.ratePerKg).toFixed(2) : "0.00"}</TableCell>
-                      <TableCell className="font-semibold">₹{entry.totalAmount ? Number(entry.totalAmount).toFixed(2) : "0.00"}</TableCell>
+                  {filteredEntries.map((entry) => {
+                    const isIsolation = entry.notes?.toLowerCase().includes("isolation") || entry.notes?.toLowerCase().includes("quarantine");
+                    return (
+                      <TableRow 
+                        key={entry.id}
+                        className={
+                          isIsolation
+                            ? "bg-amber-50/80 hover:bg-amber-100/80 dark:bg-amber-950/20 dark:hover:bg-amber-950/30"
+                            : ""
+                        }
+                      >
+                        <TableCell>{new Date(entry.entryDate).toLocaleDateString()}</TableCell>
+                        <TableCell className="font-semibold text-blue-600">
+                          <div className="flex flex-col gap-1">
+                            <span>{entry.inwardNo || "-"}</span>
+                            {isIsolation && (
+                              <span className="inline-flex items-center w-max px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800">
+                                ⚠️ Isolation Pen
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{entry.purchaseInvoiceNo || "-"}</TableCell>
+                        <TableCell>{entry.supplierName}</TableCell>
+                        <TableCell>{entry.numberOfBirds}</TableCell>
+                        <TableCell>{entry.totalWeight ? Number(entry.totalWeight).toFixed(2) : "-"}</TableCell>
+                        <TableCell>₹{entry.ratePerKg ? Number(entry.ratePerKg).toFixed(2) : "0.00"}</TableCell>
+                        <TableCell className="font-semibold">₹{entry.totalAmount ? Number(entry.totalAmount).toFixed(2) : "0.00"}</TableCell>
                       <TableCell>
                         {userRole !== 'staff' && userRole !== 'Staff' && (
                           <div className="flex gap-2">
@@ -823,7 +841,7 @@ export default function GodownInwardPage() {
                         )}
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )})}
                 </TableBody>
               </Table>
             )}

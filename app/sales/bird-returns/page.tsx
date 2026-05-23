@@ -42,19 +42,13 @@ export default function VehicleBirdReturnsPage() {
     adjustmentAmount: "",
     status: "pending",
     returnedToInventory: true,
-    inventoryLocation: "Godown",
+    inventoryLocation: "Main Godown",
     notes: "",
   })
 
   const STANDARD_LOCATIONS = [
-    "Godown A, Cage 1",
-    "Godown A, Cage 2",
-    "Godown A, Cage 3",
-    "Godown B, Cage 1",
-    "Godown B, Cage 2",
-    "Main Warehouse",
-    "Isolation Pen",
-    "Custom Location..."
+    "Main Godown",
+    "Isolation Pen"
   ]
 
   useEffect(() => {
@@ -118,7 +112,7 @@ export default function VehicleBirdReturnsPage() {
       adjustmentAmount: "",
       status: "pending",
       returnedToInventory: true,
-      inventoryLocation: "Godown",
+      inventoryLocation: "Main Godown",
       notes: "",
     })
     setEditingId(null)
@@ -139,7 +133,7 @@ export default function VehicleBirdReturnsPage() {
       adjustmentAmount: String(birdReturn.adjustmentAmount || ""),
       status: birdReturn.status,
       returnedToInventory: birdReturn.returnedToInventory ?? true,
-      inventoryLocation: birdReturn.inventoryLocation || "Godown",
+      inventoryLocation: birdReturn.inventoryLocation || "Main Godown",
       notes: birdReturn.notes,
     })
     setEditingId(birdReturn.id)
@@ -645,6 +639,7 @@ export default function VehicleBirdReturnsPage() {
                       <TableHead>Customer</TableHead>
                       <TableHead className="text-right">Birds</TableHead>
                       <TableHead>Reason</TableHead>
+                      <TableHead>Restock Location</TableHead>
                       <TableHead className="text-right">Refund</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -652,13 +647,45 @@ export default function VehicleBirdReturnsPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredReturns.map((birdReturn) => (
-                      <TableRow key={birdReturn.id}>
+                      <TableRow 
+                        key={birdReturn.id}
+                        className={
+                          birdReturn.returnReason === 'sick' || birdReturn.inventoryLocation === 'Isolation Pen'
+                            ? "bg-amber-50/70 hover:bg-amber-100/70 dark:bg-amber-950/20 dark:hover:bg-amber-950/30"
+                            : ""
+                        }
+                      >
                         <TableCell className="font-medium">{birdReturn.returnNumber}</TableCell>
                         <TableCell>{new Date(birdReturn.returnDate).toLocaleDateString()}</TableCell>
                         <TableCell>{birdReturn.sale?.invoiceNumber || '-'}</TableCell>
                         <TableCell>{birdReturn.customerName}</TableCell>
                         <TableCell className="text-right">{birdReturn.numberOfBirdsReturned}</TableCell>
-                        <TableCell>{getReasonLabel(birdReturn.returnReason)}</TableCell>
+                        <TableCell>
+                          {birdReturn.returnReason === 'sick' ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                              Sick
+                            </span>
+                          ) : birdReturn.returnReason === 'dead' ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                              Dead
+                            </span>
+                          ) : (
+                            <span className="text-sm font-medium">{getReasonLabel(birdReturn.returnReason)}</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {birdReturn.returnedToInventory ? (
+                            birdReturn.inventoryLocation === 'Isolation Pen' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800">
+                                ⚠️ Isolation Pen
+                              </span>
+                            ) : (
+                              <span className="text-sm font-medium text-muted-foreground">{birdReturn.inventoryLocation || 'Main Godown'}</span>
+                            )
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">No Restock (Mortality)</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">₹{Number(birdReturn.refundAmount || 0).toFixed(2)}</TableCell>
                         <TableCell>{getStatusBadge(birdReturn.status)}</TableCell>
                         <TableCell className="text-right">
