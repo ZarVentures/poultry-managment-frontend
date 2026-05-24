@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -53,6 +54,7 @@ function StatCard({
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false)
 
   // Date range filter
   const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
@@ -165,6 +167,14 @@ export default function DashboardPage() {
   useEffect(() => {
     setMounted(true)
     loadDashboard()
+
+    // Check if welcome changelog was dismissed
+    if (typeof window !== "undefined") {
+      const dismissed = localStorage.getItem("aziz_changelog_v1_dismissed")
+      if (!dismissed) {
+        setShowWelcomeModal(true)
+      }
+    }
   }, [])
 
   const handleDateRangeChange = (start: Date | undefined, end: Date | undefined) => {
@@ -416,6 +426,84 @@ export default function DashboardPage() {
         {/* Row 5 - Monthly Summary */}
 
       </div>
+
+      {/* Aziz Poultry v2.0 Changelog & Welcome Modal */}
+      <Dialog open={showWelcomeModal} onOpenChange={setShowWelcomeModal}>
+        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto flex flex-col p-6 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl border border-slate-200/50 dark:border-slate-800/50">
+          <DialogHeader className="space-y-2 pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center justify-center p-2 rounded-xl bg-green-500/10 text-green-600 dark:text-green-400">
+                🚀
+              </span>
+              <DialogTitle className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-green-600 via-emerald-600 to-indigo-600 bg-clip-text text-transparent">
+                Aziz Poultry v2.0 Released!
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-sm font-medium text-slate-500 dark:text-slate-400 pt-1">
+              Welcome to the new poultry management dashboard. We have rolled out premium updates to streamline your farm operations and quarantine safety:
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4 flex-1">
+            {/* Feature 1 */}
+            <div className="flex gap-4 p-3 rounded-xl border border-slate-100/50 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+              <div className="flex items-center justify-center p-2.5 h-11 w-11 rounded-lg bg-green-100 dark:bg-green-950/30 text-green-600 dark:text-green-400 shrink-0">
+                <Truck size={20} />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                  Vehicle Bird Returns & Tracking
+                </h4>
+                <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                  Manage returns arising from vehicle sales, auto-credit retailer ledger balances directly on returns, and route healthy stock back to Godown inventory.
+                </p>
+              </div>
+            </div>
+
+            {/* Feature 2 */}
+            <div className="flex gap-4 p-3 rounded-xl border border-slate-100/50 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+              <div className="flex items-center justify-center p-2.5 h-11 w-11 rounded-lg bg-indigo-100 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 shrink-0">
+                <Users size={20} />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                  Dynamic Custom Roles
+                </h4>
+                <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                  Create fully customized roles in Settings permissions and assign them to your staff inside User Management. User creation forms now support dynamic roles.
+                </p>
+              </div>
+            </div>
+
+            {/* Feature 3 */}
+            <div className="flex gap-4 p-3 rounded-xl border border-slate-100/50 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+              <div className="flex items-center justify-center p-2.5 h-11 w-11 rounded-lg bg-amber-100 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 shrink-0">
+                <AlertCircle size={20} />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                  Quarantine Warning Badges
+                </h4>
+                <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                  Sick bird returns and Isolation Pen restocks are automatically highlighted in amber warnings. Quarantine badges are tagged in Godown Inward entries instantly.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+            <button
+              onClick={() => {
+                localStorage.setItem("aziz_changelog_v1_dismissed", "true")
+                setShowWelcomeModal(false)
+              }}
+              className="px-6 py-2.5 rounded-xl font-semibold bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-md hover:shadow-lg transition-all"
+            >
+              Awesome, let's go!
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   )
 }
