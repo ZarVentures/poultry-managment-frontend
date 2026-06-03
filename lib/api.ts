@@ -1390,6 +1390,7 @@ export type PaymentMethodVoucher =
 
 export interface CreatePaymentVoucherPayload {
   voucherDate: string;
+  voucherType: 'in' | 'out';
   payeeType: 'farmer' | 'retailer' | 'supplier' | 'employee' | 'other';
   payeeId?: number;
   payeeName: string;
@@ -1413,6 +1414,7 @@ export interface PaymentVoucherRecord {
   id: number;
   voucherNumber: string;
   voucherDate: string;
+  voucherType: 'in' | 'out';
   payeeType: string;
   payeeId?: number;
   payeeName: string;

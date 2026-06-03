@@ -1,6 +1,4 @@
-"use client";
-
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import {
   paymentVouchersApi,
+  retailersApi,
+  farmersApi,
   type CreatePaymentVoucherPayload,
   type PaymentMethodVoucher,
   type PaymentVoucherRecord,
@@ -68,6 +68,10 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
     [variant]
   );
 
+  const [parties, setParties] = useState<any[]>([]);
+  const [selectedPartyId, setSelectedPartyId] = useState<string>("");
+  const [loadingParties, setLoadingParties] = useState(true);
+
   const [payeeName, setPayeeName] = useState("");
   const [voucherDate, setVoucherDate] = useState(todayISO);
   const [transactionReference, setTransactionReference] = useState("");
@@ -84,7 +88,24 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
   const [createdRecord, setCreatedRecord] = useState<PaymentVoucherRecord | null>(null);
   const [copied, setCopied] = useState(false);
 
+  useEffect(() => {
+    setLoadingParties(true);
+    const fetchParties = variant === "in" ? retailersApi.getActive() : farmersApi.getActive();
+    fetchParties
+      .then((data) => {
+        setParties(data || []);
+      })
+      .catch((err) => {
+        console.error("Failed to load parties:", err);
+        toast.error("Failed to load payee list");
+      })
+      .finally(() => {
+        setLoadingParties(false);
+      });
+  }, [variant]);
+
   const resetForNewVoucher = useCallback(() => {
+    setSelectedPartyId("");
     setPayeeName("");
     setVoucherDate(todayISO());
     setTransactionReference("");
@@ -99,6 +120,10 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const amt = Number.parseFloat(amount);
+    if (!selectedPartyId) {
+      toast.error("Select a payee");
+      return;
+    }
     if (!payeeName.trim()) {
       toast.error("Enter payee name");
       return;
@@ -114,7 +139,9 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
 
     const payload: CreatePaymentVoucherPayload = {
       voucherDate,
-      payeeType: config.defaultPayeeType,
+      voucherType: variant,
+      payeeType: variant === "in" ? "retailer" : "farmer",
+      payeeId: Number(selectedPartyId),
       payeeName: payeeName.trim(),
       amount: amt,
       paymentMethod,
@@ -230,14 +257,30 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
               <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700">
                 {config.payeeLabel}
               </label>
-              <input
-                type="text"
-                value={payeeName}
-                onChange={(e) => setPayeeName(e.target.value)}
-                placeholder="Name as on records..."
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                required
-              />
+              {loadingParties ? (
+                <div className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-500 bg-gray-50">
+                  Loading payee list...
+                </div>
+              ) : (
+                <select
+                  value={selectedPartyId}
+                  onChange={(e) => {
+                    const idVal = e.target.value;
+                    setSelectedPartyId(idVal);
+                    const party = parties.find((p) => String(p.id) === idVal);
+                    setPayeeName(party ? party.name : "");
+                  }}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black"
+                  required
+                >
+                  <option value="">Select Payee...</option>
+                  {parties.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.phone ? `(${p.phone})` : ""}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
