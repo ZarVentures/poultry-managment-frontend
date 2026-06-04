@@ -67,9 +67,10 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
   if (!user) return null
 
-  const isAdmin = user.role === 'admin'
-  const isManager = user.role === 'manager' || user.role === 'Manager'
-  const isStaff = user.role === 'staff' || user.role === 'Staff' || user.role === 'staf'
+  const normalizedRole = (user.role || '').toLowerCase().trim()
+  const isAdmin = normalizedRole === 'admin'
+  const isManager = normalizedRole === 'manager'
+  const isStaff = normalizedRole === 'staff'
 
   return (
     <div className="flex h-screen bg-background">
