@@ -31,6 +31,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="icon" href="/icon.svg" />
+        <link rel="shortcut icon" href="/icon.svg" />
+        <link rel="apple-touch-icon" href="/apple-icon.png" />
+      </head>
       <body className={`font-sans antialiased`} suppressHydrationWarning>
         <Providers>
           <DevModeProvider>
