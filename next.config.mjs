@@ -16,7 +16,6 @@ const nextConfig = {
   },
   async rewrites() {
     const API_DEST = process.env.NEXT_PUBLIC_API_REWRITE_DEST || 'http://localhost:3001';
-    const ACCT_DEST = process.env.NEXT_PUBLIC_ACCT_REWRITE_DEST || 'http://localhost:5173';
     const isDev = process.env.NODE_ENV !== 'production';
 
     const rules = [
@@ -26,35 +25,31 @@ const nextConfig = {
       },
     ];
 
-    // Accounting frontend (Vite dev server or hosted static)
+    // Accounting frontend
     if (isDev) {
+      // Dev: proxy to Vite dev server
       rules.push(
         {
           source: '/@vite/:path*',
-          destination: `${ACCT_DEST}/@vite/:path*`,
+          destination: 'http://localhost:5173/@vite/:path*',
         },
         {
           source: '/accounting',
-          destination: `${ACCT_DEST}/accounting/`,
+          destination: 'http://localhost:5173/accounting/',
         },
         {
           source: '/accounting/:path*',
-          destination: `${ACCT_DEST}/accounting/:path*`,
+          destination: 'http://localhost:5173/accounting/:path*',
         }
       );
     } else {
-      // In production, serve built accounting frontend from /accounting/*
-      // Or proxy to hosted URL — set NEXT_PUBLIC_ACCT_REWRITE_DEST
-      rules.push(
-        {
-          source: '/accounting',
-          destination: `${ACCT_DEST}/accounting/`,
-        },
-        {
-          source: '/accounting/:path*',
-          destination: `${ACCT_DEST}/accounting/:path*`,
-        }
-      );
+      // Prod: serve built static files from public/accounting/
+      // Build the accounting frontend with VITE_BASE_PATH=/accounting/
+      // and copy output to public/accounting/ before deploy
+      rules.push({
+        source: '/accounting',
+        destination: '/accounting/index.html',
+      });
     }
 
     return rules;
