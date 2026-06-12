@@ -16,7 +16,11 @@ const nextConfig = {
   },
   async rewrites() {
     const API_DEST = process.env.NEXT_PUBLIC_API_REWRITE_DEST || 'http://localhost:3001';
-    const ACCT_DEST = process.env.NEXT_PUBLIC_ACCT_REWRITE_DEST || 'http://localhost:5173';
+    const ACCT_DEST = process.env.NEXT_PUBLIC_ACCT_REWRITE_DEST || (
+      process.env.NODE_ENV === 'production'
+        ? 'https://main.d1a84tkrk4twmi.amplifyapp.com'
+        : 'http://localhost:5173'
+    );
     const isDev = process.env.NODE_ENV !== 'production';
 
     const rules = [
@@ -26,8 +30,9 @@ const nextConfig = {
       },
     ];
 
-    // Accounting frontend (Vite dev server or hosted static)
+    // Accounting frontend
     if (isDev) {
+      // Dev: proxy to Vite dev server
       rules.push(
         {
           source: '/@vite/:path*',
@@ -43,8 +48,7 @@ const nextConfig = {
         }
       );
     } else {
-      // In production, serve built accounting frontend from /accounting/*
-      // Or proxy to hosted URL — set NEXT_PUBLIC_ACCT_REWRITE_DEST
+      // Prod: proxy to hosted accounting frontend
       rules.push(
         {
           source: '/accounting',
