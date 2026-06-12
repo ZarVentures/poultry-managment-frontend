@@ -35,21 +35,18 @@ const FarmLedgerPage = () => {
 
   useEffect(() => {
     if (!selectedId) return
-    const selectedFarmer = farmers.find(f => f.id === selectedId)
-    if (!selectedFarmer) return
 
     setLoadingLedger(true)
-    // Fetch ledger entries from billing API using farmer name
-    billingApi.getLedgerByName(selectedFarmer.name)
+    billingApi.getLedgerByFarmerId(selectedId)
       .then(entries => {
-        setLedgerEntries(entries || [])
+        setLedgerEntries(Array.isArray(entries) ? entries : [])
       })
       .catch(err => {
         console.error('Ledger load error:', err)
         setLedgerEntries([])
       })
       .finally(() => setLoadingLedger(false))
-  }, [selectedId, farmers])
+  }, [selectedId])
 
   const selectedFarmer = farmers.find(f => f.id === selectedId)
 

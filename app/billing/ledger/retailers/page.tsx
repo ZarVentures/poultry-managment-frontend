@@ -36,21 +36,18 @@ const RetailerLedgerContent = () => {
 
   useEffect(() => {
     if (!selectedId) return
-    const selectedRetailer = retailers.find(r => r.id === selectedId)
-    if (!selectedRetailer) return
 
     setLoadingLedger(true)
-    // Fetch ledger entries from billing API using retailer name
-    billingApi.getLedgerByName(selectedRetailer.name)
+    billingApi.getLedgerByRetailerId(selectedId)
       .then(entries => {
-        setLedgerEntries(entries || [])
+        setLedgerEntries(Array.isArray(entries) ? entries : [])
       })
       .catch(err => {
         console.error('Ledger load error:', err)
         setLedgerEntries([])
       })
       .finally(() => setLoadingLedger(false))
-  }, [selectedId, retailers])
+  }, [selectedId])
 
   const selectedRetailer = retailers.find(r => r.id === selectedId)
 
