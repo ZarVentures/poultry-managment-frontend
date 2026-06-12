@@ -43,7 +43,7 @@ const nextConfig = {
      */
     rules.push({
       source: "/accounting-api/:path*",
-      destination: `${ACCT_API_BASE}/api/v1/:path*`,
+      destination: `${ACCT_API_BASE}/api/:path*`,
     });
 
     /**
