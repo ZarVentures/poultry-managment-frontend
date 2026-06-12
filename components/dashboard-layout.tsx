@@ -244,17 +244,15 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 {accountingOpen && sidebarOpen && (
                   <div className="ml-4 space-y-1 border-l border-sidebar-border">
                     {(() => {
-                      const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
-                      const qs = token ? `?token=${encodeURIComponent(token)}` : '';
                       const base = ACCOUNTING_URL?.startsWith('http') ? ACCOUNTING_URL : (ACCOUNTING_URL || '/accounting');
                       const links = [
-                        { href: `${base}/${qs}`, icon: LayoutDashboard, label: 'Dashboard' },
-                        { href: `${base}/transactions${qs}`, icon: TrendingUp, label: 'Transactions' },
-                        { href: `${base}/ledger${qs}`, icon: BookOpen, label: 'Ledger' },
-                        { href: `${base}/expenses${qs}`, icon: BarChart3, label: 'Expenses' },
-                        { href: `${base}/invoices${qs}`, icon: FileText, label: 'Invoices' },
-                        { href: `${base}/payments${qs}`, icon: Receipt, label: 'Payments' },
-                        { href: `${base}/reports${qs}`, icon: ChartNoAxesCombined, label: 'Reports' },
+                        { href: `${base}/`, icon: LayoutDashboard, label: 'Dashboard' },
+                        { href: `${base}/transactions`, icon: TrendingUp, label: 'Transactions' },
+                        { href: `${base}/ledger`, icon: BookOpen, label: 'Ledger' },
+                        { href: `${base}/expenses`, icon: BarChart3, label: 'Expenses' },
+                        { href: `${base}/invoices`, icon: FileText, label: 'Invoices' },
+                        { href: `${base}/payments`, icon: Receipt, label: 'Payments' },
+                        { href: `${base}/reports`, icon: ChartNoAxesCombined, label: 'Reports' },
                       ];
                       return links.map(l => (
                         <SidebarLink key={l.label} href={l.href} icon={l.icon} label={l.label} open={true} isSubItem={true} target="_self" />

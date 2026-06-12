@@ -48,16 +48,11 @@ const nextConfig = {
         }
       );
     } else {
-      // Prod: proxy to hosted accounting frontend
+      // Prod: serve built accounting frontend from public/accounting/
+      // Assets served directly, all other routes → index.html for SPA client-side routing
       rules.push(
-        {
-          source: '/accounting',
-          destination: `${ACCT_DEST}/accounting/`,
-        },
-        {
-          source: '/accounting/:path*',
-          destination: `${ACCT_DEST}/accounting/:path*`,
-        }
+        { source: '/accounting', destination: '/accounting/index.html' },
+        { source: '/accounting/:path*', destination: '/accounting/index.html' }
       );
     }
 
