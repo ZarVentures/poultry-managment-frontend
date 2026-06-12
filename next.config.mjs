@@ -16,6 +16,11 @@ const nextConfig = {
   },
   async rewrites() {
     const API_DEST = process.env.NEXT_PUBLIC_API_REWRITE_DEST || 'http://localhost:3001';
+    const ACCT_DEST = process.env.NEXT_PUBLIC_ACCT_REWRITE_DEST || (
+      process.env.NODE_ENV === 'production'
+        ? 'https://main.d1a84tkrk4twmi.amplifyapp.com'
+        : 'http://localhost:5173'
+    );
     const isDev = process.env.NODE_ENV !== 'production';
 
     const rules = [
@@ -31,25 +36,29 @@ const nextConfig = {
       rules.push(
         {
           source: '/@vite/:path*',
-          destination: 'http://localhost:5173/@vite/:path*',
+          destination: `${ACCT_DEST}/@vite/:path*`,
         },
         {
           source: '/accounting',
-          destination: 'http://localhost:5173/accounting/',
+          destination: `${ACCT_DEST}/accounting/`,
         },
         {
           source: '/accounting/:path*',
-          destination: 'http://localhost:5173/accounting/:path*',
+          destination: `${ACCT_DEST}/accounting/:path*`,
         }
       );
     } else {
-      // Prod: serve built static files from public/accounting/
-      // Build the accounting frontend with VITE_BASE_PATH=/accounting/
-      // and copy output to public/accounting/ before deploy
-      rules.push({
-        source: '/accounting',
-        destination: '/accounting/index.html',
-      });
+      // Prod: proxy to hosted accounting frontend
+      rules.push(
+        {
+          source: '/accounting',
+          destination: `${ACCT_DEST}/accounting/`,
+        },
+        {
+          source: '/accounting/:path*',
+          destination: `${ACCT_DEST}/accounting/:path*`,
+        }
+      );
     }
 
     return rules;
