@@ -21,7 +21,7 @@ const nextConfig = {
       process.env.NEXT_PUBLIC_API_REWRITE_DEST || "http://localhost:3001";
 
     const ACCT_API_BASE =
-      process.env.NEXT_PUBLIC_ACCT_API_DEST || "http://localhost:3000";
+      process.env.NEXT_PUBLIC_ACCT_API_DEST || "http://13.232.247.9:3000";
 
     const rules = [];
 
