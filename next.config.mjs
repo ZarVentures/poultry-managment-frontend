@@ -51,40 +51,16 @@ const nextConfig = {
      * ACCOUNTING FRONTEND ROUTES
      * =========================
      */
-    const isDev = process.env.NODE_ENV !== "production";
-
-    if (isDev) {
-      const ACCT_FRONTEND =
-        process.env.NEXT_PUBLIC_ACCT_REWRITE_DEST ||
-        "http://localhost:5173";
-
-      rules.push(
-        {
-          source: "/accounting",
-          destination: `${ACCT_FRONTEND}/accounting/`,
-        },
-        {
-          source: "/accounting/:path*",
-          destination: `${ACCT_FRONTEND}/accounting/:path*`,
-        }
-      );
-    } else {
-      /**
-       * =========================
-       * PRODUCTION: STATIC SPA
-       * =========================
-       */
-      rules.push(
-        {
-          source: "/accounting",
-          destination: "/accounting/index.html",
-        },
-        {
-          source: "/accounting/:path*",
-          destination: "/accounting/index.html",
-        }
-      );
-    }
+    rules.push(
+      {
+        source: "/accounting",
+        destination: "/accounting/index.html",
+      },
+      {
+        source: "/accounting/:path*",
+        destination: "/accounting/index.html",
+      }
+    );
 
     return rules;
   },
