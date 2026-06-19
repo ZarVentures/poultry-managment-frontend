@@ -246,7 +246,6 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     {(() => {
                       const base = ACCOUNTING_URL?.startsWith('http') ? ACCOUNTING_URL : (ACCOUNTING_URL || '/accounting');
                       const links = [
-                        { href: `${base}/`, icon: LayoutDashboard, label: 'Dashboard' },
                         { href: `${base}/transactions`, icon: TrendingUp, label: 'Transactions' },
                         { href: `${base}/ledger`, icon: BookOpen, label: 'Ledger' },
                         { href: `${base}/expenses`, icon: BarChart3, label: 'Expenses' },
