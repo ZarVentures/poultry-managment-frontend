@@ -115,7 +115,7 @@ export default function ExpensesPage() {
       const expenseData = {
         expenseDate: formData.expenseDate,
         expenseOwner: formData.expenseOwner || undefined,
-        categoryId: formData.categoryId ? String(formData.categoryId) : undefined,
+        categoryId: formData.categoryId,
         description: formData.description,
         amount: formData.amount,
         paymentMethod: formData.paymentMethod,
