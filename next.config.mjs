@@ -46,6 +46,22 @@ const nextConfig = {
       destination: `${ACCT_API_BASE}/api/:path*`,
     });
 
+    /**
+     * =========================
+     * ACCOUNTING FRONTEND SPA ROUTES
+     * =========================
+     */
+    rules.push(
+      {
+        source: "/accounting",
+        destination: "/accounting/index.html",
+      },
+      {
+        source: "/accounting/:path*",
+        destination: "/accounting/index.html",
+      }
+    );
+
     return rules;
   },
 };
