@@ -29,7 +29,7 @@ export default function BillingDashboard() {
   useEffect(() => {
     Promise.all([retailersApi.getAll(), salesApi.getAll(), purchasesApi.getAll()])
       .then(([retailers, sales, purchases]: [any[], any[], any[]]) => {
-      const totalSales = sales.reduce((s: number, x: any) => s + Number(x.netAmount || x.totalAmount || 0), 0)
+        const totalSales = sales.reduce((s: number, x: any) => s + Number(x.netAmount || x.totalAmount || 0), 0)
         const outstanding = sales.reduce((s: number, x: any) => s + Math.max(0, Number(x.netAmount || x.totalAmount || 0) - Number(x.amountReceived || 0)), 0)
         const pendingPurchases = purchases.filter((p: any) => p.purchasePaymentStatus === 'pending' || p.purchasePaymentStatus === 'partial')
           .reduce((s: number, p: any) => s + Number(p.balanceAmount || 0), 0)
@@ -58,6 +58,35 @@ export default function BillingDashboard() {
           <StatCard title="Outstanding" value={loading ? '...' : `₹${(stats.outstanding / 1000).toFixed(0)}K`} icon={TrendingUp} />
           <StatCard title="Pending Purchases" value={loading ? '...' : `₹${(stats.totalPurchases / 1000).toFixed(0)}K`} icon={BookOpen} />
         </div>
+
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Reports</h2>
+          <div className="grid gap-4 md:grid-cols-4">
+            <Link href="/billing/reports/outstanding">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow h-full">
+                <CardHeader><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4" />Outstanding Report</CardTitle></CardHeader>
+                <CardContent><p className="text-sm text-muted-foreground mb-4">Pending balance per retailer</p><Button variant="outline" size="sm">View</Button></CardContent>
+              </Card>
+            </Link>
+            <Link href="/billing/reports/dispatch">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow h-full">
+                <CardHeader><CardTitle className="text-base flex items-center gap-2"><BarChart3 className="h-4 w-4" />Daily Dispatch</CardTitle></CardHeader>
+                <CardContent><p className="text-sm text-muted-foreground mb-4">Sales summary by date</p><Button variant="outline" size="sm">View</Button></CardContent>
+              </Card>
+            </Link>
+            <Link href="/billing/reports/collection">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow h-full">
+                <CardHeader><CardTitle className="text-base flex items-center gap-2"><CreditCard className="h-4 w-4" />Collection Report</CardTitle></CardHeader>
+                <CardContent><p className="text-sm text-muted-foreground mb-4">Payment received analysis</p><Button variant="outline" size="sm">View</Button></CardContent>
+              </Card>
+            </Link>
+            <Link href="/billing/reports/pending-purchases">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow h-full">
+                <CardHeader><CardTitle className="text-base flex items-center gap-2"><ShoppingCart className="h-4 w-4" />Pending Purchases</CardTitle></CardHeader>
+                <CardContent><p className="text-sm text-muted-foreground mb-4">Purchases with outstanding payments</p><Button variant="outline" size="sm">View</Button></CardContent>
+              </Card>
+            </Link>
+          </div>
         </div>
 
         <div>
