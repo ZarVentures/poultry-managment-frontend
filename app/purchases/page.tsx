@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, Download, Printer, Eye, Paperclip, X } from "lucide-react"
+import { Plus, Edit2, Trash2, Download, Printer, Eye, Paperclip, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
@@ -35,6 +35,10 @@ export default function PurchasesPage() {
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(10)
+  const [totalRecords, setTotalRecords] = useState(0)
+  const [summaryTotals, setSummaryTotals] = useState({ totalWeight: 0, totalAmount: 0, totalPaid: 0, totalBalance: 0, count: 0 })
   const [editingId, setEditingId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>()
@@ -77,17 +81,36 @@ export default function PurchasesPage() {
         setUserRole(user.role || "")
       } catch {}
     }
-    fetchPurchases()
     fetchInvoiceList()
     fetchFarmers()
     fetchVehicles()
   }, [])
 
+  useEffect(() => {
+    fetchPurchases()
+  }, [currentPage, pageSize, searchQuery, dateRangeStart, dateRangeEnd, filterPaymentStatus])
+
   const fetchPurchases = async () => {
     try {
       setLoading(true)
-      const data = await purchasesApi.getAll()
-      setPurchases(Array.isArray(data) ? data : [])
+      const data = await purchasesApi.getAll({
+        page: currentPage,
+        limit: pageSize,
+        supplier: searchQuery || undefined,
+        startDate: dateRangeStart?.toISOString().split("T")[0],
+        endDate: dateRangeEnd?.toISOString().split("T")[0],
+        status: filterPaymentStatus || undefined,
+      })
+
+      if (data && typeof data === "object" && "data" in data) {
+        setPurchases(Array.isArray(data.data) ? data.data : [])
+        setTotalRecords(Number(data.total || 0))
+        setSummaryTotals(data.summary || { totalWeight: 0, totalAmount: 0, totalPaid: 0, totalBalance: 0, count: 0 })
+      } else {
+        setPurchases(Array.isArray(data) ? data : [])
+        setTotalRecords(Array.isArray(data) ? data.length : 0)
+        setSummaryTotals({ totalWeight: 0, totalAmount: 0, totalPaid: 0, totalBalance: 0, count: Array.isArray(data) ? data.length : 0 })
+      }
     } catch { toast.error("Failed to load purchases") }
     finally { setLoading(false) }
   }
@@ -270,30 +293,14 @@ export default function PurchasesPage() {
     finally { setLoading(false) }
   }
 
-  const filtered = useMemo(() => {
-    let list = [...purchases]
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      list = list.filter(p => p.orderNumber.toLowerCase().includes(q) || p.supplierName.toLowerCase().includes(q))
-    }
-
-    if (filterPaymentStatus) {
-      list = list.filter(p => p.purchasePaymentStatus === filterPaymentStatus)
-    }
-    if (dateRangeStart && dateRangeEnd) {
-      const s = new Date(dateRangeStart); s.setHours(0,0,0,0)
-      const e = new Date(dateRangeEnd); e.setHours(23,59,59,999)
-      list = list.filter(p => { const d = new Date(p.orderDate); return d >= s && d <= e })
-    }
-    return list
-  }, [purchases, searchQuery, dateRangeStart,filterPaymentStatus, dateRangeEnd])
+  const filtered = useMemo(() => [...purchases], [purchases])
 
   const stats = useMemo(() => ({
-    total: filtered.length,
+    total: totalRecords || summaryTotals.count || filtered.length,
     totalBirds: filtered.reduce((s, p) => s + (p.cages || []).reduce((cs, c) => cs + Number(c.numberOfBirds || 0), 0), 0),
-    totalValue: filtered.reduce((s, p) => s + Number(p.netAmount || p.totalAmount || 0), 0),
-    totalPaid: filtered.reduce((s, p) => s + Number(p.totalPaymentMade || 0), 0),
-  }), [filtered])
+    totalValue: summaryTotals.totalAmount || filtered.reduce((s, p) => s + Number(p.netAmount || p.totalAmount || 0), 0),
+    totalPaid: summaryTotals.totalPaid || filtered.reduce((s, p) => s + Number(p.totalPaymentMade || 0), 0),
+  }), [filtered, summaryTotals, totalRecords])
 
   function FarmerSearch({ value, onChange, disabled }: { value: string; onChange: (id: string) => void; disabled?: boolean }) {
     const [query, setQuery] = useState("")
@@ -633,9 +640,9 @@ export default function PurchasesPage() {
                 <p className="text-sm text-muted-foreground">View and manage all purchase orders</p>
               </div> */}
               <div className="flex items-center gap-2 flex-wrap">
-                <DateRangeFilter startDate={dateRangeStart} endDate={dateRangeEnd} onDateRangeChange={(s, e) => { setDateRangeStart(s); setDateRangeEnd(e) }} />
-                <Input placeholder="Search by bill no, farmer..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[220px]" />
-                <Select value={filterPaymentStatus || '__all__'} onValueChange={v => setFilterPaymentStatus(v === '__all__' ? '' : v)}>
+                <DateRangeFilter startDate={dateRangeStart} endDate={dateRangeEnd} onDateRangeChange={(s, e) => { setDateRangeStart(s); setDateRangeEnd(e); setCurrentPage(1) }} />
+                <Input placeholder="Search by bill no, farmer..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1) }} className="w-[220px]" />
+                <Select value={filterPaymentStatus || '__all__'} onValueChange={v => { setFilterPaymentStatus(v === '__all__' ? '' : v); setCurrentPage(1) }}>
     <SelectTrigger className="w-[160px]">
       <SelectValue placeholder="All Status" />
     </SelectTrigger>
@@ -722,6 +729,23 @@ export default function PurchasesPage() {
                     ))}
                   </TableBody>
                 </Table>
+              </div>
+            )}
+
+            {totalRecords > pageSize && (
+              <div className="flex flex-col gap-3 border-t pt-4 mt-4 md:flex-row md:items-center md:justify-between">
+                <div className="text-sm text-gray-500">
+                  Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalRecords)} of {totalRecords} entries
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1 || loading}>
+                    <ChevronLeft size={16} />
+                  </Button>
+                  <Button variant="default" size="sm" disabled>{currentPage}</Button>
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage * pageSize >= totalRecords || loading}>
+                    <ChevronRight size={16} />
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
