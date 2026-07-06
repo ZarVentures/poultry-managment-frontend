@@ -191,7 +191,7 @@ export default function GodownInwardPage() {
       else next.add(id)
       // Auto-fill birds from selected cages; weight comes from godownWeight entries
       const selected = purchaseCages.filter(c => next.has(c.id))
-      const totalBirds = selected.reduce((s, c) => s + c.numberOfBirds, 0)
+      const totalBirds = selected.reduce((s, c) => s + Number(c.numberOfBirds ?? 0), 0)
       const totalGodownWt = selected.reduce((s, c) => s + (Number(c.godownWeight) || 0), 0)
       setFormData(f => ({
         ...f,
@@ -208,7 +208,7 @@ export default function GodownInwardPage() {
       setFormData(f => ({ ...f, numberOfBirds: '', totalWeight: '' }))
     } else {
       const allIds = new Set(purchaseCages.map(c => c.id))
-      const totalBirds = purchaseCages.reduce((s, c) => s + c.numberOfBirds, 0)
+      const totalBirds = purchaseCages.reduce((s, c) => s + Number(c.numberOfBirds ?? 0), 0)
       const totalGodownWt = purchaseCages.reduce((s, c) => s + (Number(c.godownWeight) || 0), 0)
       setSelectedCageIds(allIds)
       setFormData(f => ({
@@ -307,12 +307,12 @@ export default function GodownInwardPage() {
         totalAmount,
         notes: formData.notes || undefined,
         cages: cages
-          .filter(c => c.numberOfBirds > 0 || c.cageWeight > 0)
+          .filter(c => Number(c.numberOfBirds ?? 0) > 0 || Number(c.cageWeight ?? 0) > 0)
           .map(c => ({
             cageId: c.cageId || undefined,
             birdType: c.birdType || undefined,
-            numberOfBirds: Number(c.numberOfBirds) || 0,
-            cageWeight: Number(c.cageWeight) || 0,
+            numberOfBirds: Number(c.numberOfBirds ?? 0) || 0,
+            cageWeight: Number(c.cageWeight ?? 0) || 0,
           })),
       }
 
@@ -564,7 +564,7 @@ export default function GodownInwardPage() {
                                         setSelectedCageIds(prev => {
                                           const next = new Set([...prev, cage.id])
                                           const selected = updatedCages.filter(c => next.has(c.id))
-                                          const totalBirds = selected.reduce((s, c) => s + c.numberOfBirds, 0)
+                                          const totalBirds = selected.reduce((s, c) => s + Number(c.numberOfBirds ?? 0), 0)
                                           const totalGodownWt = selected.reduce((s, c) => s + (Number(c.godownWeight) || 0), 0)
                                           setFormData(f => ({
                                             ...f,
@@ -608,7 +608,7 @@ export default function GodownInwardPage() {
                               return (
                                 <tr className="border-t font-semibold bg-blue-100">
                                   <td colSpan={2} className="p-1">{selectedCageIds.size} selected / {purchaseCages.length} total</td>
-                                  <td className="p-1 text-right">{selCages.reduce((s, c) => s + c.numberOfBirds, 0)}</td>
+                                  <td className="p-1 text-right">{selCages.reduce((s, c) => s + Number(c.numberOfBirds ?? 0), 0)}</td>
                                   <td className="p-1 text-right">{totalPurchaseWt.toFixed(2)}</td>
                                   <td className="p-1 text-right">{totalGodownWt.toFixed(2)}</td>
                                   <td className="p-1 text-right">

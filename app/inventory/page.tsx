@@ -7,6 +7,7 @@ import { Package, Bird, FileText, Calendar, AlertCircle, Percent, ChevronLeft, C
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DateRangeFilter } from "@/components/date-range-filter"
 import { godownApi, settingsApi } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -25,6 +26,8 @@ export default function InventoryPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(15)
   const [totalInwardItems, setTotalInwardItems] = useState(0)
+  const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
+  const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
 
   useEffect(() => {
     setMounted(true)
@@ -34,6 +37,20 @@ export default function InventoryPage() {
   useEffect(() => {
     if (mounted) fetchInwardData()
   }, [mounted, currentPage])
+
+  const filteredInwardEntries = useMemo(() => {
+    if (!dateRangeStart && !dateRangeEnd) return inwardEntries
+    return inwardEntries.filter(e => {
+      const d = new Date(e.entryDate)
+      if (dateRangeStart && d < dateRangeStart) return false
+      if (dateRangeEnd) {
+        const end = new Date(dateRangeEnd)
+        end.setHours(23, 59, 59, 999)
+        if (d > end) return false
+      }
+      return true
+    })
+  }, [inwardEntries, dateRangeStart, dateRangeEnd])
 
   const fetchOverviewData = async () => {
     try {
@@ -115,7 +132,12 @@ export default function InventoryPage() {
         </div>
 
         <Card>
-          <CardHeader><CardTitle className="flex items-center gap-2"><FileText size={20} />Purchase Invoice Stock</CardTitle></CardHeader>
+          <CardHeader>
+            <div className="flex flex-wrap justify-between items-center gap-2">
+              <CardTitle className="flex items-center gap-2"><FileText size={20} />Purchase Invoice Stock</CardTitle>
+              <DateRangeFilter startDate={dateRangeStart} endDate={dateRangeEnd} onDateRangeChange={(s, e) => { setDateRangeStart(s); setDateRangeEnd(e); setCurrentPage(1) }} />
+            </div>
+          </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
@@ -124,7 +146,7 @@ export default function InventoryPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {inwardEntries.map(e => (
+                {filteredInwardEntries.map(e => (
                   <TableRow key={e.id}>
                     <TableCell className="font-bold">{e.purchaseInvoiceNo}</TableCell>
                     <TableCell>{new Date(e.entryDate).toLocaleDateString()}</TableCell>

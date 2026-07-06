@@ -184,6 +184,23 @@ export default function GodownSalePage() {
         amount: p.amount 
       }))
       
+      let cagePayload: Array<{ cageId: string; soldBirds: number; soldWeight: number; weightLoss: number }> = []
+      if (formData.purchaseBillNo) {
+        try {
+          const matchedCages = await purchasesApi.getCagesByOrderNumber(formData.purchaseBillNo, 'in_godown')
+          cagePayload = matchedCages
+            .filter((c: any) => c?.id)
+            .map((c: any) => ({
+              cageId: c.id,
+              soldBirds: Number(c.numberOfBirds || 0),
+              soldWeight: Number(c.godownInwardWeight ?? c.purchaseWeight ?? 0),
+              weightLoss: parseFloat(formData.weightLoss) || 0,
+            }))
+        } catch (error) {
+          console.warn('Could not resolve in-godown cages for purchase bill:', error)
+        }
+      }
+
       const saleData = {
         saleDate: formData.saleDate,
         invoiceNumber: formData.invoiceNumber || undefined,
@@ -197,6 +214,8 @@ export default function GodownSalePage() {
         notes: formData.notes,
         weightLoss: parseFloat(formData.weightLoss) || 0,
         payments: validPayments,
+        cages: cagePayload,
+        cageIds: cagePayload.map((c) => c.cageId),
       }
 
       if (editingId) {
@@ -680,7 +699,7 @@ export default function GodownSalePage() {
                       <TableHead className="font-bold">GDS No</TableHead>
                       <TableHead className="font-bold">Date</TableHead>
                       <TableHead className="font-bold">Customer</TableHead>
-                      <TableHead className="font-bold">Quantity</TableHead>
+                      <TableHead className="font-bold">Birds</TableHead>
                       <TableHead className="font-bold">Rate</TableHead>
                       <TableHead className="font-bold">Total</TableHead>
                       <TableHead className="font-bold">Received</TableHead>
