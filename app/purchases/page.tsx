@@ -663,6 +663,7 @@ export default function PurchasesPage() {
                       <TableHead className="font-bold">Supplier</TableHead>
                       <TableHead className="font-bold">Date</TableHead>
                       <TableHead className="font-bold">Total Weight</TableHead>
+                      <TableHead className="font-bold">Birds</TableHead>
                       <TableHead className="font-bold">Rate/Kg</TableHead>
                       <TableHead className="font-bold">Net Amount</TableHead>
                       <TableHead className="font-bold">Payment Status</TableHead>
@@ -677,6 +678,7 @@ export default function PurchasesPage() {
                         <TableCell>{p.supplierName}</TableCell>
                         <TableCell>{new Date(p.orderDate).toLocaleDateString()}</TableCell>
                         <TableCell>{Number(p.totalWeight || 0).toFixed(2)} kg</TableCell>
+                        <TableCell>{(p.cages || []).reduce((s: number, c: any) => s + Number(c.numberOfBirds || 0), 0)}</TableCell>
                         <TableCell>₹{Number(p.ratePerKg || 0).toFixed(2)}</TableCell>
                         <TableCell>₹{Number(p.netAmount || p.totalAmount || 0).toFixed(2)}</TableCell>
                         <TableCell>
