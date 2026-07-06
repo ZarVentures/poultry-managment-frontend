@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Edit2, Trash2, X, Printer, ChevronLeft, ChevronRight } from "lucide-react"
+import { DateRangeFilter } from "@/components/date-range-filter"
 import { Textarea } from "@/components/ui/textarea"
 import { godownApi, type GodownMortality, type GodownInward } from "@/lib/api"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -26,6 +27,8 @@ export default function GodownMortalityPage() {
   const [showDialog, setShowDialog] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
+  const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
+  const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(20)
   const [totalItems, setTotalItems] = useState(0)
@@ -65,7 +68,21 @@ export default function GodownMortalityPage() {
 
   useEffect(() => {
     if (mounted) fetchMortalities()
-  }, [mounted, currentPage, searchQuery])
+  }, [mounted, currentPage, searchQuery, dateRangeStart, dateRangeEnd])
+
+  const filteredMortalities = useMemo(() => {
+    if (!dateRangeStart && !dateRangeEnd) return mortalities
+    return mortalities.filter(m => {
+      const d = new Date(m.mortalityDate)
+      if (dateRangeStart && d < dateRangeStart) return false
+      if (dateRangeEnd) {
+        const end = new Date(dateRangeEnd)
+        end.setHours(23, 59, 59, 999)
+        if (d > end) return false
+      }
+      return true
+    })
+  }, [mortalities, dateRangeStart, dateRangeEnd])
 
   const resetForm = () => {
     setFormData({ mortalityDate: new Date().toISOString().split("T")[0], godownInwardId: "", numberOfBirdsDied: "", weightOfDeadBirds: "", reason: "", notes: "" })
@@ -145,16 +162,19 @@ export default function GodownMortalityPage() {
 
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center gap-2">
+            <div className="flex flex-wrap justify-between items-center gap-2">
               <CardTitle>Mortality Records</CardTitle>
-              <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[250px]" />
+              <div className="flex items-center gap-2">
+                <DateRangeFilter startDate={dateRangeStart} endDate={dateRangeEnd} onDateRangeChange={(s, e) => { setDateRangeStart(s); setDateRangeEnd(e); setCurrentPage(1) }} />
+                <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[200px]" />
+              </div>
             </div>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Inward</TableHead><TableHead>Birds</TableHead><TableHead>Weight</TableHead><TableHead>Reason</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
               <TableBody>
-                {mortalities.map(m => (
+                {filteredMortalities.map(m => (
                   <TableRow key={m.id}>
                     <TableCell>{new Date(m.mortalityDate).toLocaleDateString()}</TableCell>
                     <TableCell>{(m as any).godownInward?.purchaseInvoiceNo || (m as any).godownInwardId || '-'}</TableCell>

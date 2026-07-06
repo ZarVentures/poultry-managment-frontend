@@ -430,8 +430,8 @@ export interface GodownCage {
   id?: string;
   cageId?: string;
   birdType?: string;
-  numberOfBirds: number;
-  cageWeight: number;
+  numberOfBirds?: number;
+  cageWeight?: number;
   purchaseOrderId?: string;
   godownInwardId?: string;
   soldBirds?: number;
