@@ -1361,7 +1361,6 @@ export default function SalesPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="font-bold">Sale No</TableHead>
-                      <TableHead className="font-bold">Bill No</TableHead>
                       <TableHead className="font-bold">Purchase Bill</TableHead>
                       <TableHead className="font-bold">Date</TableHead>
                       <TableHead className="font-bold">Customer</TableHead>
@@ -1380,7 +1379,6 @@ export default function SalesPage() {
                     {filtered.map(s => (
                       <TableRow key={s.id}>
                         <TableCell>{(s as any).saleNo || '-'}</TableCell>
-                        <TableCell>{s.invoiceNumber}</TableCell>
                         <TableCell>{(s as any).purchaseBillNo || '-'}</TableCell>
                         <TableCell>{new Date(s.saleDate).toLocaleDateString()}</TableCell>
                         <TableCell>{s.customerName}</TableCell>

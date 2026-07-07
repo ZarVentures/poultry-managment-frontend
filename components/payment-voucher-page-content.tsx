@@ -201,14 +201,14 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
       <div className="bg-white px-6 py-8 border-b border-gray-200">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <h1 className="text-4xl md:text-5xl font-extrabold tracking-wide uppercase text-black">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-wide uppercase text-black">
               {config.pageTitle}
             </h1>
-            <p className="text-gray-500 mt-3 text-sm md:text-lg">{config.subtitle}</p>
+            <p className="text-gray-500 mt-2 text-sm md:text-base">{config.subtitle}</p>
           </div>
           <div className="md:text-right">
             <p className="text-gray-400 text-sm font-semibold uppercase">Voucher number</p>
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-700 tabular-nums">{displayId}</h2>
+            <h2 className="text-lg md:text-xl font-semibold text-gray-700 tabular-nums">{displayId}</h2>
             <p className="text-xs text-muted-foreground mt-1 max-w-[220px] md:ml-auto">
               {lastVoucherNumber ? "Last saved on this session" : config.headerHint}
             </p>
