@@ -362,6 +362,51 @@ export default function GodownSalePage() {
     }
   }
 
+  const handlePrintSale = (sale: GodownSale) => {
+    const content = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Godown Sale - ${sale.invoiceNumber || ''}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1 { text-align: center; margin-bottom: 10px; }
+            .meta { margin-bottom: 10px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <h1>Godown Sale</h1>
+          <div class="meta">
+            <div><strong>GDS No:</strong> ${sale.invoiceNumber || '-'}</div>
+            <div><strong>Date:</strong> ${new Date(sale.saleDate).toLocaleDateString()}</div>
+            <div><strong>Customer:</strong> ${sale.customerName || '-'}</div>
+          </div>
+          <table>
+            <thead>
+              <tr><th>Item</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Number of Birds</td><td>${sale.numberOfBirds || '-'}</td></tr>
+              <tr><td>Rate per Kg</td><td>₹${Number(sale.ratePerKg || 0).toFixed(2)}/kg</td></tr>
+              <tr><td>Total Amount</td><td>₹${Number(sale.totalAmount || 0).toFixed(2)}</td></tr>
+              <tr><td>Notes</td><td>${(sale as any).notes || '-'}</td></tr>
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `
+
+    const win = window.open('', '_blank')
+    if (win) {
+      win.document.write(content)
+      win.document.close()
+      win.onload = () => win.print()
+    }
+  }
+
   if (!mounted) return null
 
   return (
@@ -737,6 +782,9 @@ export default function GodownSalePage() {
                             <div className="flex gap-2">
                               <Button variant="ghost" size="sm" onClick={() => handleEdit(sale)}>
                                 <Edit2 size={16} />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handlePrintSale(sale)}>
+                                <Printer size={16} />
                               </Button>
                               <Button variant="ghost" size="sm" onClick={() => handleDelete(sale.id)}>
                                 <Trash2 size={16} />
