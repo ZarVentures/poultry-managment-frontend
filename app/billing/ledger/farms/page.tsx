@@ -192,7 +192,7 @@ const FarmLedgerPage = () => {
                       
                       return (
                         <TableRow key={idx} className={`border-b border-gray-200 ${typeLabel === 'Payment' ? 'bg-green-50' : typeLabel === 'Voucher' ? 'bg-purple-50' : typeLabel === 'Purchase' ? 'bg-blue-50/30' : ''}`}>
-                          <TableCell>{new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN')}</TableCell>
+                          <TableCell>{new Date(e.date + 'T00:00:00').toLocaleDateString('en-GB')}</TableCell>
                           <TableCell>
                             <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${typeColor}`}>{typeLabel}</span>
                           </TableCell>

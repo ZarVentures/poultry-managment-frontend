@@ -160,7 +160,7 @@ export default function VehiclesPage() {
                 <tr>
                   <td>${v.vehicleNumber}</td><td>${v.vehicleType}</td><td>${v.ownerName || "-"}</td>
                   <td>${v.driverName}</td><td>${v.phone}</td>
-                  <td>${new Date(v.joinDate).toLocaleDateString()}</td>
+                  <td>${new Date(v.joinDate).toLocaleDateString('en-GB')}</td>
                   <td>${v.status}</td>
                 </tr>
               `).join('')}

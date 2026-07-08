@@ -202,6 +202,7 @@ export default function GodownSalePage() {
       }
 
       const saleData = {
+        retailerId: formData.retailerId || undefined,
         saleDate: formData.saleDate,
         invoiceNumber: formData.invoiceNumber || undefined,
         customerName: formData.customerName,
@@ -339,7 +340,7 @@ export default function GodownSalePage() {
               ${filteredSales.map(sale => `
                 <tr>
                   <td>${sale.invoiceNumber || "-"}</td>
-                  <td>${new Date(sale.saleDate).toLocaleDateString()}</td>
+                  <td>${new Date(sale.saleDate).toLocaleDateString('en-GB')}</td>
                   <td>${sale.customerName}</td>
                   <td>${sale.numberOfBirds} birds</td>
                   <td>₹${Number(sale.ratePerKg || 0).toFixed(2)}/kg</td>
@@ -363,47 +364,239 @@ export default function GodownSalePage() {
   }
 
   const handlePrintSale = (sale: GodownSale) => {
-    const content = `
+    const received = Number((sale as any).amountReceived || 0)
+    const totalAmount = Number(sale.totalAmount || 0)
+    const balance = Math.max(0, totalAmount - received)
+    const payments = Array.isArray((sale as any).payments) ? (sale as any).payments : []
+    const subtotal = totalAmount
+    const discount = 0
+    const tax = 0
+    const grandTotal = subtotal - discount + tax
+    const invoiceNumber = sale.invoiceNumber || "INV-2026-000124"
+    const invoiceDate = new Date(sale.saleDate).toLocaleDateString('en-GB')
+    const dueDate = new Date(sale.saleDate)
+    dueDate.setDate(dueDate.getDate() + 7)
+    const dueDateLabel = dueDate.toLocaleDateString('en-GB')
+    const paymentStatus = ((sale as any).paymentStatus || "pending").toUpperCase()
+    const matchedRetailer = 
+      retailers.find((r) => String(r.id) === String((sale as any).retailerId || "")) ||
+      retailers.find((r) => r.name.toLowerCase() === String(sale.customerName || "").toLowerCase().trim()) ||
+      (sale as any).retailer || null
+    const customerPhone = String(
+      (sale as any).customerPhone ||
+      (sale as any).phone ||
+      matchedRetailer?.phone ||
+      ""
+    ).trim()
+    const customerAddress = String(
+      (sale as any).customerAddress ||
+      (sale as any).address ||
+      matchedRetailer?.address ||
+      ""
+    ).trim()
+    const barcodeBars = Array.from({ length: 36 }, (_, i) => `<span style="height:${10 + (i % 5) * 3}px"></span>`).join("")
+    const qrPattern = Array.from({ length: 64 }, (_, i) => `<span class="qr-cell ${i % 7 === 0 || i % 11 === 3 || i % 13 === 2 ? "active" : ""}"></span>`).join("")
+
+    const invoiceHtml = `
+      <div class="invoice-shell">
+        <div class="header-row">
+          <div class="brand-block">
+            <div class="logo-mark">AF</div>
+            <div>
+              <div class="brand-name">Aziz Poultry Farms</div>
+              <div class="brand-sub">Premium Poultry ERP • Business Invoice</div>
+            </div>
+          </div>
+          <div class="invoice-meta">
+            <div class="invoice-title">Invoice</div>
+            <div class="meta-row"><span>Invoice No</span><strong>${invoiceNumber}</strong></div>
+            <div class="meta-row"><span>Invoice Date</span><strong>${invoiceDate}</strong></div>
+            <div class="meta-row"><span>Due Date</span><strong>${dueDateLabel}</strong></div>
+            <div class="status-pill">${paymentStatus}</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="info-grid">
+          <div class="card">
+            <div class="card-title">Customer Information</div>
+            <div class="customer-name">${sale.customerName || "Walk-in Customer"}</div>
+            <div class="info-list">
+              <div class="info-item"><span class="label">Phone</span><span class="value">${customerPhone || "—"}</span></div>
+              <div class="info-item"><span class="label">Address</span><span class="value">${customerAddress || "—"}</span></div>
+              
+            </div>
+          </div>
+
+          <div class="card summary-card">
+            <div class="card-title">Invoice Summary</div>
+            <div class="summary-row"><span>Subtotal</span><strong>₹${subtotal.toFixed(2)}</strong></div>
+            <div class="summary-row"><span>Discount</span><strong>₹${discount.toFixed(2)}</strong></div>
+            <div class="summary-row"><span>Tax</span><strong>₹${tax.toFixed(2)}</strong></div>
+            <div class="summary-row grand"><span>Grand Total</span><strong>₹${grandTotal.toFixed(2)}</strong></div>
+            <div class="summary-row"><span>Amount Paid</span><strong>₹${received.toFixed(2)}</strong></div>
+            <div class="summary-row"><span>Remaining Balance</span><strong>₹${balance.toFixed(2)}</strong></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="card-title">Invoice Details</div>
+          <table class="invoice-table">
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th>Birds</th>
+                <th>Weight (kg)</th>
+                <th>Rate/kg</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Godown sale of birds</td>
+                <td>${sale.numberOfBirds || 0}</td>
+                <td>${Number(sale.totalWeight || 0).toFixed(2)}</td>
+                <td>₹${Number(sale.ratePerKg || 0).toFixed(2)}</td>
+                <td>₹${grandTotal.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        ${payments.length > 0 ? `
+        <div class="section" style="margin-top:12px;">
+          <div class="card-title">Payment Breakdown</div>
+          <table class="invoice-table payments-table">
+            <thead>
+              <tr>
+                <th>Mode</th>
+                <th style="text-align:right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${payments.map((p: any) => `
+                <tr>
+                  <td>${(p.paymentMode || "cash").charAt(0).toUpperCase() + (p.paymentMode || "cash").slice(1)}</td>
+                  <td style="text-align:right">₹${Number(p.amount || 0).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+              <tr class="total-row">
+                <td><strong>Total Paid</strong></td>
+                <td style="text-align:right"><strong>₹${received.toFixed(2)}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        ` : ''}
+
+        <div class="bottom-grid">
+          <div class="card notes-card" style="display:flex; flex-direction:column; justify-content:space-between;">
+            <div class="card-title">Notes / Terms & Conditions</div>
+            <div class="terms">${sale.notes ? sale.notes.replace(/\n/g, '<br/>') : 'Payment due within 7 days. All disputes to be resolved within business days.'}</div>
+          </div>
+          <div class="card" style="display:flex; flex-direction:column; justify-content:space-between;">
+            <div class="signature-row">
+              <div class="signature-block">
+                <div class="signature-line"></div>
+                <div class="label">Authorized Signature</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-row">
+          <div class="barcode">${barcodeBars}</div>
+          <div class="thank-you">Thank You For Your Business</div>
+        </div>
+      </div>
+    `
+
+    const printContent = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Godown Sale - ${sale.invoiceNumber || ''}</title>
+          <meta charset="utf-8" />
+          <title>Invoice - ${sale.invoiceNumber || "Godown Sale"}</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            h1 { text-align: center; margin-bottom: 10px; }
-            .meta { margin-bottom: 10px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; font-weight: bold; }
+            body { font-family: Inter, Arial, sans-serif; margin: 0; padding: 0; color: #111; background: #f4f4f5; }
+            @page { size: A4 portrait; margin: 8mm; }
+            .page { width: 100%; max-width: 210mm; margin: 0 auto; padding: 0; }
+            .invoice-shell { position: relative; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 18px 20px 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); min-height: 135mm; }
+            .header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
+            .brand-block { display: flex; align-items: center; gap: 10px; }
+            .logo-mark { width: 44px; height: 44px; border-radius: 12px; background: #111; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; letter-spacing: 0.08em; }
+            .brand-name { font-size: 17px; font-weight: 700; color: #111; }
+            .brand-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
+            .invoice-meta { text-align: right; min-width: 210px; }
+            .invoice-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; color: #111; }
+            .meta-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: #4b5563; margin-top: 3px; }
+            .meta-row strong { color: #111; }
+            .status-pill { display: inline-block; margin-top: 8px; padding: 6px 10px; border-radius: 999px; background: #22C55E; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; }
+            .divider { height: 1px; background: #e5e7eb; margin: 12px 0; }
+            .info-grid { display: grid; grid-template-columns: 1fr 0.8fr; gap: 12px; }
+            .card { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; }
+            .card-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #111827; margin-bottom: 8px; }
+            .customer-name { font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 8px; }
+            .info-list { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+            .info-item { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #4b5563; }
+            .info-item .label { color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; min-width: 70px; }
+            .info-item .value { font-weight: 700; color: #111827; text-align: right; }
+            .summary-card { background: #f8fafc; color: #111827; border-color: #e5e7eb; }
+            .summary-card .card-title, .summary-card .summary-row span, .summary-card .summary-row strong { color: #111827; }
+            .summary-row { display: flex; justify-content: space-between; font-size: 12px; margin-top: 7px; align-items: center; font-weight: 600; }
+            .summary-row.grand { font-size: 12px; font-weight: 700; padding: 6px 8px; border-top: 1px solid rgba(17,24,39,0.12); margin-top: 8px; background: #e2e8f0; border-radius: 8px; }
+            .section { margin-top: 12px; }
+            .invoice-table { width: 100%; border-collapse: collapse; margin-top: 6px; border: 1px solid #e5e7eb; }
+            .invoice-table th, .invoice-table td { border-bottom: 1px solid #e5e7eb; padding: 8px 8px; text-align: left; font-size: 11px; }
+            .invoice-table th { background: #f4f4f5; font-weight: 700; color: #111; }
+            .invoice-table tr:nth-child(even) { background: #fbfbfb; }
+            .invoice-table tr:hover { background: #f4f4f5; }
+            .payments-table { margin-top: 6px; }
+            .payments-table .total-row td { border-top: 2px solid #111; background: #f4f4f5; }
+            .bottom-grid { display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 12px; margin-top: 12px; }
+            .payment-card .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+            .chip { display: inline-block; padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 999px; font-size: 10px; color: #111; background: #fff; }
+            .payment-text { font-size: 10px; color: #4b5563; margin-top: 8px; }
+            .qr-box { margin-top: 8px; display: inline-block; padding: 8px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; }
+            .qr-grid { display: grid; grid-template-columns: repeat(8, 6px); gap: 2px; }
+            .qr-cell { width: 6px; height: 6px; background: #f3f4f6; }
+            .qr-cell.active { background: #111; }
+            .qr-caption { font-size: 9px; text-align: center; color: #6b7280; margin-top: 6px; letter-spacing: 0.06em; text-transform: uppercase; }
+            .terms { font-size: 10px; line-height: 1.5; color: #4b5563; }
+            .signature-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 12px; }
+            .signature-block { flex: 1; }
+            .signature-line { height: 28px; border-bottom: 1px solid #111; margin-bottom: 6px; }
+            .stamp { height: 42px; border: 1px solid #111; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #111; margin-bottom: 6px; }
+            .label { font-size: 9px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.08em; }
+            .footer-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+            .barcode { display: flex; align-items: flex-end; gap: 2px; }
+            .barcode span { display: inline-block; width: 2px; background: #111; border-radius: 999px; }
+            .thank-you { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #111; }
+            @media print {
+              body { background: #fff; }
+              .page { padding: 0; }
+              .invoice-shell { box-shadow: none; border: 1px solid #ddd; min-height: auto; }
+            }
           </style>
         </head>
         <body>
-          <h1>Godown Sale</h1>
-          <div class="meta">
-            <div><strong>GDS No:</strong> ${sale.invoiceNumber || '-'}</div>
-            <div><strong>Date:</strong> ${new Date(sale.saleDate).toLocaleDateString()}</div>
-            <div><strong>Customer:</strong> ${sale.customerName || '-'}</div>
+          <div class="page">
+            <div class="invoice-shell">
+              ${invoiceHtml}
+            </div>
           </div>
-          <table>
-            <thead>
-              <tr><th>Item</th><th>Value</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>Number of Birds</td><td>${sale.numberOfBirds || '-'}</td></tr>
-              <tr><td>Rate per Kg</td><td>₹${Number(sale.ratePerKg || 0).toFixed(2)}/kg</td></tr>
-              <tr><td>Total Amount</td><td>₹${Number(sale.totalAmount || 0).toFixed(2)}</td></tr>
-              <tr><td>Notes</td><td>${(sale as any).notes || '-'}</td></tr>
-            </tbody>
-          </table>
         </body>
       </html>
     `
 
-    const win = window.open('', '_blank')
-    if (win) {
-      win.document.write(content)
-      win.document.close()
-      win.onload = () => win.print()
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.onload = () => {
+        printWindow.print()
+      }
     }
   }
 
@@ -488,6 +681,16 @@ export default function GodownSalePage() {
                   </Select>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Phone</Label>
+                    <Input value={retailers.find(r => r.id === formData.retailerId)?.phone || ""} disabled className="bg-gray-50" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Address</Label>
+                    <Input value={retailers.find(r => r.id === formData.retailerId)?.address || ""} disabled className="bg-gray-50" />
+                  </div>
+                </div>
 
                 <div className="space-y-2">
                   <Label>Customer Name *</Label>

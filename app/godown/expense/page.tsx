@@ -131,7 +131,7 @@ export default function GodownExpensePage() {
           <div class="header">
             <h1>Godown Expenses Report</h1>
             <div><strong>Total Expense:</strong> ₹${stats.total.toFixed(2)}</div>
-            <div><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
+            <div><strong>Generated:</strong> ${new Date().toLocaleString('en-GB')}</div>
           </div>
           <table>
             <thead>
@@ -146,7 +146,7 @@ export default function GodownExpensePage() {
             <tbody>
               ${allExpensesForStats.map(expense => `
                 <tr>
-                  <td>${new Date(expense.expenseDate).toLocaleDateString()}</td>
+                  <td>${new Date(expense.expenseDate).toLocaleDateString('en-GB')}</td>
                   <td style="text-transform: capitalize;">${expense.category || "-"}</td>
                   <td>${expense.description}</td>
                   <td>₹${Number(expense.amount).toFixed(2)}</td>
