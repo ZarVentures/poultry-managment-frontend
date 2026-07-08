@@ -227,7 +227,7 @@ export default function ExpensesPage() {
           <div class="header">
             <h1>Expenses Report</h1>
             <div><strong>Total Expenses:</strong> ₹${stats.total.toFixed(2)}</div>
-            <div><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
+            <div><strong>Generated:</strong> ${new Date().toLocaleString('en-GB')}</div>
           </div>
           <table>
             <thead>
@@ -244,7 +244,7 @@ export default function ExpensesPage() {
               ${filteredExpenses.map(expense => `
                 <tr>
                   <td>${expense.expenseOwner || "N/A"}</td>
-                  <td>${new Date(expense.expenseDate).toLocaleDateString()}</td>
+                  <td>${new Date(expense.expenseDate).toLocaleDateString('en-GB')}</td>
                   <td>${expense.expenseCategory?.name || expense.category}</td>
                   <td>${expense.description}</td>
                   <td>₹${Number(expense.amount).toFixed(2)}</td>

@@ -148,7 +148,7 @@ const CollectionReportPage = () => {
                   <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500">No collections found for the selected period</TableCell></TableRow>
                 ) : filtered.map(e => (
                   <TableRow key={e.id} className="border-b border-gray-200">
-                    <TableCell className="font-medium">{new Date(e.created_at).toLocaleDateString('en-IN')}</TableCell>
+                    <TableCell className="font-medium">{new Date(e.created_at).toLocaleDateString('en-GB')}</TableCell>
                     <TableCell className="font-mono text-sm">{e.invoiceNumber}</TableCell>
                     <TableCell className="font-semibold">{e.customerName}</TableCell>
                     <TableCell>

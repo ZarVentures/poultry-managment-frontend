@@ -184,7 +184,7 @@ export default function RetailersPage() {
                 <tr>
                   <td>${r.name}</td><td>${r.ownerName || "-"}</td><td>${r.phone}</td>
                   <td>${r.address || "-"}</td>
-                  <td>${r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "-"}</td>
+                  <td>${r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB') : "-"}</td>
                   <td>${r.status}</td>
                 </tr>
               `).join('')}

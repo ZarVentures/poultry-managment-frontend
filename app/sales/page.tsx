@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X, Paperclip, Wallet, TrendingUp, ShoppingCart, Clock, Eye, MoreHorizontal, Layers } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Paperclip, Wallet, TrendingUp, ShoppingCart, Clock, Eye, MoreHorizontal, Layers, Printer } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
@@ -683,6 +683,198 @@ export default function SalesPage() {
     finally { setLoading(false) }
   }
 
+  const getInvoiceNotesText = (notes: string | undefined) => {
+    if (!notes) return ""
+    try {
+      const parsed = JSON.parse(notes)
+      if (parsed && typeof parsed.text === "string") return parsed.text
+    } catch {
+      // ignore invalid JSON
+    }
+    return notes
+  }
+
+  const handlePrintSale = (sale: ApiSale) => {
+    const invoiceNumber = (sale as any).saleNo || (sale as any).invoiceNumber || "INV-2026-000000"
+    const invoiceDate = new Date(sale.saleDate).toLocaleDateString('en-GB')
+    const dueDate = new Date(sale.saleDate)
+    dueDate.setDate(dueDate.getDate() + 7)
+    const subtotal = Number(sale.netAmount || sale.totalAmount || 0)
+    const received = Number((sale as any).amountReceived || 0)
+    const balance = Math.max(0, subtotal - received)
+    const paymentStatus = String((sale as any).paymentStatus || "pending").toUpperCase()
+    const modeLabel = sale.saleMode === "from_vehicle" ? "Vehicle Sale" : "Godown Sale"
+    const birds = Number((sale as any).numberOfBirds || 0)
+    const weight = Number(sale.quantity || 0)
+    const rate = Number((sale as any).ratePerKg || 0)
+    const matchedRetailer = retailers.find(r => String(r.id) === String((sale as any).retailerId || ""))
+    const customerPhone = String((sale as any).phone || matchedRetailer?.phone || "").trim()
+    const customerAddress = String((sale as any).address || matchedRetailer?.address || "").trim()
+    const invoiceNotes = getInvoiceNotesText((sale as any).notes)
+    const barcodeBars = Array.from({ length: 36 }, (_, i) => `<span style="height:${10 + (i % 5) * 3}px"></span>`).join("")
+
+    const invoiceHtml = `
+      <div class="invoice-shell">
+        <div class="header-row">
+          <div class="brand-block">
+            <div class="logo-mark">AF</div>
+            <div>
+              <div class="brand-name">Aziz Poultry Farms</div>
+              <div class="brand-sub">Premium Poultry ERP • Business Invoice</div>
+            </div>
+          </div>
+          <div class="invoice-meta">
+            <div class="invoice-title">Invoice</div>
+            <div class="meta-row"><span>Invoice No</span><strong>${invoiceNumber}</strong></div>
+            <div class="meta-row"><span>Invoice Date</span><strong>${invoiceDate}</strong></div>
+            <div class="meta-row"><span>Due Date</span><strong>${dueDate.toLocaleDateString('en-GB')}</strong></div>
+            <div class="status-pill">${paymentStatus}</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="info-grid">
+          <div class="card">
+            <div class="card-title">Customer Information</div>
+            <div class="customer-name">${sale.customerName || "Walk-in Customer"}</div>
+            <div class="info-list">
+              <div class="info-item"><span class="label">Phone</span><span class="value">${customerPhone || "—"}</span></div>
+              <div class="info-item"><span class="label">Address</span><span class="value">${customerAddress || "—"}</span></div>
+              <div class="info-item"><span class="label">Mode</span><span class="value">${modeLabel}</span></div>
+            </div>
+          </div>
+
+          <div class="card summary-card">
+            <div class="card-title">Invoice Summary</div>
+            <div class="summary-row"><span>Subtotal</span><strong>₹${subtotal.toFixed(2)}</strong></div>
+            <div class="summary-row"><span>Discount</span><strong>₹0.00</strong></div>
+            <div class="summary-row"><span>Tax</span><strong>₹0.00</strong></div>
+            <div class="summary-row grand"><span>Grand Total</span><strong>₹${subtotal.toFixed(2)}</strong></div>
+            <div class="summary-row"><span>Amount Paid</span><strong>₹${received.toFixed(2)}</strong></div>
+            <div class="summary-row"><span>Remaining Balance</span><strong>₹${balance.toFixed(2)}</strong></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="card-title">Invoice Details</div>
+          <table class="invoice-table">
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th>Birds</th>
+                <th>Weight (kg)</th>
+                <th>Rate/kg</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Traveling sale of birds</td>
+                <td>${birds}</td>
+                <td>${weight.toFixed(2)}</td>
+                <td>₹${rate.toFixed(2)}</td>
+                <td>₹${subtotal.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="bottom-grid">
+          <div class="card notes-card" style="display:flex; flex-direction:column; justify-content:space-between;">
+            <div class="card-title">Notes / Terms & Conditions</div>
+            <div class="terms">${invoiceNotes ? String(invoiceNotes).replace(/\n/g, '<br/>') : 'Payment due within 7 days. All disputes to be resolved within business days.'}</div>
+          </div>
+          <div class="card" style="display:flex; flex-direction:column; justify-content:space-between;">
+            <div class="signature-row">
+              <div class="signature-block">
+                <div class="signature-line"></div>
+                <div class="label">Authorized Signature</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-row">
+          <div class="barcode">${barcodeBars}</div>
+          <div class="thank-you">Thank You For Your Business</div>
+        </div>
+      </div>
+    `
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Invoice - ${invoiceNumber}</title>
+          <style>
+            body { font-family: Inter, Arial, sans-serif; margin: 0; padding: 0; color: #111; background: #f4f4f5; }
+            @page { size: A4 portrait; margin: 8mm; }
+            .page { width: 100%; max-width: 210mm; margin: 0 auto; padding: 0; }
+            .invoice-shell { position: relative; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 18px 20px 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); min-height: 135mm; }
+            .header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
+            .brand-block { display: flex; align-items: center; gap: 10px; }
+            .logo-mark { width: 44px; height: 44px; border-radius: 12px; background: #111; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; letter-spacing: 0.08em; }
+            .brand-name { font-size: 17px; font-weight: 700; color: #111; }
+            .brand-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
+            .invoice-meta { text-align: right; min-width: 210px; }
+            .invoice-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; color: #111; }
+            .meta-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: #4b5563; margin-top: 3px; }
+            .meta-row strong { color: #111; }
+            .status-pill { display: inline-block; margin-top: 8px; padding: 6px 10px; border-radius: 999px; background: #22C55E; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; }
+            .divider { height: 1px; background: #e5e7eb; margin: 12px 0; }
+            .info-grid { display: grid; grid-template-columns: 1fr 0.8fr; gap: 12px; }
+            .card { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; }
+            .card-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #111827; margin-bottom: 8px; }
+            .customer-name { font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 8px; }
+            .info-list { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+            .info-item { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #4b5563; }
+            .info-item .label { color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; min-width: 70px; }
+            .info-item .value { font-weight: 700; color: #111827; text-align: right; }
+            .summary-card { background: #f8fafc; color: #111827; border-color: #e5e7eb; }
+            .summary-card .card-title, .summary-card .summary-row span, .summary-card .summary-row strong { color: #111827; }
+            .summary-row { display: flex; justify-content: space-between; font-size: 12px; margin-top: 7px; align-items: center; font-weight: 600; }
+            .summary-row.grand { font-size: 13px; font-weight: 700; padding: 7px 8px; border-top: 1px solid rgba(17,24,39,0.12); margin-top: 8px; background: #e2e8f0; border-radius: 8px; }
+            .section { margin-top: 12px; }
+            .invoice-table { width: 100%; border-collapse: collapse; margin-top: 6px; border: 1px solid #e5e7eb; }
+            .invoice-table th, .invoice-table td { border-bottom: 1px solid #e5e7eb; padding: 8px 8px; text-align: left; font-size: 11px; }
+            .invoice-table th { background: #f4f4f5; font-weight: 700; color: #111; }
+            .invoice-table tr:nth-child(even) { background: #fbfbfb; }
+            .bottom-grid { display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 12px; margin-top: 12px; }
+            .terms { font-size: 10px; line-height: 1.5; color: #4b5563; }
+            .signature-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 12px; }
+            .signature-block { flex: 1; }
+            .signature-line { height: 28px; border-bottom: 1px solid #111; margin-bottom: 6px; }
+            .stamp { height: 42px; border: 1px solid #111; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #111; margin-bottom: 6px; }
+            .label { font-size: 9px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.08em; }
+            .footer-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+            .barcode { display: flex; align-items: flex-end; gap: 2px; }
+            .barcode span { display: inline-block; width: 2px; background: #111; border-radius: 999px; }
+            .thank-you { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #111; }
+            @media print { body { background: #fff; } .page { padding: 0; } .invoice-shell { box-shadow: none; border: 1px solid #ddd; min-height: auto; } }
+          </style>
+        </head>
+        <body>
+          <div class="page">
+            <div class="invoice-shell">
+              ${invoiceHtml}
+            </div>
+          </div>
+        </body>
+      </html>
+    `
+
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.onload = () => {
+        printWindow.print()
+      }
+    }
+  }
+
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this sale?")) return
     try { setLoading(true); await salesApi.delete(id); toast.success("Deleted"); await fetchSales() }
@@ -1016,6 +1208,14 @@ export default function SalesPage() {
                       <div className="space-y-2">
                         <Label>Owner Name</Label>
                         <Input value={formData.ownerName} disabled className="bg-gray-50" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Phone</Label>
+                        <Input value={formData.phone} disabled className="bg-gray-50" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Address</Label>
+                        <Input value={formData.address} disabled className="bg-gray-50" />
                       </div>
                     </div>
 
@@ -1468,11 +1668,15 @@ export default function SalesPage() {
                         <TableCell>
                           {userRole !== 'staff' && userRole !== 'Staff' ? (
                             <div className="flex gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => handlePrintSale(s)}><Printer size={14} /></Button>
                               <Button variant="ghost" size="sm" onClick={() => handleEdit(s)}><Edit2 size={14} /></Button>
                               <Button variant="ghost" size="sm" onClick={() => handleDelete(s.id)} className="text-red-500"><Trash2 size={14} /></Button>
                             </div>
                           ) : (
-                            <Button variant="ghost" size="sm" onClick={() => handleView(s)}><Eye size={14} /></Button>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => handlePrintSale(s)}><Printer size={14} /></Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleView(s)}><Eye size={14} /></Button>
+                            </div>
                           )}
                         </TableCell>
                       </TableRow>

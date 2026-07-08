@@ -207,8 +207,8 @@ const PendingPurchasesPage = () => {
                     <TableRow key={purchase.id}>
                       <TableCell className="font-medium">{purchase.orderNumber}</TableCell>
                       <TableCell>{purchase.supplierName}</TableCell>
-                      <TableCell>{new Date(purchase.orderDate).toLocaleDateString('en-IN')}</TableCell>
-                      <TableCell>{purchase.dueDate ? new Date(purchase.dueDate).toLocaleDateString('en-IN') : '—'}</TableCell>
+                      <TableCell>{new Date(purchase.orderDate).toLocaleDateString('en-GB')}</TableCell>
+                      <TableCell>{purchase.dueDate ? new Date(purchase.dueDate).toLocaleDateString('en-GB') : '—'}</TableCell>
                       <TableCell className="text-right">₹{Number(purchase.totalAmount).toLocaleString('en-IN')}</TableCell>
                       <TableCell className="text-right">₹{Number(purchase.totalPaymentMade || 0).toLocaleString('en-IN')}</TableCell>
                       <TableCell className="text-right font-semibold text-red-600">

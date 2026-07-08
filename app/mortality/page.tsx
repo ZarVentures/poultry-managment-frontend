@@ -354,9 +354,9 @@ export default function MortalityPage() {
         <body>
           <div class="header">
             <h1>Mortality List Report</h1>
-            ${dateRangeStart && dateRangeEnd ? `<div class="date-range"><strong>Date Range:</strong> ${dateRangeStart.toLocaleDateString()} - ${dateRangeEnd.toLocaleDateString()}</div>` : ''}
+            ${dateRangeStart && dateRangeEnd ? `<div class="date-range"><strong>Date Range:</strong> ${dateRangeStart.toLocaleDateString('en-GB')} - ${dateRangeEnd.toLocaleDateString('en-GB')}</div>` : ''}
             <div><strong>Total Records:</strong> ${filtered.length}</div>
-            <div><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
+            <div><strong>Generated:</strong> ${new Date().toLocaleString('en-GB')}</div>
           </div>
           <table>
             <thead>
@@ -426,9 +426,9 @@ export default function MortalityPage() {
         <body>
           <div class="header">
             <h1>Mortality List Report</h1>
-            ${dateRangeStart && dateRangeEnd ? `<div class="date-range"><strong>Date Range:</strong> ${dateRangeStart.toLocaleDateString()} - ${dateRangeEnd.toLocaleDateString()}</div>` : ''}
+            ${dateRangeStart && dateRangeEnd ? `<div class="date-range"><strong>Date Range:</strong> ${dateRangeStart.toLocaleDateString('en-GB')} - ${dateRangeEnd.toLocaleDateString('en-GB')}</div>` : ''}
             <div><strong>Total Records:</strong> ${filtered.length}</div>
-            <div><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
+            <div><strong>Generated:</strong> ${new Date().toLocaleString('en-GB')}</div>
           </div>
           <table>
             <thead>
