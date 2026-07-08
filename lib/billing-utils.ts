@@ -124,7 +124,7 @@ export const formatCurrencyWithDecimal = (amount: number, decimals = 2): string 
  */
 export const formatDate = (date: string | Date): string => {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString('en-IN');
+  return d.toLocaleDateString('en-GB');
 };
 
 /**

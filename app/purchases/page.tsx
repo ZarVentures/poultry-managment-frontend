@@ -282,6 +282,182 @@ export default function PurchasesPage() {
     } finally { setLoading(false) }
   }
 
+  const handlePrintPurchase = (purchase: ApiPurchaseOrder) => {
+    const invoiceNumber = purchase.orderNumber || "PO-2026-000000"
+    const invoiceDate = new Date(purchase.orderDate).toLocaleDateString('en-GB')
+    const dueDate = purchase.dueDate ? new Date(purchase.dueDate).toLocaleDateString('en-GB') : "—"
+    const totalWeight = Number(purchase.totalWeight || 0)
+    const rate = Number(purchase.ratePerKg || 0)
+    const birdAmount = totalWeight * rate
+    const transportCharges = Number(purchase.transportCharges || 0)
+    const otherCharges = Number((purchase as any).otherCharges || 0)
+    const subtotal = birdAmount + transportCharges + otherCharges
+    const netAmount = Number(purchase.netAmount || purchase.totalAmount || subtotal)
+    const balance = Number(purchase.balanceAmount || 0)
+    const payments = Array.isArray((purchase as any).payments) ? (purchase as any).payments : []
+    const cages = Array.isArray(purchase.cages) ? purchase.cages : []
+    const barcodeBars = Array.from({ length: 36 }, (_, i) => `<span style="height:${10 + (i % 5) * 3}px"></span>`).join("")
+
+    const invoiceHtml = `
+      <div class="invoice-shell">
+        <div class="header-row">
+          <div class="brand-block">
+            <div class="logo-mark">AF</div>
+            <div>
+              <div class="brand-name">Aziz Poultry Farms</div>
+              <div class="brand-sub">Premium Poultry ERP • Purchase Invoice</div>
+            </div>
+          </div>
+          <div class="invoice-meta">
+            <div class="invoice-title">Invoice</div>
+            <div class="meta-row"><span>Invoice No</span><strong>${invoiceNumber}</strong></div>
+            <div class="meta-row"><span>Invoice Date</span><strong>${invoiceDate}</strong></div>
+            <div class="meta-row"><span>Due Date</span><strong>${dueDate}</strong></div>
+            <div class="status-pill">${(purchase.purchasePaymentStatus || "pending").toUpperCase()}</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="info-grid">
+          <div class="card">
+            <div class="card-title">Supplier Information</div>
+            <div class="customer-name">${purchase.supplierName || "—"}</div>
+            <div class="info-list">
+              <div class="info-item"><span class="label">Phone</span><span class="value">${purchase.farmerMobile || "—"}</span></div>
+              <div class="info-item"><span class="label">Location</span><span class="value">${purchase.farmLocation || "—"}</span></div>
+              <div class="info-item"><span class="label">Branch</span><span class="value">${(purchase as any).branch || "—"}</span></div>
+            </div>
+          </div>
+
+          <div class="card summary-card">
+            <div class="card-title">Invoice Summary</div>
+            <div class="summary-row"><span>Total Weight</span><strong>${totalWeight.toFixed(2)} kg</strong></div>
+            <div class="summary-row"><span>Rate/Kg</span><strong>₹${rate.toFixed(2)}</strong></div>
+            <div class="summary-row grand"><span>Net Amount</span><strong>₹${netAmount.toFixed(2)}</strong></div>
+            <div class="summary-row"><span>Balance</span><strong>₹${balance.toFixed(2)}</strong></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="card-title">Invoice Details</div>
+          <table class="invoice-table">
+            <thead>
+              <tr>
+                <th>Cage ID</th>
+                <th>Birds</th>
+                <th>Weight (kg)</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${cages.length > 0 ? cages.map((c, idx) => `
+                <tr>
+                  <td>${c.cageId || `CAGE-${idx + 1}`}</td>
+                  <td>${c.numberOfBirds || 0}</td>
+                  <td>${Number((c as any).purchaseWeight || c.cageWeight || 0).toFixed(2)}</td>
+                  <td>${c.status || "pending"}</td>
+                </tr>
+              `).join('') : '<tr><td colspan="4">No cage details available</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="bottom-grid">
+          <div class="card notes-card" style="display:flex; flex-direction:column; justify-content:space-between;">
+            <div class="card-title">Notes / Terms & Conditions</div>
+            <div class="terms">${purchase.notes ? String(purchase.notes).replace(/\n/g, '<br/>') : 'Payment due within 7 days. All disputes to be resolved within business days.'}</div>
+          </div>
+          <div class="card" style="display:flex; flex-direction:column; justify-content:space-between;">
+            <div class="signature-row">
+              <div class="signature-block">
+                <div class="signature-line"></div>
+                <div class="label">Authorized Signature</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-row">
+          <div class="barcode">${barcodeBars}</div>
+          <div class="thank-you">Thank You For Your Business</div>
+        </div>
+      </div>
+    `
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Invoice - ${invoiceNumber}</title>
+          <style>
+            body { font-family: Inter, Arial, sans-serif; margin: 0; padding: 0; color: #111; background: #f4f4f5; }
+            @page { size: A4 portrait; margin: 8mm; }
+            .page { width: 100%; max-width: 210mm; margin: 0 auto; padding: 0; }
+            .invoice-shell { position: relative; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 18px 20px 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); min-height: 135mm; }
+            .header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
+            .brand-block { display: flex; align-items: center; gap: 10px; }
+            .logo-mark { width: 44px; height: 44px; border-radius: 12px; background: #111; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; letter-spacing: 0.08em; }
+            .brand-name { font-size: 17px; font-weight: 700; color: #111; }
+            .brand-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
+            .invoice-meta { text-align: right; min-width: 210px; }
+            .invoice-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; color: #111; }
+            .meta-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: #4b5563; margin-top: 3px; }
+            .meta-row strong { color: #111; }
+            .status-pill { display: inline-block; margin-top: 8px; padding: 6px 10px; border-radius: 999px; background: #22C55E; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; }
+            .divider { height: 1px; background: #e5e7eb; margin: 12px 0; }
+            .info-grid { display: grid; grid-template-columns: 1fr 0.8fr; gap: 12px; }
+            .card { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; }
+            .card-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #111827; margin-bottom: 8px; }
+            .customer-name { font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 8px; }
+            .info-list { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+            .info-item { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #4b5563; }
+            .info-item .label { color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; min-width: 70px; }
+            .info-item .value { font-weight: 700; color: #111827; text-align: right; }
+            .summary-card { background: #f8fafc; color: #111827; border-color: #e5e7eb; }
+            .summary-card .card-title, .summary-card .summary-row span, .summary-card .summary-row strong { color: #111827; }
+            .summary-row { display: flex; justify-content: space-between; font-size: 12px; margin-top: 7px; align-items: center; font-weight: 600; }
+            .summary-row.grand { font-size: 13px; font-weight: 700; padding: 7px 8px; border-top: 1px solid rgba(17,24,39,0.12); margin-top: 8px; background: #e2e8f0; border-radius: 8px; }
+            .section { margin-top: 12px; }
+            .invoice-table { width: 100%; border-collapse: collapse; margin-top: 6px; border: 1px solid #e5e7eb; }
+            .invoice-table th, .invoice-table td { border-bottom: 1px solid #e5e7eb; padding: 8px 8px; text-align: left; font-size: 11px; }
+            .invoice-table th { background: #f4f4f5; font-weight: 700; color: #111; }
+            .invoice-table tr:nth-child(even) { background: #fbfbfb; }
+            .bottom-grid { display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 12px; margin-top: 12px; }
+            .terms { font-size: 10px; line-height: 1.5; color: #4b5563; }
+            .signature-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 12px; }
+            .signature-block { flex: 1; }
+            .signature-line { height: 28px; border-bottom: 1px solid #111; margin-bottom: 6px; }
+            .stamp { height: 42px; border: 1px solid #111; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #111; margin-bottom: 6px; }
+            .label { font-size: 9px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.08em; }
+            .footer-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+            .barcode { display: flex; align-items: flex-end; gap: 2px; }
+            .barcode span { display: inline-block; width: 2px; background: #111; border-radius: 999px; }
+            .thank-you { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #111; }
+            @media print { body { background: #fff; } .page { padding: 0; } .invoice-shell { box-shadow: none; border: 1px solid #ddd; min-height: auto; } }
+          </style>
+        </head>
+        <body>
+          <div class="page">
+            <div class="invoice-shell">
+              ${invoiceHtml}
+            </div>
+          </div>
+        </body>
+      </html>
+    `
+
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.onload = () => {
+        printWindow.print()
+      }
+    }
+  }
+
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this purchase order?")) return
     try {
@@ -699,6 +875,7 @@ export default function PurchasesPage() {
                         <TableCell>
                           {userRole !== 'staff' && userRole !== 'Staff' ? (
                             <div className="flex gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => handlePrintPurchase(p)}><Printer size={14} /></Button>
                               <Button variant="ghost" size="sm" onClick={async () => {
                                 setViewingPurchase(p)
                                 setShowInvoiceModal(true)
@@ -713,16 +890,19 @@ export default function PurchasesPage() {
                               <Button variant="ghost" size="sm" onClick={() => handleDelete(p.id)} className="text-red-500"><Trash2 size={14} /></Button>
                             </div>
                           ) : (
-                            <Button variant="ghost" size="sm" onClick={async () => {
-                              setViewingPurchase(p)
-                              setShowInvoiceModal(true)
-                              setLoadingPreview(true)
-                              try {
-                                const full = await purchasesApi.getOne(p.id)
-                                setViewingPurchase(full)
-                              } catch { /* keep list data */ }
-                              finally { setLoadingPreview(false) }
-                            }}><Eye size={14} /></Button>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => handlePrintPurchase(p)}><Printer size={14} /></Button>
+                              <Button variant="ghost" size="sm" onClick={async () => {
+                                setViewingPurchase(p)
+                                setShowInvoiceModal(true)
+                                setLoadingPreview(true)
+                                try {
+                                  const full = await purchasesApi.getOne(p.id)
+                                  setViewingPurchase(full)
+                                } catch { /* keep list data */ }
+                                finally { setLoadingPreview(false) }
+                              }}><Eye size={14} /></Button>
+                            </div>
                           )}
                         </TableCell>
                       </TableRow>
