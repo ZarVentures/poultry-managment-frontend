@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Printer } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
@@ -344,6 +344,167 @@ export default function GodownInwardPage() {
       toast.error(error.message || "Failed to save entry")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handlePrintInward = (entry: GodownInward) => {
+    const vehicle = vehicles.find(v => v.id === entry.vehicleId)
+    const totalAmount = Number(entry.totalAmount || 0)
+    const rate = Number(entry.ratePerKg || 0)
+    const weight = Number(entry.totalWeight || 0)
+    const birds = Number(entry.numberOfBirds || 0)
+    const entryDate = new Date(entry.entryDate).toLocaleDateString('en-GB')
+
+    const invoiceHtml = `
+      <div class="invoice-shell">
+        <div class="header-row">
+          <div class="brand-block">
+            <div class="logo-mark">AF</div>
+            <div>
+              <div class="brand-name">Aziz Poultry Farms</div>
+              <div class="brand-sub">Premium Poultry ERP • Godown Inward Receipt</div>
+            </div>
+          </div>
+          <div class="invoice-meta">
+            <div class="invoice-title">Inward Receipt</div>
+            <div class="meta-row"><span>Inward No</span><strong>${entry.inwardNo || "-"}</strong></div>
+            <div class="meta-row"><span>Entry Date</span><strong>${entryDate}</strong></div>
+            <div class="meta-row"><span>Reference</span><strong>${entry.purchaseInvoiceNo || "-"}</strong></div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="info-grid">
+          <div class="card">
+            <div class="card-title">Supplier Information</div>
+            <div class="customer-name">${entry.supplierName || "N/A"}</div>
+            <div class="info-list">
+              <div class="info-item"><span class="label">Vehicle</span><span class="value">${vehicle ? `${vehicle.vehicleNumber} - ${vehicle.driverName}` : "—"}</span></div>
+              <div class="info-item"><span class="label">Notes</span><span class="value">${entry.notes || "—"}</span></div>
+            </div>
+          </div>
+
+          <div class="card summary-card">
+            <div class="card-title">Receipt Summary</div>
+            <div class="summary-row"><span>Number of Birds</span><strong>${birds}</strong></div>
+            <div class="summary-row"><span>Total Weight</span><strong>${weight.toFixed(2)} kg</strong></div>
+            <div class="summary-row"><span>Rate per Kg</span><strong>₹${rate.toFixed(2)}</strong></div>
+            <div class="summary-row grand"><span>Total Amount</span><strong>₹${totalAmount.toFixed(2)}</strong></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="card-title">Cage Details</div>
+          <table class="invoice-table">
+            <thead>
+              <tr>
+                <th>Cage ID</th>
+                <th>Bird Type</th>
+                <th style="text-align:right">Birds</th>
+                <th style="text-align:right">Weight (kg)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(entry.cages && entry.cages.length > 0 ? entry.cages : []).map((cage: any) => `
+                <tr>
+                  <td>${cage.cageId || "-"}</td>
+                  <td>${cage.birdType || "-"}</td>
+                  <td style="text-align:right">${cage.numberOfBirds || 0}</td>
+                  <td style="text-align:right">${(cage.cageWeight || 0).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+              ${(!entry.cages || entry.cages.length === 0) ? `
+                <tr>
+                  <td colspan="4" style="text-align:center;color:#6b7280;">No cage details available</td>
+                </tr>
+              ` : ''}
+              <tr class="total-row">
+                <td colspan="2"><strong>Total</strong></td>
+                <td style="text-align:right"><strong>${birds}</strong></td>
+                <td style="text-align:right"><strong>${weight.toFixed(2)} kg</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="bottom-grid">
+          <div class="card notes-card">
+            <div class="card-title">Notes</div>
+            <div class="terms">${entry.notes ? entry.notes.replace(/\n/g, '<br/>') : 'No additional notes'}</div>
+          </div>
+          <div class="card" style="display:flex;flex-direction:column;justify-content:space-between;">
+            <div class="signature-row">
+              <div class="signature-block">
+                <div class="signature-line"></div>
+                <div class="label">Authorized Signature</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-row">
+          <div class="thank-you">Godown Stock Receipt</div>
+        </div>
+      </div>
+    `
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Inward Receipt - ${entry.inwardNo || "Inward"}</title>
+          <style>
+            body { font-family: Inter, Arial, sans-serif; margin: 0; padding: 0; color: #111; background: #f4f4f5; }
+            @page { size: A4 portrait; margin: 8mm; }
+            .invoice-shell { position: relative; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 18px 20px 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+            .header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
+            .brand-block { display: flex; align-items: center; gap: 10px; }
+            .logo-mark { width: 44px; height: 44px; border-radius: 12px; background: #111; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; letter-spacing: 0.08em; }
+            .brand-name { font-size: 17px; font-weight: 700; color: #111; }
+            .brand-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
+            .invoice-meta { text-align: right; min-width: 210px; }
+            .invoice-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; color: #111; }
+            .meta-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: #4b5563; margin-top: 3px; }
+            .meta-row strong { color: #111; }
+            .divider { height: 1px; background: #e5e7eb; margin: 12px 0; }
+            .info-grid { display: grid; grid-template-columns: 1fr 0.8fr; gap: 12px; }
+            .card { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; }
+            .card-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #111827; margin-bottom: 8px; }
+            .customer-name { font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 8px; }
+            .info-list { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+            .info-item { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #4b5563; }
+            .info-item .label { color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; min-width: 70px; }
+            .info-item .value { font-weight: 700; color: #111827; text-align: right; }
+            .summary-card { background: #f8fafc; color: #111827; border-color: #e5e7eb; }
+            .summary-row { display: flex; justify-content: space-between; font-size: 12px; margin-top: 7px; align-items: center; font-weight: 600; }
+            .summary-row.grand { font-size: 12px; font-weight: 700; padding: 6px 8px; border-top: 1px solid rgba(17,24,39,0.12); margin-top: 8px; background: #e2e8f0; border-radius: 8px; }
+            .section { margin-top: 12px; }
+            .invoice-table { width: 100%; border-collapse: collapse; margin-top: 6px; border: 1px solid #e5e7eb; }
+            .invoice-table th, .invoice-table td { border-bottom: 1px solid #e5e7eb; padding: 8px 8px; text-align: left; font-size: 11px; }
+            .invoice-table th { background: #f4f4f5; font-weight: 700; color: #111; }
+            .invoice-table .total-row td { border-top: 2px solid #111; background: #f4f4f5; }
+            .bottom-grid { display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 12px; margin-top: 12px; }
+            .terms { font-size: 10px; line-height: 1.5; color: #4b5563; }
+            .signature-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 12px; }
+            .signature-block { flex: 1; }
+            .signature-line { height: 28px; border-bottom: 1px solid #111; margin-bottom: 6px; }
+            .label { font-size: 9px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.08em; }
+            .footer-row { display: flex; justify-content: center; align-items: center; margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+            .thank-you { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #111; }
+            @media print { body { background: #fff; } .invoice-shell { box-shadow: none; border: 1px solid #ddd; } }
+          </style>
+        </head>
+        <body><div class="invoice-shell">${invoiceHtml}</div></body>
+      </html>
+    `
+
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.onload = () => printWindow.print()
     }
   }
 
@@ -831,6 +992,9 @@ export default function GodownInwardPage() {
                       <TableCell>
                         {userRole !== 'staff' && userRole !== 'Staff' && (
                           <div className="flex gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handlePrintInward(entry)}>
+                              <Printer size={16} />
+                            </Button>
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(entry)}>
                               <Edit2 size={16} />
                             </Button>
