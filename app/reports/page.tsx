@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Download, Table as TableIcon, BarChart3, PieChart as PieChartIcon } from "lucide-react"
+import { Download, Table as TableIcon, BarChart3, PieChart as PieChartIcon, FileText } from "lucide-react"
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
@@ -67,6 +67,145 @@ export default function ReportsPage() {
     a.click()
   }
 
+  const downloadAllPDF = async () => {
+    if (!profitLossData && !purchaseData && !salesData && !godownSalesData && !mortalityData && !expenseData && !farmWiseData && !customerWiseData && !outstandingData) {
+      return toast.error('Generate reports first')
+    }
+    const { default: jsPDF } = await import('jspdf')
+    const { default: autoTable } = await import('jspdf-autotable')
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    const dateLabel = `${startDate} to ${endDate}`
+    doc.setFontSize(16)
+    doc.text('Business Reports', 14, 20)
+    doc.setFontSize(10)
+    doc.text(`Date Range: ${dateLabel}`, 14, 28)
+    let y = 34
+
+    const sections: { title: string; headers: string[]; rows: (string | number)[][] }[] = []
+
+    if (profitLossData?.summary) {
+      const s = profitLossData.summary
+      sections.push({
+        title: 'Profit & Loss',
+        headers: ['Metric', 'Value'],
+        rows: [
+          ['Revenue', `Rs. ${s.totalRevenue?.toFixed(2) || '0.00'}`],
+          ['Cost', `Rs. ${s.totalCost?.toFixed(2) || '0.00'}`],
+          ['Gross Profit', `Rs. ${s.grossProfit?.toFixed(2) || '0.00'}`],
+          ['Expenses', `Rs. ${s.totalExpenses?.toFixed(2) || '0.00'}`],
+          ['Net Profit', `Rs. ${s.netProfit?.toFixed(2) || '0.00'}`],
+          ['Margin', `${s.profitMargin?.toFixed(2) || '0.00'}%`],
+        ],
+      })
+    }
+
+    if (purchaseData?.purchases?.length) {
+      sections.push({
+        title: 'Purchases',
+        headers: ['Order #', 'Date', 'Supplier', 'Birds', 'Weight', 'Amount', 'Status'],
+        rows: purchaseData.purchases.map((p: any) => [
+          p.orderNumber || '', new Date(p.orderDate).toLocaleDateString('en-GB'), p.supplierName || '',
+          String(p.numberOfBirds || p.totalBirds || 0),
+          `${(parseFloat(p.totalWeight) || parseFloat(p.quantity) || 0).toFixed(2)} kg`,
+          `Rs. ${parseFloat(p.netAmount || 0).toFixed(2)}`, p.purchasePaymentStatus || '',
+        ]),
+      })
+    }
+
+    if (salesData?.sales?.length) {
+      sections.push({
+        title: 'Sales',
+        headers: ['Bill No', 'Date', 'Customer', 'Birds', 'Weight', 'Shortage', 'Amount', 'Status'],
+        rows: salesData.sales.map((s: any) => [
+          s.invoiceNumber || '', new Date(s.saleDate).toLocaleDateString('en-GB'), s.customerName || '',
+          String(s.totalBirds || s.numberOfBirds || 0),
+          `${(parseFloat(s.totalWeight) || parseFloat(s.quantity) || 0).toFixed(2)} kg`,
+          `${parseFloat(s.weightShortage || 0).toFixed(2)} kg`, `Rs. ${parseFloat(s.netAmount || 0).toFixed(2)}`, s.paymentStatus || '',
+        ]),
+      })
+    }
+
+    if (godownSalesData?.sales?.length) {
+      sections.push({
+        title: 'Godown Sales',
+        headers: ['Sale No', 'Date', 'Cages', 'Weight Loss', 'Amount'],
+        rows: godownSalesData.sales.map((s: any) => [
+          s.saleNo || '', new Date(s.saleDate).toLocaleDateString('en-GB'), String(s.cageCount || ''),
+          `${parseFloat(s.weightLoss || 0).toFixed(2)} kg`, `Rs. ${parseFloat(s.totalAmount || 0).toFixed(2)}`,
+        ]),
+      })
+    }
+
+    if (mortalityData?.purchases?.length) {
+      sections.push({
+        title: 'Mortality',
+        headers: ['Order #', 'Date', 'Supplier', 'Weight', 'Mortality Deduction'],
+        rows: mortalityData.purchases.map((p: any) => [
+          p.orderNumber || '', new Date(p.orderDate).toLocaleDateString('en-GB'), p.supplierName || '',
+          `${parseFloat(p.totalWeight || 0).toFixed(2)} kg`, `Rs. ${parseFloat(p.mortalityDeduction || 0).toFixed(2)}`,
+        ]),
+      })
+    }
+
+    if (expenseData?.breakdown?.length) {
+      sections.push({
+        title: 'Expenses',
+        headers: ['Category', 'Amount', 'Percentage', 'Count'],
+        rows: expenseData.breakdown.map((e: any) => [
+          e.category || '', `Rs. ${(e.amount || 0).toFixed(2)}`, `${(e.percentage || 0).toFixed(1)}%`, String(e.count || 0),
+        ]),
+      })
+    }
+
+    if (farmWiseData?.farms?.length) {
+      sections.push({
+        title: 'Farm-wise Profit',
+        headers: ['Farmer', 'Orders', 'Total Cost', 'Weight'],
+        rows: farmWiseData.farms.map((f: any) => [
+          f.farmerName || '', String(f.totalOrders || 0), `Rs. ${(f.totalCost || 0).toFixed(2)}`, `${(f.totalWeight || 0).toFixed(2)} kg`,
+        ]),
+      })
+    }
+
+    if (customerWiseData?.customers?.length) {
+      sections.push({
+        title: 'Customer-wise Sales',
+        headers: ['Customer', 'Sales', 'Revenue', 'Quantity'],
+        rows: customerWiseData.customers.map((c: any) => [
+          c.customerName || '', String(c.totalSales || 0), `Rs. ${(c.totalRevenue || 0).toFixed(2)}`, `${(c.totalQuantity || 0).toFixed(2)}`,
+        ]),
+      })
+    }
+
+    if (outstandingData?.data?.length) {
+      sections.push({
+        title: 'Outstanding',
+        headers: ['Retailer', 'Total Sales', 'Received', 'Outstanding'],
+        rows: outstandingData.data.slice(0, 50).map((r: any) => [
+          r.name || '', `Rs. ${(r.totalSales || 0).toLocaleString('en-IN')}`, `Rs. ${(r.totalReceived || 0).toLocaleString('en-IN')}`, `Rs. ${(r.outstanding || 0).toLocaleString('en-IN')}`,
+        ]),
+      })
+    }
+
+    sections.forEach((sec, i) => {
+      if (i > 0) y += 6
+      doc.setFontSize(12)
+      doc.text(sec.title, 14, y)
+      y += 6
+      autoTable(doc, {
+        head: [sec.headers],
+        body: sec.rows,
+        startY: y,
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [55, 65, 81], textColor: 255 },
+        margin: { left: 14, right: 14 },
+      })
+      y = (doc as any).lastAutoTable.finalY + 4
+    })
+
+    doc.save(`reports_${startDate}_${endDate}.pdf`)
+  }
+
   const generateAllReports = () => {
     if (!startDate || !endDate) return toast.error('Select date range')
     fetchReport('profit-loss', setProfitLossData)
@@ -101,6 +240,7 @@ export default function ReportsPage() {
                 <DatePicker value={endDate} onChange={setEndDate} placeholder="End" />
               </div>
               <Button onClick={generateAllReports} className="mt-7">Generate</Button>
+              <Button variant="outline" onClick={downloadAllPDF} className="mt-7"><FileText className="mr-2" size={16} />PDF</Button>
             </div>
           </CardContent>
         </Card>
@@ -223,10 +363,18 @@ export default function ReportsPage() {
               <CardContent>
                 {!purchaseData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-5 gap-4">
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Total Orders</p>
                         <p className="text-2xl font-bold">{purchaseData.summary.totalOrders}</p>
+                      </div>
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Total Birds</p>
+                        <p className="text-2xl font-bold">{purchaseData.summary.totalBirds || purchaseData.summary.numberOfBirds || 0}</p>
+                      </div>
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Total Weight</p>
+                        <p className="text-2xl font-bold">{((parseFloat(purchaseData.summary.totalWeight) || parseFloat(purchaseData.summary.totalQuantity) || 0)).toFixed(2)} kg</p>
                       </div>
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Total Amount</p>
@@ -236,10 +384,6 @@ export default function ReportsPage() {
                         <p className="text-sm text-muted-foreground">Paid</p>
                         <p className="text-2xl font-bold text-green-600">{purchaseData.summary.totalPaid}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Pending</p>
-                        <p className="text-2xl font-bold text-red-600">{purchaseData.summary.totalPending}</p>
-                      </div>
                     </div>
                     {viewMode === 'table' && (
                       <Table>
@@ -248,7 +392,9 @@ export default function ReportsPage() {
                             <TableHead>Order #</TableHead>
                             <TableHead>Date</TableHead>
                             <TableHead>Supplier</TableHead>
-                            <TableHead>Amount</TableHead>
+                            <TableHead className="text-right">Birds</TableHead>
+                            <TableHead className="text-right">Weight</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
                             <TableHead>Status</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -258,7 +404,9 @@ export default function ReportsPage() {
                               <TableCell>{purchase.orderNumber}</TableCell>
                               <TableCell>{new Date(purchase.orderDate).toLocaleDateString()}</TableCell>
                               <TableCell>{purchase.supplierName}</TableCell>
-                              <TableCell>₹{parseFloat(purchase.netAmount).toFixed(2)}</TableCell>
+                              <TableCell className="text-right">{purchase.numberOfBirds || purchase.totalBirds || 0}</TableCell>
+                              <TableCell className="text-right">{((parseFloat(purchase.totalWeight) || parseFloat(purchase.quantity) || 0)).toFixed(2)} kg</TableCell>
+                              <TableCell className="text-right">₹{parseFloat(purchase.totalAmount || purchase.netAmount).toFixed(2)}</TableCell>
                               <TableCell>
                                 <span className={`px-2 py-1 rounded text-xs ${purchase.purchasePaymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
                                     purchase.purchasePaymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
@@ -322,26 +470,34 @@ export default function ReportsPage() {
               <CardContent>
                 {!salesData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-5 gap-4">
+                    <div className="grid grid-cols-7 gap-4">
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Total Sales</p>
                         <p className="text-2xl font-bold">{salesData.summary.totalSales}</p>
                       </div>
                       <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Revenue</p>
+                        <p className="text-sm text-muted-foreground">Total Birds</p>
+                        <p className="text-2xl font-bold">{salesData.summary.totalBirds || salesData.summary.numberOfBirds || 0}</p>
+                      </div>
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Total Weight</p>
+                        <p className="text-2xl font-bold">{((parseFloat(salesData.summary.totalQuantity) || parseFloat(salesData.summary.totalWeight) || 0)).toFixed(2)} kg</p>
+                      </div>
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Revenue</p>
                         <p className="text-2xl font-bold">₹{salesData.summary.totalNetAmount.toFixed(2)}</p>
                       </div>
                       <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Weight Shortage</p>
+                        <p className="text-sm text-muted-foreground">Wt Shortage</p>
                         <p className="text-2xl font-bold text-orange-600">{salesData.summary.totalWeightShortage?.toFixed(2) || '0.00'} kg</p>
                       </div>
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Paid</p>
-                        <p className="text-2xl font-bold text-green-600">{salesData.summary.totalPaid}</p>
+                        <p className="text-2xl font-bold text-green-600">{salesData.summary.totalPaid || 0}</p>
                       </div>
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Pending</p>
-                        <p className="text-2xl font-bold text-red-600">{salesData.summary.totalPending}</p>
+                        <p className="text-2xl font-bold text-red-600">{salesData.summary.totalPending || 0}</p>
                       </div>
                     </div>
                     {viewMode === 'table' && (
@@ -351,8 +507,10 @@ export default function ReportsPage() {
                             <TableHead>Bill No</TableHead>
                             <TableHead>Date</TableHead>
                             <TableHead>Customer</TableHead>
-                            <TableHead>Weight Shortage</TableHead>
-                            <TableHead>Amount</TableHead>
+                            <TableHead className="text-right">Birds</TableHead>
+                            <TableHead className="text-right">Weight</TableHead>
+                            <TableHead>Wt Shortage</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
                             <TableHead>Status</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -362,8 +520,10 @@ export default function ReportsPage() {
                               <TableCell>{sale.invoiceNumber}</TableCell>
                               <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
                               <TableCell>{sale.customerName}</TableCell>
+                              <TableCell className="text-right">{sale.totalBirds || sale.numberOfBirds || 0}</TableCell>
+                              <TableCell className="text-right">{((parseFloat(sale.totalWeight) || parseFloat(sale.quantity) || 0)).toFixed(2)} kg</TableCell>
                               <TableCell className="text-orange-600">{parseFloat(sale.weightShortage || 0).toFixed(2)} kg</TableCell>
-                              <TableCell>₹{parseFloat(sale.netAmount).toFixed(2)}</TableCell>
+                              <TableCell className="text-right">₹{parseFloat(sale.netAmount).toFixed(2)}</TableCell>
                               <TableCell>
                                 <span className={`px-2 py-1 rounded text-xs ${sale.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
                                     sale.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
