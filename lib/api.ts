@@ -100,6 +100,7 @@ export interface Farmer {
   farmhouseName?: string;
   status: 'active' | 'inactive';
   notes?: string;
+  openingBalance?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -114,6 +115,7 @@ export interface Retailer {
   address?: string;
   status: 'active' | 'inactive';
   notes?: string;
+  openingBalance?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -1688,4 +1690,13 @@ export const billingApi = {
   getLedgerByName: (name: string) => apiRequest<any[]>(`/billing/ledger-by-name/${encodeURIComponent(name)}`),
   getLedgerByFarmerId: (farmerId: string) => apiRequest<any[]>(`/billing/ledger/${farmerId}`),
   getLedgerByRetailerId: (retailerId: string) => apiRequest<any[]>(`/billing/ledger/${retailerId}`),
+};
+
+export const openingBalanceApi = {
+  getAll: () => apiRequest<any[]>('/billing/opening-balance'),
+  update: (partyType: 'farmer' | 'retailer', partyId: string, amount: number) =>
+    apiRequest<any>('/billing/opening-balance', {
+      method: 'POST',
+      body: JSON.stringify({ partyType, partyId, amount }),
+    }),
 };
