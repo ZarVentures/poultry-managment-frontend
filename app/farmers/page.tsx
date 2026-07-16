@@ -119,6 +119,7 @@ export default function FarmersPage() {
           farmhouseName: formData.farmhouseName,
           status: formData.status,
           notes: formData.note,
+          openingBalance: formData.openingBalance,
         })
         toast.success("Farmer updated successfully")
       } else {
