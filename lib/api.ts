@@ -1457,6 +1457,17 @@ export const paymentVouchersApi = {
 
   findOne: (id: number) => apiRequest<PaymentVoucherRecord>(`/payment-vouchers/${id}`),
 
+  update: (id: number, data: Partial<CreatePaymentVoucherPayload>) =>
+    apiRequest<PaymentVoucherRecord>(`/payment-vouchers/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: number) =>
+    apiRequest<void>(`/payment-vouchers/${id}`, {
+      method: 'DELETE',
+    }),
+
   approve: (id: number) =>
     apiRequest<PaymentVoucherRecord>(`/payment-vouchers/${id}/approve`, { method: 'POST' }),
 
