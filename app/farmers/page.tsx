@@ -63,7 +63,6 @@ export default function FarmersPage() {
     status: "active" as "active" | "inactive",
     note: "",
     farmhouseName: "",
-    openingBalance: 0,
   })
 
   useEffect(() => {
@@ -129,7 +128,6 @@ export default function FarmersPage() {
           farmhouseName: formData.farmhouseName,
           status: formData.status,
           notes: formData.note,
-          openingBalance: formData.openingBalance,
         })
         toast.success("Farmer created successfully")
       }
@@ -153,7 +151,6 @@ export default function FarmersPage() {
       status: "active" as "active" | "inactive",
       note: "",
       farmhouseName: "",
-      openingBalance: 0,
     })
     setEditingId(null)
   }
@@ -168,7 +165,6 @@ export default function FarmersPage() {
       status: farmer.status || "active",
       note: farmer.note || "",
       farmhouseName: farmer.farmhouseName || "",
-      openingBalance: (farmer as any).openingBalance || 0,
     })
     setShowDialog(true)
   }
@@ -305,10 +301,6 @@ export default function FarmersPage() {
                   <div className="space-y-2">
                     <Label>Farm House Name</Label>
                     <Input value={formData.farmhouseName} onChange={(e) => setFormData({ ...formData, farmhouseName: e.target.value })} placeholder="Farm House name" disabled={loading} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Opening Balance (₹)</Label>
-                    <Input type="number" step="0.01" value={formData.openingBalance} onChange={(e) => setFormData({ ...formData, openingBalance: parseFloat(e.target.value) || 0 })} placeholder="0" disabled={loading} />
                   </div>
                   <div className="space-y-2">
                     <Label>Phone *</Label>
