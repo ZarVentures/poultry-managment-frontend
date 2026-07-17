@@ -16,10 +16,11 @@ import {
   ChartNoAxesCombined, Tractor, User, PackageOpen, PackagePlus,
   PackageSearch, PackageX, PackageCheck, CreditCard, BookOpen,
   TrendingDown, BarChart3 as BarChartAlt,
-  GitBranch, Shield,
+  GitBranch, Shield, DollarSign, FileText, Receipt, LayoutDashboard,
 } from "lucide-react"
 
 const IS_STAGING = process.env.NEXT_PUBLIC_IS_STAGING === 'true'
+const ACCOUNTING_URL = process.env.NEXT_PUBLIC_ACCOUNTING_URL || '/accounting'
 
 interface User {
   email: string
@@ -39,6 +40,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const [masterEntriesOpen, setMasterEntriesOpen] = useState(false)
   const [purchasesOpen, setPurchasesOpen] = useState(false)
   const [salesOpen, setSalesOpen] = useState(false)
+  const [accountingOpen, setAccountingOpen] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
   const { isDevMode, logs, clearLogs, addLog } = useDevMode()
@@ -67,10 +69,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
   if (!user) return null
 
-  const normalizedRole = (user.role || '').toLowerCase().trim()
-  const isAdmin = normalizedRole === 'admin'
-  const isManager = normalizedRole === 'manager'
-  const isStaff = normalizedRole === 'staff'
+  const isAdmin = user.role === 'admin'
+  const isManager = user.role === 'manager' || user.role === 'Manager'
+  const isStaff = user.role === 'staff' || user.role === 'Staff' || user.role === 'staf'
 
   return (
     <div className="flex h-screen bg-background">
@@ -228,6 +229,37 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
               {/* USERS */}
               <SidebarLink href="/users" icon={User} label="Users" open={sidebarOpen} />
+
+              {/* ACCOUNTING MICROSERVICE */}
+              <div className="space-y-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setAccountingOpen(!accountingOpen)}>
+                      <DollarSign size={20} />
+                      {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Accounting</span><ChevronDown size={16} className={`transition-transform ${accountingOpen ? "rotate-180" : ""}`} /></>)}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="bg-foreground text-background">Accounting</TooltipContent>
+                </Tooltip>
+                {accountingOpen && sidebarOpen && (
+                  <div className="ml-4 space-y-1 border-l border-sidebar-border">
+                    {(() => {
+                      const base = ACCOUNTING_URL?.startsWith('http') ? ACCOUNTING_URL : (ACCOUNTING_URL || '/accounting');
+                      const links = [
+                        { href: `${base}/transactions`, icon: TrendingUp, label: 'Transactions' },
+                        { href: `${base}/ledger`, icon: BookOpen, label: 'Ledger' },
+                        { href: `${base}/expenses`, icon: BarChart3, label: 'Expenses' },
+                        { href: `${base}/invoices`, icon: FileText, label: 'Invoices' },
+                        { href: `${base}/payments`, icon: Receipt, label: 'Payments' },
+                        { href: `${base}/reports`, icon: ChartNoAxesCombined, label: 'Reports' },
+                      ];
+                      return links.map(l => (
+                        <SidebarLink key={l.label} href={l.href} icon={l.icon} label={l.label} open={true} isSubItem={true} target="_self" />
+                      ));
+                    })()}
+                  </div>
+                )}
+              </div>
             </>
           )}
 
@@ -355,18 +387,29 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   )
 }
 
-function SidebarLink({ href, icon: Icon, label, open, isSubItem = false }: {
-  href: string; icon: React.ComponentType<{ size: number }>; label: string; open: boolean; isSubItem?: boolean
+function SidebarLink({ href, icon: Icon, label, open, isSubItem = false, target }: {
+  href: string; icon: React.ComponentType<{ size: number }>; label: string; open: boolean; isSubItem?: boolean; target?: string
 }) {
+  const isExternal = href.startsWith('http://') || href.startsWith('https://');
+  const buttonContent = (
+    <Button variant="ghost" className={`w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent ${isSubItem ? "pl-8 text-sm" : ""}`}>
+      <Icon size={20} />
+      {open && <span className="ml-2">{label}</span>}
+    </Button>
+  );
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Link href={href} className="block">
-          <Button variant="ghost" className={`w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent ${isSubItem ? "pl-8 text-sm" : ""}`}>
-            <Icon size={20} />
-            {open && <span className="ml-2">{label}</span>}
-          </Button>
-        </Link>
+        {isExternal || target ? (
+          <a href={href} target={target || "_blank"} rel="noopener noreferrer" className="block">
+            {buttonContent}
+          </a>
+        ) : (
+          <Link href={href} className="block">
+            {buttonContent}
+          </Link>
+        )}
       </TooltipTrigger>
       <TooltipContent side="right" className="bg-foreground text-background">{label}</TooltipContent>
     </Tooltip>

@@ -40,6 +40,7 @@ export default function RetailersPage() {
     address: "",
     status: "active" as "active" | "inactive",
     notes: "",
+    openingBalance: 0,
   })
 
   useEffect(() => {
@@ -80,6 +81,7 @@ export default function RetailersPage() {
     setFormData({
       name: "", ownerName: "", phone: "",
       email: "", address: "", status: "active", notes: "",
+      openingBalance: 0,
     })
     setEditingId(null)
   }
@@ -93,6 +95,7 @@ export default function RetailersPage() {
       address: retailer.address || "",
       status: retailer.status,
       notes: retailer.notes || "",
+      openingBalance: (retailer as any).openingBalance || 0,
     })
     setEditingId(retailer.id)
     setShowDialog(true)
@@ -111,6 +114,7 @@ export default function RetailersPage() {
           phone: formData.phone, email: formData.email || undefined,
           address: formData.address || undefined, status: formData.status,
           notes: formData.notes || undefined,
+          openingBalance: formData.openingBalance,
         })
         toast.success("Retailer updated successfully")
       } else {
@@ -119,6 +123,7 @@ export default function RetailersPage() {
           phone: formData.phone, email: formData.email || undefined,
           address: formData.address || undefined, status: formData.status,
           notes: formData.notes || undefined,
+          openingBalance: formData.openingBalance,
         })
         toast.success("Retailer created successfully")
       }
@@ -217,6 +222,7 @@ export default function RetailersPage() {
                   <div className="space-y-2"><Label>Owner Name</Label><Input value={formData.ownerName} onChange={e => setFormData({ ...formData, ownerName: e.target.value })} placeholder="Owner name" disabled={loading} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2"><Label>Opening Balance (₹)</Label><Input type="number" step="0.01" value={formData.openingBalance} onChange={e => setFormData({ ...formData, openingBalance: parseFloat(e.target.value) || 0 })} placeholder="0" disabled={loading} /></div>
                   <div className="space-y-2"><Label>Phone *</Label><Input value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} placeholder="Phone number" disabled={loading} /></div>
                   <div className="space-y-2"><Label>Email</Label><Input value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="Email" disabled={loading} /></div>
                 </div>

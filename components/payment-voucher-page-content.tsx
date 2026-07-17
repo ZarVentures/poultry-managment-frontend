@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Button } from "@/components/ui/button";
@@ -19,7 +21,7 @@ import {
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Plus, Pencil, Trash2, XCircle, CheckCircle } from "lucide-react";
 
 function todayISO(): string {
   const d = new Date();
@@ -39,138 +41,214 @@ const METHODS: { key: PaymentMethodVoucher; label: string }[] = [
   { key: "cheque", label: "CHEQUE" },
 ];
 
+const STATUS_BADGE: Record<string, string> = {
+  paid: "bg-green-100 text-green-700",
+  pending: "bg-yellow-100 text-yellow-700",
+  cancelled: "bg-red-100 text-red-700",
+};
+
+const initialFormState = {
+  selectedPartyId: "",
+  payeeName: "",
+  voucherDate: todayISO(),
+  transactionReference: "",
+  paymentMethod: "cash" as PaymentMethodVoucher,
+  amount: "",
+  purpose: "",
+  description: "",
+  chequeNumber: "",
+  bankName: "",
+};
+
 export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucherFlow }) {
   const config = useMemo(
     () =>
       variant === "in"
         ? {
-            pageTitle: "PAYMENT VOUCHER",
-            subtitle:
-              "Record incoming payments for financial control and institutional compliance.",
+            pageTitle: "Payment In",
+            subtitle: "Incoming payments from customers",
             defaultPurpose: "Payment received (customer receipt)",
             defaultPayeeType: "retailer" as CreatePaymentVoucherPayload["payeeType"],
             referenceType: "sale" as NonNullable<CreatePaymentVoucherPayload["referenceType"]>,
             amountLabel: "RECEIVED AMOUNT (INR) *",
             payeeLabel: "CUSTOMER / PAYEE NAME *",
-            headerHint: "Incoming — number is issued when you save",
+            fetchParties: () => retailersApi.getActive(),
           }
         : {
-            pageTitle: "PAYMENT-OUT VOUCHER",
-            subtitle:
-              "Record outgoing payments for financial control and institutional compliance.",
+            pageTitle: "Payment Out",
+            subtitle: "Outgoing payments to suppliers / farmers",
             defaultPurpose: "Payment — purchase / supplier settlement",
             defaultPayeeType: "supplier" as CreatePaymentVoucherPayload["payeeType"],
             referenceType: "purchase" as NonNullable<CreatePaymentVoucherPayload["referenceType"]>,
             amountLabel: "PAID AMOUNT (INR) *",
             payeeLabel: "PAYEE NAME (supplier / farmer) *",
-            headerHint: "Outgoing — number is issued when you save",
+            fetchParties: () => farmersApi.getActive(),
           },
     [variant]
   );
 
   const [parties, setParties] = useState<any[]>([]);
-  const [selectedPartyId, setSelectedPartyId] = useState<string>("");
   const [loadingParties, setLoadingParties] = useState(true);
 
-  const [payeeName, setPayeeName] = useState("");
-  const [voucherDate, setVoucherDate] = useState(todayISO);
-  const [transactionReference, setTransactionReference] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodVoucher>("cash");
-  const [amount, setAmount] = useState("");
-  const [purpose, setPurpose] = useState(config.defaultPurpose);
-  const [description, setDescription] = useState("");
-  const [chequeNumber, setChequeNumber] = useState("");
-  const [bankName, setBankName] = useState("");
+  const [vouchers, setVouchers] = useState<PaymentVoucherRecord[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
+
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const [form, setForm] = useState(initialFormState);
   const [submitting, setSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [showForm, setShowForm] = useState(false);
+
+  const [deleteTarget, setDeleteTarget] = useState<PaymentVoucherRecord | null>(null);
+  const [showDelete, setShowDelete] = useState(false);
 
   const [lastVoucherNumber, setLastVoucherNumber] = useState<string | null>(null);
   const [successOpen, setSuccessOpen] = useState(false);
   const [createdRecord, setCreatedRecord] = useState<PaymentVoucherRecord | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const fetchVouchers = useCallback(async () => {
+    setLoadingList(true);
+    try {
+      const params: Record<string, string | undefined> = { payeeType: config.defaultPayeeType };
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+      if (statusFilter) params.status = statusFilter;
+      const data = await paymentVouchersApi.findAll(params);
+      setVouchers(Array.isArray(data) ? data : []);
+    } catch {
+      toast.error("Failed to load vouchers");
+    } finally {
+      setLoadingList(false);
+    }
+  }, [startDate, endDate, statusFilter, config.defaultPayeeType]);
+
   useEffect(() => {
     setLoadingParties(true);
-    const fetchParties = variant === "in" ? retailersApi.getActive() : farmersApi.getActive();
-    fetchParties
-      .then((data) => {
-        setParties(data || []);
-      })
-      .catch((err) => {
-        console.error("Failed to load parties:", err);
-        toast.error("Failed to load payee list");
-      })
-      .finally(() => {
-        setLoadingParties(false);
-      });
-  }, [variant]);
+    config
+      .fetchParties()
+      .then((data) => setParties(data || []))
+      .catch(() => toast.error("Failed to load payee list"))
+      .finally(() => setLoadingParties(false));
+  }, [config]);
 
-  const resetForNewVoucher = useCallback(() => {
-    setSelectedPartyId("");
-    setPayeeName("");
-    setVoucherDate(todayISO());
-    setTransactionReference("");
-    setPaymentMethod("cash");
-    setAmount("");
-    setPurpose(config.defaultPurpose);
-    setDescription("");
-    setChequeNumber("");
-    setBankName("");
-  }, [config.defaultPurpose]);
+  useEffect(() => {
+    fetchVouchers();
+  }, [fetchVouchers]);
+
+  function resetForm() {
+    setForm(initialFormState);
+    setEditingId(null);
+  }
+
+  function openCreate() {
+    resetForm();
+    setForm((prev) => ({ ...prev, purpose: config.defaultPurpose }));
+    setShowForm(true);
+  }
+
+  function openEdit(v: PaymentVoucherRecord) {
+    setEditingId(v.id);
+    setForm({
+      selectedPartyId: v.payeeId ? String(v.payeeId) : "",
+      payeeName: v.payeeName,
+      voucherDate: v.voucherDate,
+      transactionReference: v.transactionReference || "",
+      paymentMethod: (v.paymentMethod as PaymentMethodVoucher) || "cash",
+      amount: String(v.amount),
+      purpose: v.purpose,
+      description: v.description || "",
+      chequeNumber: v.chequeNumber || "",
+      bankName: v.bankName || "",
+    });
+    setShowForm(true);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const amt = Number.parseFloat(amount);
-    if (!selectedPartyId) {
-      toast.error("Select a payee");
-      return;
-    }
-    if (!payeeName.trim()) {
-      toast.error("Enter payee name");
-      return;
-    }
-    if (!Number.isFinite(amt) || amt < 0) {
-      toast.error("Enter a valid amount");
-      return;
-    }
-    if (paymentMethod === "cheque" && !chequeNumber.trim()) {
-      toast.error("Enter cheque number");
-      return;
-    }
+    const amt = Number.parseFloat(form.amount);
+    if (!form.selectedPartyId) { toast.error("Select a payee"); return; }
+    if (!form.payeeName.trim()) { toast.error("Enter payee name"); return; }
+    if (!Number.isFinite(amt) || amt < 0) { toast.error("Enter a valid amount"); return; }
+    if (form.paymentMethod === "cheque" && !form.chequeNumber.trim()) { toast.error("Enter cheque number"); return; }
 
     const payload: CreatePaymentVoucherPayload = {
-      voucherDate,
+      voucherDate: form.voucherDate,
       voucherType: variant,
       payeeType: variant === "in" ? "retailer" : "farmer",
-      payeeId: Number(selectedPartyId),
-      payeeName: payeeName.trim(),
+      payeeId: Number(form.selectedPartyId),
+      payeeName: form.payeeName.trim(),
       amount: amt,
-      paymentMethod,
-      purpose: purpose.trim() || config.defaultPurpose,
-      description: description.trim() || undefined,
+      paymentMethod: form.paymentMethod,
+      purpose: form.purpose.trim() || config.defaultPurpose,
+      description: form.description.trim() || undefined,
       referenceType: config.referenceType,
-      transactionReference: transactionReference.trim() || undefined,
+      transactionReference: form.transactionReference.trim() || undefined,
       status: "paid",
-      paidDate: voucherDate,
-      chequeNumber: paymentMethod === "cheque" ? chequeNumber.trim() : undefined,
+      paidDate: form.voucherDate,
+      chequeNumber: form.paymentMethod === "cheque" ? form.chequeNumber.trim() : undefined,
       bankName:
-        paymentMethod === "cheque" || paymentMethod === "bank_transfer"
-          ? bankName.trim() || undefined
+        form.paymentMethod === "cheque" || form.paymentMethod === "bank_transfer"
+          ? form.bankName.trim() || undefined
           : undefined,
     };
 
     setSubmitting(true);
     try {
-      const res = await paymentVouchersApi.create(payload);
-      setCreatedRecord(res);
-      setLastVoucherNumber(res.voucherNumber);
-      setSuccessOpen(true);
-      toast.success("Voucher created");
+      if (editingId) {
+        await paymentVouchersApi.update(editingId, payload);
+        toast.success("Voucher updated");
+      } else {
+        const res = await paymentVouchersApi.create(payload);
+        setCreatedRecord(res);
+        setLastVoucherNumber(res.voucherNumber);
+        setSuccessOpen(true);
+        toast.success("Voucher created");
+      }
+      setShowForm(false);
+      resetForm();
+      fetchVouchers();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Could not create voucher";
+      const message = err instanceof Error ? err.message : "Operation failed";
       toast.error(message);
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function handleApprove(id: number) {
+    try {
+      await paymentVouchersApi.approve(id);
+      toast.success("Voucher approved");
+      fetchVouchers();
+    } catch { toast.error("Failed to approve"); }
+  }
+
+  async function handleCancel(id: number) {
+    try {
+      await paymentVouchersApi.cancel(id);
+      toast.success("Voucher cancelled");
+      fetchVouchers();
+    } catch { toast.error("Failed to cancel"); }
+  }
+
+  function confirmDelete(v: PaymentVoucherRecord) {
+    setDeleteTarget(v);
+    setShowDelete(true);
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    try {
+      await paymentVouchersApi.delete(deleteTarget.id);
+      toast.success("Voucher deleted");
+      setShowDelete(false);
+      setDeleteTarget(null);
+      fetchVouchers();
+    } catch { toast.error("Failed to delete"); }
   }
 
   async function handleCopyNumber() {
@@ -180,78 +258,124 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
     setTimeout(() => setCopied(false), 2000);
   }
 
-  function handleDialogClose(open: boolean) {
+  function handleSuccessClose(open: boolean) {
     setSuccessOpen(open);
     if (!open) {
-      resetForNewVoucher();
       setCreatedRecord(null);
     }
   }
 
-  function handleCreateAnother() {
-    resetForNewVoucher();
-    setCreatedRecord(null);
-    setSuccessOpen(false);
-  }
-
-  const displayId = lastVoucherNumber ?? "—";
-
   return (
     <DashboardLayout>
-      <div className="bg-white px-6 py-8 border-b border-gray-200">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-wide uppercase text-black">
-              {config.pageTitle}
-            </h1>
-            <p className="text-gray-500 mt-2 text-sm md:text-base">{config.subtitle}</p>
+            <h1 className="text-2xl font-bold">{config.pageTitle}</h1>
+            <p className="text-muted-foreground text-sm">{config.subtitle}</p>
           </div>
-          <div className="md:text-right">
-            <p className="text-gray-400 text-sm font-semibold uppercase">Voucher number</p>
-            <h2 className="text-lg md:text-xl font-semibold text-gray-700 tabular-nums">{displayId}</h2>
-            <p className="text-xs text-muted-foreground mt-1 max-w-[220px] md:ml-auto">
-              {lastVoucherNumber ? "Last saved on this session" : config.headerHint}
-            </p>
+          <Button onClick={openCreate} className="gap-2">
+            <Plus className="size-4" /> New Voucher
+          </Button>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-3 items-end bg-white p-4 rounded-xl border">
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">From</label>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
           </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">To</label>
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Status</label>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+              <option value="">All</option>
+              <option value="paid">Paid</option>
+              <option value="pending">Pending</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchVouchers} className="mt-auto">
+            Refresh
+          </Button>
+        </div>
+
+        {/* Table */}
+        <div className="bg-white rounded-xl border overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Voucher #</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Payee</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Amount</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Method</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Purpose</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loadingList ? (
+                <tr><td colSpan={8} className="text-center py-8 text-gray-500">Loading...</td></tr>
+              ) : vouchers.length === 0 ? (
+                <tr><td colSpan={8} className="text-center py-8 text-gray-500">No vouchers found</td></tr>
+              ) : (
+                vouchers.map((v) => (
+                  <tr key={v.id} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-3 font-mono text-xs">{v.voucherNumber}</td>
+                    <td className="px-4 py-3">{v.voucherDate}</td>
+                    <td className="px-4 py-3">{v.payeeName}</td>
+                    <td className="px-4 py-3 text-right font-medium tabular-nums">
+                      ₹{Number(v.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-4 py-3 capitalize">{v.paymentMethod.replace(/_/g, " ")}</td>
+                    <td className="px-4 py-3 max-w-[150px] truncate">{v.purpose}</td>
+                    <td className="px-4 py-3">
+                      <span className={cn("inline-block px-2 py-0.5 rounded-full text-xs font-medium", STATUS_BADGE[v.status] || "bg-gray-100 text-gray-600")}>
+                        {v.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-1">
+                        <button onClick={() => openEdit(v)} className="p-1.5 rounded hover:bg-gray-100 text-blue-600" title="Edit">
+                          <Pencil className="size-4" />
+                        </button>
+                        {v.status !== "cancelled" && (
+                          <button onClick={() => handleCancel(v.id)} className="p-1.5 rounded hover:bg-gray-100 text-red-600" title="Cancel">
+                            <XCircle className="size-4" />
+                          </button>
+                        )}
+                        {v.status === "pending" && (
+                          <button onClick={() => handleApprove(v.id)} className="p1.5 rounded hover:bg-gray-100 text-green-600" title="Approve">
+                            <CheckCircle className="size-4" />
+                          </button>
+                        )}
+                        <button onClick={() => confirmDelete(v)} className="p-1.5 rounded hover:bg-gray-100 text-red-600" title="Delete">
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 p-6 bg-gray-100 min-h-screen">
-        <div className="bg-white rounded-2xl shadow-md p-6 w-full lg:w-[350px] h-fit">
-          <h2 className="font-semibold text-lg mb-3 flex items-center gap-2">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600 text-sm">
-              ✓
-            </span>
-            Financial Control
-          </h2>
-          <p className="text-gray-600 text-sm leading-6 mb-5">
-            Each save creates a new voucher with a unique number from the server. Use the checklist
-            for compliance.
-          </p>
-          <div className="bg-gray-50 rounded-xl p-4 border">
-            <h3 className="font-semibold text-xs tracking-wide text-gray-700 mb-3">
-              REQUIREMENT CHECKLIST
-            </h3>
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-center gap-2 text-green-600">
-                <span>●</span>
-                Payee identity captured
-              </li>
-              <li className="flex items-center gap-2 text-green-600">
-                <span>●</span>
-                Server-assigned voucher sequence
-              </li>
-              <li className="flex items-center gap-2 text-gray-400">
-                <span>●</span>
-                Attachments (optional)
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-md p-6 flex-1">
-          <h3 className="text-lg font-semibold mb-6">Entry Form</h3>
-
+      {/* Create / Edit Dialog */}
+      <Dialog open={showForm} onOpenChange={(o) => { if (!o) { setShowForm(false); resetForm(); } }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId ? "Edit Voucher" : "New Voucher"}</DialogTitle>
+          </DialogHeader>
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
               <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700">
@@ -263,12 +387,12 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
                 </div>
               ) : (
                 <select
-                  value={selectedPartyId}
+                  value={form.selectedPartyId}
                   onChange={(e) => {
                     const idVal = e.target.value;
-                    setSelectedPartyId(idVal);
+                    setForm((prev) => ({ ...prev, selectedPartyId: idVal }));
                     const party = parties.find((p) => String(p.id) === idVal);
-                    setPayeeName(party ? party.name : "");
+                    if (party) setForm((prev) => ({ ...prev, payeeName: party.name }));
                   }}
                   className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black"
                   required
@@ -290,8 +414,8 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
                 </label>
                 <input
                   type="date"
-                  value={voucherDate}
-                  onChange={(e) => setVoucherDate(e.target.value)}
+                  value={form.voucherDate}
+                  onChange={(e) => setForm((prev) => ({ ...prev, voucherDate: e.target.value }))}
                   className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black"
                   required
                 />
@@ -302,9 +426,9 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
                 </label>
                 <input
                   type="text"
-                  value={transactionReference}
-                  onChange={(e) => setTransactionReference(e.target.value)}
-                  placeholder="Bank ref, receipt no…"
+                  value={form.transactionReference}
+                  onChange={(e) => setForm((prev) => ({ ...prev, transactionReference: e.target.value }))}
+                  placeholder="Bank ref, receipt no..."
                   className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black"
                 />
               </div>
@@ -319,10 +443,10 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
                   <button
                     key={key}
                     type="button"
-                    onClick={() => setPaymentMethod(key)}
+                    onClick={() => setForm((prev) => ({ ...prev, paymentMethod: key }))}
                     className={cn(
                       "px-5 py-2 rounded-lg text-sm font-medium transition",
-                      paymentMethod === key
+                      form.paymentMethod === key
                         ? "bg-black text-white"
                         : "border border-gray-300 hover:bg-gray-100"
                     )}
@@ -333,30 +457,30 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
               </div>
             </div>
 
-            {(paymentMethod === "cheque" || paymentMethod === "bank_transfer") && (
+            {(form.paymentMethod === "cheque" || form.paymentMethod === "bank_transfer") && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {paymentMethod === "cheque" && (
+                {form.paymentMethod === "cheque" && (
                   <div>
                     <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700">
                       CHEQUE NUMBER *
                     </label>
                     <input
                       type="text"
-                      value={chequeNumber}
-                      onChange={(e) => setChequeNumber(e.target.value)}
+                      value={form.chequeNumber}
+                      onChange={(e) => setForm((prev) => ({ ...prev, chequeNumber: e.target.value }))}
                       className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                      required={paymentMethod === "cheque"}
+                      required={form.paymentMethod === "cheque"}
                     />
                   </div>
                 )}
-                <div className={paymentMethod === "cheque" ? "" : "md:col-span-2"}>
+                <div className={form.paymentMethod === "cheque" ? "" : "md:col-span-2"}>
                   <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700">
                     BANK NAME
                   </label>
                   <input
                     type="text"
-                    value={bankName}
-                    onChange={(e) => setBankName(e.target.value)}
+                    value={form.bankName}
+                    onChange={(e) => setForm((prev) => ({ ...prev, bankName: e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black"
                   />
                 </div>
@@ -369,8 +493,8 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
               </label>
               <input
                 type="text"
-                value={purpose}
-                onChange={(e) => setPurpose(e.target.value)}
+                value={form.purpose}
+                onChange={(e) => setForm((prev) => ({ ...prev, purpose: e.target.value }))}
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black"
                 required
               />
@@ -386,8 +510,8 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
                   type="number"
                   min="0"
                   step="0.01"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  value={form.amount}
+                  onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
                   placeholder="0.00"
                   className="flex-1 outline-none text-lg font-semibold"
                   required
@@ -400,21 +524,12 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
                 DESCRIPTION / NOTES
               </label>
               <textarea
-                rows={4}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                value={form.description}
+                onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
                 placeholder="Additional details..."
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-black"
               />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700">
-                ATTACHMENTS
-              </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center text-gray-500 text-sm">
-                Optional — paste URL later or extend upload API.
-              </div>
             </div>
 
             <Button
@@ -422,13 +537,30 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
               disabled={submitting}
               className="w-full py-6 rounded-xl font-semibold text-base bg-black hover:bg-gray-900"
             >
-              {submitting ? "Saving…" : "SAVE VOUCHER"}
+              {submitting ? "Saving..." : editingId ? "UPDATE VOUCHER" : "SAVE VOUCHER"}
             </Button>
           </form>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
 
-      <Dialog open={successOpen} onOpenChange={handleDialogClose}>
+      {/* Delete Confirmation */}
+      <Dialog open={showDelete} onOpenChange={setShowDelete}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Voucher</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete voucher <strong>{deleteTarget?.voucherNumber}</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowDelete(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Dialog */}
+      <Dialog open={successOpen} onOpenChange={handleSuccessClose}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Voucher created</DialogTitle>
@@ -470,16 +602,12 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
               disabled={!createdRecord?.voucherNumber}
             >
               {copied ? (
-                <>
-                  <Check className="size-4 mr-2" /> Copied
-                </>
+                <><Check className="size-4 mr-2" /> Copied</>
               ) : (
-                <>
-                  <Copy className="size-4 mr-2" /> Copy number
-                </>
+                <><Copy className="size-4 mr-2" /> Copy number</>
               )}
             </Button>
-            <Button type="button" className="w-full sm:w-auto" onClick={handleCreateAnother}>
+            <Button type="button" className="w-full sm:w-auto" onClick={() => { setSuccessOpen(false); setCreatedRecord(null); }}>
               Create another voucher
             </Button>
           </DialogFooter>

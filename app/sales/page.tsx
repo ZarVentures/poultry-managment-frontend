@@ -60,6 +60,7 @@ export default function SalesPage() {
   const [pageSize, setPageSize] = useState(10)
   const [totalRecords, setTotalRecords] = useState(0)
   const [serverStats, setServerStats] = useState<any>(null)
+  const [summaryTotals, setSummaryTotals] = useState<{ totalBirds: number }>({ totalBirds: 0 })
 
   const [formData, setFormData] = useState({
     invoiceNumber: "",
@@ -115,6 +116,10 @@ export default function SalesPage() {
     fetchSales()
   }, [currentPage, pageSize, searchQuery, dateRangeStart, dateRangeEnd, filterPaymentStatus])
 
+  useEffect(() => {
+    fetchSummaryTotals()
+  }, [searchQuery, dateRangeStart, dateRangeEnd, filterPaymentStatus])
+
   const fetchSales = async () => {
     try {
       setLoading(true)
@@ -139,6 +144,24 @@ export default function SalesPage() {
     }
     catch { setSales([]); toast.error("Failed to load sales") }
     finally { setLoading(false) }
+  }
+
+  const fetchSummaryTotals = async () => {
+    try {
+      const res = await salesApi.getAll({
+        page: 1,
+        limit: 1,
+        customer: searchQuery || undefined,
+        startDate: dateRangeStart?.toISOString().split('T')[0],
+        endDate: dateRangeEnd?.toISOString().split('T')[0],
+        paymentStatus: filterPaymentStatus || undefined,
+      })
+      if (res?.summary) {
+        setSummaryTotals({
+          totalBirds: (res.summary as any).totalQuantity ?? 0,
+        })
+      }
+    } catch { /* non-critical */ }
   }
   const fetchRetailers = async () => {
     try {
@@ -863,8 +886,8 @@ export default function SalesPage() {
     if (serverStats) {
       return {
         count: totalRecords,
-        totalBirds: serverStats.totalBirds ?? 0,
-        totalWeight: (serverStats as any).totalWeight ?? serverStats.totalBirds ?? 0,
+        totalBirds: summaryTotals.totalBirds || sales.reduce((s, x) => s + Number(x.quantity || 0), 0),
+        totalWeight: (serverStats as any).totalWeight ?? (serverStats as any).totalBirds ?? 0,
         totalRevenue: serverStats.totalRevenue,
         totalReceived: serverStats.totalReceived,
         totalPending: serverStats.totalPending,
@@ -872,13 +895,13 @@ export default function SalesPage() {
     }
     return {
       count: sales.length,
-      totalBirds: sales.reduce((s, x) => s + Number((x as any).numberOfBirds || 0), 0),
+      totalBirds: sales.reduce((s, x) => s + Number(x.quantity || 0), 0),
       totalWeight: sales.reduce((s, x) => s + parseFloat(String(x.quantity || 0)), 0),
       totalRevenue: sales.reduce((s, x) => s + parseFloat(String(x.netAmount || x.totalAmount || 0)), 0),
       totalReceived: sales.reduce((s, x) => s + parseFloat(String(x.amountReceived || 0)), 0),
       totalPending: sales.reduce((s, x) => s + Math.max(0, parseFloat(String(x.netAmount || x.totalAmount || 0)) - parseFloat(String(x.amountReceived || 0))), 0),
     }
-  }, [sales, serverStats, totalRecords])
+  }, [sales, serverStats, totalRecords, summaryTotals])
 
   const filtered = useMemo(() => {
     return sales
@@ -1437,7 +1460,7 @@ export default function SalesPage() {
         </div>
 
         {/* Mini Dashboard */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
 
           <Card>
             <CardHeader className="pb-2">
@@ -1462,6 +1485,20 @@ export default function SalesPage() {
             <CardContent>
               <div className="text-2xl font-bold text-purple-600">
                 {((stats as any).totalWeight ?? stats.totalBirds ?? 0).toFixed(0)} kg
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Layers size={14} className="text-cyan-600" />
+                Total Birds
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-cyan-600">
+                {stats.totalBirds.toLocaleString("en-IN")}
               </div>
             </CardContent>
           </Card>
