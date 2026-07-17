@@ -31,6 +31,10 @@ export default function ReportsPage() {
   const [godownSalesData, setGodownSalesData] = useState<any>(null)
   const [mortalityData, setMortalityData] = useState<any>(null)
   const [outstandingData, setOutstandingData] = useState<any>(null)
+  const [stockData, setStockData] = useState<any>(null)
+  const [stockSearch, setStockSearch] = useState("")
+  const [stockTypeFilter, setStockTypeFilter] = useState("all")
+  const [stockLowOnly, setStockLowOnly] = useState(false)
 
   const fetchReport = async (endpoint: string, setter: Function) => {
     try {
@@ -68,7 +72,7 @@ export default function ReportsPage() {
   }
 
   const downloadAllPDF = async () => {
-    if (!profitLossData && !purchaseData && !salesData && !godownSalesData && !mortalityData && !expenseData && !farmWiseData && !customerWiseData && !outstandingData) {
+    if (!profitLossData && !purchaseData && !salesData && !godownSalesData && !mortalityData && !expenseData && !farmWiseData && !customerWiseData && !outstandingData && !stockData) {
       return toast.error('Generate reports first')
     }
     const { default: jsPDF } = await import('jspdf')
@@ -81,111 +85,135 @@ export default function ReportsPage() {
     doc.text(`Date Range: ${dateLabel}`, 14, 28)
     let y = 34
 
+    const noData = (cols: number) => [[...(new Array(cols - 1).fill('')), 'No Data Available']]
     const sections: { title: string; headers: string[]; rows: (string | number)[][] }[] = []
 
-    if (profitLossData?.summary) {
-      const s = profitLossData.summary
-      sections.push({
-        title: 'Profit & Loss',
-        headers: ['Metric', 'Value'],
-        rows: [
-          ['Revenue', `Rs. ${s.totalRevenue?.toFixed(2) || '0.00'}`],
-          ['Cost', `Rs. ${s.totalCost?.toFixed(2) || '0.00'}`],
-          ['Gross Profit', `Rs. ${s.grossProfit?.toFixed(2) || '0.00'}`],
-          ['Expenses', `Rs. ${s.totalExpenses?.toFixed(2) || '0.00'}`],
-          ['Net Profit', `Rs. ${s.netProfit?.toFixed(2) || '0.00'}`],
-          ['Margin', `${s.profitMargin?.toFixed(2) || '0.00'}%`],
-        ],
-      })
-    }
+    sections.push({
+      title: 'Profit & Loss',
+      headers: ['Metric', 'Value'],
+      rows: profitLossData?.summary
+        ? [
+            ['Revenue', `Rs. ${profitLossData.summary.totalRevenue?.toFixed(2) || '0.00'}`],
+            ['Cost', `Rs. ${profitLossData.summary.totalCost?.toFixed(2) || '0.00'}`],
+            ['Gross Profit', `Rs. ${profitLossData.summary.grossProfit?.toFixed(2) || '0.00'}`],
+            ['Expenses', `Rs. ${profitLossData.summary.totalExpenses?.toFixed(2) || '0.00'}`],
+            ['Net Profit', `Rs. ${profitLossData.summary.netProfit?.toFixed(2) || '0.00'}`],
+            ['Margin', `${profitLossData.summary.profitMargin?.toFixed(2) || '0.00'}%`],
+          ]
+        : noData(2),
+    })
 
-    if (purchaseData?.purchases?.length) {
+    sections.push({
+      title: 'Purchases',
+      headers: ['Order #', 'Date', 'Supplier', 'Birds', 'Weight', 'Amount', 'Status'],
+      rows: purchaseData?.purchases?.length
+        ? purchaseData.purchases.map((p: any) => [
+            p.orderNumber || '', new Date(p.orderDate).toLocaleDateString('en-GB'), p.supplierName || '',
+            String(p.numberOfBirds || p.totalBirds || 0),
+            `${(parseFloat(p.totalWeight) || parseFloat(p.quantity) || 0).toFixed(2)} kg`,
+            `Rs. ${parseFloat(p.netAmount || 0).toFixed(2)}`, p.purchasePaymentStatus || '',
+          ])
+        : noData(7),
+    })
+
+    sections.push({
+      title: 'Sales',
+      headers: ['Bill No', 'Date', 'Customer', 'Birds', 'Weight', 'Shortage', 'Amount', 'Status'],
+      rows: salesData?.sales?.length
+        ? salesData.sales.map((s: any) => [
+            s.invoiceNumber || '', new Date(s.saleDate).toLocaleDateString('en-GB'), s.customerName || '',
+            String(s.totalBirds || s.numberOfBirds || 0),
+            `${(parseFloat(s.totalWeight) || parseFloat(s.quantity) || 0).toFixed(2)} kg`,
+            `${parseFloat(s.weightShortage || 0).toFixed(2)} kg`, `Rs. ${parseFloat(s.netAmount || 0).toFixed(2)}`, s.paymentStatus || '',
+          ])
+        : noData(8),
+    })
+
+    sections.push({
+      title: 'Godown Sales',
+      headers: ['Sale No', 'Date', 'Cages', 'Weight Loss', 'Amount'],
+      rows: godownSalesData?.sales?.length
+        ? godownSalesData.sales.map((s: any) => [
+            s.saleNo || '', new Date(s.saleDate).toLocaleDateString('en-GB'), String(s.cageCount || ''),
+            `${parseFloat(s.weightLoss || 0).toFixed(2)} kg`, `Rs. ${parseFloat(s.totalAmount || 0).toFixed(2)}`,
+          ])
+        : noData(5),
+    })
+
+    sections.push({
+      title: 'Mortality',
+      headers: ['Order #', 'Date', 'Supplier', 'Weight', 'Mortality Deduction'],
+      rows: mortalityData?.purchases?.length
+        ? mortalityData.purchases.map((p: any) => [
+            p.orderNumber || '', new Date(p.orderDate).toLocaleDateString('en-GB'), p.supplierName || '',
+            `${parseFloat(p.totalWeight || 0).toFixed(2)} kg`, `Rs. ${parseFloat(p.mortalityDeduction || 0).toFixed(2)}`,
+          ])
+        : noData(5),
+    })
+
+    sections.push({
+      title: 'Available Stock',
+      headers: ['Metric', 'Value'],
+      rows: stockData
+        ? [
+            ['Birds in Godown', String(stockData.godown?.currentStock ?? 0)],
+            ['Bird Weight', `${(stockData.godown?.currentWeight ?? 0).toFixed(2)} kg`],
+            ['Bird Value', `Rs. ${(stockData.godown?.currentValue ?? 0).toFixed(2)}`],
+          ]
+        : noData(2),
+    })
+
+    if (stockData?.inventory?.length) {
       sections.push({
-        title: 'Purchases',
-        headers: ['Order #', 'Date', 'Supplier', 'Birds', 'Weight', 'Amount', 'Status'],
-        rows: purchaseData.purchases.map((p: any) => [
-          p.orderNumber || '', new Date(p.orderDate).toLocaleDateString('en-GB'), p.supplierName || '',
-          String(p.numberOfBirds || p.totalBirds || 0),
-          `${(parseFloat(p.totalWeight) || parseFloat(p.quantity) || 0).toFixed(2)} kg`,
-          `Rs. ${parseFloat(p.netAmount || 0).toFixed(2)}`, p.purchasePaymentStatus || '',
+        title: 'Inventory Items',
+        headers: ['Name', 'Type', 'Stock Level', 'Unit', 'Reorder Level'],
+        rows: stockData.inventory.map((i: any) => [
+          i.name || '', i.type || i.itemType || '-',
+          String(i.currentStockLevel ?? 0), i.unit || 'kg',
+          String(i.reorderLevel || '-'),
         ]),
       })
     }
 
-    if (salesData?.sales?.length) {
-      sections.push({
-        title: 'Sales',
-        headers: ['Bill No', 'Date', 'Customer', 'Birds', 'Weight', 'Shortage', 'Amount', 'Status'],
-        rows: salesData.sales.map((s: any) => [
-          s.invoiceNumber || '', new Date(s.saleDate).toLocaleDateString('en-GB'), s.customerName || '',
-          String(s.totalBirds || s.numberOfBirds || 0),
-          `${(parseFloat(s.totalWeight) || parseFloat(s.quantity) || 0).toFixed(2)} kg`,
-          `${parseFloat(s.weightShortage || 0).toFixed(2)} kg`, `Rs. ${parseFloat(s.netAmount || 0).toFixed(2)}`, s.paymentStatus || '',
-        ]),
-      })
-    }
+    sections.push({
+      title: 'Expenses',
+      headers: ['Category', 'Amount', 'Percentage', 'Count'],
+      rows: expenseData?.breakdown?.length
+        ? expenseData.breakdown.map((e: any) => [
+            e.category || '', `Rs. ${(e.amount || 0).toFixed(2)}`, `${(e.percentage || 0).toFixed(1)}%`, String(e.count || 0),
+          ])
+        : noData(4),
+    })
 
-    if (godownSalesData?.sales?.length) {
-      sections.push({
-        title: 'Godown Sales',
-        headers: ['Sale No', 'Date', 'Cages', 'Weight Loss', 'Amount'],
-        rows: godownSalesData.sales.map((s: any) => [
-          s.saleNo || '', new Date(s.saleDate).toLocaleDateString('en-GB'), String(s.cageCount || ''),
-          `${parseFloat(s.weightLoss || 0).toFixed(2)} kg`, `Rs. ${parseFloat(s.totalAmount || 0).toFixed(2)}`,
-        ]),
-      })
-    }
+    sections.push({
+      title: 'Farm-wise Profit',
+      headers: ['Farmer', 'Orders', 'Total Cost', 'Weight'],
+      rows: farmWiseData?.farms?.length
+        ? farmWiseData.farms.map((f: any) => [
+            f.farmerName || '', String(f.totalOrders || 0), `Rs. ${(f.totalCost || 0).toFixed(2)}`, `${(f.totalWeight || 0).toFixed(2)} kg`,
+          ])
+        : noData(4),
+    })
 
-    if (mortalityData?.purchases?.length) {
-      sections.push({
-        title: 'Mortality',
-        headers: ['Order #', 'Date', 'Supplier', 'Weight', 'Mortality Deduction'],
-        rows: mortalityData.purchases.map((p: any) => [
-          p.orderNumber || '', new Date(p.orderDate).toLocaleDateString('en-GB'), p.supplierName || '',
-          `${parseFloat(p.totalWeight || 0).toFixed(2)} kg`, `Rs. ${parseFloat(p.mortalityDeduction || 0).toFixed(2)}`,
-        ]),
-      })
-    }
+    sections.push({
+      title: 'Customer-wise Sales',
+      headers: ['Customer', 'Sales', 'Revenue', 'Quantity'],
+      rows: customerWiseData?.customers?.length
+        ? customerWiseData.customers.map((c: any) => [
+            c.customerName || '', String(c.totalSales || 0), `Rs. ${(c.totalRevenue || 0).toFixed(2)}`, `${(c.totalQuantity || 0).toFixed(2)}`,
+          ])
+        : noData(4),
+    })
 
-    if (expenseData?.breakdown?.length) {
-      sections.push({
-        title: 'Expenses',
-        headers: ['Category', 'Amount', 'Percentage', 'Count'],
-        rows: expenseData.breakdown.map((e: any) => [
-          e.category || '', `Rs. ${(e.amount || 0).toFixed(2)}`, `${(e.percentage || 0).toFixed(1)}%`, String(e.count || 0),
-        ]),
-      })
-    }
-
-    if (farmWiseData?.farms?.length) {
-      sections.push({
-        title: 'Farm-wise Profit',
-        headers: ['Farmer', 'Orders', 'Total Cost', 'Weight'],
-        rows: farmWiseData.farms.map((f: any) => [
-          f.farmerName || '', String(f.totalOrders || 0), `Rs. ${(f.totalCost || 0).toFixed(2)}`, `${(f.totalWeight || 0).toFixed(2)} kg`,
-        ]),
-      })
-    }
-
-    if (customerWiseData?.customers?.length) {
-      sections.push({
-        title: 'Customer-wise Sales',
-        headers: ['Customer', 'Sales', 'Revenue', 'Quantity'],
-        rows: customerWiseData.customers.map((c: any) => [
-          c.customerName || '', String(c.totalSales || 0), `Rs. ${(c.totalRevenue || 0).toFixed(2)}`, `${(c.totalQuantity || 0).toFixed(2)}`,
-        ]),
-      })
-    }
-
-    if (outstandingData?.data?.length) {
-      sections.push({
-        title: 'Outstanding',
-        headers: ['Retailer', 'Total Sales', 'Received', 'Outstanding'],
-        rows: outstandingData.data.slice(0, 50).map((r: any) => [
-          r.name || '', `Rs. ${(r.totalSales || 0).toLocaleString('en-IN')}`, `Rs. ${(r.totalReceived || 0).toLocaleString('en-IN')}`, `Rs. ${(r.outstanding || 0).toLocaleString('en-IN')}`,
-        ]),
-      })
-    }
+    sections.push({
+      title: 'Outstanding',
+      headers: ['Retailer', 'Total Sales', 'Received', 'Outstanding'],
+      rows: outstandingData?.data?.length
+        ? outstandingData.data.slice(0, 50).map((r: any) => [
+            r.name || '', `Rs. ${(r.totalSales || 0).toLocaleString('en-IN')}`, `Rs. ${(r.totalReceived || 0).toLocaleString('en-IN')}`, `Rs. ${(r.outstanding || 0).toLocaleString('en-IN')}`,
+          ])
+        : noData(4),
+    })
 
     sections.forEach((sec, i) => {
       if (i > 0) y += 6
@@ -217,6 +245,24 @@ export default function ReportsPage() {
     fetchReport('godown-sales', setGodownSalesData)
     fetchReport('mortality', setMortalityData)
     fetchReport('outstanding', setOutstandingData)
+    fetchStockReport()
+  }
+
+  const fetchStockReport = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const [godownRes, inventoryRes] = await Promise.all([
+        fetch(`${getApiBaseUrl()}/godown/summary`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${getApiBaseUrl()}/inventory`, { headers: { Authorization: `Bearer ${token}` } }),
+      ])
+      if (!godownRes.ok) throw new Error('Failed to fetch godown summary')
+      if (!inventoryRes.ok) throw new Error('Failed to fetch inventory')
+      const godownData = await godownRes.json()
+      const inventoryData = await inventoryRes.json()
+      setStockData({ godown: godownData, inventory: inventoryData })
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to load stock data')
+    }
   }
 
   return (
@@ -258,12 +304,13 @@ export default function ReportsPage() {
         </div>
 
         <Tabs defaultValue="profitloss">
-          <TabsList className="grid w-full grid-cols-8">
-            <TabsTrigger value="profitloss">Profit & Loss</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5" style={{ height: 'auto' }}>
+            <TabsTrigger value="profitloss">P&L</TabsTrigger>
             <TabsTrigger value="purchases">Purchases</TabsTrigger>
             <TabsTrigger value="sales">Sales</TabsTrigger>
             <TabsTrigger value="godownsales">Godown Sales</TabsTrigger>
             <TabsTrigger value="mortality">Mortality</TabsTrigger>
+            <TabsTrigger value="stock">Stock Type</TabsTrigger>
             <TabsTrigger value="expenses">Expenses</TabsTrigger>
             <TabsTrigger value="farm">Farm-wise</TabsTrigger>
             <TabsTrigger value="customer">Customer-wise</TabsTrigger>
@@ -701,6 +748,121 @@ export default function ReportsPage() {
                     {mortalityData.purchases.length === 0 && (
                       <p className="text-center py-8 text-muted-foreground">No mortality data in selected period</p>
                     )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Available Stock */}
+          <TabsContent value="stock">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between">
+                  <CardTitle>Available Stock in Godown</CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    if (!stockData) return
+                    const summary = [
+                      { Metric: 'Birds in Godown', Value: stockData.godown?.currentStock ?? 0 },
+                      { Metric: 'Bird Weight (kg)', Value: (stockData.godown?.currentWeight ?? 0).toFixed(2) },
+                      { Metric: 'Bird Value (Rs)', Value: (stockData.godown?.currentValue ?? 0).toFixed(2) },
+                    ]
+                    downloadCSV([...summary, ...(stockData.inventory || []).map((i: any) => ({ Metric: i.name || i.itemName, Value: `${i.currentStockLevel ?? 0} ${i.unit || 'pcs'}` }))], 'stock')
+                  }}>
+                    <Download className="mr-2" size={16} />CSV
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!stockData ? <p className="text-center py-8 text-muted-foreground">Generate stock report</p> : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="p-4 border rounded bg-blue-50">
+                        <p className="text-sm text-muted-foreground">Birds in Godown</p>
+                        <p className="text-2xl font-bold text-blue-600">{stockData.godown?.currentStock ?? 0}</p>
+                      </div>
+                      <div className="p-4 border rounded bg-indigo-50">
+                        <p className="text-sm text-muted-foreground">Bird Weight</p>
+                        <p className="text-2xl font-bold text-indigo-600">{(stockData.godown?.currentWeight ?? 0).toFixed(2)} kg</p>
+                      </div>
+                      <div className="p-4 border rounded bg-teal-50">
+                        <p className="text-sm text-muted-foreground">Bird Value</p>
+                        <p className="text-2xl font-bold text-teal-600">₹{(stockData.godown?.currentValue ?? 0).toFixed(2)}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4 items-end">
+                      <div className="flex-1">
+                        <label className="text-sm font-medium mb-1 block">Search</label>
+                        <input
+                          type="text"
+                          placeholder="Search by name..."
+                          value={stockSearch}
+                          onChange={(e) => setStockSearch(e.target.value)}
+                          className="w-full px-3 py-2 border rounded-md text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Type</label>
+                        <select
+                          value={stockTypeFilter}
+                          onChange={(e) => setStockTypeFilter(e.target.value)}
+                          className="px-3 py-2 border rounded-md text-sm"
+                        >
+                          <option value="all">All Types</option>
+                          {[...new Set(stockData.inventory?.map((i: any) => i.type || i.itemType).filter(Boolean))].map((t: any) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-2 pb-1">
+                        <input
+                          type="checkbox"
+                          id="lowStockOnly"
+                          checked={stockLowOnly}
+                          onChange={(e) => setStockLowOnly(e.target.checked)}
+                          className="w-4 h-4"
+                        />
+                        <label htmlFor="lowStockOnly" className="text-sm cursor-pointer">Low stock only</label>
+                      </div>
+                    </div>
+
+                    {(() => {
+                      const filtered = (stockData.inventory || []).filter((item: any) => {
+                        if (stockSearch && !item.name?.toLowerCase().includes(stockSearch.toLowerCase())) return false
+                        if (stockTypeFilter !== 'all' && (item.type || item.itemType) !== stockTypeFilter) return false
+                        if (stockLowOnly && item.currentStockLevel > (item.reorderLevel || 0)) return false
+                        return true
+                      })
+                      return filtered.length > 0 ? (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Item Name</TableHead>
+                              <TableHead>Type</TableHead>
+                              <TableHead className="text-right">Stock Level</TableHead>
+                              <TableHead className="text-right">Unit</TableHead>
+                              <TableHead className="text-right">Reorder Level</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filtered.map((item: any, i: number) => (
+                              <TableRow key={i}>
+                                <TableCell className="font-medium">{item.name}</TableCell>
+                                <TableCell className="capitalize">{item.type || item.itemType || '-'}</TableCell>
+                                <TableCell className={`text-right ${item.currentStockLevel <= (item.reorderLevel || 0) ? 'text-red-600 font-bold' : ''}`}>
+                                  {item.currentStockLevel ?? 0}
+                                </TableCell>
+                                <TableCell className="text-right">{item.unit || 'kg'}</TableCell>
+                                <TableCell className="text-right">{item.reorderLevel || '-'}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <p className="text-center py-4 text-muted-foreground">No items match filters</p>
+                      )
+                    })()}
                   </div>
                 )}
               </CardContent>
