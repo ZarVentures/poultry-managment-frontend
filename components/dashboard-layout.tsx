@@ -16,11 +16,11 @@ import {
   ChartNoAxesCombined, Tractor, User, PackageOpen, PackagePlus,
   PackageSearch, PackageX, PackageCheck, CreditCard, BookOpen,
   TrendingDown, BarChart3 as BarChartAlt,
-  GitBranch, Shield, DollarSign, FileText, Receipt, LayoutDashboard,
+  GitBranch, Shield, /* DollarSign, FileText, Receipt, */ LayoutDashboard,
 } from "lucide-react"
 
 const IS_STAGING = process.env.NEXT_PUBLIC_IS_STAGING === 'true'
-const ACCOUNTING_URL = process.env.NEXT_PUBLIC_ACCOUNTING_URL || '/accounting'
+// const ACCOUNTING_URL = process.env.NEXT_PUBLIC_ACCOUNTING_URL || '/accounting'
 
 interface User {
   email: string
@@ -40,7 +40,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const [masterEntriesOpen, setMasterEntriesOpen] = useState(false)
   const [purchasesOpen, setPurchasesOpen] = useState(false)
   const [salesOpen, setSalesOpen] = useState(false)
-  const [accountingOpen, setAccountingOpen] = useState(false)
+  // const [accountingOpen, setAccountingOpen] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
   const { isDevMode, logs, clearLogs, addLog } = useDevMode()
@@ -230,7 +230,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
               {/* USERS */}
               <SidebarLink href="/users" icon={User} label="Users" open={sidebarOpen} />
 
-              {/* ACCOUNTING MICROSERVICE */}
+              {/* ACCOUNTING MICROSERVICE — COMMENTED OUT */}
+              {/*
               <div className="space-y-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -260,6 +261,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                   </div>
                 )}
               </div>
+              */}
             </>
           )}
 
