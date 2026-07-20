@@ -113,7 +113,7 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
   const fetchVouchers = useCallback(async () => {
     setLoadingList(true);
     try {
-      const params: Record<string, string | undefined> = { payeeType: config.defaultPayeeType };
+      const params: Record<string, string | undefined> = { voucherType: variant };
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
       if (statusFilter) params.status = statusFilter;
@@ -124,7 +124,7 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
     } finally {
       setLoadingList(false);
     }
-  }, [startDate, endDate, statusFilter, config.defaultPayeeType]);
+  }, [startDate, endDate, statusFilter, variant]);
 
   useEffect(() => {
     setLoadingParties(true);
@@ -178,7 +178,7 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
     const payload: CreatePaymentVoucherPayload = {
       voucherDate: form.voucherDate,
       voucherType: variant,
-      payeeType: variant === "in" ? "retailer" : "farmer",
+      payeeType: config.defaultPayeeType,
       payeeId: Number(form.selectedPartyId),
       payeeName: form.payeeName.trim(),
       amount: amt,
