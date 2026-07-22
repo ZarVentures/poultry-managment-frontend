@@ -19,7 +19,7 @@ const RetailerLedgerContent = () => {
   const [ledgerEntries, setLedgerEntries] = useState<any[]>([])
   const [loadingRetailers, setLoadingRetailers] = useState(true)
   const [loadingLedger, setLoadingLedger] = useState(false)
-  const [saleLookup, setSaleLookup] = useState<Record<string, { quantity: number; totalBirds: number }>>({})
+  const [saleLookup, setSaleLookup] = useState<Record<string, { quantity: number; totalBirds: number; rate: number }>>({})
   const [orgInfo, setOrgInfo] = useState<{ name: string; location: string; phone: string }>({ name: '', location: '', phone: '' })
   const [dateFrom, setDateFrom] = useState(() => { const d = new Date(); d.setMonth(0); d.setDate(1); return d.toISOString().split('T')[0] })
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0])
@@ -81,9 +81,9 @@ const RetailerLedgerContent = () => {
       .then((res: any) => {
         const list = Array.isArray(res) ? res : res?.data || []
         console.log('Sales lookup count:', list.length, '| first refId:', list[0]?.invoiceNumber)
-        const map: Record<string, { quantity: number; totalBirds: number }> = {}
+        const map: Record<string, { quantity: number; totalBirds: number; rate: number }> = {}
         list.forEach((s: any) => {
-          const val = { quantity: parseFloat(s.quantity) || 0, totalBirds: parseInt(s.numberOfBirds) || parseInt(s.totalBirds) || 0 }
+          const val = { quantity: parseFloat(s.quantity) || 0, totalBirds: parseInt(s.numberOfBirds) || parseInt(s.totalBirds) || 0, rate: parseFloat(s.unitPrice) || 0 }
           map[s.invoiceNumber] = val
           if (s.saleNo) map[s.saleNo] = val
           if (s.id) map[s.id] = val
@@ -129,15 +129,15 @@ const RetailerLedgerContent = () => {
       const so = saleLookup[invNo]
       if (so) return so
     }
-    return { quantity: 0, totalBirds: 0 }
+    return { quantity: 0, totalBirds: 0, rate: 0 }
   }
 
   const downloadCSV = () => {
     if (!filteredEntries.length) { alert('No data to export.'); return }
-    const headers = 'Date,Type,Reference,Birds,Weight,Debit,Credit,Balance'
+    const headers = 'Date,Type,Reference,Birds,Weight,Rate,Debit,Credit,Balance'
     const rows = filteredEntries.map(e => {
       const m = getEntryMeta(e)
-      return `${e.date},${e.referenceType},${e.referenceId || ''},${m.totalBirds || ''},${m.quantity || ''},${e.debit},${e.credit},${e.balance}`
+      return `${e.date},${e.referenceType},${e.referenceId || ''},${m.totalBirds || ''},${m.quantity || ''},${m.rate || ''},${e.debit},${e.credit},${e.balance}`
     }).join('\n')
     const blob = new Blob([`${headers}\n${rows}`], { type: 'text/csv;charset=utf-8;' })
     const url = window.URL.createObjectURL(blob)
@@ -187,35 +187,36 @@ const RetailerLedgerContent = () => {
         e.referenceId || '-',
         m.totalBirds || '-',
         m.quantity ? `${m.quantity.toFixed(2)} kg` : '-',
+        m.rate ? `₹${m.rate.toFixed(2)}` : '-',
         Number(e.debit) > 0 ? `Rs. ${Number(e.debit).toLocaleString('en-IN')}` : '-',
         Number(e.credit) > 0 ? `Rs. ${Number(e.credit).toLocaleString('en-IN')}` : '-',
         `Rs. ${Number(e.balance).toLocaleString('en-IN')}`,
       ]
     })
     rows.unshift([
-      { content: 'Opening Balance', colSpan: 7, styles: { fontStyle: 'bold', halign: 'right' } },
+      { content: 'Opening Balance', colSpan: 8, styles: { fontStyle: 'bold', halign: 'right' } },
       `Rs. ${openingBalance.toLocaleString('en-IN')}`
     ])
     rows.push([
-      { content: 'TOTAL FOR PERIOD', colSpan: 5, styles: { fontStyle: 'bold', halign: 'right' } },
+      { content: 'TOTAL FOR PERIOD', colSpan: 6, styles: { fontStyle: 'bold', halign: 'right' } },
       `Rs. ${totalDebit.toLocaleString('en-IN')}`,
       `Rs. ${totalCredit.toLocaleString('en-IN')}`,
       '',
     ])
     rows.push([
-      { content: 'Closing Balance', colSpan: 7, styles: { fontStyle: 'bold', halign: 'right' } },
+      { content: 'Closing Balance', colSpan: 8, styles: { fontStyle: 'bold', halign: 'right' } },
       `Rs. ${closingBalance.toLocaleString('en-IN')}`
     ])
 
     autoTable(doc, {
-      head: [['Date', 'Type', 'Reference', 'Birds', 'Weight', 'Debit (Rs.)', 'Credit (Rs.)', 'Balance (Rs.)']],
+      head: [['Date', 'Type', 'Reference', 'Birds', 'Weight', 'Rate', 'Debit (Rs.)', 'Credit (Rs.)', 'Balance (Rs.)']],
       body: rows,
       startY: lineY + 4,
       margin: { left: 10, right: 10 },
       styles: { fontSize: 7, cellPadding: 2 },
       headStyles: { fillColor: [41, 65, 86], textColor: 255, fontStyle: 'bold', fontSize: 8 },
       alternateRowStyles: { fillColor: [245, 247, 250] },
-      columnStyles: { 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' } },
+      columnStyles: { 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' } },
       foot: [['Generated on ' + new Date().toLocaleString('en-GB'), '', '', '', '', '', '', '']],
       footStyles: { fillColor: [241, 243, 245], textColor: [100, 100, 100], fontSize: 7, fontStyle: 'italic' },
       tableLineColor: [200, 200, 200],
@@ -235,6 +236,7 @@ const RetailerLedgerContent = () => {
 <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:11px">${e.referenceId || '-'}</td>
 <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:11px;text-align:right">${m.totalBirds || '-'}</td>
 <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:11px;text-align:right">${m.quantity ? m.quantity.toFixed(2) + ' kg' : '-'}</td>
+<td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:11px;text-align:right">${m.rate ? '₹' + m.rate.toFixed(2) : '-'}</td>
 <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:11px;text-align:right">${Number(e.debit) > 0 ? '₹' + Number(e.debit).toLocaleString('en-IN') : '-'}</td>
 <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:11px;text-align:right">${Number(e.credit) > 0 ? '₹' + Number(e.credit).toLocaleString('en-IN') : '-'}</td>
 <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:11px;text-align:right;font-weight:bold">₹${Number(e.balance).toLocaleString('en-IN')}</td>
@@ -256,12 +258,12 @@ ${orgInfo.name ? '<h2>' + orgInfo.name + '</h2>' : ''}
 <h3 style="font-weight:normal;color:#555;margin-bottom:2px">Customer: ${selectedRetailer?.name || '-'}</h3>
 <div class="period">Period: ${new Date(dateFrom).toLocaleDateString('en-GB')} - ${new Date(dateTo).toLocaleDateString('en-GB')}</div>
 <table>
-<thead><tr><th style="width:12%">Date</th><th style="width:9%">Type</th><th style="width:11%">Reference</th><th style="width:8%;text-align:right">Birds</th><th style="width:10%;text-align:right">Weight</th><th style="width:17%;text-align:right">Debit (₹)</th><th style="width:17%;text-align:right">Credit (₹)</th><th style="width:16%;text-align:right">Balance (₹)</th></tr></thead>
+<thead><tr><th style="width:11%">Date</th><th style="width:8%">Type</th><th style="width:10%">Reference</th><th style="width:7%;text-align:right">Birds</th><th style="width:9%;text-align:right">Weight</th><th style="width:8%;text-align:right">Rate</th><th style="width:15%;text-align:right">Debit (₹)</th><th style="width:15%;text-align:right">Credit (₹)</th><th style="width:16%;text-align:right">Balance (₹)</th></tr></thead>
 <tbody>
-<tr class="opening"><td colspan="7" style="text-align:right">Opening Balance</td><td style="text-align:right;font-weight:bold">₹${openingBalance.toLocaleString('en-IN')}</td></tr>
+<tr class="opening"><td colspan="8" style="text-align:right">Opening Balance</td><td style="text-align:right;font-weight:bold">₹${openingBalance.toLocaleString('en-IN')}</td></tr>
 ${rowsHtml}
-<tr class="summary-row"><td colspan="5" style="text-align:right">TOTAL FOR PERIOD</td><td style="text-align:right;color:#dc2626">₹${totalDebit.toLocaleString('en-IN')}</td><td style="text-align:right;color:#16a34a">₹${totalCredit.toLocaleString('en-IN')}</td><td></td></tr>
-<tr class="closing"><td colspan="7" style="text-align:right">Closing Balance</td><td style="text-align:right">₹${closingBalance.toLocaleString('en-IN')}</td></tr>
+<tr class="summary-row"><td colspan="6" style="text-align:right">TOTAL FOR PERIOD</td><td style="text-align:right;color:#dc2626">₹${totalDebit.toLocaleString('en-IN')}</td><td style="text-align:right;color:#16a34a">₹${totalCredit.toLocaleString('en-IN')}</td><td></td></tr>
+<tr class="closing"><td colspan="8" style="text-align:right">Closing Balance</td><td style="text-align:right">₹${closingBalance.toLocaleString('en-IN')}</td></tr>
 </tbody></table>
 <div style="text-align:center;font-size:10px;color:#999;margin-top:8px">Generated on ${new Date().toLocaleString('en-GB')}</div>
 <div class="no-print" style="text-align:center;margin-top:12px"><button onclick="window.print()" style="padding:10px 30px;font-size:14px;cursor:pointer">Print</button></div>
@@ -342,6 +344,7 @@ ${rowsHtml}
                   <TableHead>Reference</TableHead>
                   <TableHead className="text-right">Birds</TableHead>
                   <TableHead className="text-right">Weight (kg)</TableHead>
+                  <TableHead className="text-right">Rate (₹/kg)</TableHead>
                   <TableHead>Remarks</TableHead>
                   <TableHead className="text-right">Debit (₹)</TableHead>
                   <TableHead className="text-right">Credit (₹)</TableHead>
@@ -349,16 +352,16 @@ ${rowsHtml}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loadingLedger ? (
-                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-gray-500">Loading...</TableCell></TableRow>
+                  {loadingLedger ? (
+                  <TableRow><TableCell colSpan={10} className="text-center py-8 text-gray-500">Loading...</TableCell></TableRow>
                 ) : (
                   <>
                     <TableRow className="bg-gray-100 font-medium">
-                      <TableCell colSpan={8} className="text-right">Opening Balance</TableCell>
+                      <TableCell colSpan={9} className="text-right">Opening Balance</TableCell>
                       <TableCell className="text-right font-bold">₹{openingBalance.toLocaleString('en-IN')}</TableCell>
                     </TableRow>
-                    {filteredEntries.length === 0 ? (
-                      <TableRow><TableCell colSpan={9} className="text-center py-8 text-gray-500">No transactions found in this date range</TableCell></TableRow>
+                      {filteredEntries.length === 0 ? (
+                      <TableRow><TableCell colSpan={10} className="text-center py-8 text-gray-500">No transactions found in this date range</TableCell></TableRow>
                     ) : filteredEntries.map((e, idx) => {
                       const typeLabel = e.referenceType || 'Unknown';
                       const typeColor = 
@@ -376,6 +379,7 @@ ${rowsHtml}
                           <TableCell className="font-mono text-sm">{e.referenceId || '-'}</TableCell>
                           <TableCell className="text-right">{(() => { const m = getEntryMeta(e); return m.totalBirds || '-' })()}</TableCell>
                           <TableCell className="text-right">{(() => { const m = getEntryMeta(e); return m.quantity ? `${m.quantity.toFixed(2)}` : '-' })()}</TableCell>
+                          <TableCell className="text-right">{(() => { const m = getEntryMeta(e); return m.rate ? `₹${m.rate.toFixed(2)}` : '-' })()}</TableCell>
                           <TableCell className="text-gray-600 text-sm max-w-[150px] truncate">-</TableCell>
                           <TableCell className="text-right text-red-600">{Number(e.debit) > 0 ? `₹${Number(e.debit).toLocaleString('en-IN')}` : '–'}</TableCell>
                           <TableCell className="text-right text-green-600">{Number(e.credit) > 0 ? `₹${Number(e.credit).toLocaleString('en-IN')}` : '–'}</TableCell>
@@ -384,13 +388,13 @@ ${rowsHtml}
                       );
                     })}
                     <TableRow className="bg-gray-50 border-t border-gray-300 font-bold">
-                      <TableCell colSpan={6} className="text-right">TOTAL FOR PERIOD</TableCell>
+                      <TableCell colSpan={7} className="text-right">TOTAL FOR PERIOD</TableCell>
                       <TableCell className="text-right text-red-600">₹{totalDebit.toLocaleString('en-IN')}</TableCell>
                       <TableCell className="text-right text-green-600">₹{totalCredit.toLocaleString('en-IN')}</TableCell>
                       <TableCell className="text-right"></TableCell>
                     </TableRow>
                     <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-bold text-blue-900">
-                      <TableCell colSpan={8} className="text-right">Closing Balance</TableCell>
+                      <TableCell colSpan={9} className="text-right">Closing Balance</TableCell>
                       <TableCell className="text-right">₹{closingBalance.toLocaleString('en-IN')}</TableCell>
                     </TableRow>
                   </>
