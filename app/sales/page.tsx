@@ -643,6 +643,7 @@ export default function SalesPage() {
         commission: formData.commission || "0",
         otherCharges: formData.otherCharges || "0",
         weightShortage: String(netExcessLossAmount),
+        weightShortageKg: String(netExcessLoss),
         mortalityDeduction: formData.deductions || "0",
         otherDeduction: "0",
         paymentStatus: formData.paymentStatus,

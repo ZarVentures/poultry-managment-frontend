@@ -195,6 +195,7 @@ export interface Sale {
   commission: number;
   otherCharges: number;
   weightShortage: number;
+  weightShortageKg?: number;
   mortalityDeduction: number;
   otherDeduction: number;
   grossAmount: number;
