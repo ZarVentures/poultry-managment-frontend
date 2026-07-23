@@ -304,7 +304,7 @@ export default function PurchasesPage() {
           <div class="brand-block">
             <div class="logo-mark">AF</div>
             <div>
-              <div class="brand-name">Aziz Poultry Farms</div>
+              <div class="brand-name">Poultry Sathi</div>
               <div class="brand-sub">Premium Poultry ERP • Purchase Invoice</div>
             </div>
           </div>

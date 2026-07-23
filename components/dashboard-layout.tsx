@@ -78,7 +78,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       <aside className={`${sidebarOpen ? "w-64" : "w-20"} bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col`}>
         <div className="p-6 border-b border-sidebar-border">
           <div className="flex items-center justify-between">
-            {sidebarOpen && <h1 className="text-xl font-bold text-sidebar-foreground">🐔 Aziz Poultry</h1>}
+            {sidebarOpen && <h1 className="text-xl font-bold text-sidebar-foreground">🐔 Poultry Sathi</h1>}
             <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)} className="text-sidebar-foreground">
               <Menu size={20} />
             </Button>
