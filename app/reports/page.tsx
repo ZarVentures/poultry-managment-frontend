@@ -118,13 +118,13 @@ export default function ReportsPage() {
 
     sections.push({
       title: 'Sales',
-      headers: ['Bill No', 'Date', 'Customer', 'Birds', 'Weight', 'Shortage', 'Amount', 'Status'],
+      headers: ['Bill No', 'Date', 'Customer', 'Birds', 'Weight', 'Shortage (kg)', 'Amount', 'Status'],
       rows: salesData?.sales?.length
         ? salesData.sales.map((s: any) => [
             s.invoiceNumber || '', new Date(s.saleDate).toLocaleDateString('en-GB'), s.customerName || '',
             String(s.totalBirds || s.numberOfBirds || 0),
             `${(parseFloat(s.totalWeight) || parseFloat(s.quantity) || 0).toFixed(2)} kg`,
-            `${parseFloat(s.weightShortage || 0).toFixed(2)} kg`, `Rs. ${parseFloat(s.netAmount || 0).toFixed(2)}`, s.paymentStatus || '',
+            `${(() => { const kg = parseFloat(s.weightShortageKg || 0); if (kg > 0) return kg.toFixed(2); const amt = parseFloat(s.weightShortage || 0); const rate = parseFloat(s.unitPrice || 0); return (amt > 0 && rate > 0) ? (amt / rate).toFixed(2) : '0.00'; })()} kg`, `Rs. ${parseFloat(s.netAmount || 0).toFixed(2)}`, s.paymentStatus || '',
           ])
         : noData(8),
     })
@@ -535,8 +535,8 @@ export default function ReportsPage() {
                         <p className="text-2xl font-bold">₹{salesData.summary.totalNetAmount.toFixed(2)}</p>
                       </div>
                       <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Wt Shortage</p>
-                        <p className="text-2xl font-bold text-orange-600">{salesData.summary.totalWeightShortage?.toFixed(2) || '0.00'} kg</p>
+                        <p className="text-sm text-muted-foreground">Wt Shortage (kg)</p>
+                        <p className="text-2xl font-bold text-orange-600">{salesData.summary.totalWeightShortageKg?.toFixed(2) || '0.00'} kg</p>
                       </div>
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Paid</p>
@@ -569,7 +569,7 @@ export default function ReportsPage() {
                               <TableCell>{sale.customerName}</TableCell>
                               <TableCell className="text-right">{sale.totalBirds || sale.numberOfBirds || 0}</TableCell>
                               <TableCell className="text-right">{((parseFloat(sale.totalWeight) || parseFloat(sale.quantity) || 0)).toFixed(2)} kg</TableCell>
-                              <TableCell className="text-orange-600">{parseFloat(sale.weightShortage || 0).toFixed(2)} kg</TableCell>
+                              <TableCell className="text-orange-600">{(() => { const kg = parseFloat(sale.weightShortageKg || 0); if (kg > 0) return kg.toFixed(2); const amt = parseFloat(sale.weightShortage || 0); const rate = parseFloat(sale.unitPrice || 0); return (amt > 0 && rate > 0) ? (amt / rate).toFixed(2) : '0.00'; })()} kg</TableCell>
                               <TableCell className="text-right">₹{parseFloat(sale.netAmount).toFixed(2)}</TableCell>
                               <TableCell>
                                 <span className={`px-2 py-1 rounded text-xs ${sale.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
