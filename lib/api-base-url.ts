@@ -54,6 +54,10 @@ export function getApiBaseUrl(): string {
       return envOverride ?? LOCAL_API_BASE;
     }
 
+    if (host.startsWith("staging.") || host.startsWith("stage.")) {
+      return envOverride ?? STAGING_API_BASE;
+    }
+
     return envOverride ?? PROD_API_BASE;
   }
 
