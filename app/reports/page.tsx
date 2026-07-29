@@ -32,9 +32,7 @@ export default function ReportsPage() {
   const [mortalityData, setMortalityData] = useState<any>(null)
   const [outstandingData, setOutstandingData] = useState<any>(null)
   const [stockData, setStockData] = useState<any>(null)
-  const [stockSearch, setStockSearch] = useState("")
-  const [stockTypeFilter, setStockTypeFilter] = useState("all")
-  const [stockLowOnly, setStockLowOnly] = useState(false)
+
 
   const fetchReport = async (endpoint: string, setter: Function) => {
     try {
@@ -131,13 +129,15 @@ export default function ReportsPage() {
 
     sections.push({
       title: 'Godown Sales',
-      headers: ['Sale No', 'Date', 'Cages', 'Weight Loss', 'Amount'],
+      headers: ['Bill No', 'Date', 'Customer', 'Birds', 'Weight', 'Wt Shortage', 'Amount', 'Status'],
       rows: godownSalesData?.sales?.length
         ? godownSalesData.sales.map((s: any) => [
-            s.saleNo || '', new Date(s.saleDate).toLocaleDateString('en-GB'), String(s.cageCount || ''),
+            s.invoiceNumber || s.saleNo || '', new Date(s.saleDate).toLocaleDateString('en-GB'), s.customerName || '',
+            String(s.numberOfBirds || 0), `${parseFloat(s.totalWeight || 0).toFixed(2)} kg`,
             `${parseFloat(s.weightLoss || 0).toFixed(2)} kg`, `Rs. ${parseFloat(s.totalAmount || 0).toFixed(2)}`,
+            s.paymentStatus || '',
           ])
-        : noData(5),
+        : noData(8),
     })
 
     sections.push({
@@ -656,21 +656,27 @@ export default function ReportsPage() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Sale No</TableHead>
+                            <TableHead>Bill No</TableHead>
                             <TableHead>Date</TableHead>
-                            <TableHead>Cages</TableHead>
-                            <TableHead>Weight Loss</TableHead>
+                            <TableHead>Customer</TableHead>
+                            <TableHead>Birds</TableHead>
+                            <TableHead>Weight</TableHead>
+                            <TableHead>Wt Shortage</TableHead>
                             <TableHead>Amount</TableHead>
+                            <TableHead>Status</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {godownSalesData.sales.map((sale: any) => (
                             <TableRow key={sale.id}>
-                              <TableCell>{sale.saleNo}</TableCell>
+                              <TableCell className="font-mono">{sale.invoiceNumber || sale.saleNo || '-'}</TableCell>
                               <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
-                              <TableCell>{sale.cageCount}</TableCell>
-                              <TableCell className="text-orange-600">{parseFloat(sale.weightLoss || 0).toFixed(2)} kg</TableCell>
-                              <TableCell>₹{parseFloat(sale.totalAmount || 0).toFixed(2)}</TableCell>
+                              <TableCell>{sale.customerName || '-'}</TableCell>
+                              <TableCell className="text-right">{sale.numberOfBirds || 0}</TableCell>
+                              <TableCell className="text-right">{parseFloat(sale.totalWeight || 0).toFixed(2)} kg</TableCell>
+                              <TableCell className="text-right text-orange-600">{parseFloat(sale.weightLoss || 0).toFixed(2)} kg</TableCell>
+                              <TableCell className="text-right">₹{parseFloat(sale.totalAmount || 0).toFixed(2)}</TableCell>
+                              <TableCell><span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${sale.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' : sale.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>{sale.paymentStatus || '-'}</span></TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -791,49 +797,8 @@ export default function ReportsPage() {
                       </div>
                     </div>
 
-                    <div className="flex gap-4 items-end">
-                      <div className="flex-1">
-                        <label className="text-sm font-medium mb-1 block">Search</label>
-                        <input
-                          type="text"
-                          placeholder="Search by name..."
-                          value={stockSearch}
-                          onChange={(e) => setStockSearch(e.target.value)}
-                          className="w-full px-3 py-2 border rounded-md text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">Type</label>
-                        <select
-                          value={stockTypeFilter}
-                          onChange={(e) => setStockTypeFilter(e.target.value)}
-                          className="px-3 py-2 border rounded-md text-sm"
-                        >
-                          <option value="all">All Types</option>
-                          {[...new Set(stockData.inventory?.map((i: any) => i.type || i.itemType).filter(Boolean))].map((t: any) => (
-                            <option key={t} value={t}>{t}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="flex items-center gap-2 pb-1">
-                        <input
-                          type="checkbox"
-                          id="lowStockOnly"
-                          checked={stockLowOnly}
-                          onChange={(e) => setStockLowOnly(e.target.checked)}
-                          className="w-4 h-4"
-                        />
-                        <label htmlFor="lowStockOnly" className="text-sm cursor-pointer">Low stock only</label>
-                      </div>
-                    </div>
-
                     {(() => {
-                      const filtered = (stockData.inventory || []).filter((item: any) => {
-                        if (stockSearch && !item.name?.toLowerCase().includes(stockSearch.toLowerCase())) return false
-                        if (stockTypeFilter !== 'all' && (item.type || item.itemType) !== stockTypeFilter) return false
-                        if (stockLowOnly && item.currentStockLevel > (item.reorderLevel || 0)) return false
-                        return true
-                      })
+                      const filtered = stockData.inventory || []
                       return filtered.length > 0 ? (
                         <Table>
                           <TableHeader>
