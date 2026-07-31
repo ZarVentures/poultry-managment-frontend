@@ -27,11 +27,30 @@ const LOCAL_API_BASE =
   process.env.NEXT_PUBLIC_LOCAL_API_BASE?.trim() ||
   "http://localhost:3001/api/v1";
 
+// ─── Custom domain → environment mapping ─────────────────────────────────
+// Add/edit your custom staging domain here. Matches with or without "www.".
+// Any custom domain NOT listed here falls back to the prod backend.
+const CUSTOM_DOMAIN_MAP: Array<{ domain: string; base: string }> = [
+  { domain: "poultrysathi.com", base: STAGING_API_BASE },
+];
+
 function isAmplifyHost(host: string): boolean {
   return host.endsWith(".amplifyapp.com");
 }
 
+function customDomainBackend(host: string): string | null {
+  for (const entry of CUSTOM_DOMAIN_MAP) {
+    if (host === entry.domain || host.endsWith("." + entry.domain)) {
+      return entry.base;
+    }
+  }
+  return null;
+}
+
 function amplifyBackendForHost(host: string): string {
+  const custom = customDomainBackend(host);
+  if (custom) return custom;
+
   // xxx.amplifyapp.com (no branch prefix) → prod
   if (host.split(".").length === 3) {
     return PROD_API_BASE;
@@ -52,6 +71,9 @@ export function getApiBaseUrl(): string {
     if (isAmplifyHost(host)) {
       return amplifyBackendForHost(host);
     }
+
+    const custom = customDomainBackend(host);
+    if (custom) return custom;
 
     if (host === "localhost" || host === "127.0.0.1") {
       return envOverride ?? LOCAL_API_BASE;
