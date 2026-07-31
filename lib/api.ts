@@ -445,7 +445,11 @@ export interface GodownCage {
 export interface GodownMortality {
   id: string;
   mortalityDate: string;
+  godownInwardId?: string;
+  godownInward?: any;
   numberOfBirdsDied: number;
+  weightOfDeadBirds?: number;
+  amount?: number;
   reason?: string;
   notes?: string;
   createdAt?: string;

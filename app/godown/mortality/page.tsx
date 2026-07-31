@@ -36,7 +36,7 @@ export default function GodownMortalityPage() {
   const [formData, setFormData] = useState({
     mortalityDate: new Date().toISOString().split("T")[0],
     godownInwardId: "", numberOfBirdsDied: "",
-    weightOfDeadBirds: "", reason: "", notes: "",
+    weightOfDeadBirds: "", amount: "", reason: "", notes: "",
   })
 
   useEffect(() => {
@@ -85,7 +85,7 @@ export default function GodownMortalityPage() {
   }, [mortalities, dateRangeStart, dateRangeEnd])
 
   const resetForm = () => {
-    setFormData({ mortalityDate: new Date().toISOString().split("T")[0], godownInwardId: "", numberOfBirdsDied: "", weightOfDeadBirds: "", reason: "", notes: "" })
+    setFormData({ mortalityDate: new Date().toISOString().split("T")[0], godownInwardId: "", numberOfBirdsDied: "", weightOfDeadBirds: "", amount: "", reason: "", notes: "" })
     setEditingId(null)
   }
 
@@ -93,7 +93,7 @@ export default function GodownMortalityPage() {
     setFormData({
       mortalityDate: m.mortalityDate, godownInwardId: (m as any).godownInwardId || "",
       numberOfBirdsDied: String(m.numberOfBirdsDied || ""), weightOfDeadBirds: String((m as any).weightOfDeadBirds || ""),
-      reason: m.reason || "", notes: m.notes || "",
+      amount: String((m as any).amount || ""), reason: m.reason || "", notes: m.notes || "",
     })
     setEditingId(m.id); setShowDialog(true)
   }
@@ -102,7 +102,7 @@ export default function GodownMortalityPage() {
     if (!formData.numberOfBirdsDied) { toast.error("Required fields missing"); return }
     try {
       setLoading(true)
-      const data = { ...formData, numberOfBirdsDied: parseInt(formData.numberOfBirdsDied), weightOfDeadBirds: parseFloat(formData.weightOfDeadBirds) || 0 }
+      const data = { ...formData, numberOfBirdsDied: parseInt(formData.numberOfBirdsDied), weightOfDeadBirds: parseFloat(formData.weightOfDeadBirds) || 0, amount: parseFloat(formData.amount) || 0 }
       if (editingId) await godownApi.mortality.update(editingId, data)
       else await godownApi.mortality.create(data)
       toast.success("Saved")
@@ -148,6 +148,7 @@ export default function GodownMortalityPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2"><Label>Birds Died *</Label><Input type="number" value={formData.numberOfBirdsDied} onChange={e => setFormData({ ...formData, numberOfBirdsDied: e.target.value })} disabled={loading} /></div>
                   <div className="space-y-2"><Label>Weight (kg)</Label><Input type="number" step="0.01" value={formData.weightOfDeadBirds} onChange={e => setFormData({ ...formData, weightOfDeadBirds: e.target.value })} disabled={loading} /></div>
+                  <div className="space-y-2"><Label>Amount (₹)</Label><Input type="number" step="0.01" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} disabled={loading} placeholder="Cost of mortality" /></div>
                 </div>
                 <div className="space-y-2"><Label>Reason</Label><Input value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} disabled={loading} /></div>
                 <div className="space-y-2"><Label>Notes</Label><Textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} disabled={loading} /></div>
@@ -172,13 +173,14 @@ export default function GodownMortalityPage() {
           </CardHeader>
           <CardContent>
             <Table>
-              <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Inward</TableHead><TableHead>Birds</TableHead><TableHead>Weight</TableHead><TableHead>Reason</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Inward</TableHead><TableHead>Birds</TableHead><TableHead>Weight</TableHead><TableHead>Amount</TableHead><TableHead>Reason</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
               <TableBody>
                 {filteredMortalities.map(m => (
                   <TableRow key={m.id}>
                     <TableCell>{new Date(m.mortalityDate).toLocaleDateString()}</TableCell>
                     <TableCell>{(m as any).godownInward?.purchaseInvoiceNo || (m as any).godownInwardId || '-'}</TableCell>
                     <TableCell>{m.numberOfBirdsDied}</TableCell><TableCell>{(m as any).weightOfDeadBirds}</TableCell>
+                    <TableCell>{m.amount ? `₹${Number(m.amount).toLocaleString('en-IN')}` : '-'}</TableCell>
                     <TableCell>{m.reason || "-"}</TableCell>
                     <TableCell>
                       {userRole !== 'staff' && userRole !== 'Staff' && (

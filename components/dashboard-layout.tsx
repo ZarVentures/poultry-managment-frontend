@@ -12,7 +12,7 @@ import { setDevLogger } from "@/lib/api"
 import {
   BarChart3, Users, Package, ShoppingCart, TrendingUp,
   LogOut, Menu, X, Home, Settings, ChevronDown, Users2,
-  Calculator, Truck, AlertCircle, Terminal, Copy, Trash2,
+  Calculator, Truck, Terminal, Copy, Trash2,
   ChartNoAxesCombined, Tractor, User, PackageOpen, PackagePlus,
   PackageSearch, PackageX, PackageCheck, CreditCard, BookOpen,
   TrendingDown, BarChart3 as BarChartAlt,
@@ -161,8 +161,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 )}
               </div>
 
-              {/* MORTALITY */}
+              {/* MORTALITY - commented out; use Godown Mortality under GODOWN menu
               <SidebarLink href="/mortality" icon={AlertCircle} label="Mortality" open={sidebarOpen} />
+              */}
 
               {/* EXPENSE */}
               <SidebarLink href="/expenses" icon={BarChart3} label="Expenses" open={sidebarOpen} />
