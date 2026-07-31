@@ -427,7 +427,7 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* Aziz Poultry v2.0 Changelog & Welcome Modal */}
+      {/* Poultry Sathi v2.0 Changelog & Welcome Modal */}
       <Dialog open={showWelcomeModal} onOpenChange={setShowWelcomeModal}>
         <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto flex flex-col p-6 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl border border-slate-200/50 dark:border-slate-800/50">
           <DialogHeader className="space-y-2 pb-4 border-b border-slate-100 dark:border-slate-800">
@@ -436,7 +436,7 @@ export default function DashboardPage() {
                 🚀
               </span>
               <DialogTitle className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-green-600 via-emerald-600 to-indigo-600 bg-clip-text text-transparent">
-                Aziz Poultry v2.0 Released!
+                Poultry Sathi v2.0 Released!
               </DialogTitle>
             </div>
             <DialogDescription className="text-sm font-medium text-slate-500 dark:text-slate-400 pt-1">

@@ -3,11 +3,13 @@
  * and prod never calls staging — without editing URLs per deploy.
  *
  * Rules (browser):
- * - `*.amplifyapp.com` + host starts with `staging.` or `stage.` → staging backend
- * - `*.amplifyapp.com` + host starts with `prod.` or `production.` → prod backend
- * - Other Amplify preview URLs → staging backend (safe default)
+ * - `staging.*.amplifyapp.com` → staging backend
+ * - `prod.*.amplifyapp.com` → prod backend
+ * - `*.amplifyapp.com` (root) → prod backend
+ * - Other `*.amplifyapp.com` preview URLs → staging backend (safe default)
+ * - `staging.` or `stage.` prefixed custom domains → staging backend
  * - `localhost` / `127.0.0.1` → NEXT_PUBLIC_API_URL or local Nest default
- * - Custom domains → NEXT_PUBLIC_API_URL or prod default (set env for non-standard setups)
+ * - All other custom domains → NEXT_PUBLIC_API_URL or prod default
  *
  * Optional overrides (build-time):
  * - NEXT_PUBLIC_STAGING_API_BASE / NEXT_PUBLIC_PROD_API_BASE / NEXT_PUBLIC_LOCAL_API_BASE
@@ -30,13 +32,14 @@ function isAmplifyHost(host: string): boolean {
 }
 
 function amplifyBackendForHost(host: string): string {
-  const isProdFrontend =
-    host.startsWith("prod.") || host.startsWith("production.");
-  const isStagingFrontend =
-    host.startsWith("staging.") || host.startsWith("stage.");
-  if (isProdFrontend) return PROD_API_BASE;
-  if (isStagingFrontend) return STAGING_API_BASE;
-  // PR previews / feature branches — avoid hitting prod by mistake
+  // xxx.amplifyapp.com (no branch prefix) → prod
+  if (host.split(".").length === 3) {
+    return PROD_API_BASE;
+  }
+  const branchPrefix = host.substring(0, host.indexOf("."));
+  if (branchPrefix === "prod" || branchPrefix === "production") return PROD_API_BASE;
+  if (branchPrefix === "staging" || branchPrefix === "stage") return STAGING_API_BASE;
+  // Other preview branches → staging (safe default)
   return STAGING_API_BASE;
 }
 
@@ -52,6 +55,10 @@ export function getApiBaseUrl(): string {
 
     if (host === "localhost" || host === "127.0.0.1") {
       return envOverride ?? LOCAL_API_BASE;
+    }
+
+    if (host.startsWith("staging.") || host.startsWith("stage.")) {
+      return envOverride ?? STAGING_API_BASE;
     }
 
     return envOverride ?? PROD_API_BASE;

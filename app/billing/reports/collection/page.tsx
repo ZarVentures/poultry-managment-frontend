@@ -53,7 +53,7 @@ const CollectionReportPage = () => {
   const downloadCSV = () => {
     if (!filtered.length) { alert('No data to export.'); return }
     const headers = 'Date,Invoice,Customer,Mode,Amount,Status'
-    const rows = filtered.map(e => `${e.date},${e.invoiceNumber},${e.customerName},${e.mode},${e.amount},${e.status}`).join('\n')
+    const rows = filtered.map(e => `${new Date(e.created_at).toLocaleDateString('en-GB')},${e.invoiceNumber},${e.customerName},${e.payment_mode || e.mode},${e.amount},${e.status}`).join('\n')
     const blob = new Blob([`${headers}\n${rows}`], { type: 'text/csv;charset=utf-8;' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -191,6 +191,16 @@ const CollectionReportPage = () => {
           )}
         </Card>
       </div>
+      <style>{`
+        @media print {
+          @page { size: landscape; margin: 8mm; }
+          * { overflow: visible !important; }
+          aside { display: none !important; }
+          .flex.h-screen { display: block !important; height: auto !important; }
+          main, main > div { display: block !important; height: auto !important; overflow: visible !important; }
+          .no-print { display: none !important; }
+        }
+      `}</style>
     </DashboardLayout>
   )
 }
