@@ -41,9 +41,9 @@ export default function SettingsPage() {
   const dispatch = useDispatch()
 
   const [formData, setFormData] = useState({
-    farmName: "Poultry Sathi",
+    farmName: "Aziz Poultry Farm",
     farmLocation: "Country, Region",
-    farmEmail: "info@poultrysathi.com",
+    farmEmail: "info@azizpoultry.com",
     farmPhone: "+1-234-567-8900",
     currency: "INR",
     countryCode: "+91",

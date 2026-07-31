@@ -11,7 +11,7 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Poultry Sathi - Farm Management System",
+  title: "Aziz Poultry - Farm Management System",
   description: "Complete poultry farm management system for inventory, sales, purchases, and financial reporting",
   generator: "v0.app",
   icons: {
