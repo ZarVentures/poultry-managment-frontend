@@ -158,7 +158,7 @@ export default function SalesPage() {
       })
       if (res?.summary) {
         setSummaryTotals({
-          totalBirds: (res.summary as any).totalQuantity ?? 0,
+          totalBirds: Number((res.summary as any).totalBirds ?? 0),
         })
       }
     } catch { /* non-critical */ }
@@ -649,6 +649,7 @@ export default function SalesPage() {
         paymentStatus: formData.paymentStatus,
         amountReceived: String(totalPaymentMade),
         totalBirds: totalBirds,
+        numberOfBirds: totalBirds,
         notes: finalNotesString || undefined,
         retailerId: formData.retailerId || undefined,
         payments: validPayments,
@@ -883,12 +884,24 @@ export default function SalesPage() {
     finally { setLoading(false) }
   }
 
+  const getSaleBirds = (sale: any): number => {
+    const direct = Number(sale?.numberOfBirds || 0)
+    if (direct > 0) return direct
+    try {
+      if (!sale?.notes) return 0
+      const parsed = typeof sale.notes === "string" ? JSON.parse(sale.notes) : sale.notes
+      return Number(parsed?.weightLoss?.totalBirds) || 0
+    } catch {
+      return 0
+    }
+  }
+
   const stats = useMemo(() => {
     if (serverStats) {
       return {
         count: totalRecords,
-        totalBirds: summaryTotals.totalBirds || sales.reduce((s, x) => s + Number(x.quantity || 0), 0),
-        totalWeight: (serverStats as any).totalWeight ?? (serverStats as any).totalBirds ?? 0,
+        totalBirds: summaryTotals.totalBirds || sales.reduce((s, x) => s + getSaleBirds(x), 0),
+        totalWeight: Number((serverStats as any).totalWeight ?? 0) || sales.reduce((s, x) => s + parseFloat(String(x.quantity || 0)), 0),
         totalRevenue: serverStats.totalRevenue,
         totalReceived: serverStats.totalReceived,
         totalPending: serverStats.totalPending,
@@ -896,7 +909,7 @@ export default function SalesPage() {
     }
     return {
       count: sales.length,
-      totalBirds: sales.reduce((s, x) => s + Number(x.quantity || 0), 0),
+      totalBirds: sales.reduce((s, x) => s + getSaleBirds(x), 0),
       totalWeight: sales.reduce((s, x) => s + parseFloat(String(x.quantity || 0)), 0),
       totalRevenue: sales.reduce((s, x) => s + parseFloat(String(x.netAmount || x.totalAmount || 0)), 0),
       totalReceived: sales.reduce((s, x) => s + parseFloat(String(x.amountReceived || 0)), 0),
@@ -1485,7 +1498,7 @@ export default function SalesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-purple-600">
-                {((stats as any).totalWeight ?? stats.totalBirds ?? 0).toFixed(0)} kg
+                {Number((stats as any).totalWeight ?? 0).toFixed(0)} kg
               </div>
             </CardContent>
           </Card>
