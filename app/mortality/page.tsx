@@ -35,6 +35,9 @@ interface Mortality {
   cageIdNumber?: string
   totalBirdsPurchased: number
   numberOfBirdsDied: number
+  weightOfDeadBirds?: number
+  ratePerKg?: number
+  amount?: number
   cause: string
   notes: string
   createdAt?: string
@@ -63,6 +66,9 @@ export default function MortalityPage() {
     cageIdNumber: string
     totalBirdsPurchased: string
     numberOfBirdsDied: string
+    weightOfDeadBirds: string
+    ratePerKg: string
+    amount: string
     cause: string
     notes: string
   }>({
@@ -73,6 +79,9 @@ export default function MortalityPage() {
     cageIdNumber: "",
     totalBirdsPurchased: "",
     numberOfBirdsDied: "",
+    weightOfDeadBirds: "",
+    ratePerKg: "",
+    amount: "",
     cause: "",
     notes: "",
   })
@@ -130,10 +139,17 @@ export default function MortalityPage() {
   const cageIdOptions = useMemo(() => {
     const src = selectedPurchaseFull || selectedPurchase
     if (!src?.cages) return []
-    return src.cages
+    const ids = src.cages
       .map((cage) => cage.cageId?.trim())
       .filter((id): id is string => !!id)
+    return [...new Set(ids)]
   }, [selectedPurchaseFull, selectedPurchase])
+
+  const calcAmount = (weight: string, rate: string) => {
+    const w = parseFloat(weight) || 0
+    const r = parseFloat(rate) || 0
+    return w > 0 && r > 0 ? (w * r).toFixed(2) : ""
+  }
 
   // Calculate total birds from cages
   const calculateTotalBirds = (purchase: PurchaseOrder): number => {
@@ -155,6 +171,7 @@ export default function MortalityPage() {
         const totalBirds = full.cages
           ? full.cages.reduce((sum, cage) => sum + (cage.numberOfBirds || 0), 0)
           : calculateTotalBirds(purchase)
+        const rate = full.ratePerKg != null ? String(full.ratePerKg) : ""
         setFormData(prev => ({
           ...prev,
           purchaseInvoiceNo: invoiceNo,
@@ -163,9 +180,12 @@ export default function MortalityPage() {
           farmLocation: full.farmLocation || "",
           cageIdNumber: "",
           totalBirdsPurchased: totalBirds.toString(),
+          ratePerKg: rate,
+          amount: calcAmount(prev.weightOfDeadBirds, rate),
         }))
       } catch {
         const totalBirds = calculateTotalBirds(purchase)
+        const rate = purchase.ratePerKg != null ? String(purchase.ratePerKg) : ""
         setFormData(prev => ({
           ...prev,
           purchaseInvoiceNo: invoiceNo,
@@ -174,6 +194,8 @@ export default function MortalityPage() {
           farmLocation: purchase.farmLocation || "",
           cageIdNumber: "",
           totalBirdsPurchased: totalBirds.toString(),
+          ratePerKg: rate,
+          amount: calcAmount(prev.weightOfDeadBirds, rate),
         }))
       }
     } else {
@@ -185,6 +207,8 @@ export default function MortalityPage() {
         farmLocation: "",
         cageIdNumber: "",
         totalBirdsPurchased: "",
+        ratePerKg: "",
+        amount: "",
       }))
     }
   }
@@ -197,6 +221,9 @@ export default function MortalityPage() {
 
     try {
       setLoading(true)
+      const weight = parseFloat(formData.weightOfDeadBirds) || undefined
+      const rate = parseFloat(formData.ratePerKg) || undefined
+      const amount = weight && rate ? weight * rate : undefined
       const mortalityData = {
         purchaseInvoiceNo: formData.purchaseInvoiceNo,
         purchaseDate: formData.purchaseDate,
@@ -205,7 +232,9 @@ export default function MortalityPage() {
         cageIdNumber: formData.cageIdNumber || undefined,
         totalBirdsPurchased: Number.parseInt(formData.totalBirdsPurchased) || 0,
         numberOfBirdsDied: Number.parseInt(formData.numberOfBirdsDied),
-        weightOfDeadBirds: parseFloat((formData as any).weightOfDeadBirds) || undefined,
+        weightOfDeadBirds: weight,
+        ratePerKg: rate,
+        amount,
         cause: formData.cause,
         notes: formData.notes,
       }
@@ -238,6 +267,9 @@ export default function MortalityPage() {
       cageIdNumber: "",
       totalBirdsPurchased: "",
       numberOfBirdsDied: "",
+      weightOfDeadBirds: "",
+      ratePerKg: "",
+      amount: "",
       cause: "",
       notes: "",
     })
@@ -247,6 +279,8 @@ export default function MortalityPage() {
 
   const handleEdit = (mortality: Mortality) => {
     setEditingId(mortality.id)
+    const weight = mortality.weightOfDeadBirds?.toString() || ""
+    const rate = mortality.ratePerKg?.toString() || ""
     setFormData({
       purchaseInvoiceNo: mortality.purchaseInvoiceNo || "",
       purchaseDate: mortality.purchaseDate || new Date().toISOString().split("T")[0],
@@ -255,11 +289,22 @@ export default function MortalityPage() {
       cageIdNumber: mortality.cageIdNumber || "",
       totalBirdsPurchased: mortality.totalBirdsPurchased?.toString() || "",
       numberOfBirdsDied: mortality.numberOfBirdsDied?.toString() || "",
+      weightOfDeadBirds: weight,
+      ratePerKg: rate,
+      amount: mortality.amount?.toString() || calcAmount(weight, rate),
       cause: mortality.cause || "",
       notes: mortality.notes || "",
-      weightOfDeadBirds: (mortality as any).weightOfDeadBirds?.toString() || "",
-    } as any)
+    })
     setShowDialog(true)
+    // Load purchase cages for cage ID dropdown when editing
+    if (mortality.purchaseInvoiceNo) {
+      const purchase = purchases.find(
+        (p) => (p.orderNumber || "").toLowerCase() === mortality.purchaseInvoiceNo.toLowerCase()
+      )
+      if (purchase) {
+        purchasesApi.getOne(purchase.id).then(setSelectedPurchaseFull).catch(() => {})
+      }
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -476,25 +521,20 @@ export default function MortalityPage() {
   const totalBirdsDeath = filteredMortalities.reduce((sum, m) => sum + (m.numberOfBirdsDied || 0), 0)
   const totalRecords = filteredMortalities.length
   
-  // Calculate Total Value - value of dead birds only (dead birds × rate per bird)
+  // Total Value = saved amount, or weight × ratePerKg
   const totalValue = useMemo(() => {
     return filteredMortalities.reduce((sum, m) => {
-      if (m.purchaseInvoiceNo && m.numberOfBirdsDied) {
-        const purchase = purchases.find(
-          (p) => (p.orderNumber || "").toLowerCase() === m.purchaseInvoiceNo.toLowerCase()
-        )
-        if (purchase) {
-          // Calculate rate per bird from purchase order
-          const totalBirds = purchase.cages?.reduce((total, cage) => total + (cage.numberOfBirds || 0), 0) || 0
-          const ratePerBird = totalBirds > 0 ? (Number(purchase.totalAmount) || 0) / totalBirds : 0
-          // Calculate value of dead birds
-          const deadBirdsValue = m.numberOfBirdsDied * ratePerBird
-          return sum + deadBirdsValue
-        }
+      if (m.amount != null && Number(m.amount) > 0) {
+        return sum + Number(m.amount)
+      }
+      const weight = Number(m.weightOfDeadBirds) || 0
+      const rate = Number(m.ratePerKg) || 0
+      if (weight > 0 && rate > 0) {
+        return sum + weight * rate
       }
       return sum
     }, 0)
-  }, [filteredMortalities, purchases])
+  }, [filteredMortalities])
 
   if (!mounted) return null
 
@@ -513,7 +553,7 @@ export default function MortalityPage() {
                 Add New Mortality
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Edit Mortality Record" : "Add New Mortality"}</DialogTitle>
                 <DialogDescription>Enter mortality details</DialogDescription>
@@ -526,10 +566,10 @@ export default function MortalityPage() {
                       value={formData.purchaseInvoiceNo || "__none__"}
                       onValueChange={(value) => handlePurchaseInvoiceChange(value === "__none__" ? "" : value)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select purchase bill" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-60 overflow-y-auto">
                         {purchases
                           .filter((p) => (p.orderNumber || "").trim() !== "")
                           .map((purchase) => (
@@ -576,22 +616,20 @@ export default function MortalityPage() {
                   <div className="space-y-2">
                     <Label>Cage ID Number</Label>
                     <Select
-                      value={formData.cageIdNumber || (formData.purchaseInvoiceNo && cageIdOptions.length > 0 ? "" : "__none__")}
+                      value={formData.cageIdNumber || "__none__"}
                       onValueChange={(value) => setFormData({ ...formData, cageIdNumber: value === "__none__" ? "" : value })}
                       disabled={!formData.purchaseInvoiceNo || cageIdOptions.length === 0}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder={!formData.purchaseInvoiceNo ? "Select invoice first" : cageIdOptions.length === 0 ? "No cage IDs for this invoice" : "Select cage ID"} />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="popper" className="max-h-60 overflow-y-auto z-[100]">
+                        <SelectItem value="__none__">Select cage ID</SelectItem>
                         {cageIdOptions.map((cageId) => (
                           <SelectItem key={cageId} value={cageId}>
                             {cageId}
                           </SelectItem>
                         ))}
-                        {formData.purchaseInvoiceNo && cageIdOptions.length === 0 && (
-                          <SelectItem value="__none__" disabled>No cage IDs for this invoice</SelectItem>
-                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -622,10 +660,49 @@ export default function MortalityPage() {
                     <Input
                       type="number"
                       step="0.01"
-                      value={(formData as any).weightOfDeadBirds || ""}
-                      onChange={(e) => setFormData({ ...formData, weightOfDeadBirds: e.target.value } as any)}
+                      value={formData.weightOfDeadBirds}
+                      onChange={(e) => {
+                        const weight = e.target.value
+                        setFormData({
+                          ...formData,
+                          weightOfDeadBirds: weight,
+                          amount: calcAmount(weight, formData.ratePerKg),
+                        })
+                      }}
                       placeholder="0.00"
                       onWheel={(e) => e.currentTarget.blur()}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Rate per Kg (₹)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.ratePerKg}
+                      onChange={(e) => {
+                        const rate = e.target.value
+                        setFormData({
+                          ...formData,
+                          ratePerKg: rate,
+                          amount: calcAmount(formData.weightOfDeadBirds, rate),
+                        })
+                      }}
+                      placeholder="0.00"
+                      onWheel={(e) => e.currentTarget.blur()}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Amount (₹)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.amount}
+                      readOnly
+                      className="bg-muted"
+                      placeholder="Auto (weight × rate)"
                     />
                   </div>
                 </div>
@@ -750,6 +827,9 @@ export default function MortalityPage() {
                     <TableHead className="font-bold">Cage ID Number</TableHead>
                     <TableHead className="font-bold">Total Birds Purchased</TableHead>
                     <TableHead className="font-bold">Number of Birds Died</TableHead>
+                    <TableHead className="font-bold">Weight (kg)</TableHead>
+                    <TableHead className="font-bold">Rate/Kg</TableHead>
+                    <TableHead className="font-bold">Amount (₹)</TableHead>
                     <TableHead className="font-bold">Cause of Death</TableHead>
                     <TableHead className="font-bold">Actions</TableHead>
                   </TableRow>
@@ -757,13 +837,13 @@ export default function MortalityPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
                         Loading...
                       </TableCell>
                     </TableRow>
                   ) : filteredMortalities.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
                         {searchQuery || (dateRangeStart && dateRangeEnd) ? "No mortality records found matching your filters." : "No mortality records found. Click \"Add New Mortality\" to get started."}
                       </TableCell>
                     </TableRow>
@@ -781,6 +861,15 @@ export default function MortalityPage() {
                         <TableCell>{mortality.cageIdNumber || "N/A"}</TableCell>
                         <TableCell>{mortality.totalBirdsPurchased || 0}</TableCell>
                         <TableCell>{mortality.numberOfBirdsDied || 0}</TableCell>
+                        <TableCell>{mortality.weightOfDeadBirds != null ? Number(mortality.weightOfDeadBirds).toFixed(2) : "—"}</TableCell>
+                        <TableCell>{mortality.ratePerKg != null ? `₹${Number(mortality.ratePerKg).toFixed(2)}` : "—"}</TableCell>
+                        <TableCell>
+                          {mortality.amount != null
+                            ? `₹${Number(mortality.amount).toFixed(2)}`
+                            : mortality.weightOfDeadBirds && mortality.ratePerKg
+                              ? `₹${(Number(mortality.weightOfDeadBirds) * Number(mortality.ratePerKg)).toFixed(2)}`
+                              : "—"}
+                        </TableCell>
                         <TableCell>{mortality.cause || "N/A"}</TableCell>
                         <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
                           {userRole !== 'staff' && userRole !== 'Staff' && (
@@ -844,6 +933,28 @@ export default function MortalityPage() {
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Number of Birds Died</Label>
                     <div className="text-sm font-medium">{viewingMortality.numberOfBirdsDied || 0}</div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Weight of Dead Birds (kg)</Label>
+                    <div className="text-sm font-medium">
+                      {viewingMortality.weightOfDeadBirds != null ? Number(viewingMortality.weightOfDeadBirds).toFixed(2) : "N/A"}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Rate per Kg (₹)</Label>
+                    <div className="text-sm font-medium">
+                      {viewingMortality.ratePerKg != null ? `₹${Number(viewingMortality.ratePerKg).toFixed(2)}` : "N/A"}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Amount (₹)</Label>
+                    <div className="text-sm font-medium">
+                      {viewingMortality.amount != null
+                        ? `₹${Number(viewingMortality.amount).toFixed(2)}`
+                        : viewingMortality.weightOfDeadBirds && viewingMortality.ratePerKg
+                          ? `₹${(Number(viewingMortality.weightOfDeadBirds) * Number(viewingMortality.ratePerKg)).toFixed(2)}`
+                          : "N/A"}
+                    </div>
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label className="text-muted-foreground">Cause of Death</Label>

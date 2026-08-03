@@ -77,6 +77,11 @@ export default function RetailersPage() {
     if (mounted) fetchRetailers()
   }, [mounted, currentPage, searchQuery])
 
+  // Reset to first page on new search so matches on page 1 are not skipped
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
   const resetForm = () => {
     setFormData({
       name: "", ownerName: "", phone: "",
@@ -254,7 +259,7 @@ export default function RetailersPage() {
           <CardHeader>
             <div className="flex justify-between items-start flex-wrap gap-3">
               <div className="flex items-center gap-2 flex-wrap">
-                <Input placeholder="Search shop name or phone..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[250px]" />
+                <Input placeholder="Search shop name, owner or phone..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[280px]" />
                 <Button variant="outline" size="sm" onClick={handlePrintReport}><Printer className="mr-2" size={16} /> Print Report</Button>
               </div>
             </div>

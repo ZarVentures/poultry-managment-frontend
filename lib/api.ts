@@ -484,6 +484,9 @@ export interface MortalityRecord {
   cageIdNumber?: string;
   totalBirdsPurchased: number;
   numberOfBirdsDied: number;
+  weightOfDeadBirds?: number;
+  ratePerKg?: number;
+  amount?: number;
   cause: string;
   notes: string;
   mortalityDate?: string;
@@ -1180,11 +1183,11 @@ export const purchasesApi = {
       body: JSON.stringify({ cageIds, saleWeight }),
     }),
 
-  // Mark cage IDs as in_godown
-  markCagesInGodown: (cageIds: string[], godownInwardWeight?: number) =>
+  // Mark cage IDs as in_godown (must pass godownInwardId so cages link to the entry)
+  markCagesInGodown: (cageIds: string[], godownInwardId: string, godownInwardWeight?: number) =>
     apiRequest<void>('/cages/mark-in-godown', {
       method: 'PATCH',
-      body: JSON.stringify({ cageIds, godownInwardWeight }),
+      body: JSON.stringify({ cageIds, godownInwardId, godownInwardWeight }),
     }),
 
   // Get full cage journey for weight loss tracking
@@ -1597,12 +1600,16 @@ export const mortalityApi = {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
+    const qs = params.toString();
     return apiRequest<{
       totalBirdsPurchased: number;
       totalBirdsDeath: number;
+      farmDeaths?: number;
+      godownDeaths?: number;
+      totalWeight?: number;
       totalValue: number;
       totalRecords: number;
-    }>(`/mortality/stats?${params.toString()}`);
+    }>(`/mortality/stats${qs ? `?${qs}` : ''}`);
   },
 
   getOne: (id: string) => apiRequest<MortalityRecord>(`/mortality/${id}`),

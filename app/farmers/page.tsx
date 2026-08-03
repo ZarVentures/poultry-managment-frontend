@@ -103,6 +103,15 @@ export default function FarmersPage() {
     if (mounted) fetchFarmers()
   }, [mounted, currentPage, searchQuery])
 
+  // Reset to first page whenever search text changes so matches aren't missed on later pages
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value)
+  }
+
   const handleSave = async () => {
     if (!formData.name || !formData.phone) {
       toast.error("Please fill all required fields")
@@ -365,7 +374,7 @@ export default function FarmersPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 <DateRangeFilter startDate={dateRangeStart} endDate={dateRangeEnd} onDateRangeChange={handleDateRangeChange} />
                 <div className="flex items-center gap-2">
-                  <Input placeholder="Search by name or phone..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-[200px]" />
+                  <Input placeholder="Search by name, farmhouse or phone..." value={searchQuery} onChange={(e) => handleSearchChange(e.target.value)} className="w-[240px]" />
                   {searchQuery && <Button variant="ghost" size="icon" onClick={() => setSearchQuery("")} className="h-10 w-10"><X size={16} /></Button>}
                 </div>
                 <Button variant="outline" size="sm" onClick={handlePrintReport}><Printer className="mr-2" size={16} /> Print Report</Button>
