@@ -114,10 +114,17 @@ export default function DashboardPage() {
         authFetch(`${API_BASE}/dashboard/comprehensive${dateQuery}`),
         farmersApi.getAll(),
         retailersApi.getAll(),
-        vehiclesApi.getAll(),
+        vehiclesApi.getActive(),
         salesApi.getAll(),
         purchasesApi.getAll(),
-        mortalityApi.getStats(),
+        mortalityApi.getStats(
+          startDate
+            ? `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-${String(startDate.getDate()).padStart(2, "0")}`
+            : undefined,
+          endDate
+            ? `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`
+            : undefined,
+        ),
       ])
 
       const dashboard = dashboardResult.status === 'fulfilled' ? dashboardResult.value : null
@@ -155,7 +162,15 @@ export default function DashboardPage() {
 
       setFarmerCount(Array.isArray(farmersArr) ? farmersArr.length : 0)
       setRetailerCount(Array.isArray(retailersArr) ? retailersArr.length : 0)
-      setVehicleCount(Array.isArray(vehiclesArr) ? vehiclesArr.filter((v: any) => v.status === "active").length : 0)
+      // Prefer backend KPI count (full active fleet); fall back to active list length
+      const kpiVehicles = dashboard?.kpis?.totalVehicles
+      setVehicleCount(
+        typeof kpiVehicles === "number"
+          ? kpiVehicles
+          : Array.isArray(vehiclesArr)
+            ? vehiclesArr.length
+            : 0,
+      )
       setMortalityStats(mortality)
     } catch (e) {
       console.error("Dashboard load error:", e)
@@ -266,7 +281,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <StatCard title="Farmers" value={loading ? "..." : farmerCount} sub="Registered" icon={Tractor} />
           <StatCard title="Retailers" value={loading ? "..." : retailerCount} sub="Registered" icon={Users} />
-          <StatCard title="Active Vehicles" value={loading ? "..." : vehicleCount} sub="On fleet" icon={Truck} />
+          <StatCard title="Active Vehicles" value={loading ? "..." : vehicleCount} sub="Active" icon={Truck} />
           <StatCard
             title="Birds Sold"
             value={loading ? "..." : (kpis?.totalBirdsSold || 0).toLocaleString()}
@@ -276,8 +291,12 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Birds Mortality"
-            value={loading ? "..." : (mortalityStats?.totalBirdsDeath || 0).toLocaleString()}
-            sub="Total recorded deaths"
+            value={loading ? "..." : (Number(mortalityStats?.totalBirdsDeath) || 0).toLocaleString()}
+            sub={
+              mortalityStats?.farmDeaths != null || mortalityStats?.godownDeaths != null
+                ? `Farm ${Number(mortalityStats?.farmDeaths) || 0} · Godown ${Number(mortalityStats?.godownDeaths) || 0}`
+                : "Total recorded deaths"
+            }
             icon={AlertCircle}
             color="text-red-500"
           />

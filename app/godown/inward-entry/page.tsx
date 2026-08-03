@@ -244,12 +244,12 @@ export default function GodownInwardPage() {
     setAllowEditInwardNo(false)
   }
 
-  const handleEdit = (entry: GodownInward) => {
+  const handleEdit = async (entry: GodownInward) => {
     setFormData({
       entryDate: entry.entryDate,
       inwardNo: entry.inwardNo || "",
       purchaseInvoiceNo: entry.purchaseInvoiceNo || "",
-      purchaseBillNo: "",
+      purchaseBillNo: entry.purchaseInvoiceNo || "",
       purchaseBillId: "",
       supplierName: entry.supplierName || "",
       selectedFarmerId: "",
@@ -261,10 +261,49 @@ export default function GodownInwardPage() {
       totalAmount: String(entry.totalAmount || ""),
       notes: entry.notes || "",
     })
-    setCages(entry.cages && entry.cages.length > 0 ? entry.cages : [emptyCage()])
     setEditingId(entry.id)
     setAllowEditInwardNo(false)
     setShowDialog(true)
+    setPurchaseCages([])
+    setSelectedCageIds(new Set())
+    setCages([emptyCage()])
+
+    // Load existing cage details linked to this inward so they can be edited
+    try {
+      setLoadingCages(true)
+      let linkedCages = entry.cages
+      if (!linkedCages || linkedCages.length === 0) {
+        linkedCages = await purchasesApi.getCagesByInwardId(entry.id)
+      }
+      if (Array.isArray(linkedCages) && linkedCages.length > 0) {
+        const mapped = linkedCages.map((c: any) => ({
+          ...c,
+          id: String(c.id ?? ""),
+          cageId: c.cageId || "",
+          numberOfBirds: Number(c.numberOfBirds ?? 0),
+          purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0),
+          godownWeight: String(
+            c.godownInwardWeight ?? c.cageWeight ?? c.godownWeight ?? c.purchaseWeight ?? "",
+          ),
+        }))
+        setPurchaseCages(mapped)
+        setSelectedCageIds(new Set(mapped.map((c) => c.id).filter(Boolean)))
+        setCages(
+          mapped.map((c) => ({
+            id: c.id,
+            cageId: c.cageId,
+            birdType: "",
+            numberOfBirds: c.numberOfBirds,
+            cageWeight: Number(c.godownWeight) || 0,
+          })),
+        )
+      }
+    } catch (error) {
+      console.error("Failed to load cage details for edit:", error)
+      toast.error("Failed to load cage details")
+    } finally {
+      setLoadingCages(false)
+    }
   }
 
   const calculateTotal = () => {
@@ -306,32 +345,39 @@ export default function GodownInwardPage() {
         ratePerKg,
         totalAmount,
         notes: formData.notes || undefined,
-        cages: cages
-          .filter(c => Number(c.numberOfBirds ?? 0) > 0 || Number(c.cageWeight ?? 0) > 0)
-          .map(c => ({
+        cageIds: Array.from(selectedCageIds),
+        cages: (selectedCageIds.size > 0
+          ? purchaseCages.filter((c) => selectedCageIds.has(c.id))
+          : cages
+        )
+          .filter((c: any) => Number(c.numberOfBirds ?? 0) > 0 || Number(c.godownWeight ?? c.cageWeight ?? 0) > 0 || c.id)
+          .map((c: any) => ({
+            id: c.id || undefined,
             cageId: c.cageId || undefined,
             birdType: c.birdType || undefined,
             numberOfBirds: Number(c.numberOfBirds ?? 0) || 0,
-            cageWeight: Number(c.cageWeight ?? 0) || 0,
+            cageWeight: Number(c.godownWeight ?? c.cageWeight ?? 0) || 0,
+            godownInwardWeight: Number(c.godownWeight ?? c.cageWeight ?? 0) || 0,
           })),
       }
 
+      let savedId = editingId
       if (editingId) {
         await godownApi.inward.update(editingId, entryData)
         toast.success("Entry updated successfully")
       } else {
-        await godownApi.inward.create(entryData)
+        const created = await godownApi.inward.create(entryData)
+        savedId = (created as any)?.id || null
         toast.success("Entry created successfully")
       }
 
-      // Mark selected purchase cages as in_godown with their godown inward weights
-      if (selectedCageIds.size > 0) {
+      // Ensure cages are linked to this inward with per-cage godown weights
+      if (selectedCageIds.size > 0 && savedId) {
         try {
           const selectedCages = purchaseCages.filter(c => selectedCageIds.has(c.id))
-          // Group by weight for batch update — pass individual weights
           for (const cage of selectedCages) {
             const godownWeight = Number(cage.godownWeight) || undefined
-            await purchasesApi.markCagesInGodown([cage.id], godownWeight)
+            await purchasesApi.markCagesInGodown([cage.id], savedId, godownWeight)
           }
         } catch { toast.error("Entry saved but failed to update cage status") }
       }
@@ -660,12 +706,14 @@ export default function GodownInwardPage() {
                   </Select>
                 </div>
 
-                {/* Remaining cages from purchase bill */}
-                {formData.purchaseBillId && (
+                {/* Remaining cages from purchase bill / linked cages when editing */}
+                {(formData.purchaseBillId || (editingId && (purchaseCages.length > 0 || loadingCages))) && (
                   <div className="border rounded-lg p-3 bg-blue-50 space-y-2">
                     <div className="flex items-center justify-between">
                       <Label className="text-blue-900 font-semibold">
-                        Remaining Cages from {formData.purchaseBillNo}
+                        {editingId && !formData.purchaseBillId
+                          ? "Cage Details (editable)"
+                          : `Remaining Cages from ${formData.purchaseBillNo}`}
                       </Label>
                       {loadingCages && <span className="text-xs text-muted-foreground">Loading...</span>}
                       {!loadingCages && purchaseCages.length > 0 && (
