@@ -214,8 +214,8 @@ export default function MortalityPage() {
   }
 
   const handleSave = async () => {
-    if (!formData.purchaseInvoiceNo || !formData.purchaseDate || !formData.numberOfBirdsDied) {
-      toast.error("Please fill all required fields")
+    if (!formData.purchaseDate || !formData.numberOfBirdsDied) {
+      toast.error("Please fill date and number of birds died")
       return
     }
 
@@ -225,17 +225,17 @@ export default function MortalityPage() {
       const rate = parseFloat(formData.ratePerKg) || undefined
       const amount = weight && rate ? weight * rate : undefined
       const mortalityData = {
-        purchaseInvoiceNo: formData.purchaseInvoiceNo,
+        purchaseInvoiceNo: formData.purchaseInvoiceNo || "N/A",
         purchaseDate: formData.purchaseDate,
-        farmerName: formData.farmerName,
-        farmLocation: formData.farmLocation,
-        cageIdNumber: formData.cageIdNumber || undefined,
-        totalBirdsPurchased: Number.parseInt(formData.totalBirdsPurchased) || 0,
+        farmerName: "N/A",
+        farmLocation: undefined,
+        cageIdNumber: undefined,
+        totalBirdsPurchased: 0,
         numberOfBirdsDied: Number.parseInt(formData.numberOfBirdsDied),
         weightOfDeadBirds: weight,
         ratePerKg: rate,
         amount,
-        cause: formData.cause,
+        cause: formData.cause || "",
         notes: formData.notes,
       }
 
@@ -561,90 +561,13 @@ export default function MortalityPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Purchase Bill No. <span className="text-red-500">*</span></Label>
-                    <Select
-                      value={formData.purchaseInvoiceNo || "__none__"}
-                      onValueChange={(value) => handlePurchaseInvoiceChange(value === "__none__" ? "" : value)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select purchase bill" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60 overflow-y-auto">
-                        {purchases
-                          .filter((p) => (p.orderNumber || "").trim() !== "")
-                          .map((purchase) => (
-                            <SelectItem key={purchase.id} value={purchase.orderNumber || ""}>
-                              {purchase.orderNumber}
-                            </SelectItem>
-                          ))}
-                        {purchases.filter((p) => (p.orderNumber || "").trim() !== "").length === 0 && (
-                          <SelectItem value="__none__" disabled>No purchase orders found</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Purchase Date <span className="text-red-500">*</span></Label>
+                    <Label>Date <span className="text-red-500">*</span></Label>
                     <DatePicker
                       value={formData.purchaseDate}
                       onChange={(date) => setFormData({ ...formData, purchaseDate: date })}
                       disabled={loading}
                     />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Farmer Name</Label>
-                    <Input
-                      value={formData.farmerName}
-                      onChange={(e) => setFormData({ ...formData, farmerName: e.target.value })}
-                      placeholder="Farmer name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Farm Location</Label>
-                    <Input
-                      value={formData.farmLocation}
-                      onChange={(e) => setFormData({ ...formData, farmLocation: e.target.value })}
-                      placeholder="Farm location"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Cage ID Number</Label>
-                    <Select
-                      value={formData.cageIdNumber || "__none__"}
-                      onValueChange={(value) => setFormData({ ...formData, cageIdNumber: value === "__none__" ? "" : value })}
-                      disabled={!formData.purchaseInvoiceNo || cageIdOptions.length === 0}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder={!formData.purchaseInvoiceNo ? "Select invoice first" : cageIdOptions.length === 0 ? "No cage IDs for this invoice" : "Select cage ID"} />
-                      </SelectTrigger>
-                      <SelectContent position="popper" className="max-h-60 overflow-y-auto z-[100]">
-                        <SelectItem value="__none__">Select cage ID</SelectItem>
-                        {cageIdOptions.map((cageId) => (
-                          <SelectItem key={cageId} value={cageId}>
-                            {cageId}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Total Birds Purchased</Label>
-                    <Input
-                      type="number"
-                      value={formData.totalBirdsPurchased}
-                      onChange={(e) => setFormData({ ...formData, totalBirdsPurchased: e.target.value })}
-                      placeholder="Total birds purchased"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Number of Birds Died <span className="text-red-500">*</span></Label>
                     <Input
@@ -655,6 +578,9 @@ export default function MortalityPage() {
                       onWheel={(e) => e.currentTarget.blur()}
                     />
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Total Weight of Dead Birds (kg)</Label>
                     <Input
@@ -673,9 +599,6 @@ export default function MortalityPage() {
                       onWheel={(e) => e.currentTarget.blur()}
                     />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Rate per Kg (₹)</Label>
                     <Input
@@ -694,17 +617,18 @@ export default function MortalityPage() {
                       onWheel={(e) => e.currentTarget.blur()}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Amount (₹)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.amount}
-                      readOnly
-                      className="bg-muted"
-                      placeholder="Auto (weight × rate)"
-                    />
-                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Amount (₹)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={formData.amount}
+                    readOnly
+                    className="bg-muted"
+                    placeholder="Auto (weight × rate)"
+                  />
                 </div>
 
                 <div className="space-y-2">
