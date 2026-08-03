@@ -31,7 +31,7 @@ interface Mortality {
   purchaseInvoiceNo: string
   purchaseDate: string
   farmerName: string
-  farmLocation: string
+  farmLocation?: string
   cageIdNumber?: string
   totalBirdsPurchased: number
   numberOfBirdsDied: number
@@ -39,7 +39,7 @@ interface Mortality {
   ratePerKg?: number
   amount?: number
   cause: string
-  notes: string
+  notes?: string
   createdAt?: string
   updatedAt?: string
 }
@@ -228,15 +228,13 @@ export default function MortalityPage() {
         purchaseInvoiceNo: formData.purchaseInvoiceNo || "N/A",
         purchaseDate: formData.purchaseDate,
         farmerName: "N/A",
-        farmLocation: undefined,
-        cageIdNumber: undefined,
         totalBirdsPurchased: 0,
         numberOfBirdsDied: Number.parseInt(formData.numberOfBirdsDied),
         weightOfDeadBirds: weight,
         ratePerKg: rate,
         amount,
         cause: formData.cause || "",
-        notes: formData.notes,
+        notes: formData.notes || "",
       }
 
       if (editingId) {

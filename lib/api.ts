@@ -480,7 +480,7 @@ export interface MortalityRecord {
   purchaseOrderId?: string;
   purchaseDate: string;
   farmerName: string;
-  farmLocation: string;
+  farmLocation?: string;
   cageIdNumber?: string;
   totalBirdsPurchased: number;
   numberOfBirdsDied: number;
@@ -488,7 +488,7 @@ export interface MortalityRecord {
   ratePerKg?: number;
   amount?: number;
   cause: string;
-  notes: string;
+  notes?: string;
   mortalityDate?: string;
   createdAt?: string;
   updatedAt?: string;
