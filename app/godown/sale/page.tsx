@@ -305,6 +305,26 @@ export default function GodownSalePage() {
     return filtered
   }, [sales, searchQuery, dateRangeStart, dateRangeEnd])
 
+  const salesStats = useMemo(() => {
+    return filteredSales.reduce(
+      (acc, sale) => {
+        const birds = Number(sale.numberOfBirds || 0)
+        const weight = Number(sale.totalWeight || 0)
+        const totalAmount = Number(sale.totalAmount || 0)
+        const amountReceived = Number((sale as any).amountReceived || 0)
+        const pending = Math.max(0, totalAmount - amountReceived)
+
+        acc.totalBirds += birds
+        acc.totalWeight += weight
+        acc.totalAmount += totalAmount
+        acc.totalPaid += amountReceived
+        acc.totalPending += pending
+        return acc
+      },
+      { totalBirds: 0, totalWeight: 0, totalAmount: 0, totalPaid: 0, totalPending: 0 },
+    )
+  }, [filteredSales])
+
   const handlePrintReport = () => {
     const printContent = `
       <!DOCTYPE html>
@@ -895,6 +915,39 @@ export default function GodownSalePage() {
               </div>
             </DialogContent>
           </Dialog>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Birds</p>
+              <p className="text-2xl font-bold">{salesStats.totalBirds.toLocaleString("en-IN")}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Weight</p>
+              <p className="text-2xl font-bold">{salesStats.totalWeight.toFixed(2)} kg</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Amount</p>
+              <p className="text-2xl font-bold">₹{salesStats.totalAmount.toFixed(2)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Paid</p>
+              <p className="text-2xl font-bold text-green-700">₹{salesStats.totalPaid.toFixed(2)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Pending</p>
+              <p className="text-2xl font-bold text-red-600">₹{salesStats.totalPending.toFixed(2)}</p>
+            </CardContent>
+          </Card>
         </div>
 
         <Card>

@@ -19,7 +19,7 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Edit2, Trash2, Download, Printer, X } from "lucide-react"
+import { Plus, Edit2, Trash2, Download, Printer, X, Eye } from "lucide-react"
 import { DateRangeFilter } from "@/components/date-range-filter"
 import { useDateFilter } from "@/contexts/date-filter-context"
 import { mortalityApi, purchasesApi, type PurchaseOrder } from "@/lib/api"
@@ -794,12 +794,15 @@ export default function MortalityPage() {
                         </TableCell>
                         <TableCell>{mortality.cause || "N/A"}</TableCell>
                         <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
+                          <Button variant="outline" size="icon" title="View" onClick={() => handleView(mortality)}>
+                            <Eye size={16} />
+                          </Button>
                           {userRole !== 'staff' && userRole !== 'Staff' && (
                             <>
-                              <Button variant="outline" size="icon" onClick={() => handleEdit(mortality)}>
+                              <Button variant="outline" size="icon" title="Edit" onClick={() => handleEdit(mortality)}>
                                 <Edit2 size={16} />
                               </Button>
-                              <Button variant="outline" size="icon" onClick={() => handleDelete(mortality.id)}>
+                              <Button variant="outline" size="icon" title="Delete" onClick={() => handleDelete(mortality.id)}>
                                 <Trash2 size={16} />
                               </Button>
                             </>
