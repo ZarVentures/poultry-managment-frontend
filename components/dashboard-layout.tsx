@@ -113,7 +113,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 {/* <SidebarLink href="/bird-returns" icon={TrendingDown} label="Godown Bird Returns & Tracking" open={true} isSubItem={true} /> */}
                 {/* Godown Mortality removed from menu — use main Mortality page (/mortality). Backend API kept for stock/auto-create. */}
                 {/* <SidebarLink href="/godown/mortality" icon={PackageX} label="Godown Mortality" open={true} isSubItem={true} /> */}
-                <SidebarLink href="/godown/expense" icon={PackageSearch} label="Godown Expense" open={true} isSubItem={true} />
+                {/* Godown Expense removed from menu — use main Expenses page (/expenses). Backend API kept. */}
+                {/* <SidebarLink href="/godown/expense" icon={PackageSearch} label="Godown Expense" open={true} isSubItem={true} /> */}
               </div>
             )}
           </div>

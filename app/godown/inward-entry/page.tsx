@@ -7,10 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X, Printer } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Printer, Eye } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
@@ -33,6 +33,8 @@ export default function GodownInwardPage() {
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
+  const [showViewDialog, setShowViewDialog] = useState(false)
+  const [viewingEntry, setViewingEntry] = useState<GodownInward | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [allowEditInwardNo, setAllowEditInwardNo] = useState(false)
   const [formData, setFormData] = useState({
@@ -242,6 +244,11 @@ export default function GodownInwardPage() {
     setSelectedCageIds(new Set())
     setEditingId(null)
     setAllowEditInwardNo(false)
+  }
+
+  const handleView = (entry: GodownInward) => {
+    setViewingEntry(entry)
+    setShowViewDialog(true)
   }
 
   const handleEdit = async (entry: GodownInward) => {
@@ -621,6 +628,18 @@ export default function GodownInwardPage() {
     return f
   }, [entries, searchQuery, dateRangeStart, dateRangeEnd])
 
+  const inwardStats = useMemo(() => {
+    return filteredEntries.reduce(
+      (acc, entry) => {
+        acc.totalBirds += Number(entry.numberOfBirds || 0)
+        acc.totalWeight += Number(entry.totalWeight || 0)
+        acc.totalAmount += Number(entry.totalAmount || 0)
+        return acc
+      },
+      { totalBirds: 0, totalWeight: 0, totalAmount: 0 },
+    )
+  }, [filteredEntries])
+
   if (!mounted) return null
 
   return (
@@ -962,6 +981,27 @@ export default function GodownInwardPage() {
           </Dialog>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Birds</p>
+              <p className="text-2xl font-bold">{inwardStats.totalBirds.toLocaleString("en-IN")}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Weight</p>
+              <p className="text-2xl font-bold">{inwardStats.totalWeight.toFixed(2)} kg</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Amount</p>
+              <p className="text-2xl font-bold">₹{inwardStats.totalAmount.toFixed(2)}</p>
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
           <CardHeader>
             <div className="flex flex-wrap items-center gap-3">
@@ -1038,19 +1078,24 @@ export default function GodownInwardPage() {
                         <TableCell>₹{entry.ratePerKg ? Number(entry.ratePerKg).toFixed(2) : "0.00"}</TableCell>
                         <TableCell className="font-semibold">₹{entry.totalAmount ? Number(entry.totalAmount).toFixed(2) : "0.00"}</TableCell>
                       <TableCell>
-                        {userRole !== 'staff' && userRole !== 'Staff' && (
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handlePrintInward(entry)}>
-                              <Printer size={16} />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(entry)}>
-                              <Edit2 size={16} />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(entry.id)}>
-                              <Trash2 size={16} />
-                            </Button>
-                          </div>
-                        )}
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm" title="View" onClick={() => handleView(entry)}>
+                            <Eye size={16} />
+                          </Button>
+                          {userRole !== 'staff' && userRole !== 'Staff' && (
+                            <>
+                              <Button variant="ghost" size="sm" title="Print" onClick={() => handlePrintInward(entry)}>
+                                <Printer size={16} />
+                              </Button>
+                              <Button variant="ghost" size="sm" title="Edit" onClick={() => handleEdit(entry)}>
+                                <Edit2 size={16} />
+                              </Button>
+                              <Button variant="ghost" size="sm" title="Delete" onClick={() => handleDelete(entry.id)}>
+                                <Trash2 size={16} />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   )})}
@@ -1059,6 +1104,72 @@ export default function GodownInwardPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* View Dialog */}
+        <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Godown Inward Details</DialogTitle>
+              <DialogDescription>View complete inward entry information</DialogDescription>
+            </DialogHeader>
+            {viewingEntry && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Entry Date</Label>
+                    <div className="text-sm font-medium">{new Date(viewingEntry.entryDate).toLocaleDateString()}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Inward No</Label>
+                    <div className="text-sm font-medium">{viewingEntry.inwardNo || "N/A"}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Purchase / Reference No</Label>
+                    <div className="text-sm font-medium">{viewingEntry.purchaseInvoiceNo || "N/A"}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Source / Supplier</Label>
+                    <div className="text-sm font-medium">{viewingEntry.supplierName || "N/A"}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Number of Birds</Label>
+                    <div className="text-sm font-medium">{viewingEntry.numberOfBirds ?? 0}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Average Weight</Label>
+                    <div className="text-sm font-medium">
+                      {viewingEntry.averageWeight != null ? Number(viewingEntry.averageWeight).toFixed(2) : "N/A"} kg
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Total Weight</Label>
+                    <div className="text-sm font-medium">
+                      {viewingEntry.totalWeight != null ? Number(viewingEntry.totalWeight).toFixed(2) : "N/A"} kg
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Rate per Kg</Label>
+                    <div className="text-sm font-medium">
+                      ₹{viewingEntry.ratePerKg != null ? Number(viewingEntry.ratePerKg).toFixed(2) : "0.00"}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Total Amount</Label>
+                    <div className="text-sm font-medium">
+                      ₹{viewingEntry.totalAmount != null ? Number(viewingEntry.totalAmount).toFixed(2) : "0.00"}
+                    </div>
+                  </div>
+                  {viewingEntry.notes && (
+                    <div className="space-y-1 md:col-span-2">
+                      <Label className="text-muted-foreground">Notes</Label>
+                      <div className="text-sm font-medium">{viewingEntry.notes}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   )

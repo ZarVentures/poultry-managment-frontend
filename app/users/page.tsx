@@ -124,6 +124,11 @@ export default function UsersPage() {
       return
     }
 
+    if (editingId && formData.password && formData.password.length < 6) {
+      toast.error("Password must be at least 6 characters")
+      return
+    }
+
     try {
       setLoading(true)
 
@@ -135,6 +140,7 @@ export default function UsersPage() {
           role: formData.role,
           status: formData.status,
           notes: formData.notes || undefined,
+          ...(formData.password ? { password: formData.password } : {}),
         })
         toast.success("User updated successfully")
       } else {
@@ -317,7 +323,7 @@ export default function UsersPage() {
                       disabled={loading}
                     />
                   </div>
-                  {!editingId && (
+                  {!editingId ? (
                     <div className="space-y-2">
                       <Label>Password *</Label>
                       <Input
@@ -325,6 +331,17 @@ export default function UsersPage() {
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         placeholder="Password"
+                        disabled={loading}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Label>New Password</Label>
+                      <Input
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        placeholder="Leave blank to keep current password"
                         disabled={loading}
                       />
                     </div>
