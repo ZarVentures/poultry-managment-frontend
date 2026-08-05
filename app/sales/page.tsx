@@ -706,7 +706,7 @@ export default function SalesPage() {
     const balance = Math.max(0, subtotal - received)
     const paymentStatus = String((sale as any).paymentStatus || "pending").toUpperCase()
     const modeLabel = sale.saleMode === "from_vehicle" ? "Vehicle Sale" : "Godown Sale"
-    const birds = Number((sale as any).numberOfBirds || 0)
+    const birds = getSaleBirds(sale)
     const weight = Number(sale.quantity || 0)
     const rate = Number((sale as any).ratePerKg || (sale as any).unitPrice || 0)
     const matchedRetailer = retailers.find(r => String(r.id) === String((sale as any).retailerId || ""))

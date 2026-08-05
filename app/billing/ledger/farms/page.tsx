@@ -178,36 +178,37 @@ const FarmLedgerPage = () => {
         e.referenceId || '-',
         m.totalBirds || '-',
         m.totalWeight ? `${m.totalWeight.toFixed(2)} kg` : '-',
-        m.ratePerKg ? `₹${m.ratePerKg.toFixed(2)}` : '-',
-        Number(e.debit) > 0 ? `Rs. ${Number(e.debit).toLocaleString('en-IN')}` : '-',
-        Number(e.credit) > 0 ? `Rs. ${Number(e.credit).toLocaleString('en-IN')}` : '-',
-        `Rs. ${Number(e.balance).toLocaleString('en-IN')}`,
+        m.ratePerKg ? `₹${Number(m.ratePerKg).toFixed(2)}` : '-',
+        '-',
+        Number(e.debit) > 0 ? `₹${Number(e.debit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-',
+        Number(e.credit) > 0 ? `₹${Number(e.credit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-',
+        `₹${Number(e.balance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       ]
     })
     rows.unshift([
-      { content: 'Opening Balance', colSpan: 8, styles: { fontStyle: 'bold', halign: 'right' } },
-      `Rs. ${openingBalance.toLocaleString('en-IN')}`
+      { content: 'Opening Balance', colSpan: 9, styles: { fontStyle: 'bold', halign: 'right' } },
+      `₹${openingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     ])
     rows.push([
-      { content: 'TOTAL FOR PERIOD', colSpan: 6, styles: { fontStyle: 'bold', halign: 'right' } },
-      `Rs. ${totalDebit.toLocaleString('en-IN')}`,
-      `Rs. ${totalCredit.toLocaleString('en-IN')}`,
+      { content: 'TOTAL FOR PERIOD', colSpan: 7, styles: { fontStyle: 'bold', halign: 'right' } },
+      `₹${totalDebit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      `₹${totalCredit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       '',
     ])
     rows.push([
-      { content: 'Closing Balance', colSpan: 8, styles: { fontStyle: 'bold', halign: 'right' } },
-      `Rs. ${closingBalance.toLocaleString('en-IN')}`
+      { content: 'Closing Balance', colSpan: 9, styles: { fontStyle: 'bold', halign: 'right' } },
+      `₹${closingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     ])
 
     autoTable(doc, {
-      head: [['Date', 'Type', 'Reference', 'Birds', 'Weight', 'Rate', 'Debit (Rs.)', 'Credit (Rs.)', 'Balance (Rs.)']],
+      head: [['Date', 'Type', 'Reference', 'Birds', 'Weight', 'Rate (₹/kg)', 'Remarks', 'Debit (₹)', 'Credit (₹)', 'Balance (₹)']],
       body: rows,
       startY: startTableY,
       margin: { left: 10, right: 10 },
       styles: { fontSize: 7, cellPadding: 2 },
       headStyles: { fillColor: [41, 65, 86], textColor: 255, fontStyle: 'bold', fontSize: 8 },
       alternateRowStyles: { fillColor: [245, 247, 250] },
-      columnStyles: { 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' } },
+      columnStyles: { 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right' } },
       foot: [['Generated on ' + new Date().toLocaleString('en-GB'), '', '', '', '', '', '', '']],
       footStyles: { fillColor: [241, 243, 245], textColor: [100, 100, 100], fontSize: 7, fontStyle: 'italic' },
       tableLineColor: [200, 200, 200],
@@ -249,7 +250,7 @@ ${orgInfo.name ? '<h2>' + orgInfo.name + '</h2>' : ''}
 <h3 style="font-weight:normal;color:#555;margin-bottom:2px">Farmer: ${selectedFarmer?.name || '-'}</h3>
 <div class="period">Period: ${new Date(dateFrom).toLocaleDateString('en-GB')} - ${new Date(dateTo).toLocaleDateString('en-GB')}</div>
 <table>
-<thead><tr><th style="width:11%">Date</th><th style="width:8%">Type</th><th style="width:10%">Reference</th><th style="width:7%;text-align:right">Birds</th><th style="width:9%;text-align:right">Weight</th><th style="width:8%;text-align:right">Rate</th><th style="width:15%;text-align:right">Debit (₹)</th><th style="width:15%;text-align:right">Credit (₹)</th><th style="width:16%;text-align:right">Balance (₹)</th></tr></thead>
+<thead><tr><th style="width:11%">Date</th><th style="width:8%">Type</th><th style="width:10%">Reference</th><th style="width:7%;text-align:right">Birds</th><th style="width:9%;text-align:right">Weight</th><th style="width:8%;text-align:right">Rate (₹/kg)</th><th style="width:15%;text-align:right">Debit (₹)</th><th style="width:15%;text-align:right">Credit (₹)</th><th style="width:16%;text-align:right">Balance (₹)</th></tr></thead>
 <tbody>
 <tr class="opening"><td colspan="8" style="text-align:right">Opening Balance</td><td style="text-align:right;font-weight:bold">₹${openingBalance.toLocaleString('en-IN')}</td></tr>
 ${rowsHtml}

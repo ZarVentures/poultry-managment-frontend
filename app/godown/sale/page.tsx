@@ -47,7 +47,6 @@ export default function GodownSalePage() {
     totalAmount: "",
     paymentStatus: "pending" as "paid" | "pending" | "partial",
     notes: "",
-    weightLoss: "",
   })
   const [payments, setPayments] = useState<PaymentRow[]>([emptyPayment()])
 
@@ -121,7 +120,6 @@ export default function GodownSalePage() {
       totalAmount: "",
       paymentStatus: "pending",
       notes: "",
-      weightLoss: "",
     })
     setPayments([emptyPayment()])
     setEditingId(null)
@@ -141,7 +139,6 @@ export default function GodownSalePage() {
       totalAmount: String(sale.totalAmount || ""),
       paymentStatus: (sale as any).paymentStatus || "pending",
       notes: sale.notes || "",
-      weightLoss: String((sale as any).weightLoss || ""),
     })
     
     // Load payments from sale data
@@ -184,7 +181,7 @@ export default function GodownSalePage() {
         amount: p.amount 
       }))
       
-      let cagePayload: Array<{ cageId: string; soldBirds: number; soldWeight: number; weightLoss: number }> = []
+      let cagePayload: Array<{ cageId: string; soldBirds: number; soldWeight: number }> = []
       if (formData.purchaseBillNo) {
         try {
           const matchedCages = await purchasesApi.getCagesByOrderNumber(formData.purchaseBillNo, 'in_godown')
@@ -194,7 +191,6 @@ export default function GodownSalePage() {
               cageId: c.id,
               soldBirds: Number(c.numberOfBirds || 0),
               soldWeight: Number(c.godownInwardWeight ?? c.purchaseWeight ?? 0),
-              weightLoss: parseFloat(formData.weightLoss) || 0,
             }))
         } catch (error) {
           console.warn('Could not resolve in-godown cages for purchase bill:', error)
@@ -213,7 +209,6 @@ export default function GodownSalePage() {
         paymentStatus: formData.paymentStatus,
         amountReceived: totalPaymentMade,
         notes: formData.notes,
-        weightLoss: parseFloat(formData.weightLoss) || 0,
         payments: validPayments,
         cages: cagePayload,
         cageIds: cagePayload.map((c) => c.cageId),
@@ -304,6 +299,26 @@ export default function GodownSalePage() {
 
     return filtered
   }, [sales, searchQuery, dateRangeStart, dateRangeEnd])
+
+  const salesStats = useMemo(() => {
+    return filteredSales.reduce(
+      (acc, sale) => {
+        const birds = Number(sale.numberOfBirds || 0)
+        const weight = Number(sale.totalWeight || 0)
+        const totalAmount = Number(sale.totalAmount || 0)
+        const amountReceived = Number((sale as any).amountReceived || 0)
+        const pending = Math.max(0, totalAmount - amountReceived)
+
+        acc.totalBirds += birds
+        acc.totalWeight += weight
+        acc.totalAmount += totalAmount
+        acc.totalPaid += amountReceived
+        acc.totalPending += pending
+        return acc
+      },
+      { totalBirds: 0, totalWeight: 0, totalAmount: 0, totalPaid: 0, totalPending: 0 },
+    )
+  }, [filteredSales])
 
   const handlePrintReport = () => {
     const printContent = `
@@ -732,7 +747,7 @@ export default function GodownSalePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label>Total Weight (kg)</Label>
                     <Input
@@ -744,18 +759,6 @@ export default function GodownSalePage() {
                         const total = (parseFloat(weight || "0") * parseFloat(formData.ratePerKg || "0")).toFixed(2)
                         setFormData({ ...formData, totalWeight: weight, totalAmount: total })
                       }}
-                      placeholder="0.00"
-                      disabled={loading}
-                      onWheel={(e) => e.currentTarget.blur()} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Weight Loss (kg)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.weightLoss}
-                      onChange={(e) => setFormData({ ...formData, weightLoss: e.target.value })}
                       placeholder="0.00"
                       disabled={loading}
                       onWheel={(e) => e.currentTarget.blur()} 
@@ -895,6 +898,39 @@ export default function GodownSalePage() {
               </div>
             </DialogContent>
           </Dialog>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Birds</p>
+              <p className="text-2xl font-bold">{salesStats.totalBirds.toLocaleString("en-IN")}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Weight</p>
+              <p className="text-2xl font-bold">{salesStats.totalWeight.toFixed(2)} kg</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Amount</p>
+              <p className="text-2xl font-bold">₹{salesStats.totalAmount.toFixed(2)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Paid</p>
+              <p className="text-2xl font-bold text-green-700">₹{salesStats.totalPaid.toFixed(2)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Pending</p>
+              <p className="text-2xl font-bold text-red-600">₹{salesStats.totalPending.toFixed(2)}</p>
+            </CardContent>
+          </Card>
         </div>
 
         <Card>

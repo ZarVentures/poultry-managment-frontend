@@ -38,28 +38,42 @@ const CompanyLedgerReportPage = () => {
   }, [])
 
   const summary = data?.summary || { totalRevenue: 0, grossProfit: 0, operatingExpenses: 0, netProfit: 0 }
-  
-  const detailedStatement: StatementSection[] = data ? [
-    { section: 'REVENUE', items: [
-      ...(data.partyWiseSales || []).map((p: any) => ({ label: `Sales - ${p.party}`, amount: p.amount })),
-      { label: 'TOTAL REVENUE', amount: data.summary.totalRevenue, bold: true, highlight: true, positive: true },
-    ]},
-    { section: 'COST OF GOODS SOLD', items: [
-      { label: 'Opening Stock', amount: data.summary.openingStock || 0 },
-      { label: 'Purchases', amount: data.summary.totalPurchases || 0 },
-      { label: 'Direct Expenses', amount: data.summary.totalDirectExpenses || 0 },
-      { label: 'Closing Stock (Less)', amount: -(data.summary.closingStock || 0), negative: true },
-      { label: 'TOTAL COGS', amount: data.summary.costOfGoodsSold || 0, bold: true },
-      { label: 'GROSS PROFIT', amount: data.summary.grossProfit || 0, bold: true, highlight: true, positive: data.summary.grossProfit >= 0, negative: data.summary.grossProfit < 0 },
-    ]},
-    { section: 'OPERATING EXPENSES', items: [
-      ...(data.expenseBreakdown || []).map((e: any) => ({ label: e.category.toUpperCase(), amount: e.amount })),
-      { label: 'TOTAL EXPENSES', amount: data.summary.operatingExpenses || 0, bold: true },
-    ]},
-    { section: '', items: [
-      { label: data.summary.netProfit >= 0 ? 'NET PROFIT' : 'NET LOSS', amount: data.summary.netProfit || 0, bold: true, highlight: true, dark: true, negative: data.summary.netProfit < 0 },
-    ]},
-  ] : []
+
+  const detailedStatement: StatementSection[] = data?.detailedStatement?.length
+    ? (() => {
+        const rows = data.detailedStatement as Array<{ label: string; value: number; type: string }>
+        const toItem = (row: { label: string; value: number; type: string }): StatementItem => ({
+          label: row.label,
+          amount: row.label === 'Closing Stock (Less)' ? -Math.abs(Number(row.value || 0)) : Number(row.value || 0),
+          bold: ['Total Sales Revenue', 'Cost of Goods Sold', 'Gross Profit', 'Total Operating Expenses', 'Net Profit / Loss'].includes(row.label),
+          highlight: ['Total Sales Revenue', 'Gross Profit', 'Net Profit / Loss'].includes(row.label),
+          positive: row.type === 'income' || (row.type === 'profit' && Number(row.value) >= 0),
+          negative: row.label === 'Closing Stock (Less)' || (row.type === 'profit' && Number(row.value) < 0),
+          dark: row.label === 'Net Profit / Loss',
+        })
+
+        const revenueEnd = rows.findIndex(r => r.label === 'Total Sales Revenue')
+        const grossIdx = rows.findIndex(r => r.label === 'Gross Profit')
+        const opExpStart = grossIdx >= 0 ? grossIdx + 1 : -1
+        const opExpEnd = rows.findIndex(r => r.label === 'Total Operating Expenses')
+        const netIdx = rows.findIndex(r => r.label === 'Net Profit / Loss')
+
+        const sections: StatementSection[] = []
+        if (revenueEnd >= 0) {
+          sections.push({ section: 'REVENUE', items: rows.slice(0, revenueEnd + 1).map(toItem) })
+        }
+        if (grossIdx >= 0) {
+          sections.push({ section: 'COST OF GOODS SOLD', items: rows.slice(revenueEnd + 1, grossIdx + 1).map(toItem) })
+        }
+        if (opExpStart >= 0 && opExpEnd >= opExpStart) {
+          sections.push({ section: 'OPERATING EXPENSES', items: rows.slice(opExpStart, opExpEnd + 1).map(toItem) })
+        }
+        if (netIdx >= 0) {
+          sections.push({ section: '', items: rows.slice(netIdx).map(toItem) })
+        }
+        return sections.length ? sections : [{ items: rows.map(toItem) }]
+      })()
+    : []
 
   const keyInsight = {
     title: data?.keyInsights?.map((k: any) => k.message).join('. ') || 'Loading insights...',
