@@ -1553,11 +1553,16 @@ export const permissionsApi = {
 // REPORTS API
 // ============================================
 export const reportsApi = {
-  getOutstandingReport: (filters?: { page?: number; limit?: number; sortBy?: string }) => {
+  getOutstandingReport: (filters?: { page?: number; limit?: number; sortBy?: string; startDate?: string; endDate?: string; retailerId?: string; paymentStatus?: string; search?: string }) => {
     const params = new URLSearchParams();
     if (filters?.page) params.append('page', String(filters.page));
     if (filters?.limit) params.append('limit', String(filters.limit));
     if (filters?.sortBy) params.append('sortBy', filters.sortBy || 'outstanding');
+    if (filters?.startDate) params.append('startDate', filters.startDate);
+    if (filters?.endDate) params.append('endDate', filters.endDate);
+    if (filters?.retailerId) params.append('retailerId', filters.retailerId);
+    if (filters?.paymentStatus) params.append('paymentStatus', filters.paymentStatus);
+    if (filters?.search) params.append('search', filters.search);
     return apiRequest<{
       data: any[];
       total: number;
