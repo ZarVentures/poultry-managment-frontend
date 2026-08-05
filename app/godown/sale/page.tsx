@@ -446,7 +446,7 @@ export default function GodownSalePage() {
 
         <div class="customer-line">
           <div class="customer-label">Name</div>
-          <div class="customer-value">${sale.customerName || sale.retailerName || 'Customer Name'}</div>
+          <div class="customer-value">${sale.customerName || matchedRetailer?.name || 'Customer Name'}</div>
         </div>
 
         <table class="invoice-table">
