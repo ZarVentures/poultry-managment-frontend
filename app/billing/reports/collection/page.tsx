@@ -50,16 +50,44 @@ const CollectionReportPage = () => {
   const totalCollected = summary?.totalAmount || 0
   const modeBreakdown = (mode: string) => summary?.modeTotals?.[mode.toLowerCase()] || 0
 
+  const getRowDate = (e: any) => new Date(e.createdAt || e.created_at).toLocaleDateString('en-GB')
+  const getRowMode = (e: any) => e.paymentMode || e.payment_mode || e.mode || '-'
+  const getRowStatus = (e: any) => e.status || 'Completed'
+
   const downloadCSV = () => {
     if (!filtered.length) { alert('No data to export.'); return }
     const headers = 'Date,Invoice,Customer,Mode,Amount,Status'
-    const rows = filtered.map(e => `${new Date(e.created_at).toLocaleDateString('en-GB')},${e.invoiceNumber},${e.customerName},${e.payment_mode || e.mode},${e.amount},${e.status}`).join('\n')
+    const rows = filtered.map(e => `${getRowDate(e)},${e.invoiceNumber || ''},${e.customerName || ''},${getRowMode(e)},${e.amount},${getRowStatus(e)}`).join('\n')
     const blob = new Blob([`${headers}\n${rows}`], { type: 'text/csv;charset=utf-8;' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url; a.download = `collection_${new Date().toISOString().split('T')[0]}.csv`
     a.style.display = 'none'; document.body.appendChild(a); a.click(); document.body.removeChild(a)
     window.URL.revokeObjectURL(url)
+  }
+
+  const handlePrint = () => {
+    if (!filtered.length) { alert('No data to print.'); return }
+    const rows = filtered.map(e => `
+      <tr>
+        <td>${getRowDate(e)}</td>
+        <td>${e.invoiceNumber || '-'}</td>
+        <td>${e.customerName || '-'}</td>
+        <td>${getRowMode(e)}</td>
+        <td style="text-align:right">₹${Number(e.amount || 0).toLocaleString('en-IN')}</td>
+        <td style="text-align:center">${getRowStatus(e)}</td>
+      </tr>`).join('')
+    const html = `<!DOCTYPE html><html><head><title>Collection Report</title>
+      <style>@page{size:landscape;margin:8mm}body{font-family:Arial,sans-serif;padding:10px}
+      h2{text-align:center}table{width:100%;border-collapse:collapse;margin-top:12px}
+      th,td{border:1px solid #ddd;padding:6px;font-size:11px}th{background:#293e56;color:#fff}</style></head><body>
+      <h2>Collection Report</h2>
+      <p style="text-align:center">${new Date(dateFrom).toLocaleDateString('en-GB')} - ${new Date(dateTo).toLocaleDateString('en-GB')}</p>
+      <p style="text-align:center;font-weight:bold">Total Collected: ₹${totalCollected.toLocaleString('en-IN')}</p>
+      <table><thead><tr><th>Date</th><th>Bill No</th><th>Customer</th><th>Mode</th><th>Amount</th><th>Status</th></tr></thead>
+      <tbody>${rows}</tbody></table></body></html>`
+    const w = window.open('', '_blank')
+    if (w) { w.document.write(html); w.document.close(); w.onload = () => w.print() }
   }
 
   const getModeColor = (mode: string) => {
@@ -74,18 +102,18 @@ const CollectionReportPage = () => {
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between no-print">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Collection Report</h1>
             <p className="text-muted-foreground mt-2">Payments received from sales</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={downloadCSV} type="button"><Download className="w-4 h-4 mr-2" />Export</Button>
-            <Button variant="outline" onClick={() => window.print()} type="button"><Printer className="w-4 h-4 mr-2" />Print</Button>
+            <Button variant="outline" onClick={handlePrint} type="button"><Printer className="w-4 h-4 mr-2" />Print</Button>
           </div>
         </div>
 
-        <Card className="border border-gray-200 p-6">
+        <Card className="border border-gray-200 p-6 no-print">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">From Date</label>
@@ -111,7 +139,7 @@ const CollectionReportPage = () => {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 no-print">
           <Card className="border border-green-200 bg-green-50 p-6">
             <p className="text-sm text-gray-600 font-medium">Total Collected</p>
             <p className="text-2xl font-bold text-green-600 mt-2">₹{totalCollected.toLocaleString('en-IN')}</p>
@@ -148,15 +176,15 @@ const CollectionReportPage = () => {
                   <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500">No collections found for the selected period</TableCell></TableRow>
                 ) : filtered.map(e => (
                   <TableRow key={e.id} className="border-b border-gray-200">
-                    <TableCell className="font-medium">{new Date(e.created_at).toLocaleDateString('en-GB')}</TableCell>
-                    <TableCell className="font-mono text-sm">{e.invoiceNumber}</TableCell>
-                    <TableCell className="font-semibold">{e.customerName}</TableCell>
+                    <TableCell className="font-medium">{getRowDate(e)}</TableCell>
+                    <TableCell className="font-mono text-sm">{e.invoiceNumber || '-'}</TableCell>
+                    <TableCell className="font-semibold">{e.customerName || '-'}</TableCell>
                     <TableCell>
-                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getModeColor(e.payment_mode || e.mode)}`}>{e.payment_mode || e.mode}</span>
+                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getModeColor(getRowMode(e))}`}>{getRowMode(e)}</span>
                     </TableCell>
-                    <TableCell className="text-right font-bold">₹{e.amount.toLocaleString('en-IN')}</TableCell>
+                    <TableCell className="text-right font-bold">₹{Number(e.amount || 0).toLocaleString('en-IN')}</TableCell>
                     <TableCell className="text-center">
-                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${e.status === 'Completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{e.status}</span>
+                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${getRowStatus(e) === 'Completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{getRowStatus(e)}</span>
                     </TableCell>
                   </TableRow>
                 ))}

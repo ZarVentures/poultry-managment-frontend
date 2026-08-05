@@ -47,7 +47,6 @@ export default function GodownSalePage() {
     totalAmount: "",
     paymentStatus: "pending" as "paid" | "pending" | "partial",
     notes: "",
-    weightLoss: "",
   })
   const [payments, setPayments] = useState<PaymentRow[]>([emptyPayment()])
 
@@ -121,7 +120,6 @@ export default function GodownSalePage() {
       totalAmount: "",
       paymentStatus: "pending",
       notes: "",
-      weightLoss: "",
     })
     setPayments([emptyPayment()])
     setEditingId(null)
@@ -141,7 +139,6 @@ export default function GodownSalePage() {
       totalAmount: String(sale.totalAmount || ""),
       paymentStatus: (sale as any).paymentStatus || "pending",
       notes: sale.notes || "",
-      weightLoss: String((sale as any).weightLoss || ""),
     })
     
     // Load payments from sale data
@@ -184,7 +181,7 @@ export default function GodownSalePage() {
         amount: p.amount 
       }))
       
-      let cagePayload: Array<{ cageId: string; soldBirds: number; soldWeight: number; weightLoss: number }> = []
+      let cagePayload: Array<{ cageId: string; soldBirds: number; soldWeight: number }> = []
       if (formData.purchaseBillNo) {
         try {
           const matchedCages = await purchasesApi.getCagesByOrderNumber(formData.purchaseBillNo, 'in_godown')
@@ -194,7 +191,6 @@ export default function GodownSalePage() {
               cageId: c.id,
               soldBirds: Number(c.numberOfBirds || 0),
               soldWeight: Number(c.godownInwardWeight ?? c.purchaseWeight ?? 0),
-              weightLoss: parseFloat(formData.weightLoss) || 0,
             }))
         } catch (error) {
           console.warn('Could not resolve in-godown cages for purchase bill:', error)
@@ -213,7 +209,6 @@ export default function GodownSalePage() {
         paymentStatus: formData.paymentStatus,
         amountReceived: totalPaymentMade,
         notes: formData.notes,
-        weightLoss: parseFloat(formData.weightLoss) || 0,
         payments: validPayments,
         cages: cagePayload,
         cageIds: cagePayload.map((c) => c.cageId),
@@ -752,7 +747,7 @@ export default function GodownSalePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label>Total Weight (kg)</Label>
                     <Input
@@ -764,18 +759,6 @@ export default function GodownSalePage() {
                         const total = (parseFloat(weight || "0") * parseFloat(formData.ratePerKg || "0")).toFixed(2)
                         setFormData({ ...formData, totalWeight: weight, totalAmount: total })
                       }}
-                      placeholder="0.00"
-                      disabled={loading}
-                      onWheel={(e) => e.currentTarget.blur()} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Weight Loss (kg)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.weightLoss}
-                      onChange={(e) => setFormData({ ...formData, weightLoss: e.target.value })}
                       placeholder="0.00"
                       disabled={loading}
                       onWheel={(e) => e.currentTarget.blur()} 

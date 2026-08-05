@@ -404,12 +404,7 @@ export default function MortalityPage() {
           <table>
             <thead>
               <tr>
-                <th>Purchase Bill No.</th>
                 <th>Purchase Date</th>
-                <th>Farmer Name</th>
-                <th>Farm Location</th>
-                <th>Cage ID Number</th>
-                <th>Total Birds Purchased</th>
                 <th>Number of Birds Died</th>
                 <th>Cause of Death</th>
               </tr>
@@ -417,12 +412,7 @@ export default function MortalityPage() {
             <tbody>
               ${filtered.map(mortality => `
                 <tr>
-                  <td>${mortality.purchaseInvoiceNo || "N/A"}</td>
                   <td>${mortality.purchaseDate || "N/A"}</td>
-                  <td>${mortality.farmerName || "N/A"}</td>
-                  <td>${mortality.farmLocation || "N/A"}</td>
-                  <td>${mortality.cageIdNumber || "N/A"}</td>
-                  <td>${(mortality.totalBirdsPurchased || 0).toLocaleString()}</td>
                   <td>${(mortality.numberOfBirdsDied || 0).toLocaleString()}</td>
                   <td>${mortality.cause || "N/A"}</td>
                 </tr>
@@ -481,7 +471,6 @@ export default function MortalityPage() {
                 <th>Farmer Name</th>
                 <th>Farm Location</th>
                 <th>Cage ID Number</th>
-                <th>Total Birds Purchased</th>
                 <th>Number of Birds Died</th>
                 <th>Cause of Death</th>
               </tr>
@@ -494,7 +483,6 @@ export default function MortalityPage() {
                   <td>${mortality.farmerName || "N/A"}</td>
                   <td>${mortality.farmLocation || "N/A"}</td>
                   <td>${mortality.cageIdNumber || "N/A"}</td>
-                  <td>${(mortality.totalBirdsPurchased || 0).toLocaleString()}</td>
                   <td>${(mortality.numberOfBirdsDied || 0).toLocaleString()}</td>
                   <td>${mortality.cause || "N/A"}</td>
                 </tr>
@@ -515,8 +503,7 @@ export default function MortalityPage() {
     }
   }
 
-  const totalBirdsPurchased = filteredMortalities.reduce((sum, m) => sum + (m.totalBirdsPurchased || 0), 0)
-  const totalBirdsDeath = filteredMortalities.reduce((sum, m) => sum + (m.numberOfBirdsDied || 0), 0)
+  const totalMortalityBirds = filteredMortalities.reduce((sum, m) => sum + (m.numberOfBirdsDied || 0), 0)
   const totalRecords = filteredMortalities.length
   
   // Total Value = saved amount, or weight × ratePerKg
@@ -660,18 +647,18 @@ export default function MortalityPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Birds Purchase (Qty)</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Mortality Birds (Qty)</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{totalBirdsPurchased}</div>
+              <div className="text-3xl font-bold text-red-600">{totalMortalityBirds}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Birds Death (Qty)</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Mortality Records</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-red-600">{totalBirdsDeath}</div>
+              <div className="text-3xl font-bold">{totalRecords}</div>
             </CardContent>
           </Card>
           <Card>
@@ -742,12 +729,7 @@ export default function MortalityPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="font-bold">Purchase Bill No.</TableHead>
                     <TableHead className="font-bold">Purchase Date</TableHead>
-                    <TableHead className="font-bold">Farmer Name</TableHead>
-                    <TableHead className="font-bold">Farm Location</TableHead>
-                    <TableHead className="font-bold">Cage ID Number</TableHead>
-                    <TableHead className="font-bold">Total Birds Purchased</TableHead>
                     <TableHead className="font-bold">Number of Birds Died</TableHead>
                     <TableHead className="font-bold">Weight (kg)</TableHead>
                     <TableHead className="font-bold">Rate/Kg</TableHead>
@@ -776,12 +758,7 @@ export default function MortalityPage() {
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => handleView(mortality)}
                       >
-                        <TableCell className="font-medium">{mortality.purchaseInvoiceNo || "N/A"}</TableCell>
                         <TableCell>{mortality.purchaseDate || "N/A"}</TableCell>
-                        <TableCell>{mortality.farmerName || "N/A"}</TableCell>
-                        <TableCell>{mortality.farmLocation || "N/A"}</TableCell>
-                        <TableCell>{mortality.cageIdNumber || "N/A"}</TableCell>
-                        <TableCell>{mortality.totalBirdsPurchased || 0}</TableCell>
                         <TableCell>{mortality.numberOfBirdsDied || 0}</TableCell>
                         <TableCell>{mortality.weightOfDeadBirds != null ? Number(mortality.weightOfDeadBirds).toFixed(2) : "—"}</TableCell>
                         <TableCell>{mortality.ratePerKg != null ? `₹${Number(mortality.ratePerKg).toFixed(2)}` : "—"}</TableCell>
@@ -832,28 +809,8 @@ export default function MortalityPage() {
                     <div className="text-sm font-medium">{viewingMortality.recordNumber}</div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Purchase Bill No.</Label>
-                    <div className="text-sm font-medium">{viewingMortality.purchaseInvoiceNo || "N/A"}</div>
-                  </div>
-                  <div className="space-y-2">
                     <Label className="text-muted-foreground">Purchase Date</Label>
                     <div className="text-sm font-medium">{viewingMortality.purchaseDate || "N/A"}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground">Farmer Name</Label>
-                    <div className="text-sm font-medium">{viewingMortality.farmerName || "N/A"}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground">Farm Location</Label>
-                    <div className="text-sm font-medium">{viewingMortality.farmLocation || "N/A"}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground">Cage ID Number</Label>
-                    <div className="text-sm font-medium">{viewingMortality.cageIdNumber || "N/A"}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground">Total Birds Purchased</Label>
-                    <div className="text-sm font-medium">{viewingMortality.totalBirdsPurchased || "N/A"}</div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Number of Birds Died</Label>
