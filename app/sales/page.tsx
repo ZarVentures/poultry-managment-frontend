@@ -749,7 +749,7 @@ export default function SalesPage() {
 
         <div class="customer-line">
           <div class="customer-label">Name</div>
-          <div class="customer-value">${sale.customerName || sale.retailerName || "Customer Name"}</div>
+          <div class="customer-value">${sale.customerName || (sale as any).retailerName || "Customer Name"}</div>
         </div>
 
         <table class="invoice-table">
@@ -763,7 +763,7 @@ export default function SalesPage() {
             </tr>
           </thead>
           <tbody>
-            ${invoiceRows.map(row => `
+            ${invoiceRows.map((row: any) => `
               <tr>
                 <td>${row.psc}</td>
                 <td>${row.wt.toFixed(3)}</td>

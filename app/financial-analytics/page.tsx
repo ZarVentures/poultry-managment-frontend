@@ -133,7 +133,7 @@ export default function FinancialAnalyticsPage() {
           setGodownSales(list.map((s: any) => ({
             id: s.id,
             invoiceNumber: s.saleNo || s.invoiceNumber || '',
-            customer: s.retailerName || s.customerName || '',
+            customer: (s as any).retailerName || s.customerName || '',
             date: s.saleDate || s.createdAt || '',
             productType: 'godown',
             quantity: parseFloat(s.numberOfBirds || 0),
