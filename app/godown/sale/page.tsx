@@ -452,34 +452,42 @@ export default function GodownSalePage() {
         <table class="invoice-table">
           <thead>
             <tr>
+              <th>Sr.</th>
               <th>Psc.</th>
               <th>Wt.</th>
               <th>Rate</th>
               <th>Amt</th>
-              <th>Paid</th>
             </tr>
           </thead>
           <tbody>
-            ${invoiceRows.map((row: any) => `
+            ${invoiceRows.map((row: any, index: number) => `
               <tr>
+                <td>${index + 1}</td>
                 <td>${row.psc}</td>
                 <td>${row.wt.toFixed(3)}</td>
                 <td>₹${row.rate.toFixed(0)}</td>
                 <td>₹${row.amt.toFixed(0)}</td>
-                <td>₹${row.paid.toFixed(0)}</td>
               </tr>
             `).join('')}
           </tbody>
           <tfoot>
             <tr class="totals-row">
               <td><strong>Total</strong></td>
-              <td><strong>${invoiceRows.reduce((sum: number, row: any) => sum + row.wt, 0).toFixed(3)}</strong></td>
+              <td><strong>${invoiceRows.reduce((sum: number, row: any) => sum + (row.psc || 0), 0)}</strong></td>
+              <td><strong>${invoiceRows.reduce((sum: number, row: any) => sum + (row.wt || 0), 0).toFixed(3)}</strong></td>
               <td></td>
-              <td><strong>₹${invoiceRows.reduce((sum: number, row: any) => sum + row.amt, 0).toFixed(0)}</strong></td>
-              <td><strong>₹${invoiceRows.reduce((sum: number, row: any) => sum + row.paid, 0).toFixed(0)}</strong></td>
+              <td><strong>₹${invoiceRows.reduce((sum: number, row: any) => sum + (row.amt || 0), 0).toFixed(0)}</strong></td>
             </tr>
           </tfoot>
         </table>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+          <div class="total-summary-block" style="width:240px; border:1px solid #111; border-radius:6px; padding:8px; background:#fff;">
+            <div style="display:flex; justify-content:space-between; padding:6px 0;"><div class="total-summary-label">Amount</div><div class="total-summary-value">₹${invoiceRows.reduce((sum: number, row: any) => sum + (row.amt || 0), 0).toFixed(0)}</div></div>
+            <div style="display:flex; justify-content:space-between; padding:6px 0;"><div class="total-summary-label">Paid</div><div class="total-summary-value">₹${invoiceRows.reduce((sum: number, row: any) => sum + (row.paid || 0), 0).toFixed(0)}</div></div>
+            <div style="display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid #111; margin-top:4px;"><div class="total-summary-label">Balance</div><div class="total-summary-value">₹${Math.max(0, invoiceRows.reduce((sum: number, row: any) => sum + (row.amt || 0), 0) - invoiceRows.reduce((sum: number, row: any) => sum + (row.paid || 0), 0)).toFixed(0)}</div></div>
+          </div>
+        </div>
 
         <div class="bottom-info">
           <div class="signature-block">
