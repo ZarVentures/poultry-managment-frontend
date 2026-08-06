@@ -47,7 +47,6 @@ export default function GodownSalePage() {
     totalAmount: "",
     paymentStatus: "pending" as "paid" | "pending" | "partial",
     notes: "",
-    weightLoss: "",
   })
   const [payments, setPayments] = useState<PaymentRow[]>([emptyPayment()])
 
@@ -121,7 +120,6 @@ export default function GodownSalePage() {
       totalAmount: "",
       paymentStatus: "pending",
       notes: "",
-      weightLoss: "",
     })
     setPayments([emptyPayment()])
     setEditingId(null)
@@ -141,7 +139,6 @@ export default function GodownSalePage() {
       totalAmount: String(sale.totalAmount || ""),
       paymentStatus: (sale as any).paymentStatus || "pending",
       notes: sale.notes || "",
-      weightLoss: String((sale as any).weightLoss || ""),
     })
     
     // Load payments from sale data
@@ -184,7 +181,7 @@ export default function GodownSalePage() {
         amount: p.amount 
       }))
       
-      let cagePayload: Array<{ cageId: string; soldBirds: number; soldWeight: number; weightLoss: number }> = []
+      let cagePayload: Array<{ cageId: string; soldBirds: number; soldWeight: number }> = []
       if (formData.purchaseBillNo) {
         try {
           const matchedCages = await purchasesApi.getCagesByOrderNumber(formData.purchaseBillNo, 'in_godown')
@@ -194,7 +191,6 @@ export default function GodownSalePage() {
               cageId: c.id,
               soldBirds: Number(c.numberOfBirds || 0),
               soldWeight: Number(c.godownInwardWeight ?? c.purchaseWeight ?? 0),
-              weightLoss: parseFloat(formData.weightLoss) || 0,
             }))
         } catch (error) {
           console.warn('Could not resolve in-godown cages for purchase bill:', error)
@@ -213,7 +209,6 @@ export default function GodownSalePage() {
         paymentStatus: formData.paymentStatus,
         amountReceived: totalPaymentMade,
         notes: formData.notes,
-        weightLoss: parseFloat(formData.weightLoss) || 0,
         payments: validPayments,
         cages: cagePayload,
         cageIds: cagePayload.map((c) => c.cageId),
@@ -304,6 +299,26 @@ export default function GodownSalePage() {
 
     return filtered
   }, [sales, searchQuery, dateRangeStart, dateRangeEnd])
+
+  const salesStats = useMemo(() => {
+    return filteredSales.reduce(
+      (acc, sale) => {
+        const birds = Number(sale.numberOfBirds || 0)
+        const weight = Number(sale.totalWeight || 0)
+        const totalAmount = Number(sale.totalAmount || 0)
+        const amountReceived = Number((sale as any).amountReceived || 0)
+        const pending = Math.max(0, totalAmount - amountReceived)
+
+        acc.totalBirds += birds
+        acc.totalWeight += weight
+        acc.totalAmount += totalAmount
+        acc.totalPaid += amountReceived
+        acc.totalPending += pending
+        return acc
+      },
+      { totalBirds: 0, totalWeight: 0, totalAmount: 0, totalPaid: 0, totalPending: 0 },
+    )
+  }, [filteredSales])
 
   const handlePrintReport = () => {
     const printContent = `
@@ -397,117 +412,88 @@ export default function GodownSalePage() {
     const barcodeBars = Array.from({ length: 36 }, (_, i) => `<span style="height:${10 + (i % 5) * 3}px"></span>`).join("")
     const qrPattern = Array.from({ length: 64 }, (_, i) => `<span class="qr-cell ${i % 7 === 0 || i % 11 === 3 || i % 13 === 2 ? "active" : ""}"></span>`).join("")
 
+    const invoiceRows = (() => {
+      try {
+        const parsed = JSON.parse(sale.notes || "")
+        if (parsed?.customerRows?.length) {
+          return parsed.customerRows.map((row: any) => ({
+            psc: row.numBirds || 0,
+            wt: Number(row.weight || 0),
+            rate: Number(row.rate || Number(sale.ratePerKg || 0)),
+            amt: Number(row.amount || 0),
+            paid: Number(row.amount || 0),
+          }))
+        }
+      } catch {}
+      return [{
+        psc: Number(sale.numberOfBirds || 0),
+        wt: Number(sale.totalWeight || 0),
+        rate: Number(sale.ratePerKg || 0),
+        amt: Number(subtotal),
+        paid: Number(received),
+      }]
+    })()
+
     const invoiceHtml = `
       <div class="invoice-shell">
-        <div class="header-row">
-          <div class="brand-block">
-            <div class="logo-mark">AF</div>
-            <div>
-              <div class="brand-name">Aziz Poultry Farms</div>
-              <div class="brand-sub">Premium Poultry ERP • Business Invoice</div>
-            </div>
-          </div>
-          <div class="invoice-meta">
-            <div class="invoice-title">Invoice</div>
-            <div class="meta-row"><span>Invoice No</span><strong>${invoiceNumber}</strong></div>
-            <div class="meta-row"><span>Invoice Date</span><strong>${invoiceDate}</strong></div>
-            <div class="meta-row"><span>Due Date</span><strong>${dueDateLabel}</strong></div>
-            <div class="status-pill">${paymentStatus}</div>
+        <div class="form-header">
+          <div class="form-title">Aziz Poultry FARM</div>
+          <div class="form-meta">
+            <div class="meta-row"><span>Bill No.</span><strong>${invoiceNumber}</strong></div>
+            <div class="meta-row"><span>Date</span><strong>${invoiceDate}</strong></div>
           </div>
         </div>
 
-        <div class="divider"></div>
-
-        <div class="info-grid">
-          <div class="card">
-            <div class="card-title">Customer Information</div>
-            <div class="customer-name">${sale.customerName || "Walk-in Customer"}</div>
-            <div class="info-list">
-              <div class="info-item"><span class="label">Phone</span><span class="value">${customerPhone || "—"}</span></div>
-              <div class="info-item"><span class="label">Address</span><span class="value">${customerAddress || "—"}</span></div>
-              
-            </div>
-          </div>
-
-          <div class="card summary-card">
-            <div class="card-title">Invoice Summary</div>
-            <div class="summary-row"><span>Subtotal</span><strong>₹${subtotal.toFixed(2)}</strong></div>
-            <div class="summary-row"><span>Discount</span><strong>₹${discount.toFixed(2)}</strong></div>
-            <div class="summary-row"><span>Tax</span><strong>₹${tax.toFixed(2)}</strong></div>
-            <div class="summary-row grand"><span>Grand Total</span><strong>₹${grandTotal.toFixed(2)}</strong></div>
-            <div class="summary-row"><span>Amount Paid</span><strong>₹${received.toFixed(2)}</strong></div>
-            <div class="summary-row"><span>Remaining Balance</span><strong>₹${balance.toFixed(2)}</strong></div>
-          </div>
+        <div class="customer-line">
+          <div class="customer-label">Name</div>
+          <div class="customer-value">${sale.customerName || matchedRetailer?.name || 'Customer Name'}</div>
         </div>
 
-        <div class="section">
-          <div class="card-title">Invoice Details</div>
-          <table class="invoice-table">
-            <thead>
+        <table class="invoice-table">
+          <thead>
+            <tr>
+              <th>Sr.</th>
+              <th>Psc.</th>
+              <th>Wt.</th>
+              <th>Rate</th>
+              <th>Amt</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${invoiceRows.map((row: any, index: number) => `
               <tr>
-                <th>Description</th>
-                <th>Birds</th>
-                <th>Weight (kg)</th>
-                <th>Rate/kg</th>
-                <th>Amount</th>
+                <td>${index + 1}</td>
+                <td>${row.psc}</td>
+                <td>${row.wt.toFixed(3)}</td>
+                <td>₹${row.rate.toFixed(0)}</td>
+                <td>₹${row.amt.toFixed(0)}</td>
               </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Godown sale of birds</td>
-                <td>${sale.numberOfBirds || 0}</td>
-                <td>${Number(sale.totalWeight || 0).toFixed(2)}</td>
-                <td>₹${Number(sale.ratePerKg || 0).toFixed(2)}</td>
-                <td>₹${grandTotal.toFixed(2)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+            `).join('')}
+          </tbody>
+          <tfoot>
+            <tr class="totals-row">
+              <td><strong>Total</strong></td>
+              <td><strong>${invoiceRows.reduce((sum: number, row: any) => sum + (row.psc || 0), 0)}</strong></td>
+              <td><strong>${invoiceRows.reduce((sum: number, row: any) => sum + (row.wt || 0), 0).toFixed(3)}</strong></td>
+              <td></td>
+              <td><strong>₹${invoiceRows.reduce((sum: number, row: any) => sum + (row.amt || 0), 0).toFixed(0)}</strong></td>
+            </tr>
+          </tfoot>
+        </table>
 
-        ${payments.length > 0 ? `
-        <div class="section" style="margin-top:12px;">
-          <div class="card-title">Payment Breakdown</div>
-          <table class="invoice-table payments-table">
-            <thead>
-              <tr>
-                <th>Mode</th>
-                <th style="text-align:right">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${payments.map((p: any) => `
-                <tr>
-                  <td>${(p.paymentMode || "cash").charAt(0).toUpperCase() + (p.paymentMode || "cash").slice(1)}</td>
-                  <td style="text-align:right">₹${Number(p.amount || 0).toFixed(2)}</td>
-                </tr>
-              `).join('')}
-              <tr class="total-row">
-                <td><strong>Total Paid</strong></td>
-                <td style="text-align:right"><strong>₹${received.toFixed(2)}</strong></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        ` : ''}
-
-        <div class="bottom-grid">
-          <div class="card notes-card" style="display:flex; flex-direction:column; justify-content:space-between;">
-            <div class="card-title">Notes / Terms & Conditions</div>
-            <div class="terms">${sale.notes ? sale.notes.replace(/\n/g, '<br/>') : 'Payment due within 7 days. All disputes to be resolved within business days.'}</div>
-          </div>
-          <div class="card" style="display:flex; flex-direction:column; justify-content:space-between;">
-            <div class="signature-row">
-              <div class="signature-block">
-                <div class="signature-line"></div>
-                <div class="label">Authorized Signature</div>
-              </div>
-            </div>
+        <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+          <div class="total-summary-block" style="width:240px; border:1px solid #111; border-radius:6px; padding:8px; background:#fff;">
+            <div style="display:flex; justify-content:space-between; padding:6px 0;"><div class="total-summary-label">Amount</div><div class="total-summary-value">₹${invoiceRows.reduce((sum: number, row: any) => sum + (row.amt || 0), 0).toFixed(0)}</div></div>
+            <div style="display:flex; justify-content:space-between; padding:6px 0;"><div class="total-summary-label">Paid</div><div class="total-summary-value">₹${invoiceRows.reduce((sum: number, row: any) => sum + (row.paid || 0), 0).toFixed(0)}</div></div>
+            <div style="display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid #111; margin-top:4px;"><div class="total-summary-label">Balance</div><div class="total-summary-value">₹${Math.max(0, invoiceRows.reduce((sum: number, row: any) => sum + (row.amt || 0), 0) - invoiceRows.reduce((sum: number, row: any) => sum + (row.paid || 0), 0)).toFixed(0)}</div></div>
           </div>
         </div>
 
-        <div class="footer-row">
-          <div class="barcode">${barcodeBars}</div>
-          <div class="thank-you">Thank You For Your Business</div>
+        <div class="bottom-info">
+          <div class="signature-block">
+            <div class="signature-line"></div>
+            <div class="label">Authorized Signature</div>
+          </div>
         </div>
       </div>
     `
@@ -519,65 +505,26 @@ export default function GodownSalePage() {
           <meta charset="utf-8" />
           <title>Invoice - ${sale.invoiceNumber || "Godown Sale"}</title>
           <style>
-            body { font-family: Inter, Arial, sans-serif; margin: 0; padding: 0; color: #111; background: #f4f4f5; }
-            @page { size: A4 portrait; margin: 8mm; }
+            body { font-family: Arial, sans-serif; margin: 0; padding: 0; color: #111; background: #fff; }
+            @page { size: A4 portrait; margin: 10mm; }
             .page { width: 100%; max-width: 210mm; margin: 0 auto; padding: 0; }
-            .invoice-shell { position: relative; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 18px 20px 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); min-height: 135mm; }
-            .header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
-            .brand-block { display: flex; align-items: center; gap: 10px; }
-            .logo-mark { width: 44px; height: 44px; border-radius: 12px; background: #111; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; letter-spacing: 0.08em; }
-            .brand-name { font-size: 17px; font-weight: 700; color: #111; }
-            .brand-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
-            .invoice-meta { text-align: right; min-width: 210px; }
-            .invoice-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; color: #111; }
-            .meta-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: #4b5563; margin-top: 3px; }
-            .meta-row strong { color: #111; }
-            .status-pill { display: inline-block; margin-top: 8px; padding: 6px 10px; border-radius: 999px; background: #22C55E; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; }
-            .divider { height: 1px; background: #e5e7eb; margin: 12px 0; }
-            .info-grid { display: grid; grid-template-columns: 1fr 0.8fr; gap: 12px; }
-            .card { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; }
-            .card-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #111827; margin-bottom: 8px; }
-            .customer-name { font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 8px; }
-            .info-list { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
-            .info-item { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #4b5563; }
-            .info-item .label { color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; min-width: 70px; }
-            .info-item .value { font-weight: 700; color: #111827; text-align: right; }
-            .summary-card { background: #f8fafc; color: #111827; border-color: #e5e7eb; }
-            .summary-card .card-title, .summary-card .summary-row span, .summary-card .summary-row strong { color: #111827; }
-            .summary-row { display: flex; justify-content: space-between; font-size: 12px; margin-top: 7px; align-items: center; font-weight: 600; }
-            .summary-row.grand { font-size: 12px; font-weight: 700; padding: 6px 8px; border-top: 1px solid rgba(17,24,39,0.12); margin-top: 8px; background: #e2e8f0; border-radius: 8px; }
-            .section { margin-top: 12px; }
-            .invoice-table { width: 100%; border-collapse: collapse; margin-top: 6px; border: 1px solid #e5e7eb; }
-            .invoice-table th, .invoice-table td { border-bottom: 1px solid #e5e7eb; padding: 8px 8px; text-align: left; font-size: 11px; }
-            .invoice-table th { background: #f4f4f5; font-weight: 700; color: #111; }
-            .invoice-table tr:nth-child(even) { background: #fbfbfb; }
-            .invoice-table tr:hover { background: #f4f4f5; }
-            .payments-table { margin-top: 6px; }
-            .payments-table .total-row td { border-top: 2px solid #111; background: #f4f4f5; }
-            .bottom-grid { display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 12px; margin-top: 12px; }
-            .payment-card .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-            .chip { display: inline-block; padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 999px; font-size: 10px; color: #111; background: #fff; }
-            .payment-text { font-size: 10px; color: #4b5563; margin-top: 8px; }
-            .qr-box { margin-top: 8px; display: inline-block; padding: 8px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; }
-            .qr-grid { display: grid; grid-template-columns: repeat(8, 6px); gap: 2px; }
-            .qr-cell { width: 6px; height: 6px; background: #f3f4f6; }
-            .qr-cell.active { background: #111; }
-            .qr-caption { font-size: 9px; text-align: center; color: #6b7280; margin-top: 6px; letter-spacing: 0.06em; text-transform: uppercase; }
-            .terms { font-size: 10px; line-height: 1.5; color: #4b5563; }
-            .signature-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 12px; }
-            .signature-block { flex: 1; }
-            .signature-line { height: 28px; border-bottom: 1px solid #111; margin-bottom: 6px; }
-            .stamp { height: 42px; border: 1px solid #111; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #111; margin-bottom: 6px; }
-            .label { font-size: 9px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.08em; }
-            .footer-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 10px; }
-            .barcode { display: flex; align-items: flex-end; gap: 2px; }
-            .barcode span { display: inline-block; width: 2px; background: #111; border-radius: 999px; }
-            .thank-you { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #111; }
-            @media print {
-              body { background: #fff; }
-              .page { padding: 0; }
-              .invoice-shell { box-shadow: none; border: 1px solid #ddd; min-height: auto; }
-            }
+            .invoice-shell { position: relative; background: #fff; border: 1px solid #111; border-radius: 8px; padding: 16px; }
+            .form-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; border: 1px solid #111; padding: 10px; margin-bottom: 10px; }
+            .form-title { font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+            .form-meta { text-align: right; min-width: 190px; }
+            .meta-row { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; color: #111; margin-top: 6px; }
+            .meta-row span { font-weight: 700; }
+            .customer-line { display: flex; align-items: center; gap: 10px; border: 1px solid #111; padding: 10px; margin-bottom: 10px; }
+            .customer-label { min-width: 60px; font-size: 13px; font-weight: 700; }
+            .customer-value { flex: 1; border-bottom: 1px solid #111; padding-bottom: 4px; font-size: 13px; font-weight: 600; }
+            .invoice-table { width: 100%; border-collapse: collapse; border: 1px solid #111; }
+            .invoice-table th, .invoice-table td { border: 1px solid #111; padding: 8px 10px; text-align: center; font-size: 12px; }
+            .invoice-table th { font-weight: 700; }
+            .totals-row td { border-top: 2px solid #111; font-weight: 700; }
+            .bottom-info { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-top: 12px; padding: 0 2px; }
+            .signature-block { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-top: 10px; }
+            .signature-line { width: 160px; height: 1px; background: #111; }
+            @media print { body { background: #fff; } .page { padding: 0; } .invoice-shell { box-shadow: none; border: 1px solid #111; } }
           </style>
         </head>
         <body>
@@ -732,7 +679,7 @@ export default function GodownSalePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label>Total Weight (kg)</Label>
                     <Input
@@ -744,18 +691,6 @@ export default function GodownSalePage() {
                         const total = (parseFloat(weight || "0") * parseFloat(formData.ratePerKg || "0")).toFixed(2)
                         setFormData({ ...formData, totalWeight: weight, totalAmount: total })
                       }}
-                      placeholder="0.00"
-                      disabled={loading}
-                      onWheel={(e) => e.currentTarget.blur()} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Weight Loss (kg)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.weightLoss}
-                      onChange={(e) => setFormData({ ...formData, weightLoss: e.target.value })}
                       placeholder="0.00"
                       disabled={loading}
                       onWheel={(e) => e.currentTarget.blur()} 
@@ -895,6 +830,39 @@ export default function GodownSalePage() {
               </div>
             </DialogContent>
           </Dialog>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Birds</p>
+              <p className="text-2xl font-bold">{salesStats.totalBirds.toLocaleString("en-IN")}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Weight</p>
+              <p className="text-2xl font-bold">{salesStats.totalWeight.toFixed(2)} kg</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Amount</p>
+              <p className="text-2xl font-bold">₹{salesStats.totalAmount.toFixed(2)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Paid</p>
+              <p className="text-2xl font-bold text-green-700">₹{salesStats.totalPaid.toFixed(2)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Pending</p>
+              <p className="text-2xl font-bold text-red-600">₹{salesStats.totalPending.toFixed(2)}</p>
+            </CardContent>
+          </Card>
         </div>
 
         <Card>

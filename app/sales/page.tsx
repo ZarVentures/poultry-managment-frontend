@@ -158,7 +158,7 @@ export default function SalesPage() {
       })
       if (res?.summary) {
         setSummaryTotals({
-          totalBirds: (res.summary as any).totalQuantity ?? 0,
+          totalBirds: Number((res.summary as any).totalBirds ?? 0),
         })
       }
     } catch { /* non-critical */ }
@@ -649,6 +649,7 @@ export default function SalesPage() {
         paymentStatus: formData.paymentStatus,
         amountReceived: String(totalPaymentMade),
         totalBirds: totalBirds,
+        numberOfBirds: totalBirds,
         notes: finalNotesString || undefined,
         retailerId: formData.retailerId || undefined,
         payments: validPayments,
@@ -705,7 +706,7 @@ export default function SalesPage() {
     const balance = Math.max(0, subtotal - received)
     const paymentStatus = String((sale as any).paymentStatus || "pending").toUpperCase()
     const modeLabel = sale.saleMode === "from_vehicle" ? "Vehicle Sale" : "Godown Sale"
-    const birds = Number((sale as any).numberOfBirds || 0)
+    const birds = getSaleBirds(sale)
     const weight = Number(sale.quantity || 0)
     const rate = Number((sale as any).ratePerKg || (sale as any).unitPrice || 0)
     const matchedRetailer = retailers.find(r => String(r.id) === String((sale as any).retailerId || ""))
@@ -714,91 +715,88 @@ export default function SalesPage() {
     const invoiceNotes = getInvoiceNotesText((sale as any).notes)
     const barcodeBars = Array.from({ length: 36 }, (_, i) => `<span style="height:${10 + (i % 5) * 3}px"></span>`).join("")
 
+    const invoiceRows = (() => {
+      try {
+        const parsed = JSON.parse(sale.notes || "")
+        if (parsed?.customerRows?.length) {
+          return parsed.customerRows.map((row: any) => ({
+            psc: row.numBirds || 0,
+            wt: Number(row.weight || 0),
+            rate: Number(row.rate || rate),
+            amt: Number(row.amount || 0),
+            paid: Number(row.amount || 0),
+          }))
+        }
+      } catch {}
+      return [{
+        psc: birds,
+        wt: weight,
+        rate,
+        amt: subtotal,
+        paid: received,
+      }]
+    })()
+
     const invoiceHtml = `
       <div class="invoice-shell">
-        <div class="header-row">
-          <div class="brand-block">
-            <div class="logo-mark">AF</div>
-            <div>
-              <div class="brand-name">Aziz Poultry Farms</div>
-              <div class="brand-sub">Premium Poultry ERP • Business Invoice</div>
-            </div>
-          </div>
-          <div class="invoice-meta">
-            <div class="invoice-title">Invoice</div>
-            <div class="meta-row"><span>Invoice No</span><strong>${invoiceNumber}</strong></div>
-            <div class="meta-row"><span>Invoice Date</span><strong>${invoiceDate}</strong></div>
-            <div class="meta-row"><span>Due Date</span><strong>${dueDate.toLocaleDateString('en-GB')}</strong></div>
-            <div class="status-pill">${paymentStatus}</div>
+        <div class="form-header">
+          <div class="form-title">Aziz Poultry FARM</div>
+          <div class="form-meta">
+            <div class="meta-row"><span>Bill No.</span><strong>${invoiceNumber}</strong></div>
+            <div class="meta-row"><span>Date</span><strong>${invoiceDate}</strong></div>
           </div>
         </div>
 
-        <div class="divider"></div>
-
-        <div class="info-grid">
-          <div class="card">
-            <div class="card-title">Customer Information</div>
-            <div class="customer-name">${sale.customerName || "Walk-in Customer"}</div>
-            <div class="info-list">
-              <div class="info-item"><span class="label">Phone</span><span class="value">${customerPhone || "—"}</span></div>
-              <div class="info-item"><span class="label">Address</span><span class="value">${customerAddress || "—"}</span></div>
-              <div class="info-item"><span class="label">Mode</span><span class="value">${modeLabel}</span></div>
-            </div>
-          </div>
-
-          <div class="card summary-card">
-            <div class="card-title">Invoice Summary</div>
-            <div class="summary-row"><span>Subtotal</span><strong>₹${subtotal.toFixed(2)}</strong></div>
-            <div class="summary-row"><span>Discount</span><strong>₹0.00</strong></div>
-            <div class="summary-row"><span>Tax</span><strong>₹0.00</strong></div>
-            <div class="summary-row grand"><span>Grand Total</span><strong>₹${subtotal.toFixed(2)}</strong></div>
-            <div class="summary-row"><span>Amount Paid</span><strong>₹${received.toFixed(2)}</strong></div>
-            <div class="summary-row"><span>Remaining Balance</span><strong>₹${balance.toFixed(2)}</strong></div>
-          </div>
+        <div class="customer-line">
+          <div class="customer-label">Name</div>
+          <div class="customer-value">${sale.customerName || (sale as any).retailerName || "Customer Name"}</div>
         </div>
 
-        <div class="section">
-          <div class="card-title">Invoice Details</div>
-          <table class="invoice-table">
-            <thead>
+        <table class="invoice-table">
+          <thead>
+            <tr>
+              <th>Sr.</th>
+              <th>Psc.</th>
+              <th>Wt.</th>
+              <th>Rate</th>
+              <th>Amt</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${invoiceRows.map((row: any, index: number) => `
               <tr>
-                <th>Description</th>
-                <th>Birds</th>
-                <th>Weight (kg)</th>
-                <th>Rate/kg</th>
-                <th>Amount</th>
+                <td>${index + 1}</td>
+                <td>${row.psc}</td>
+                <td>${row.wt.toFixed(3)}</td>
+                <td>₹${row.rate.toFixed(0)}</td>
+                <td>₹${row.amt.toFixed(0)}</td>
               </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Traveling sale of birds</td>
-                <td>${birds}</td>
-                <td>${weight.toFixed(2)}</td>
-                <td>₹${rate.toFixed(2)}</td>
-                <td>₹${subtotal.toFixed(2)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+            `).join('')}
+          </tbody>
+          <tfoot>
+            <tr class="totals-row">
+              <td><strong>Total</strong></td>
+              <td><strong>${invoiceRows.reduce((sum: number, row: any) => sum + (row.psc || 0), 0)}</strong></td>
+              <td><strong>${invoiceRows.reduce((sum: number, row: any) => sum + (row.wt || 0), 0).toFixed(3)}</strong></td>
+              <td></td>
+              <td><strong>₹${invoiceRows.reduce((sum: number, row: any) => sum + (row.amt || 0), 0).toFixed(0)}</strong></td>
+            </tr>
+          </tfoot>
+        </table>
 
-        <div class="bottom-grid">
-          <div class="card notes-card" style="display:flex; flex-direction:column; justify-content:space-between;">
-            <div class="card-title">Notes / Terms & Conditions</div>
-            <div class="terms">${invoiceNotes ? String(invoiceNotes).replace(/\n/g, '<br/>') : 'Payment due within 7 days. All disputes to be resolved within business days.'}</div>
-          </div>
-          <div class="card" style="display:flex; flex-direction:column; justify-content:space-between;">
-            <div class="signature-row">
-              <div class="signature-block">
-                <div class="signature-line"></div>
-                <div class="label">Authorized Signature</div>
-              </div>
-            </div>
+        <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+          <div class="total-summary-block" style="width:240px; border:1px solid #111; border-radius:6px; padding:8px; background:#fff;">
+            <div style="display:flex; justify-content:space-between; padding:6px 0;"><div class="total-summary-label">Amount</div><div class="total-summary-value">₹${invoiceRows.reduce((sum: number, row: any) => sum + (row.amt || 0), 0).toFixed(0)}</div></div>
+            <div style="display:flex; justify-content:space-between; padding:6px 0;"><div class="total-summary-label">Paid</div><div class="total-summary-value">₹${invoiceRows.reduce((sum: number, row: any) => sum + (row.paid || 0), 0).toFixed(0)}</div></div>
+            <div style="display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid #111; margin-top:4px;"><div class="total-summary-label">Balance</div><div class="total-summary-value">₹${Math.max(0, invoiceRows.reduce((sum: number, row: any) => sum + (row.amt || 0), 0) - invoiceRows.reduce((sum: number, row: any) => sum + (row.paid || 0), 0)).toFixed(0)}</div></div>
           </div>
         </div>
 
-        <div class="footer-row">
-          <div class="barcode">${barcodeBars}</div>
-          <div class="thank-you">Thank You For Your Business</div>
+        <div class="bottom-info">
+          <div class="signature-block">
+            <div class="signature-line"></div>
+            <div class="label">Authorized Signature</div>
+          </div>
         </div>
       </div>
     `
@@ -810,50 +808,29 @@ export default function SalesPage() {
           <meta charset="utf-8" />
           <title>Invoice - ${invoiceNumber}</title>
           <style>
-            body { font-family: Inter, Arial, sans-serif; margin: 0; padding: 0; color: #111; background: #f4f4f5; }
-            @page { size: A4 portrait; margin: 8mm; }
+            body { font-family: Arial, sans-serif; margin: 0; padding: 0; color: #111; background: #fff; }
+            @page { size: A4 portrait; margin: 10mm; }
             .page { width: 100%; max-width: 210mm; margin: 0 auto; padding: 0; }
-            .invoice-shell { position: relative; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 18px 20px 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); min-height: 135mm; }
-            .header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
-            .brand-block { display: flex; align-items: center; gap: 10px; }
-            .logo-mark { width: 44px; height: 44px; border-radius: 12px; background: #111; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; letter-spacing: 0.08em; }
-            .brand-name { font-size: 17px; font-weight: 700; color: #111; }
-            .brand-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
-            .invoice-meta { text-align: right; min-width: 210px; }
-            .invoice-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; color: #111; }
-            .meta-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: #4b5563; margin-top: 3px; }
-            .meta-row strong { color: #111; }
-            .status-pill { display: inline-block; margin-top: 8px; padding: 6px 10px; border-radius: 999px; background: #22C55E; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; }
-            .divider { height: 1px; background: #e5e7eb; margin: 12px 0; }
-            .info-grid { display: grid; grid-template-columns: 1fr 0.8fr; gap: 12px; }
-            .card { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; }
-            .card-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #111827; margin-bottom: 8px; }
-            .customer-name { font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 8px; }
-            .info-list { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
-            .info-item { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #4b5563; }
-            .info-item .label { color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; min-width: 70px; }
-            .info-item .value { font-weight: 700; color: #111827; text-align: right; }
-            .summary-card { background: #f8fafc; color: #111827; border-color: #e5e7eb; }
-            .summary-card .card-title, .summary-card .summary-row span, .summary-card .summary-row strong { color: #111827; }
-            .summary-row { display: flex; justify-content: space-between; font-size: 12px; margin-top: 7px; align-items: center; font-weight: 600; }
-            .summary-row.grand { font-size: 13px; font-weight: 700; padding: 7px 8px; border-top: 1px solid rgba(17,24,39,0.12); margin-top: 8px; background: #e2e8f0; border-radius: 8px; }
-            .section { margin-top: 12px; }
-            .invoice-table { width: 100%; border-collapse: collapse; margin-top: 6px; border: 1px solid #e5e7eb; }
-            .invoice-table th, .invoice-table td { border-bottom: 1px solid #e5e7eb; padding: 8px 8px; text-align: left; font-size: 11px; }
-            .invoice-table th { background: #f4f4f5; font-weight: 700; color: #111; }
-            .invoice-table tr:nth-child(even) { background: #fbfbfb; }
-            .bottom-grid { display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 12px; margin-top: 12px; }
-            .terms { font-size: 10px; line-height: 1.5; color: #4b5563; }
-            .signature-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 12px; }
-            .signature-block { flex: 1; }
-            .signature-line { height: 28px; border-bottom: 1px solid #111; margin-bottom: 6px; }
-            .stamp { height: 42px; border: 1px solid #111; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #111; margin-bottom: 6px; }
-            .label { font-size: 9px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.08em; }
-            .footer-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 10px; }
-            .barcode { display: flex; align-items: flex-end; gap: 2px; }
-            .barcode span { display: inline-block; width: 2px; background: #111; border-radius: 999px; }
-            .thank-you { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #111; }
-            @media print { body { background: #fff; } .page { padding: 0; } .invoice-shell { box-shadow: none; border: 1px solid #ddd; min-height: auto; } }
+            .invoice-shell { position: relative; background: #fff; border: 1px solid #111; border-radius: 8px; padding: 16px; min-height: auto; }
+            .form-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; border: 1px solid #111; padding: 10px; margin-bottom: 10px; }
+            .form-title { font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+            .form-meta { text-align: right; min-width: 190px; }
+            .meta-row { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; color: #111; margin-top: 6px; }
+            .meta-row span { font-weight: 600; }
+            .meta-row strong { font-weight: 700; }
+            .customer-line { display: flex; align-items: center; gap: 10px; border: 1px solid #111; padding: 10px; margin-bottom: 10px; }
+            .customer-label { min-width: 60px; font-size: 13px; font-weight: 700; }
+            .customer-value { flex: 1; border-bottom: 1px solid #111; padding-bottom: 4px; font-size: 13px; font-weight: 600; }
+            .invoice-table { width: 100%; border-collapse: collapse; margin-top: 0; border: 1px solid #111; }
+            .invoice-table th, .invoice-table td { border: 1px solid #111; padding: 8px 10px; text-align: center; font-size: 12px; }
+            .invoice-table th { background: #fff; font-weight: 700; }
+            .invoice-table td { font-size: 13px; }
+            .totals-row td { border-top: 2px solid #111; font-weight: 700; }
+            .bottom-info { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-top: 12px; padding: 0 2px; }
+            .bottom-info .meta-row { justify-content: space-between; }
+            .signature-block { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-top: 10px; }
+            .signature-line { width: 160px; height: 1px; background: #111; }
+            @media print { body { background: #fff; } .page { padding: 0; } .invoice-shell { box-shadow: none; border: 1px solid #111; } }
           </style>
         </head>
         <body>
@@ -883,12 +860,24 @@ export default function SalesPage() {
     finally { setLoading(false) }
   }
 
+  const getSaleBirds = (sale: any): number => {
+    const direct = Number(sale?.numberOfBirds || 0)
+    if (direct > 0) return direct
+    try {
+      if (!sale?.notes) return 0
+      const parsed = typeof sale.notes === "string" ? JSON.parse(sale.notes) : sale.notes
+      return Number(parsed?.weightLoss?.totalBirds) || 0
+    } catch {
+      return 0
+    }
+  }
+
   const stats = useMemo(() => {
     if (serverStats) {
       return {
         count: totalRecords,
-        totalBirds: summaryTotals.totalBirds || sales.reduce((s, x) => s + Number(x.quantity || 0), 0),
-        totalWeight: (serverStats as any).totalWeight ?? (serverStats as any).totalBirds ?? 0,
+        totalBirds: summaryTotals.totalBirds || sales.reduce((s, x) => s + getSaleBirds(x), 0),
+        totalWeight: Number((serverStats as any).totalWeight ?? 0) || sales.reduce((s, x) => s + parseFloat(String(x.quantity || 0)), 0),
         totalRevenue: serverStats.totalRevenue,
         totalReceived: serverStats.totalReceived,
         totalPending: serverStats.totalPending,
@@ -896,7 +885,7 @@ export default function SalesPage() {
     }
     return {
       count: sales.length,
-      totalBirds: sales.reduce((s, x) => s + Number(x.quantity || 0), 0),
+      totalBirds: sales.reduce((s, x) => s + getSaleBirds(x), 0),
       totalWeight: sales.reduce((s, x) => s + parseFloat(String(x.quantity || 0)), 0),
       totalRevenue: sales.reduce((s, x) => s + parseFloat(String(x.netAmount || x.totalAmount || 0)), 0),
       totalReceived: sales.reduce((s, x) => s + parseFloat(String(x.amountReceived || 0)), 0),
@@ -1485,7 +1474,7 @@ export default function SalesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-purple-600">
-                {((stats as any).totalWeight ?? stats.totalBirds ?? 0).toFixed(0)} kg
+                {Number((stats as any).totalWeight ?? 0).toFixed(0)} kg
               </div>
             </CardContent>
           </Card>
