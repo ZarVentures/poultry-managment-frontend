@@ -36,7 +36,10 @@ export default function Home() {
       }
 
       localStorage.setItem('token', response.accessToken)
-      localStorage.setItem('user', JSON.stringify(response.user))
+      localStorage.setItem('user', JSON.stringify({
+        ...response.user,
+        role: (response.user?.role || '').toString().trim().toLowerCase(),
+      }))
       toast.success('Login successful!')
       setTimeout(() => { window.location.href = "/dashboard" }, 500)
     } catch (error: any) {
@@ -56,7 +59,10 @@ export default function Home() {
     try {
       const response = await authApi.authenticate2FA(tempToken, twoFactorCode)
       localStorage.setItem('token', response.accessToken)
-      localStorage.setItem('user', JSON.stringify(response.user))
+      localStorage.setItem('user', JSON.stringify({
+        ...response.user,
+        role: (response.user?.role || '').toString().trim().toLowerCase(),
+      }))
       toast.success('Login successful!')
       setTimeout(() => { window.location.href = "/dashboard" }, 500)
     } catch (error: any) {

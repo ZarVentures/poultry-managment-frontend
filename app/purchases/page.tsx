@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
 import { purchasesApi, farmersApi, vehiclesApi, type PurchaseOrder as ApiPurchaseOrder, type Farmer } from "@/lib/api"
+import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
 
@@ -27,7 +28,7 @@ const emptyCage = () => ({ cageId: "", numberOfBirds: "", cageWeight: "" })
 
 export default function PurchasesPage() {
   const router = useRouter()
-  const [userRole, setUserRole] = useState<string>("")
+  const { canUpdate, canDelete } = usePermissions()
   const [purchases, setPurchases] = useState<ApiPurchaseOrder[]>([])
   const [invoiceList, setInvoiceList] = useState<Array<{ id: string; orderNumber: string; orderDate: string; supplierName: string }>>([])
   const [farmers, setFarmers] = useState<Farmer[]>([])
@@ -74,13 +75,6 @@ export default function PurchasesPage() {
 
   useEffect(() => {
     setMounted(true)
-    const userData = localStorage.getItem("user")
-    if (userData) {
-      try {
-        const user = JSON.parse(userData)
-        setUserRole(user.role || "")
-      } catch {}
-    }
     fetchInvoiceList()
     fetchFarmers()
     fetchVehicles()
@@ -873,37 +867,25 @@ export default function PurchasesPage() {
                         </TableCell>
                         <TableCell>₹{Number(p.balanceAmount || 0).toFixed(2)}</TableCell>
                         <TableCell>
-                          {userRole !== 'staff' && userRole !== 'Staff' ? (
-                            <div className="flex gap-1">
-                              <Button variant="ghost" size="sm" onClick={() => handlePrintPurchase(p)}><Printer size={14} /></Button>
-                              <Button variant="ghost" size="sm" onClick={async () => {
-                                setViewingPurchase(p)
-                                setShowInvoiceModal(true)
-                                setLoadingPreview(true)
-                                try {
-                                  const full = await purchasesApi.getOne(p.id)
-                                  setViewingPurchase(full)
-                                } catch { /* keep list data */ }
-                                finally { setLoadingPreview(false) }
-                              }}><Eye size={14} /></Button>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => handlePrintPurchase(p)}><Printer size={14} /></Button>
+                            <Button variant="ghost" size="sm" onClick={async () => {
+                              setViewingPurchase(p)
+                              setShowInvoiceModal(true)
+                              setLoadingPreview(true)
+                              try {
+                                const full = await purchasesApi.getOne(p.id)
+                                setViewingPurchase(full)
+                              } catch { /* keep list data */ }
+                              finally { setLoadingPreview(false) }
+                            }}><Eye size={14} /></Button>
+                            {canUpdate('purchases') && (
                               <Button variant="ghost" size="sm" onClick={() => handleEdit(p)}><Edit2 size={14} /></Button>
+                            )}
+                            {canDelete('purchases') && (
                               <Button variant="ghost" size="sm" onClick={() => handleDelete(p.id)} className="text-red-500"><Trash2 size={14} /></Button>
-                            </div>
-                          ) : (
-                            <div className="flex gap-1">
-                              <Button variant="ghost" size="sm" onClick={() => handlePrintPurchase(p)}><Printer size={14} /></Button>
-                              <Button variant="ghost" size="sm" onClick={async () => {
-                                setViewingPurchase(p)
-                                setShowInvoiceModal(true)
-                                setLoadingPreview(true)
-                                try {
-                                  const full = await purchasesApi.getOne(p.id)
-                                  setViewingPurchase(full)
-                                } catch { /* keep list data */ }
-                                finally { setLoadingPreview(false) }
-                              }}><Eye size={14} /></Button>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
