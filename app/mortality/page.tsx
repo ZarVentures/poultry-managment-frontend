@@ -23,6 +23,7 @@ import { Plus, Edit2, Trash2, Download, Printer, X, Eye } from "lucide-react"
 import { DateRangeFilter } from "@/components/date-range-filter"
 import { useDateFilter } from "@/contexts/date-filter-context"
 import { mortalityApi, purchasesApi, type PurchaseOrder } from "@/lib/api"
+import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 
 interface Mortality {
@@ -46,7 +47,7 @@ interface Mortality {
 
 export default function MortalityPage() {
   const router = useRouter()
-  const [userRole, setUserRole] = useState<string>("")
+  const { canUpdate, canDelete } = usePermissions()
   const [mortalities, setMortalities] = useState<Mortality[]>([])
   const [purchases, setPurchases] = useState<PurchaseOrder[]>([])
   const [mounted, setMounted] = useState(false)
@@ -90,13 +91,6 @@ export default function MortalityPage() {
   // Fetch data from API
   useEffect(() => {
     setMounted(true)
-    const userData = localStorage.getItem("user")
-    if (userData) {
-      try {
-        const user = JSON.parse(userData)
-        setUserRole(user.role || "")
-      } catch {}
-    }
     fetchMortalities()
     fetchPurchases()
   }, [])
@@ -774,15 +768,15 @@ export default function MortalityPage() {
                           <Button variant="outline" size="icon" title="View" onClick={() => handleView(mortality)}>
                             <Eye size={16} />
                           </Button>
-                          {userRole !== 'staff' && userRole !== 'Staff' && (
-                            <>
-                              <Button variant="outline" size="icon" title="Edit" onClick={() => handleEdit(mortality)}>
-                                <Edit2 size={16} />
-                              </Button>
-                              <Button variant="outline" size="icon" title="Delete" onClick={() => handleDelete(mortality.id)}>
-                                <Trash2 size={16} />
-                              </Button>
-                            </>
+                          {canUpdate('mortality') && (
+                            <Button variant="outline" size="icon" title="Edit" onClick={() => handleEdit(mortality)}>
+                              <Edit2 size={16} />
+                            </Button>
+                          )}
+                          {canDelete('mortality') && (
+                            <Button variant="outline" size="icon" title="Delete" onClick={() => handleDelete(mortality.id)}>
+                              <Trash2 size={16} />
+                            </Button>
                           )}
                         </TableCell>
                       </TableRow>

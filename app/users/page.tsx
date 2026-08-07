@@ -13,11 +13,12 @@ import { Plus, Edit2, Trash2, X, Users, UserCheck, Shield, Briefcase, Lock, Unlo
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DatePicker } from "@/components/ui/date-picker"
 import { usersApi, permissionsApi, type User as ApiUser } from "@/lib/api"
+import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 
 export default function UsersPage() {
   const router = useRouter()
-  const [userRole, setUserRole] = useState<string>("")
+  const { canCreate, canUpdate, canDelete, isAdmin } = usePermissions()
   const [users, setUsers] = useState<ApiUser[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -27,7 +28,6 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [dynamicRoles, setDynamicRoles] = useState<string[]>(['admin', 'manager', 'staff'])
-  const [userPermissions, setUserPermissions] = useState<any>(null)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -41,34 +41,24 @@ export default function UsersPage() {
 
   useEffect(() => {
     setMounted(true)
-    const userData = localStorage.getItem("user")
-    if (userData) {
-      try {
-        const user = JSON.parse(userData)
-        setUserRole(user.role || "")
-      } catch { }
-    }
     fetchUsers()
-    fetchPermissions()
   }, [])
 
-  const fetchPermissions = async () => {
-    try {
-      const perms = await permissionsApi.getMyPermissions()
-      setUserPermissions(perms)
+  useEffect(() => {
+    if (isAdmin) {
+      fetchRoleOptions()
+    }
+  }, [isAdmin])
 
-      // Also fetch all unique roles for the dropdown
+  const fetchRoleOptions = async () => {
+    try {
       const allRoles = await permissionsApi.getAllRolePermissions()
       const uniqueRoles = Array.from(new Set(['admin', 'manager', 'staff', ...allRoles.map(p => p.role)]))
       setDynamicRoles(uniqueRoles)
     } catch (error) {
-      console.error('Failed to fetch permissions:', error)
+      console.error('Failed to fetch roles:', error)
     }
   }
-
-  const canCreate = userPermissions?.permissions?.users?.canCreate ?? true
-  const canDelete = userPermissions?.permissions?.users?.canDelete ?? true
-  const canUpdate = userPermissions?.permissions?.users?.canUpdate ?? true
 
   const fetchUsers = async () => {
     try {
@@ -168,7 +158,7 @@ export default function UsersPage() {
   }
 
   const handleToggleStatus = async (id: string, currentStatus: string) => {
-    if (!canUpdate) {
+    if (!canUpdate('users')) {
       toast.error("You don't have permission to change user status")
       return
     }
@@ -194,7 +184,7 @@ export default function UsersPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!canDelete) {
+    if (!canDelete('users')) {
       toast.error("You don't have permission to delete users")
       return
     }
@@ -268,7 +258,7 @@ export default function UsersPage() {
             <h1 className="text-3xl font-bold">User Management</h1>
             <p className="text-muted-foreground">Manage staff accounts and permissions</p>
           </div>
-          {canCreate && (
+          {canCreate('users') && (
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
               <DialogTrigger asChild>
                 <Button onClick={resetForm}>
@@ -553,21 +543,24 @@ export default function UsersPage() {
                         <TableCell>{new Date(user.joinDate).toLocaleDateString()}</TableCell>
                         <TableCell>{user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}</TableCell>
                         <TableCell>
-                          {userRole !== 'staff' && userRole !== 'Staff' && (
+                          {(canUpdate('users') || canDelete('users')) && (
                             <div className="flex gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleToggleStatus(user.id, user.status)}
-                                title={user.status === "active" ? "Deactivate user (lock)" : "Activate user (unlock)"}
-                                disabled={!canUpdate}
-                              >
-                                {user.status === "active" ? <Lock size={16} className="text-orange-600" /> : <Unlock size={16} className="text-green-600" />}
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleEdit(user)} disabled={!canUpdate}>
-                                <Edit2 size={16} />
-                              </Button>
-                              {canDelete && (
+                              {canUpdate('users') && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleToggleStatus(user.id, user.status)}
+                                    title={user.status === "active" ? "Deactivate user (lock)" : "Activate user (unlock)"}
+                                  >
+                                    {user.status === "active" ? <Lock size={16} className="text-orange-600" /> : <Unlock size={16} className="text-green-600" />}
+                                  </Button>
+                                  <Button variant="ghost" size="sm" onClick={() => handleEdit(user)}>
+                                    <Edit2 size={16} />
+                                  </Button>
+                                </>
+                              )}
+                              {canDelete('users') && (
                                 <Button
                                   variant="ghost"
                                   size="sm"

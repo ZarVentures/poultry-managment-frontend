@@ -14,11 +14,12 @@ import { Plus, Edit2, Trash2, X, Download, Printer, ArrowUpDown, ArrowUp, ArrowD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { vehiclesApi, type Vehicle as ApiVehicle } from "@/lib/api"
+import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 
 export default function VehiclesPage() {
   const router = useRouter()
-  const [userRole, setUserRole] = useState<string>("")
+  const { canUpdate, canDelete } = usePermissions()
   const [vehicles, setVehicles] = useState<ApiVehicle[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -39,13 +40,6 @@ export default function VehiclesPage() {
 
   useEffect(() => {
     setMounted(true)
-    const userData = localStorage.getItem("user")
-    if (userData) {
-      try {
-        const user = JSON.parse(userData)
-        setUserRole(user.role || "")
-      } catch { }
-    }
   }, [])
 
   const fetchVehicles = async () => {
@@ -266,10 +260,14 @@ export default function VehiclesPage() {
                       <TableCell>{new Date(v.joinDate).toLocaleDateString()}</TableCell>
                       <TableCell><span className={`px-2 py-1 rounded-full text-xs font-medium ${v.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{v.status}</span></TableCell>
                       <TableCell>
-                        {userRole !== 'staff' && userRole !== 'Staff' && (
+                        {(canUpdate('vehicles') || canDelete('vehicles')) && (
                           <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(v)}><Edit2 size={16} /></Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(v.id)}><Trash2 size={16} /></Button>
+                            {canUpdate('vehicles') && (
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(v)}><Edit2 size={16} /></Button>
+                            )}
+                            {canDelete('vehicles') && (
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(v.id)}><Trash2 size={16} /></Button>
+                            )}
                           </div>
                         )}
                       </TableCell>
