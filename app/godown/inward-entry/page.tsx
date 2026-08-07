@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
 import { godownApi, vehiclesApi, farmersApi, purchasesApi, type GodownInward, type GodownCage, type Vehicle } from "@/lib/api"
+import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 
 type ActiveFarmer = { id: string; name: string; phone: string; address?: string }
@@ -23,7 +24,7 @@ const emptyCage = (): GodownCage => ({ cageId: "", birdType: "", numberOfBirds: 
 
 export default function GodownInwardPage() {
   const router = useRouter()
-  const [userRole, setUserRole] = useState<string>("")
+  const { canUpdate, canDelete } = usePermissions()
   const [entries, setEntries] = useState<GodownInward[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [farmers, setFarmers] = useState<ActiveFarmer[]>([])
@@ -71,13 +72,6 @@ export default function GodownInwardPage() {
 
   useEffect(() => {
     setMounted(true)
-    const userData = localStorage.getItem("user")
-    if (userData) {
-      try {
-        const user = JSON.parse(userData)
-        setUserRole(user.role || "")
-      } catch {}
-    }
     fetchEntries()
     fetchVehicles()
     fetchFarmers()
@@ -1082,7 +1076,7 @@ export default function GodownInwardPage() {
                           <Button variant="ghost" size="sm" title="View" onClick={() => handleView(entry)}>
                             <Eye size={16} />
                           </Button>
-                          {userRole !== 'staff' && userRole !== 'Staff' && (
+                          {canUpdate('godown') && (
                             <>
                               <Button variant="ghost" size="sm" title="Print" onClick={() => handlePrintInward(entry)}>
                                 <Printer size={16} />
@@ -1090,10 +1084,12 @@ export default function GodownInwardPage() {
                               <Button variant="ghost" size="sm" title="Edit" onClick={() => handleEdit(entry)}>
                                 <Edit2 size={16} />
                               </Button>
-                              <Button variant="ghost" size="sm" title="Delete" onClick={() => handleDelete(entry.id)}>
-                                <Trash2 size={16} />
-                              </Button>
                             </>
+                          )}
+                          {canDelete('godown') && (
+                            <Button variant="ghost" size="sm" title="Delete" onClick={() => handleDelete(entry.id)}>
+                              <Trash2 size={16} />
+                            </Button>
                           )}
                         </div>
                       </TableCell>

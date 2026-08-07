@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Edit2, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download, Printer, ChevronLeft, ChevronRight } from "lucide-react"
 import { DateRangeFilter } from "@/components/date-range-filter"
 import { farmersApi, type Farmer as ApiFarmer } from "@/lib/api"
+import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 
 interface Farmer {
@@ -40,7 +41,7 @@ interface Farmer {
 
 export default function FarmersPage() {
   const router = useRouter()
-  const [userRole, setUserRole] = useState<string>("")
+  const { canUpdate, canDelete } = usePermissions()
   const [farmers, setFarmers] = useState<Farmer[]>([])
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -68,13 +69,6 @@ export default function FarmersPage() {
 
   useEffect(() => {
     setMounted(true)
-    const userData = localStorage.getItem("user")
-    if (userData) {
-      try {
-        const user = JSON.parse(userData)
-        setUserRole(user.role || "")
-      } catch { }
-    }
   }, [])
 
   // Fetch farmers from API
@@ -419,11 +413,15 @@ export default function FarmersPage() {
                           </span>
                         </TableCell>
                         <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
-                          {userRole !== 'staff' && userRole !== 'Staff' && (
-                            <>
-                              <Button variant="outline" size="icon" onClick={() => handleEdit(farmer)}><Edit2 size={16} /></Button>
-                              <Button variant="outline" size="icon" onClick={() => handleDelete(farmer.id)}><Trash2 size={16} /></Button>
-                            </>
+                          {(canUpdate('farmers') || canDelete('farmers')) && (
+                            <div className="inline-flex gap-2">
+                              {canUpdate('farmers') && (
+                                <Button variant="outline" size="icon" onClick={() => handleEdit(farmer)}><Edit2 size={16} /></Button>
+                              )}
+                              {canDelete('farmers') && (
+                                <Button variant="outline" size="icon" onClick={() => handleDelete(farmer.id)}><Trash2 size={16} /></Button>
+                              )}
+                            </div>
                           )}
                         </TableCell>
                       </TableRow>
