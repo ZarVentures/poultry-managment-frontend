@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import Link from "next/link"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Package, Bird, FileText, Calendar, AlertCircle, Percent, ChevronLeft, ChevronRight } from "lucide-react"
@@ -100,7 +101,15 @@ export default function InventoryPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div><h1 className="text-3xl font-bold">Godown Overview</h1><p className="text-muted-foreground">Current status and capacity</p></div>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Godown Overview</h1>
+            <p className="text-muted-foreground">Current status and capacity</p>
+          </div>
+          <Button variant="outline" asChild>
+            <Link href="/godown/stock-ledger">View Stock Ledger</Link>
+          </Button>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <Card className="p-4">

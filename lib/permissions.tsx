@@ -67,6 +67,18 @@ function normalizeRole(role?: string | null) {
   return (role || "").trim().toLowerCase()
 }
 
+function readRoleFromStorage() {
+  if (typeof window === "undefined") return ""
+  try {
+    const raw = localStorage.getItem("user")
+    if (!raw) return ""
+    const user = JSON.parse(raw)
+    return normalizeRole(user?.role)
+  } catch {
+    return ""
+  }
+}
+
 function getActionFlag(perm: PermissionCheck, action: PermissionAction) {
   switch (action) {
     case "create":
@@ -81,25 +93,34 @@ function getActionFlag(perm: PermissionCheck, action: PermissionAction) {
   }
 }
 
-export function PermissionsProvider({
-  children,
-  role,
-}: {
-  children: ReactNode
-  role?: string | null
-}) {
-  const normalizedRole = normalizeRole(role)
+function usePermissionsState(
+  roleProp?: string | null,
+  enabled: boolean = true,
+): PermissionsContextValue {
+  const [storedRole, setStoredRole] = useState(() =>
+    enabled && !roleProp ? readRoleFromStorage() : "",
+  )
+  const normalizedRole = normalizeRole(roleProp) || storedRole
   const isAdmin = normalizedRole === "admin"
-  const [loading, setLoading] = useState(!isAdmin)
+  const [loading, setLoading] = useState(false)
   const [data, setData] = useState<UserPermissions | null>(null)
 
+  useEffect(() => {
+    if (!enabled) return
+    if (!roleProp) setStoredRole(readRoleFromStorage())
+  }, [roleProp, enabled])
+
   const refresh = useCallback(async () => {
-    if (!normalizedRole) {
+    if (!enabled) return
+    const role = normalizeRole(roleProp) || readRoleFromStorage()
+    if (!roleProp) setStoredRole(role)
+
+    if (!role) {
       setData(null)
       setLoading(false)
       return
     }
-    if (isAdmin) {
+    if (role === "admin") {
       setData(null)
       setLoading(false)
       return
@@ -113,7 +134,7 @@ export function PermissionsProvider({
     } finally {
       setLoading(false)
     }
-  }, [normalizedRole, isAdmin])
+  }, [roleProp, enabled])
 
   useEffect(() => {
     refresh()
@@ -130,7 +151,7 @@ export function PermissionsProvider({
     [isAdmin, permissions],
   )
 
-  const value = useMemo<PermissionsContextValue>(
+  return useMemo<PermissionsContextValue>(
     () => ({
       role: normalizedRole,
       isAdmin,
@@ -145,7 +166,16 @@ export function PermissionsProvider({
     }),
     [normalizedRole, isAdmin, loading, permissions, can, refresh],
   )
+}
 
+export function PermissionsProvider({
+  children,
+  role,
+}: {
+  children: ReactNode
+  role?: string | null
+}) {
+  const value = usePermissionsState(role, true)
   return (
     <PermissionsContext.Provider value={value}>
       {children}
@@ -153,24 +183,16 @@ export function PermissionsProvider({
   )
 }
 
+/**
+ * Works both inside PermissionsProvider and on pages that call it
+ * above DashboardLayout (common pattern in this app).
+ * Previously returned all-false outside provider — which hid Create User.
+ */
 export function usePermissions() {
   const ctx = useContext(PermissionsContext)
-  if (!ctx) {
-    // Safe fallback when used outside provider (e.g. login page)
-    return {
-      role: "",
-      isAdmin: false,
-      loading: false,
-      permissions: {},
-      can: () => false,
-      canRead: () => false,
-      canCreate: () => false,
-      canUpdate: () => false,
-      canDelete: () => false,
-      refresh: async () => {},
-    } satisfies PermissionsContextValue
-  }
-  return ctx
+  // Hooks must run unconditionally; skip fetch when provider already exists
+  const standalone = usePermissionsState(undefined, ctx === null)
+  return ctx ?? standalone
 }
 
 /** Full CRUD for admin; otherwise look up resource row. */
