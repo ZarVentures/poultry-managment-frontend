@@ -179,9 +179,9 @@ export default function StockLedgerPage() {
       { align: "center" },
     )
 
-    const body = [
+    const body: any[] = [
       [
-        { content: "Opening Balance", colSpan: 8, styles: { fontStyle: "bold", halign: "right" as const } },
+        { content: "Opening Balance", colSpan: 8, styles: { fontStyle: "bold" as const, halign: "right" as const } },
         String(opening.birds),
         `${opening.weight.toFixed(2)} kg`,
         "",
@@ -200,7 +200,7 @@ export default function StockLedgerPage() {
         e.amount != null ? `₹${fmtNum(e.amount, 2)}` : "-",
       ]),
       [
-        { content: "Closing Balance", colSpan: 8, styles: { fontStyle: "bold", halign: "right" as const } },
+        { content: "Closing Balance", colSpan: 8, styles: { fontStyle: "bold" as const, halign: "right" as const } },
         String(closing.birds),
         `${closing.weight.toFixed(2)} kg`,
         "",
