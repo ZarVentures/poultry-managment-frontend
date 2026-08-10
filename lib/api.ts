@@ -470,6 +470,56 @@ export interface GodownSummary {
   totalMortality: number;
   totalExpenses: number;
   currentStock: number;
+  totalInwardWeight?: number;
+  totalSoldWeight?: number;
+  totalMortalityWeight?: number;
+  currentWeight?: number;
+  totalInwardValue?: number;
+  totalSoldValue?: number;
+  currentValue?: number;
+}
+
+export interface StockLedgerEntry {
+  date: string;
+  movementType: 'INWARD' | 'SALE' | 'MORTALITY' | 'RETURN';
+  referenceType: string;
+  referenceId: string;
+  referenceNo: string;
+  party: string;
+  purchaseInvoiceNo?: string | null;
+  vehicleId?: string | null;
+  birdsIn: number;
+  birdsOut: number;
+  weightIn: number;
+  weightOut: number;
+  ratePerKg?: number | null;
+  amount?: number | null;
+  notes?: string | null;
+  runningBirds: number;
+  runningWeight: number;
+}
+
+export interface StockLedgerResponse {
+  startDate: string | null;
+  endDate: string | null;
+  opening: { birds: number; weight: number };
+  period: {
+    birdsIn: number;
+    birdsOut: number;
+    weightIn: number;
+    weightOut: number;
+    amountIn: number;
+    amountOut: number;
+    soldBirds?: number;
+    soldWeight?: number;
+    mortalityBirds?: number;
+    mortalityWeight?: number;
+    returnBirds?: number;
+    returnWeight?: number;
+  };
+  closing: { birds: number; weight: number };
+  entries: StockLedgerEntry[];
+  totalEntries: number;
 }
 
 // Mortality (Transport) Interface
@@ -1385,6 +1435,22 @@ export const godownApi = {
 
   // Summary
   getSummary: () => apiRequest<GodownSummary>('/godown/summary'),
+
+  // Stock Ledger
+  getStockLedger: (filters?: {
+    startDate?: string
+    endDate?: string
+    type?: string
+    search?: string
+  }) => {
+    const q = new URLSearchParams()
+    if (filters?.startDate) q.set('startDate', filters.startDate)
+    if (filters?.endDate) q.set('endDate', filters.endDate)
+    if (filters?.type && filters.type !== 'all') q.set('type', filters.type)
+    if (filters?.search) q.set('search', filters.search)
+    const s = q.toString()
+    return apiRequest<StockLedgerResponse>(`/godown/stock-ledger${s ? `?${s}` : ''}`)
+  },
 };
 
 export type PaymentMethodVoucher =

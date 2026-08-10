@@ -30,7 +30,7 @@ interface User {
 /** Map current path → Settings permission resource key */
 function resourceForPath(pathname: string): string | null {
   if (pathname.startsWith("/dashboard")) return "dashboard"
-  if (pathname.startsWith("/inventory") || pathname.startsWith("/godown")) return "godown"
+  if (pathname.startsWith("/inventory") || pathname.startsWith("/godown") || pathname.startsWith("/bird-returns")) return "godown"
   if (pathname.startsWith("/purchases")) return "purchases"
   if (pathname.startsWith("/sales")) return "sales"
   if (pathname.startsWith("/mortality")) return "mortality"
@@ -148,8 +148,10 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
               {godownOpen && sidebarOpen && (
                 <div className="ml-4 space-y-1 border-l border-sidebar-border">
                   <SidebarLink href="/inventory" icon={PackageOpen} label="Godown Overview" open={true} isSubItem={true} />
+                  <SidebarLink href="/godown/stock-ledger" icon={BookOpen} label="Stock Ledger" open={true} isSubItem={true} />
                   <SidebarLink href="/godown/inward-entry" icon={PackagePlus} label="Godown Inward Entry" open={true} isSubItem={true} />
                   <SidebarLink href="/godown/sale" icon={PackageCheck} label="Godown Sale" open={true} isSubItem={true} />
+                  <SidebarLink href="/bird-returns" icon={TrendingDown} label="Godown Bird Returns" open={true} isSubItem={true} />
                 </div>
               )}
             </div>
@@ -190,6 +192,7 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
                 <div className="ml-4 space-y-1 border-l border-sidebar-border">
                   <SidebarLink href="/sales" icon={TrendingUp} label="Sales Overview" open={true} isSubItem={true} />
                   <SidebarLink href="/sales/payment-in/voucher" icon={CreditCard} label="Payment In Voucher" open={true} isSubItem={true} />
+                  <SidebarLink href="/sales/bird-returns" icon={TrendingDown} label="Vehicle Bird Returns" open={true} isSubItem={true} />
                 </div>
               )}
             </div>
