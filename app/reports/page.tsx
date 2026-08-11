@@ -12,6 +12,7 @@ import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Toolti
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
 import { mortalityApi } from "@/lib/api"
+import { formatDate, toDateOnlyString } from "@/lib/date-utils"
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D']
 
@@ -34,6 +35,18 @@ export default function ReportsPage() {
   const [outstandingData, setOutstandingData] = useState<any>(null)
   const [stockData, setStockData] = useState<any>(null)
 
+  const isInSelectedRange = (value?: string | Date | null) => {
+    const d = toDateOnlyString(value)
+    if (!d) return false
+    if (startDate && d < startDate) return false
+    if (endDate && d > endDate) return false
+    return true
+  }
+
+  const filterMortalityRows = (rows: any[]) =>
+    (rows || []).filter((record: any) =>
+      isInSelectedRange(record.purchaseDate || record.mortalityDate || record.createdAt)
+    )
 
   const fetchReport = async (endpoint: string, setter: Function) => {
     try {
@@ -143,14 +156,14 @@ export default function ReportsPage() {
         : noData(8),
     })
 
-    const mortalityRowsForExport = Array.isArray(mortalityData) ? mortalityData : mortalityData?.records || []
+    const mortalityRowsForExport = filterMortalityRows(Array.isArray(mortalityData) ? mortalityData : mortalityData?.records || [])
 
     sections.push({
       title: 'Mortality',
       headers: ['Date', 'Birds Died', 'Weight (kg)', 'Amount'],
       rows: mortalityRowsForExport.length
         ? mortalityRowsForExport.map((record: any) => [
-            new Date(record.purchaseDate || record.mortalityDate || record.createdAt || '').toLocaleDateString('en-GB'),
+            formatDate(record.purchaseDate || record.mortalityDate || record.createdAt || ''),
             String(parseFloat(record.numberOfBirdsDied || record.mortalityBirds || 0).toFixed(0)),
             `${parseFloat(record.weightOfDeadBirds || record.mortalityWeight || 0).toFixed(2)} kg`,
             `Rs. ${parseFloat(record.amount || record.mortalityDeduction || 0).toFixed(2)}`,
@@ -245,7 +258,8 @@ export default function ReportsPage() {
     try {
       setLoading(true)
       const data = await mortalityApi.getAll(startDate, endDate)
-      setMortalityData(data)
+      const rows = Array.isArray(data) ? data : data?.records || []
+      setMortalityData(filterMortalityRows(rows))
     } catch (error: any) {
       console.error('Error fetching mortality report:', error)
       toast.error(error.message || 'Failed to load mortality report')
@@ -351,7 +365,7 @@ export default function ReportsPage() {
     totalBirds: n(godownSalesData?.summary?.totalBirds || godownSalesData?.summary?.numberOfBirds) > 0 ? n(godownSalesData?.summary?.totalBirds || godownSalesData?.summary?.numberOfBirds) : godownSalesRows.reduce((sum: number, s: any) => sum + n(s.numberOfBirds || s.totalBirds || s.birds || s.quantity), 0),
   }
 
-  const mortalityRows = Array.isArray(mortalityData) ? mortalityData : mortalityData?.records || []
+  const mortalityRows = filterMortalityRows(Array.isArray(mortalityData) ? mortalityData : mortalityData?.records || [])
   const getMortalityFieldValue = (row: any, keys: string[]) => {
     for (const key of keys) {
       const value = row?.[key]
@@ -362,10 +376,12 @@ export default function ReportsPage() {
     return 0
   }
   const mortalitySummary = {
-    totalOrders: n(mortalityData?.summary?.totalOrders) > 0 ? n(mortalityData?.summary?.totalOrders) : mortalityRows.length,
-    totalMortalityWeight: n(mortalityData?.summary?.totalMortalityWeight) > 0 ? n(mortalityData?.summary?.totalMortalityWeight) : mortalityRows.reduce((sum: number, record: any) => sum + getMortalityFieldValue(record, ['weightOfDeadBirds', 'mortalityWeight', 'deadWeight', 'totalMortalityWeight']), 0),
-    totalMortalityDeduction: n(mortalityData?.summary?.totalMortalityDeduction) > 0 ? n(mortalityData?.summary?.totalMortalityDeduction) : mortalityRows.reduce((sum: number, record: any) => sum + getMortalityFieldValue(record, ['amount', 'mortalityDeduction', 'mortalityAmount', 'deductionAmount']), 0),
-    averageMortalityPerOrder: n(mortalityData?.summary?.averageMortalityPerOrder) > 0 ? n(mortalityData?.summary?.averageMortalityPerOrder) : (mortalityRows.length > 0 ? mortalityRows.reduce((sum: number, record: any) => sum + getMortalityFieldValue(record, ['amount', 'mortalityDeduction', 'mortalityAmount', 'deductionAmount']), 0) / mortalityRows.length : 0),
+    totalOrders: mortalityRows.length,
+    totalMortalityWeight: mortalityRows.reduce((sum: number, record: any) => sum + getMortalityFieldValue(record, ['weightOfDeadBirds', 'mortalityWeight', 'deadWeight', 'totalMortalityWeight']), 0),
+    totalMortalityDeduction: mortalityRows.reduce((sum: number, record: any) => sum + getMortalityFieldValue(record, ['amount', 'mortalityDeduction', 'mortalityAmount', 'deductionAmount']), 0),
+    averageMortalityPerOrder: mortalityRows.length > 0
+      ? mortalityRows.reduce((sum: number, record: any) => sum + getMortalityFieldValue(record, ['amount', 'mortalityDeduction', 'mortalityAmount', 'deductionAmount']), 0) / mortalityRows.length
+      : 0,
   }
 
   return (
@@ -816,7 +832,7 @@ export default function ReportsPage() {
               <CardHeader>
                 <div className="flex justify-between">
                   <CardTitle>Mortality Report</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => mortalityData && downloadCSV(Array.isArray(mortalityData) ? mortalityData : mortalityData.records || [], 'mortality')}>
+                  <Button variant="outline" size="sm" onClick={() => mortalityRows.length && downloadCSV(mortalityRows, 'mortality')}>
                     <Download className="mr-2" size={16} />CSV
                   </Button>
                 </div>
@@ -855,7 +871,7 @@ export default function ReportsPage() {
                         <TableBody>
                           {mortalityRows.map((record: any, i: number) => (
                             <TableRow key={i}>
-                              <TableCell>{new Date(record.purchaseDate || record.mortalityDate || record.createdAt || '').toLocaleDateString()}</TableCell>
+                              <TableCell>{formatDate(record.purchaseDate || record.mortalityDate || record.createdAt || '')}</TableCell>
                               <TableCell className="text-right">{getMortalityFieldValue(record, ['numberOfBirdsDied', 'mortalityBirds', 'birdsDied', 'deadBirds', 'totalBirdsDied'])}</TableCell>
                               <TableCell className="text-right">{getMortalityFieldValue(record, ['weightOfDeadBirds', 'mortalityWeight', 'deadWeight', 'totalMortalityWeight']).toFixed(2)} kg</TableCell>
                               <TableCell className="text-red-600">₹{getMortalityFieldValue(record, ['amount', 'mortalityDeduction', 'mortalityAmount', 'deductionAmount']).toFixed(2)}</TableCell>
