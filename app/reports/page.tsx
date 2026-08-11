@@ -258,7 +258,7 @@ export default function ReportsPage() {
     try {
       setLoading(true)
       const data = await mortalityApi.getAll(startDate, endDate)
-      const rows = Array.isArray(data) ? data : data?.records || []
+      const rows = Array.isArray(data) ? data : []
       setMortalityData(filterMortalityRows(rows))
     } catch (error: any) {
       console.error('Error fetching mortality report:', error)
