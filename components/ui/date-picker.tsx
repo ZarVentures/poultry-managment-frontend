@@ -3,8 +3,12 @@
 import * as React from "react"
 import { DatePicker as AntDatePicker } from "antd"
 import dayjs, { Dayjs } from "dayjs"
+import customParseFormat from "dayjs/plugin/customParseFormat"
 import { CalendarDays } from "lucide-react"
+import { toDateOnlyString } from "@/lib/date-utils"
 import "antd/dist/reset.css"
+
+dayjs.extend(customParseFormat)
 
 interface DatePickerProps {
   value?: string
@@ -21,7 +25,7 @@ export function DatePicker({
   disabled,
   placeholder = "Select date",
   className = "",
-  format = "DD MMM YYYY",
+  format = "DD-MMM-YYYY",
 }: DatePickerProps) {
 
   const handleChange = (date: Dayjs | null) => {
@@ -30,6 +34,8 @@ export function DatePicker({
     }
   }
 
+  const parsed = value ? toDateOnlyString(value) : null
+
   return (
     <div className="relative w-full">
       
@@ -37,7 +43,7 @@ export function DatePicker({
       <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
 
       <AntDatePicker
-        value={value ? dayjs(value) : null}
+        value={parsed ? dayjs(parsed, "YYYY-MM-DD") : null}
         onChange={handleChange}
         disabled={disabled}
         placeholder={placeholder}

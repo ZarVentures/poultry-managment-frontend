@@ -18,6 +18,7 @@ import { salesApi, retailersApi, vehiclesApi, purchasesApi, settingsApi, type Sa
 import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
+import { getTodayIST, toLocalYMD, formatDate } from "@/lib/date-utils"
 
 const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer", "advance"] as const
 type PaymentMode = typeof PAYMENT_MODES[number]
@@ -70,7 +71,7 @@ export default function SalesPage() {
     cageNo: "",
     numBirds: "",
     totalWeight: "",
-    saleDate: new Date().toISOString().split("T")[0],
+    saleDate: getTodayIST(),
     retailerId: "",
     customerName: "",
     ownerName: "",
@@ -121,8 +122,8 @@ export default function SalesPage() {
         page: currentPage,
         limit: pageSize,
         customer: searchQuery || undefined,
-        startDate: dateRangeStart?.toISOString().split('T')[0],
-        endDate: dateRangeEnd?.toISOString().split('T')[0],
+        startDate: toLocalYMD(dateRangeStart),
+        endDate: toLocalYMD(dateRangeEnd),
         paymentStatus: filterPaymentStatus || undefined,
       })
 
@@ -146,8 +147,8 @@ export default function SalesPage() {
         page: 1,
         limit: 1,
         customer: searchQuery || undefined,
-        startDate: dateRangeStart?.toISOString().split('T')[0],
-        endDate: dateRangeEnd?.toISOString().split('T')[0],
+        startDate: toLocalYMD(dateRangeStart),
+        endDate: toLocalYMD(dateRangeEnd),
         paymentStatus: filterPaymentStatus || undefined,
       })
       if (res?.summary) {
@@ -426,7 +427,7 @@ export default function SalesPage() {
     setFormData({
       invoiceNumber: nextNumber, saleNo: nextNumber, purchaseBillNo: "", cageNo: "",
       numBirds: "", totalWeight: "",
-      saleDate: new Date().toISOString().split("T")[0],
+      saleDate: getTodayIST(),
       retailerId: "", customerName: "", ownerName: "", phone: "", address: "",
       saleMode: "from_vehicle", vehicleId: "", productType: "meat",
       ratePerKg: "", transportCharges: "", loadingCharges: "", commission: "",
@@ -692,7 +693,7 @@ export default function SalesPage() {
 
   const handlePrintSale = (sale: ApiSale) => {
     const invoiceNumber = (sale as any).saleNo || (sale as any).invoiceNumber || "INV-2026-000000"
-    const invoiceDate = new Date(sale.saleDate).toLocaleDateString('en-GB')
+    const invoiceDate = formatDate(sale.saleDate)
     const dueDate = new Date(sale.saleDate)
     dueDate.setDate(dueDate.getDate() + 7)
     const subtotal = Number(sale.netAmount || sale.totalAmount || 0)
@@ -1601,7 +1602,7 @@ export default function SalesPage() {
                       <TableRow key={s.id}>
                         <TableCell>{(s as any).saleNo || '-'}</TableCell>
                         <TableCell>{(s as any).purchaseBillNo || '-'}</TableCell>
-                        <TableCell>{new Date(s.saleDate).toLocaleDateString()}</TableCell>
+                        <TableCell>{formatDate(s.saleDate)}</TableCell>
                         <TableCell>{s.customerName}</TableCell>
                         <TableCell><span className="text-xs px-2 py-0.5 rounded bg-gray-100">{s.saleMode === 'from_vehicle' ? 'Vehicle' : 'Godown'}</span></TableCell>
                         <TableCell className="font-medium">
