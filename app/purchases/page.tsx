@@ -18,6 +18,7 @@ import { purchasesApi, farmersApi, vehiclesApi, type PurchaseOrder as ApiPurchas
 import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
+import { getTodayIST, toLocalYMD, formatDate } from "@/lib/date-utils"
 
 const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer"] as const
 type PaymentMode = typeof PAYMENT_MODES[number]
@@ -56,7 +57,7 @@ export default function PurchasesPage() {
   const [formData, setFormData] = useState({
     orderNumber: "",
     supplierName: "",
-    orderDate: new Date().toISOString().split("T")[0],
+    orderDate: getTodayIST(),
     dueDate: "",
     status: "pending" as "pending" | "received" | "cancelled",
     branch: "",
@@ -91,8 +92,8 @@ export default function PurchasesPage() {
         page: currentPage,
         limit: pageSize,
         supplier: searchQuery || undefined,
-        startDate: dateRangeStart?.toISOString().split("T")[0],
-        endDate: dateRangeEnd?.toISOString().split("T")[0],
+        startDate: toLocalYMD(dateRangeStart),
+        endDate: toLocalYMD(dateRangeEnd),
         status: filterPaymentStatus || undefined,
       })
 
@@ -144,7 +145,7 @@ export default function PurchasesPage() {
     const nextNumber = editingId ? "" : await fetchNextOrderNumber()
     setFormData({
       orderNumber: nextNumber, supplierName: "",
-      orderDate: new Date().toISOString().split("T")[0],
+      orderDate: getTodayIST(),
       dueDate: "", status: "pending", branch: "",
       farmerId: "", farmerMobile: "", farmLocation: "", vehicleId: "",
       purchasePaymentStatus: "pending", ratePerKg: "",
@@ -278,8 +279,8 @@ export default function PurchasesPage() {
 
   const handlePrintPurchase = (purchase: ApiPurchaseOrder) => {
     const invoiceNumber = purchase.orderNumber || "PO-2026-000000"
-    const invoiceDate = new Date(purchase.orderDate).toLocaleDateString('en-GB')
-    const dueDate = purchase.dueDate ? new Date(purchase.dueDate).toLocaleDateString('en-GB') : "—"
+    const invoiceDate = formatDate(purchase.orderDate)
+    const dueDate = purchase.dueDate ? formatDate(purchase.dueDate) : "—"
     const totalWeight = Number(purchase.totalWeight || 0)
     const rate = Number(purchase.ratePerKg || 0)
     const birdAmount = totalWeight * rate
@@ -853,7 +854,7 @@ export default function PurchasesPage() {
                       <TableRow key={p.id}>
                         <TableCell>{p.orderNumber}</TableCell>
                         <TableCell>{p.supplierName}</TableCell>
-                        <TableCell>{new Date(p.orderDate).toLocaleDateString()}</TableCell>
+                        <TableCell>{formatDate(p.orderDate)}</TableCell>
                         <TableCell>{Number(p.totalWeight || 0).toFixed(2)} kg</TableCell>
                         <TableCell>{(p.cages || []).reduce((s: number, c: any) => s + Number(c.numberOfBirds || 0), 0)}</TableCell>
                         <TableCell>₹{Number(p.ratePerKg || 0).toFixed(2)}</TableCell>
@@ -926,7 +927,7 @@ export default function PurchasesPage() {
                 )}
                 <div className="grid grid-cols-2 gap-2 border p-3 rounded text-xs">
                   <div><span className="font-semibold">Bill No:</span> {viewingPurchase.orderNumber}</div>
-                  <div><span className="font-semibold">Date:</span> {new Date(viewingPurchase.orderDate).toLocaleDateString()}</div>
+                  <div><span className="font-semibold">Date:</span> {formatDate(viewingPurchase.orderDate)}</div>
                   <div><span className="font-semibold">Supplier:</span> {viewingPurchase.supplierName}</div>
                   {viewingPurchase.farmerMobile && <div><span className="font-semibold">Mobile:</span> {viewingPurchase.farmerMobile}</div>}
                   {viewingPurchase.farmLocation && <div className="col-span-2"><span className="font-semibold">Location:</span> {viewingPurchase.farmLocation}</div>}

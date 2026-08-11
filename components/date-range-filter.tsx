@@ -23,7 +23,7 @@ export function DateRangeFilter({ startDate, endDate, onDateRangeChange }: DateR
 
   const handleChange = (dates: [Dayjs | null, Dayjs | null] | null) => {
     if (dates && dates[0] && dates[1]) {
-      onDateRangeChange(dates[0].toDate(), dates[1].toDate())
+      onDateRangeChange(dates[0].startOf("day").toDate(), dates[1].endOf("day").toDate())
     } else {
       onDateRangeChange(undefined, undefined)
     }
