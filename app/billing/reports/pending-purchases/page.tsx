@@ -113,6 +113,30 @@ const PendingPurchasesPage = () => {
     })), 'pending_purchases_report')
   }
 
+  const handlePrint = () => {
+    if (!filteredPurchases.length) { alert('No data to print.'); return }
+    const rows = filteredPurchases.map(p => `
+      <tr>
+        <td>${p.orderNumber || '-'}</td>
+        <td>${p.supplierName || '-'}</td>
+        <td>${p.orderDate ? new Date(p.orderDate).toLocaleDateString('en-GB') : '-'}</td>
+        <td>${p.dueDate ? new Date(p.dueDate).toLocaleDateString('en-GB') : '—'}</td>
+        <td style="text-align:right">₹${Number(p.totalAmount || 0).toLocaleString('en-IN')}</td>
+        <td style="text-align:right">₹${Number(p.totalPaymentMade || 0).toLocaleString('en-IN')}</td>
+        <td style="text-align:right">₹${Number(p.balanceAmount || 0).toLocaleString('en-IN')}</td>
+        <td>${p.purchasePaymentStatus || '-'}</td>
+      </tr>`).join('')
+    const html = `<!DOCTYPE html><html><head><title>Pending Purchases</title>
+      <style>@page{size:landscape;margin:8mm}body{font-family:Arial,sans-serif;padding:10px}
+      h2{text-align:center}table{width:100%;border-collapse:collapse;margin-top:12px}
+      th,td{border:1px solid #ddd;padding:6px;font-size:11px}th{background:#293e56;color:#fff}</style></head><body>
+      <h2>Pending Purchases Report</h2>
+      <table><thead><tr><th>Order #</th><th>Supplier</th><th>Order Date</th><th>Due Date</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+      <tbody>${rows}</tbody></table></body></html>`
+    const w = window.open('', '_blank')
+    if (w) { w.document.write(html); w.document.close(); w.onload = () => w.print() }
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -125,7 +149,7 @@ const PendingPurchasesPage = () => {
             <Button variant="outline" onClick={handleExport} type="button">
               <Download className="w-4 h-4 mr-2" /> Export
             </Button>
-            <Button variant="outline" onClick={() => window.print()} type="button">
+            <Button variant="outline" onClick={handlePrint} type="button">
               <Printer className="w-4 h-4 mr-2" /> Print
             </Button>
           </div>

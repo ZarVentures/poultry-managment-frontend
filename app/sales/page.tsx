@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
 import { salesApi, retailersApi, vehiclesApi, purchasesApi, settingsApi, type Sale as ApiSale } from "@/lib/api"
+import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
 
@@ -27,7 +28,7 @@ interface CustomerRow { id: string; customerName: string; cageId: string; numBir
 
 export default function SalesPage() {
   const router = useRouter()
-  const [userRole, setUserRole] = useState<string>("")
+  const { canUpdate, canDelete } = usePermissions()
   const [sales, setSales] = useState<ApiSale[]>([])
   const [retailers, setRetailers] = useState<any[]>([])
   const [vehicles, setVehicles] = useState<any[]>([])
@@ -92,13 +93,6 @@ export default function SalesPage() {
 
   useEffect(() => {
     setMounted(true)
-    const userData = localStorage.getItem("user")
-    if (userData) {
-      try {
-        const user = JSON.parse(userData)
-        setUserRole(user.role || "")
-      } catch { }
-    }
     fetchRetailers(); fetchVehicles(); fetchPurchaseBills()
     
     // Load bearable loss settings
@@ -1656,18 +1650,18 @@ export default function SalesPage() {
                         </TableCell>
                         <TableCell>₹{Math.max(0, Number(s.netAmount || s.totalAmount || 0) - Number(s.amountReceived || 0)).toFixed(2)}</TableCell>
                         <TableCell>
-                          {userRole !== 'staff' && userRole !== 'Staff' ? (
-                            <div className="flex gap-1">
-                              <Button variant="ghost" size="sm" onClick={() => handlePrintSale(s)}><Printer size={14} /></Button>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => handlePrintSale(s)}><Printer size={14} /></Button>
+                            {canUpdate('sales') && (
                               <Button variant="ghost" size="sm" onClick={() => handleEdit(s)}><Edit2 size={14} /></Button>
+                            )}
+                            {canDelete('sales') && (
                               <Button variant="ghost" size="sm" onClick={() => handleDelete(s.id)} className="text-red-500"><Trash2 size={14} /></Button>
-                            </div>
-                          ) : (
-                            <div className="flex gap-1">
-                              <Button variant="ghost" size="sm" onClick={() => handlePrintSale(s)}><Printer size={14} /></Button>
+                            )}
+                            {!canUpdate('sales') && (
                               <Button variant="ghost" size="sm" onClick={() => handleView(s)}><Eye size={14} /></Button>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

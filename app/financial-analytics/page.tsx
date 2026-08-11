@@ -11,7 +11,7 @@ import {
 import { ChartContainer } from "@/components/ui/chart"
 import { Download, TrendingUp, TrendingDown, DollarSign, ArrowUpRight, ArrowDownRight, Calendar, X } from "lucide-react"
 import { format, startOfMonth, eachMonthOfInterval, parseISO, isWithinInterval, subMonths, startOfDay, endOfDay } from "date-fns"
-import { salesApi, expensesApi, purchasesApi } from "@/lib/api"
+import { salesApi, expensesApi, purchasesApi, godownApi } from "@/lib/api"
 import { DateRangeFilter } from "@/components/date-range-filter"
 
 interface Sale {
@@ -57,6 +57,7 @@ export default function FinancialAnalyticsPage() {
   const [sales, setSales] = useState<Sale[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [purchases, setPurchases] = useState<PurchaseOrder[]>([])
+  const [godownSales, setGodownSales] = useState<Sale[]>([])
   const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
   const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
 
@@ -65,15 +66,17 @@ export default function FinancialAnalyticsPage() {
     
     const fetchData = async () => {
       try {
-        const [salesResult, expensesResult, purchasesResult] = await Promise.allSettled([
+        const [salesResult, expensesResult, purchasesResult, godownResult] = await Promise.allSettled([
           salesApi.getAll(),
           expensesApi.getAll(),
           purchasesApi.getAll(),
+          godownApi.sales.getAll(),
         ])
 
         if (salesResult.status === 'fulfilled') {
-          const raw = salesResult.value as any[]
-          setSales(raw.map(s => {
+          const raw = salesResult.value as any
+          const list = Array.isArray(raw) ? raw : (raw?.data || [])
+          setSales(list.map((s: any) => {
             const qty = parseFloat(s.quantity || 0)
             const price = parseFloat(s.unitPrice || 0)
             const computed = qty * price
@@ -123,6 +126,23 @@ export default function FinancialAnalyticsPage() {
             totalAmount: parseFloat(p.netAmount || p.totalAmount || 0),
           })))
         }
+
+        if (godownResult.status === 'fulfilled') {
+          const raw = godownResult.value as any
+          const list = Array.isArray(raw) ? raw : (raw?.data || [])
+          setGodownSales(list.map((s: any) => ({
+            id: s.id,
+            invoiceNumber: s.saleNo || s.invoiceNumber || '',
+            customer: (s as any).retailerName || s.customerName || '',
+            date: s.saleDate || s.createdAt || '',
+            productType: 'godown',
+            quantity: parseFloat(s.numberOfBirds || 0),
+            unitPrice: parseFloat(s.ratePerKg || 0),
+            totalAmount: parseFloat(s.totalAmount || 0),
+            paymentStatus: s.paymentStatus || 'pending',
+            notes: s.notes || '',
+          })))
+        }
       } catch (error) {
         console.error("Error fetching financial data:", error)
       }
@@ -141,6 +161,16 @@ export default function FinancialAnalyticsPage() {
       try { const d = parseISO(s.date); return d >= start && d <= end } catch { return false }
     })
   }, [sales, dateRangeStart, dateRangeEnd])
+
+  const filteredGodownSales = useMemo(() => {
+    if (!dateRangeStart || !dateRangeEnd) return godownSales
+    const start = startOfDay(dateRangeStart)
+    const end = endOfDay(dateRangeEnd)
+    return godownSales.filter(s => {
+      if (!s.date) return false
+      try { const d = parseISO(s.date); return d >= start && d <= end } catch { return false }
+    })
+  }, [godownSales, dateRangeStart, dateRangeEnd])
 
   const filteredExpenses = useMemo(() => {
     if (!dateRangeStart || !dateRangeEnd) return expenses
@@ -162,9 +192,11 @@ export default function FinancialAnalyticsPage() {
     })
   }, [purchases, dateRangeStart, dateRangeEnd])
 
-  // Calculate overall financial metrics
+  // Calculate overall financial metrics (poultry sales + godown sales)
   const financialMetrics = useMemo(() => {
-    const totalRevenue = filteredSales.reduce((sum, s) => sum + (Number(s.totalAmount) || 0), 0)
+    const poultryRevenue = filteredSales.reduce((sum, s) => sum + (Number(s.totalAmount) || 0), 0)
+    const godownRevenue = filteredGodownSales.reduce((sum, s) => sum + (Number(s.totalAmount) || 0), 0)
+    const totalRevenue = poultryRevenue + godownRevenue
     const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
     const totalPurchases = filteredPurchases.reduce((sum, p) => sum + (Number(p.totalValue) || Number(p.totalAmount) || 0), 0)
     const totalCost = totalExpenses + totalPurchases
@@ -172,8 +204,8 @@ export default function FinancialAnalyticsPage() {
     const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0
     const roi = totalCost > 0 ? ((netProfit / totalCost) * 100) : 0
 
-    return { totalRevenue, totalExpenses, totalPurchases, totalCost, netProfit, profitMargin, roi }
-  }, [filteredSales, filteredExpenses, filteredPurchases])
+    return { totalRevenue, poultryRevenue, godownRevenue, totalExpenses, totalPurchases, totalCost, netProfit, profitMargin, roi }
+  }, [filteredSales, filteredGodownSales, filteredExpenses, filteredPurchases])
 
   // Calculate monthly trends for the last 12 months
   const monthlyTrends = useMemo(() => {
@@ -188,6 +220,16 @@ export default function FinancialAnalyticsPage() {
 
       // Filter sales for this month
       const monthSales = (filteredSales || []).filter((s) => {
+        if (!s || !s.date) return false
+        try {
+          const saleDate = parseISO(s.date)
+          return isWithinInterval(saleDate, { start: monthStart, end: monthEnd })
+        } catch (e) {
+          return false
+        }
+      })
+
+      const monthGodownSales = (filteredGodownSales || []).filter((s) => {
         if (!s || !s.date) return false
         try {
           const saleDate = parseISO(s.date)
@@ -219,7 +261,9 @@ export default function FinancialAnalyticsPage() {
         }
       })
 
-      const revenue = monthSales.reduce((sum, s) => sum + (Number(s.totalAmount) || 0), 0)
+      const revenue =
+        monthSales.reduce((sum, s) => sum + (Number(s.totalAmount) || 0), 0) +
+        monthGodownSales.reduce((sum, s) => sum + (Number(s.totalAmount) || 0), 0)
       const expensesTotal = monthExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
       const purchasesTotal = monthPurchases.reduce((sum, p) => sum + (Number(p.totalValue) || Number(p.totalAmount) || 0), 0)
       const profit = revenue - expensesTotal - purchasesTotal
@@ -235,7 +279,7 @@ export default function FinancialAnalyticsPage() {
         profitMargin: revenue > 0 ? ((profit / revenue) * 100) : 0,
       }
     })
-  }, [filteredSales, filteredExpenses, filteredPurchases])
+  }, [filteredSales, filteredGodownSales, filteredExpenses, filteredPurchases])
 
   // Calculate growth rates
   const growthRates = useMemo(() => {

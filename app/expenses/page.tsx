@@ -15,11 +15,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
 import { expensesApi, expenseCategoriesApi, type Expense as ApiExpense, type ExpenseCategory } from "@/lib/api"
+import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 
 export default function ExpensesPage() {
   const router = useRouter()
-  const [userRole, setUserRole] = useState<string>("")
+  const { canUpdate, canDelete } = usePermissions()
   const [expenses, setExpenses] = useState<ApiExpense[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -41,13 +42,6 @@ export default function ExpensesPage() {
 
   useEffect(() => {
     setMounted(true)
-    const userData = localStorage.getItem("user")
-    if (userData) {
-      try {
-        const user = JSON.parse(userData)
-        setUserRole(user.role || "")
-      } catch { }
-    }
     fetchExpenses()
     fetchCategories()
   }, [])
@@ -522,14 +516,18 @@ export default function ExpensesPage() {
                         <TableCell className="capitalize">{expense.paymentMethod.replace('_', ' ')}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">-</TableCell>
                         <TableCell>
-                          {userRole !== 'staff' && userRole !== 'Staff' && (
+                          {(canUpdate('expenses') || canDelete('expenses')) && (
                             <div className="flex gap-2">
-                              <Button variant="ghost" size="sm" onClick={() => handleEdit(expense)}>
-                                <Edit2 size={16} />
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleDelete(expense.id)}>
-                                <Trash2 size={16} />
-                              </Button>
+                              {canUpdate('expenses') && (
+                                <Button variant="ghost" size="sm" onClick={() => handleEdit(expense)}>
+                                  <Edit2 size={16} />
+                                </Button>
+                              )}
+                              {canDelete('expenses') && (
+                                <Button variant="ghost" size="sm" onClick={() => handleDelete(expense.id)}>
+                                  <Trash2 size={16} />
+                                </Button>
+                              )}
                             </div>
                           )}
                         </TableCell>

@@ -253,7 +253,7 @@ export default function BirdReturnsPage() {
           retailerId: fullSale.retailerId || "",
           customerName: fullSale.customerName,
         }))
-        toast.success(`Loaded godown sale details! Rate: ₹${rate.toFixed(2)}/kg`)
+        toast.success(`Loaded godown sale details! Rate: Γé╣${rate.toFixed(2)}/kg`)
       }
     } catch (error) {
       console.error("Failed to load full sale details:", error)
@@ -454,7 +454,7 @@ export default function BirdReturnsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Refund Amount (₹)</Label>
+                    <Label>Refund Amount (Γé╣)</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -464,7 +464,7 @@ export default function BirdReturnsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Adjustment Amount (₹)</Label>
+                    <Label>Adjustment Amount (Γé╣)</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -548,7 +548,7 @@ export default function BirdReturnsPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Refund</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₹{stats.totalRefund.toFixed(2)}</div>
+              <div className="text-2xl font-bold">Γé╣{stats.totalRefund.toFixed(2)}</div>
             </CardContent>
           </Card>
         </div>
@@ -642,7 +642,7 @@ export default function BirdReturnsPage() {
                             <span className="text-sm font-medium">{getReasonLabel(birdReturn.returnReason)}</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right">₹{Number(birdReturn.refundAmount || 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">Γé╣{Number(birdReturn.refundAmount || 0).toFixed(2)}</TableCell>
                         <TableCell>{getStatusBadge(birdReturn.status)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">

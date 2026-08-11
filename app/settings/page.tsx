@@ -14,6 +14,7 @@ import {
   Tag, Plus, Edit2, Trash2, CheckCircle2, AlertCircle, MessageSquare, Mail, Phone
 } from "lucide-react"
 import { settingsApi, authApi, permissionsApi, expenseCategoriesApi, notificationsApi, type Setting, type ExpenseCategory, type CommunicationLog } from "@/lib/api"
+import { PERMISSION_RESOURCES } from "@/lib/permissions"
 import { useDevMode } from "@/lib/dev-mode"
 import { toast } from "sonner"
 import { useDispatch } from "react-redux"
@@ -111,19 +112,18 @@ export default function SettingsPage() {
     isActive: true
   })
 
-  const ALL_RESOURCES = [
-    'dashboard', 'purchases', 'sales', 'godown', 'mortality',
-    'expenses', 'reports', 'billing', 'users', 'settings'
-  ]
+  const ALL_RESOURCES = [...PERMISSION_RESOURCES]
 
 
   useEffect(() => {
     setMounted(true)
     const userData = localStorage.getItem("user")
+    let role = ""
     if (userData) {
       try {
         const user = JSON.parse(userData)
-        setUserRole(user.role || "")
+        role = (user.role || "").toString().trim().toLowerCase()
+        setUserRole(role)
       } catch { }
     }
     authApi.get2FAStatus().then(d => setIs2FAEnabled(d.isTwoFactorEnabled)).catch(() => { })
@@ -165,7 +165,9 @@ export default function SettingsPage() {
       }
     }).catch(() => { })
 
-    fetchPermissions()
+    if (role === "admin") {
+      fetchPermissions()
+    }
     fetchCategories()
     fetchCommLogs()
   }, [])
@@ -234,33 +236,41 @@ export default function SettingsPage() {
     try {
       setPermissionsLoading(true)
       const perms = await permissionsApi.getAllRolePermissions()
-      setAllRolePermissions(perms)
-    } catch { toast.error("Failed to fetch permissions") }
+      if (Array.isArray(perms)) {
+        setAllRolePermissions(perms)
+      } else {
+        setAllRolePermissions([])
+        toast.error((perms as any)?.error || "Failed to fetch permissions")
+      }
+    } catch (e: any) {
+      setAllRolePermissions([])
+      toast.error(e?.message || "Failed to fetch permissions")
+    }
     finally { setPermissionsLoading(false) }
   }
 
   const handleUpdatePermission = async (role: string, resource: string, field: string, value: boolean) => {
     const previousState = [...allRolePermissions]
+    const existing = allRolePermissions.find(p => p.role === role && p.resource === resource)
+    const updatedPerms = {
+      canCreate: field === 'canCreate' ? value : (existing?.canCreate ?? false),
+      canRead: field === 'canRead' ? value : (existing?.canRead ?? false),
+      canUpdate: field === 'canUpdate' ? value : (existing?.canUpdate ?? false),
+      canDelete: field === 'canDelete' ? value : (existing?.canDelete ?? false),
+    }
 
     // Optimistically update the UI
     setAllRolePermissions(prev => {
       const idx = prev.findIndex(p => p.role === role && p.resource === resource)
       if (idx > -1) {
         const fresh = [...prev]
-        fresh[idx] = { ...fresh[idx], [field]: value }
+        fresh[idx] = { ...fresh[idx], ...updatedPerms }
         return fresh
       }
-      return [...prev, { role, resource, canCreate: false, canRead: true, canUpdate: false, canDelete: false, [field]: value }]
+      return [...prev, { role, resource, ...updatedPerms }]
     })
 
     try {
-      const existing = allRolePermissions.find(p => p.role === role && p.resource === resource)
-      const updatedPerms = {
-        canCreate: field === 'canCreate' ? value : (existing?.canCreate ?? false),
-        canRead: field === 'canRead' ? value : (existing?.canRead ?? true),
-        canUpdate: field === 'canUpdate' ? value : (existing?.canUpdate ?? false),
-        canDelete: field === 'canDelete' ? value : (existing?.canDelete ?? false),
-      }
       await permissionsApi.updateRolePermission(role, resource, updatedPerms)
     } catch {
       setAllRolePermissions(previousState)
@@ -380,10 +390,12 @@ export default function SettingsPage() {
           </div>
           <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
             {NAV_ITEMS.filter(item => {
-              if (userRole === 'staff' || userRole === 'Staff') {
-                return item.id !== 'notifications' && item.id !== 'security'
+              const role = userRole.toLowerCase()
+              if (item.id === 'permissions' && role !== 'admin') return false
+              if (role === 'staff') {
+                return item.id !== 'notifications' && item.id !== 'security' && item.id !== 'communication'
               }
-              if (userRole === 'manager' || userRole === 'Manager') {
+              if (role === 'manager') {
                 return item.id !== 'notifications' && item.id !== 'security' && item.id !== 'developer'
               }
               return true

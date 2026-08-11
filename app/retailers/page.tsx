@@ -14,11 +14,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
 import { retailersApi, type Retailer as ApiRetailer } from "@/lib/api"
+import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 
 export default function RetailersPage() {
   const router = useRouter()
-  const [userRole, setUserRole] = useState<string>("")
+  const { canUpdate, canDelete } = usePermissions()
   const [retailers, setRetailers] = useState<ApiRetailer[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -45,13 +46,6 @@ export default function RetailersPage() {
 
   useEffect(() => {
     setMounted(true)
-    const userData = localStorage.getItem("user")
-    if (userData) {
-      try {
-        const user = JSON.parse(userData)
-        setUserRole(user.role || "")
-      } catch { }
-    }
   }, [])
 
   const fetchRetailers = async () => {
@@ -76,6 +70,11 @@ export default function RetailersPage() {
   useEffect(() => {
     if (mounted) fetchRetailers()
   }, [mounted, currentPage, searchQuery])
+
+  // Reset to first page on new search so matches on page 1 are not skipped
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
 
   const resetForm = () => {
     setFormData({
@@ -254,7 +253,7 @@ export default function RetailersPage() {
           <CardHeader>
             <div className="flex justify-between items-start flex-wrap gap-3">
               <div className="flex items-center gap-2 flex-wrap">
-                <Input placeholder="Search shop name or phone..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[250px]" />
+                <Input placeholder="Search shop name, owner or phone..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[280px]" />
                 <Button variant="outline" size="sm" onClick={handlePrintReport}><Printer className="mr-2" size={16} /> Print Report</Button>
               </div>
             </div>
@@ -276,10 +275,14 @@ export default function RetailersPage() {
                       <TableCell className="text-sm text-muted-foreground">{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "-"}</TableCell>
                       <TableCell><span className={`px-2 py-1 rounded-full text-xs font-medium ${r.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{r.status}</span></TableCell>
                       <TableCell>
-                        {userRole !== 'staff' && userRole !== 'Staff' && (
+                        {(canUpdate('retailers') || canDelete('retailers')) && (
                           <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(r)}><Edit2 size={16} /></Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)}><Trash2 size={16} /></Button>
+                            {canUpdate('retailers') && (
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(r)}><Edit2 size={16} /></Button>
+                            )}
+                            {canDelete('retailers') && (
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)}><Trash2 size={16} /></Button>
+                            )}
                           </div>
                         )}
                       </TableCell>

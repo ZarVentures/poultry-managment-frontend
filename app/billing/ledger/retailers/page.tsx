@@ -76,17 +76,29 @@ const RetailerLedgerContent = () => {
       })
       .finally(() => setLoadingLedger(false))
 
-    // Fetch sales to build weight/birds lookup by invoice number
-    salesApi.getAll()
-      .then((res: any) => {
-        const list = Array.isArray(res) ? res : res?.data || []
-        console.log('Sales lookup count:', list.length, '| first refId:', list[0]?.invoiceNumber)
+    // Fetch sales and godown sales to build weight/birds lookup by invoice number
+    Promise.all([
+      salesApi.getAll().catch(() => ({ data: [] })),
+      godownApi.sales.getAll().catch(() => []),
+    ]).then(([salesRes, godownList]: [any, any]) => {
+        const list = Array.isArray(salesRes) ? salesRes : salesRes?.data || []
+        const godownSales = Array.isArray(godownList) ? godownList : []
         const map: Record<string, { quantity: number; totalBirds: number; rate: number }> = {}
         list.forEach((s: any) => {
           const val = { quantity: parseFloat(s.quantity) || 0, totalBirds: parseInt(s.numberOfBirds) || parseInt(s.totalBirds) || 0, rate: parseFloat(s.unitPrice) || 0 }
           map[s.invoiceNumber] = val
           if (s.saleNo) map[s.saleNo] = val
           if (s.id) map[s.id] = val
+        })
+        godownSales.forEach((s: any) => {
+          const val = {
+            quantity: parseFloat(s.totalWeight) || 0,
+            totalBirds: parseInt(s.numberOfBirds) || 0,
+            rate: parseFloat(s.ratePerKg) || 0,
+          }
+          const ref = s.invoiceNumber || s.saleNo || `GDS-${s.id}`
+          map[ref] = val
+          if (s.id) map[String(s.id)] = val
         })
         setSaleLookup(map)
       })
@@ -124,7 +136,7 @@ const RetailerLedgerContent = () => {
     : openingBalance
 
   const getEntryMeta = (e: any) => {
-    if (e.referenceType === 'Sale' || e.referenceType === 'Payment') {
+    if (e.referenceType === 'Sale' || e.referenceType === 'Payment' || e.referenceType === 'GodownSale') {
       const invNo = e.referenceId?.replace(/-P$/, '')
       const so = saleLookup[invNo]
       if (so) return so
@@ -187,29 +199,29 @@ const RetailerLedgerContent = () => {
         e.referenceId || '-',
         m.totalBirds || '-',
         m.quantity ? `${m.quantity.toFixed(2)} kg` : '-',
-        m.rate ? `₹${m.rate.toFixed(2)}` : '-',
-        Number(e.debit) > 0 ? `Rs. ${Number(e.debit).toLocaleString('en-IN')}` : '-',
-        Number(e.credit) > 0 ? `Rs. ${Number(e.credit).toLocaleString('en-IN')}` : '-',
-        `Rs. ${Number(e.balance).toLocaleString('en-IN')}`,
+        m.rate ? `₹${Number(m.rate).toFixed(2)}` : '-',
+        Number(e.debit) > 0 ? `₹${Number(e.debit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-',
+        Number(e.credit) > 0 ? `₹${Number(e.credit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-',
+        `₹${Number(e.balance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       ]
     })
     rows.unshift([
       { content: 'Opening Balance', colSpan: 8, styles: { fontStyle: 'bold', halign: 'right' } },
-      `Rs. ${openingBalance.toLocaleString('en-IN')}`
+      `₹${openingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     ])
     rows.push([
       { content: 'TOTAL FOR PERIOD', colSpan: 6, styles: { fontStyle: 'bold', halign: 'right' } },
-      `Rs. ${totalDebit.toLocaleString('en-IN')}`,
-      `Rs. ${totalCredit.toLocaleString('en-IN')}`,
+      `₹${totalDebit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      `₹${totalCredit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       '',
     ])
     rows.push([
       { content: 'Closing Balance', colSpan: 8, styles: { fontStyle: 'bold', halign: 'right' } },
-      `Rs. ${closingBalance.toLocaleString('en-IN')}`
+      `₹${closingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     ])
 
     autoTable(doc, {
-      head: [['Date', 'Type', 'Reference', 'Birds', 'Weight', 'Rate', 'Debit (Rs.)', 'Credit (Rs.)', 'Balance (Rs.)']],
+      head: [['Date', 'Type', 'Reference', 'Birds', 'Weight', 'Rate (₹/kg)', 'Debit (₹)', 'Credit (₹)', 'Balance (₹)']],
       body: rows,
       startY: lineY + 4,
       margin: { left: 10, right: 10 },
@@ -258,7 +270,7 @@ ${orgInfo.name ? '<h2>' + orgInfo.name + '</h2>' : ''}
 <h3 style="font-weight:normal;color:#555;margin-bottom:2px">Customer: ${selectedRetailer?.name || '-'}</h3>
 <div class="period">Period: ${new Date(dateFrom).toLocaleDateString('en-GB')} - ${new Date(dateTo).toLocaleDateString('en-GB')}</div>
 <table>
-<thead><tr><th style="width:11%">Date</th><th style="width:8%">Type</th><th style="width:10%">Reference</th><th style="width:7%;text-align:right">Birds</th><th style="width:9%;text-align:right">Weight</th><th style="width:8%;text-align:right">Rate</th><th style="width:15%;text-align:right">Debit (₹)</th><th style="width:15%;text-align:right">Credit (₹)</th><th style="width:16%;text-align:right">Balance (₹)</th></tr></thead>
+<thead><tr><th style="width:11%">Date</th><th style="width:8%">Type</th><th style="width:10%">Reference</th><th style="width:7%;text-align:right">Birds</th><th style="width:9%;text-align:right">Weight</th><th style="width:8%;text-align:right">Rate (₹/kg)</th><th style="width:15%;text-align:right">Debit (₹)</th><th style="width:15%;text-align:right">Credit (₹)</th><th style="width:16%;text-align:right">Balance (₹)</th></tr></thead>
 <tbody>
 <tr class="opening"><td colspan="8" style="text-align:right">Opening Balance</td><td style="text-align:right;font-weight:bold">₹${openingBalance.toLocaleString('en-IN')}</td></tr>
 ${rowsHtml}

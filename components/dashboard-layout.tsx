@@ -9,18 +9,17 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { motion, AnimatePresence } from "framer-motion"
 import { useDevMode } from "@/lib/dev-mode"
 import { setDevLogger } from "@/lib/api"
+import { PermissionsProvider, usePermissions } from "@/lib/permissions"
 import {
   BarChart3, Users, Package, ShoppingCart, TrendingUp,
   LogOut, Menu, X, Home, Settings, ChevronDown, Users2,
   Calculator, Truck, AlertCircle, Terminal, Copy, Trash2,
   ChartNoAxesCombined, Tractor, User, PackageOpen, PackagePlus,
-  PackageSearch, PackageX, PackageCheck, CreditCard, BookOpen,
-  TrendingDown, BarChart3 as BarChartAlt,
-  GitBranch, Shield, /* DollarSign, FileText, Receipt, */ LayoutDashboard,
+  PackageCheck, CreditCard, BookOpen,
+  TrendingDown,
 } from "lucide-react"
 
 const IS_STAGING = process.env.NEXT_PUBLIC_IS_STAGING === 'true'
-// const ACCOUNTING_URL = process.env.NEXT_PUBLIC_ACCOUNTING_URL || '/accounting'
 
 interface User {
   email: string
@@ -28,28 +27,27 @@ interface User {
   name?: string
 }
 
-export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return <DashboardLayoutInner>{children}</DashboardLayoutInner>
+/** Map current path → Settings permission resource key */
+function resourceForPath(pathname: string): string | null {
+  if (pathname.startsWith("/dashboard")) return "dashboard"
+  if (pathname.startsWith("/inventory") || pathname.startsWith("/godown") || pathname.startsWith("/bird-returns")) return "godown"
+  if (pathname.startsWith("/purchases")) return "purchases"
+  if (pathname.startsWith("/sales")) return "sales"
+  if (pathname.startsWith("/mortality")) return "mortality"
+  if (pathname.startsWith("/expenses")) return "expenses"
+  if (pathname.startsWith("/reports") || pathname.startsWith("/financial-analytics")) return "reports"
+  if (pathname.startsWith("/billing")) return "billing"
+  if (pathname.startsWith("/farmers")) return "farmers"
+  if (pathname.startsWith("/retailers")) return "retailers"
+  if (pathname.startsWith("/vehicles")) return "vehicles"
+  if (pathname.startsWith("/users")) return "users"
+  if (pathname.startsWith("/settings")) return "settings"
+  return null
 }
 
-function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
+export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [godownOpen, setGodownOpen] = useState(false)
-  const [billingOpen, setBillingOpen] = useState(false)
-  const [masterEntriesOpen, setMasterEntriesOpen] = useState(false)
-  const [purchasesOpen, setPurchasesOpen] = useState(false)
-  const [salesOpen, setSalesOpen] = useState(false)
-  // const [accountingOpen, setAccountingOpen] = useState(false)
   const router = useRouter()
-  const pathname = usePathname()
-  const { isDevMode, logs, clearLogs, addLog } = useDevMode()
-  const [showDevPanel, setShowDevPanel] = useState(false)
-
-  useEffect(() => {
-    setDevLogger(addLog)
-    return () => setDevLogger(null)
-  }, [addLog])
 
   useEffect(() => {
     const userData = localStorage.getItem("user")
@@ -62,16 +60,62 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     }
   }, [router])
 
+  if (!user) return null
+
+  return (
+    <PermissionsProvider role={user.role}>
+      <DashboardLayoutInner user={user}>{children}</DashboardLayoutInner>
+    </PermissionsProvider>
+  )
+}
+
+function DashboardLayoutInner({ children, user }: { children: React.ReactNode; user: User }) {
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [godownOpen, setGodownOpen] = useState(false)
+  const [billingOpen, setBillingOpen] = useState(false)
+  const [masterEntriesOpen, setMasterEntriesOpen] = useState(false)
+  const [purchasesOpen, setPurchasesOpen] = useState(false)
+  const [salesOpen, setSalesOpen] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
+  const { isDevMode, logs, clearLogs, addLog } = useDevMode()
+  const [showDevPanel, setShowDevPanel] = useState(false)
+  const { canRead, loading: permissionsLoading, isAdmin } = usePermissions()
+
+  useEffect(() => {
+    setDevLogger(addLog)
+    return () => setDevLogger(null)
+  }, [addLog])
+
+  // Block direct URL access when Settings matrix denies View
+  useEffect(() => {
+    if (permissionsLoading) return
+    const resource = resourceForPath(pathname)
+    if (!resource) return
+    if (!canRead(resource)) {
+      router.replace(canRead("dashboard") ? "/dashboard" : "/settings")
+    }
+  }, [pathname, permissionsLoading, canRead, router])
+
   const handleLogout = () => {
     localStorage.removeItem("user")
+    localStorage.removeItem("token")
     router.push("/")
   }
 
-  if (!user) return null
-
-  const isAdmin = user.role === 'admin'
-  const isManager = user.role === 'manager' || user.role === 'Manager'
-  const isStaff = user.role === 'staff' || user.role === 'Staff' || user.role === 'staf'
+  const showGodown = canRead("godown")
+  const showPurchases = canRead("purchases")
+  const showSales = canRead("sales")
+  const showMortality = canRead("mortality")
+  const showExpenses = canRead("expenses")
+  const showFarmers = canRead("farmers")
+  const showRetailers = canRead("retailers")
+  const showVehicles = canRead("vehicles")
+  const showMaster = showFarmers || showRetailers || showVehicles
+  const showReports = canRead("reports")
+  const showBilling = canRead("billing")
+  const showUsers = canRead("users")
+  const showSettings = canRead("settings") || isAdmin
 
   return (
     <div className="flex h-screen bg-background">
@@ -86,91 +130,83 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
-          {/* DASHBOARD - Admin & Manager */}
-          {(isAdmin || isManager) && (
+          {canRead("dashboard") && (
             <SidebarLink href="/dashboard" icon={Home} label="Dashboard" open={sidebarOpen} />
           )}
 
-          {/* GODOWN - Admin & Manager (All), Staff (Varies) */}
-          <div className="space-y-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setGodownOpen(!godownOpen)}>
-                  <Package size={20} />
-                  {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Godown</span><ChevronDown size={16} className={`transition-transform ${godownOpen ? "rotate-180" : ""}`} /></>)}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="bg-foreground text-background">Godown</TooltipContent>
-            </Tooltip>
-            {godownOpen && sidebarOpen && (
-              <div className="ml-4 space-y-1 border-l border-sidebar-border">
-                {(isManager || isAdmin) && (
+          {showGodown && (
+            <div className="space-y-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setGodownOpen(!godownOpen)}>
+                    <Package size={20} />
+                    {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Godown</span><ChevronDown size={16} className={`transition-transform ${godownOpen ? "rotate-180" : ""}`} /></>)}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="bg-foreground text-background">Godown</TooltipContent>
+              </Tooltip>
+              {godownOpen && sidebarOpen && (
+                <div className="ml-4 space-y-1 border-l border-sidebar-border">
                   <SidebarLink href="/inventory" icon={PackageOpen} label="Godown Overview" open={true} isSubItem={true} />
-                )}
-                <SidebarLink href="/godown/inward-entry" icon={PackagePlus} label="Godown Inward Entry" open={true} isSubItem={true} />
-                <SidebarLink href="/godown/sale" icon={PackageCheck} label="Godown Sale" open={true} isSubItem={true} />
-                <SidebarLink href="/bird-returns" icon={TrendingDown} label="Godown Bird Returns & Tracking" open={true} isSubItem={true} />
-                <SidebarLink href="/godown/mortality" icon={PackageX} label="Godown Mortality" open={true} isSubItem={true} />
-                <SidebarLink href="/godown/expense" icon={PackageSearch} label="Godown Expense" open={true} isSubItem={true} />
-              </div>
-            )}
-          </div>
-
-          {/* STAFF, MANAGER & ADMIN - Purchases, Cage Tracking, Sales, Mortality, Expenses */}
-          {(isStaff || isManager || isAdmin) && (
-            <>
-              {/* PURCHASES */}
-              <div className="space-y-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setPurchasesOpen(!purchasesOpen)}>
-                      <ShoppingCart size={20} />
-                      {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Purchases</span><ChevronDown size={16} className={`transition-transform ${purchasesOpen ? "rotate-180" : ""}`} /></>)}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="bg-foreground text-background">Purchases</TooltipContent>
-                </Tooltip>
-                {purchasesOpen && sidebarOpen && (
-                  <div className="ml-4 space-y-1 border-l border-sidebar-border">
-                    <SidebarLink href="/purchases" icon={ShoppingCart} label="Purchases Overview" open={true} isSubItem={true} />
-                    <SidebarLink href="/purchases/payment-out/voucher" icon={TrendingDown} label="Payment Out Voucher" open={true} isSubItem={true} />
-                  </div>
-                )}
-              </div>
-
-              {/* CAGE TRACKING */}
-              <SidebarLink href="/cage-tracking" icon={GitBranch} label="Cage Tracking" open={sidebarOpen} />
-
-              {/* SALES */}
-              <div className="space-y-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setSalesOpen(!salesOpen)}>
-                      <TrendingUp size={20} />
-                      {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Sales</span><ChevronDown size={16} className={`transition-transform ${salesOpen ? "rotate-180" : ""}`} /></>)}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="bg-foreground text-background">Sales</TooltipContent>
-                </Tooltip>
-                {salesOpen && sidebarOpen && (
-                  <div className="ml-4 space-y-1 border-l border-sidebar-border">
-                    <SidebarLink href="/sales" icon={TrendingUp} label="Sales Overview" open={true} isSubItem={true} />
-                    <SidebarLink href="/sales/payment-in/voucher" icon={CreditCard} label="Payment In Voucher" open={true} isSubItem={true} />
-                    <SidebarLink href="/sales/bird-returns" icon={TrendingDown} label="Vehicle Bird Returns" open={true} isSubItem={true} />
-                  </div>
-                )}
-              </div>
-
-              {/* MORTALITY */}
-              <SidebarLink href="/mortality" icon={AlertCircle} label="Mortality" open={sidebarOpen} />
-
-              {/* EXPENSE */}
-              <SidebarLink href="/expenses" icon={BarChart3} label="Expenses" open={sidebarOpen} />
-            </>
+                  <SidebarLink href="/godown/stock-ledger" icon={BookOpen} label="Stock Ledger" open={true} isSubItem={true} />
+                  <SidebarLink href="/godown/inward-entry" icon={PackagePlus} label="Godown Inward Entry" open={true} isSubItem={true} />
+                  <SidebarLink href="/godown/sale" icon={PackageCheck} label="Godown Sale" open={true} isSubItem={true} />
+                  <SidebarLink href="/bird-returns" icon={TrendingDown} label="Godown Bird Returns" open={true} isSubItem={true} />
+                </div>
+              )}
+            </div>
           )}
 
-          {/* ADMIN & MANAGER - Master Entries */}
-          {(isManager || isAdmin) && (
+          {showPurchases && (
+            <div className="space-y-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setPurchasesOpen(!purchasesOpen)}>
+                    <ShoppingCart size={20} />
+                    {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Purchases</span><ChevronDown size={16} className={`transition-transform ${purchasesOpen ? "rotate-180" : ""}`} /></>)}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="bg-foreground text-background">Purchases</TooltipContent>
+              </Tooltip>
+              {purchasesOpen && sidebarOpen && (
+                <div className="ml-4 space-y-1 border-l border-sidebar-border">
+                  <SidebarLink href="/purchases" icon={ShoppingCart} label="Purchases Overview" open={true} isSubItem={true} />
+                  <SidebarLink href="/purchases/payment-out/voucher" icon={TrendingDown} label="Payment Out Voucher" open={true} isSubItem={true} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {showSales && (
+            <div className="space-y-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setSalesOpen(!salesOpen)}>
+                    <TrendingUp size={20} />
+                    {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Sales</span><ChevronDown size={16} className={`transition-transform ${salesOpen ? "rotate-180" : ""}`} /></>)}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="bg-foreground text-background">Sales</TooltipContent>
+              </Tooltip>
+              {salesOpen && sidebarOpen && (
+                <div className="ml-4 space-y-1 border-l border-sidebar-border">
+                  <SidebarLink href="/sales" icon={TrendingUp} label="Sales Overview" open={true} isSubItem={true} />
+                  <SidebarLink href="/sales/payment-in/voucher" icon={CreditCard} label="Payment In Voucher" open={true} isSubItem={true} />
+                  <SidebarLink href="/sales/bird-returns" icon={TrendingDown} label="Vehicle Bird Returns" open={true} isSubItem={true} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {showMortality && (
+            <SidebarLink href="/mortality" icon={AlertCircle} label="Mortality" open={sidebarOpen} />
+          )}
+
+          {showExpenses && (
+            <SidebarLink href="/expenses" icon={BarChart3} label="Expenses" open={sidebarOpen} />
+          )}
+
+          {showMaster && (
             <div className="space-y-1">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -183,92 +219,56 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
               </Tooltip>
               {masterEntriesOpen && sidebarOpen && (
                 <div className="ml-4 space-y-1 border-l border-sidebar-border">
-                  <SidebarLink href="/farmers" icon={Tractor} label="Farmers" open={true} isSubItem={true} />
-                  <SidebarLink href="/retailers" icon={Users} label="Retailers" open={true} isSubItem={true} />
-                  <SidebarLink href="/vehicles" icon={Truck} label="Vehicles" open={true} isSubItem={true} />
-                  {/* <SidebarLink href="/products" icon={Package} label="Products" open={true} isSubItem={true} /> */}
+                  {showFarmers && <SidebarLink href="/farmers" icon={Tractor} label="Farmers" open={true} isSubItem={true} />}
+                  {showRetailers && <SidebarLink href="/retailers" icon={Users} label="Retailers" open={true} isSubItem={true} />}
+                  {showVehicles && <SidebarLink href="/vehicles" icon={Truck} label="Vehicles" open={true} isSubItem={true} />}
                 </div>
               )}
             </div>
           )}
 
-          {/* ADMIN ONLY - Reports, Financial Analytics, Billing, Users */}
-          {isAdmin && (
+          {showReports && (
             <>
-              {/* REPORTS */}
               <SidebarLink href="/reports" icon={ChartNoAxesCombined} label="Reports" open={sidebarOpen} />
-
-              {/* FINANCIAL ANALYTICS */}
               <SidebarLink href="/financial-analytics" icon={Calculator} label="Financial Analytics" open={sidebarOpen} />
-
-              {/* BILLING */}
-              <div className="space-y-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setBillingOpen(!billingOpen)}>
-                      <CreditCard size={20} />
-                      {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Billing</span><ChevronDown size={16} className={`transition-transform ${billingOpen ? "rotate-180" : ""}`} /></>)}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="bg-foreground text-background">Billing</TooltipContent>
-                </Tooltip>
-                {billingOpen && sidebarOpen && (
-                  <div className="ml-4 space-y-1 border-l border-sidebar-border">
-                    <SidebarLink href="/billing" icon={CreditCard} label="Dashboard" open={true} isSubItem={true} />
-                    <SidebarLink href="/billing/ledger" icon={BookOpen} label="Ledger Report" open={true} isSubItem={true} />
-                    <SidebarLink href="/billing/ledger/farms" icon={Tractor} label="Ledger Farms" open={true} isSubItem={true} />
-                    <SidebarLink href="/billing/ledger/retailers" icon={Users} label="Ledger Retailers" open={true} isSubItem={true} />
-                    <SidebarLink href="/billing/ledger/company-report" icon={BookOpen} label="Company Report" open={true} isSubItem={true} />
-                    <SidebarLink href="/billing/reports/outstanding" icon={TrendingDown} label="Outstanding" open={true} isSubItem={true} />
-                    <SidebarLink href="/billing/reports/dispatch" icon={Truck} label="Dispatch Report" open={true} isSubItem={true} />
-                    <SidebarLink href="/billing/reports/collection" icon={CreditCard} label="Collection Report" open={true} isSubItem={true} />
-                    <SidebarLink href="/billing/reports/pending-purchases" icon={ShoppingCart} label="Pending Purchases" open={true} isSubItem={true} />
-                  </div>
-                )}
-              </div>
-
-              {/* USERS */}
-              <SidebarLink href="/users" icon={User} label="Users" open={sidebarOpen} />
-
-              {/* ACCOUNTING MICROSERVICE — COMMENTED OUT */}
-              {/*
-              <div className="space-y-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setAccountingOpen(!accountingOpen)}>
-                      <DollarSign size={20} />
-                      {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Accounting</span><ChevronDown size={16} className={`transition-transform ${accountingOpen ? "rotate-180" : ""}`} /></>)}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="bg-foreground text-background">Accounting</TooltipContent>
-                </Tooltip>
-                {accountingOpen && sidebarOpen && (
-                  <div className="ml-4 space-y-1 border-l border-sidebar-border">
-                    {(() => {
-                      const base = ACCOUNTING_URL?.startsWith('http') ? ACCOUNTING_URL : (ACCOUNTING_URL || '/accounting');
-                      const links = [
-                        { href: `${base}/transactions`, icon: TrendingUp, label: 'Transactions' },
-                        { href: `${base}/ledger`, icon: BookOpen, label: 'Ledger' },
-                        { href: `${base}/expenses`, icon: BarChart3, label: 'Expenses' },
-                        { href: `${base}/invoices`, icon: FileText, label: 'Invoices' },
-                        { href: `${base}/payments`, icon: Receipt, label: 'Payments' },
-                        { href: `${base}/reports`, icon: ChartNoAxesCombined, label: 'Reports' },
-                      ];
-                      return links.map(l => (
-                        <SidebarLink key={l.label} href={l.href} icon={l.icon} label={l.label} open={true} isSubItem={true} target="_self" />
-                      ));
-                    })()}
-                  </div>
-                )}
-              </div>
-              */}
             </>
           )}
 
-          {/* SETTINGS - All */}
-          <SidebarLink href="/settings" icon={Settings} label="Settings" open={sidebarOpen} />
+          {showBilling && (
+            <div className="space-y-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setBillingOpen(!billingOpen)}>
+                    <CreditCard size={20} />
+                    {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Billing</span><ChevronDown size={16} className={`transition-transform ${billingOpen ? "rotate-180" : ""}`} /></>)}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="bg-foreground text-background">Billing</TooltipContent>
+              </Tooltip>
+              {billingOpen && sidebarOpen && (
+                <div className="ml-4 space-y-1 border-l border-sidebar-border">
+                  <SidebarLink href="/billing" icon={CreditCard} label="Dashboard" open={true} isSubItem={true} />
+                  <SidebarLink href="/billing/ledger" icon={BookOpen} label="Ledger Report" open={true} isSubItem={true} />
+                  <SidebarLink href="/billing/ledger/farms" icon={Tractor} label="Ledger Farms" open={true} isSubItem={true} />
+                  <SidebarLink href="/billing/ledger/retailers" icon={Users} label="Ledger Retailers" open={true} isSubItem={true} />
+                  <SidebarLink href="/billing/ledger/company-report" icon={BookOpen} label="Company Report" open={true} isSubItem={true} />
+                  <SidebarLink href="/billing/reports/outstanding" icon={TrendingDown} label="Outstanding" open={true} isSubItem={true} />
+                  <SidebarLink href="/billing/reports/dispatch" icon={Truck} label="Dispatch Report" open={true} isSubItem={true} />
+                  <SidebarLink href="/billing/reports/collection" icon={CreditCard} label="Collection Report" open={true} isSubItem={true} />
+                  <SidebarLink href="/billing/reports/pending-purchases" icon={ShoppingCart} label="Pending Purchases" open={true} isSubItem={true} />
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* API DOCS - Staging only */}
+          {showUsers && (
+            <SidebarLink href="/users" icon={User} label="Users" open={sidebarOpen} />
+          )}
+
+          {showSettings && (
+            <SidebarLink href="/settings" icon={Settings} label="Settings" open={sidebarOpen} />
+          )}
+
           {IS_STAGING && (
             <SidebarLink href="/api-docs" icon={Terminal} label="API Docs" open={sidebarOpen} />
           )}

@@ -7,14 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X, Printer } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Printer, Eye } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
 import { godownApi, vehiclesApi, farmersApi, purchasesApi, type GodownInward, type GodownCage, type Vehicle } from "@/lib/api"
+import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 
 type ActiveFarmer = { id: string; name: string; phone: string; address?: string }
@@ -23,7 +24,7 @@ const emptyCage = (): GodownCage => ({ cageId: "", birdType: "", numberOfBirds: 
 
 export default function GodownInwardPage() {
   const router = useRouter()
-  const [userRole, setUserRole] = useState<string>("")
+  const { canUpdate, canDelete } = usePermissions()
   const [entries, setEntries] = useState<GodownInward[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [farmers, setFarmers] = useState<ActiveFarmer[]>([])
@@ -33,6 +34,8 @@ export default function GodownInwardPage() {
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
+  const [showViewDialog, setShowViewDialog] = useState(false)
+  const [viewingEntry, setViewingEntry] = useState<GodownInward | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [allowEditInwardNo, setAllowEditInwardNo] = useState(false)
   const [formData, setFormData] = useState({
@@ -69,13 +72,6 @@ export default function GodownInwardPage() {
 
   useEffect(() => {
     setMounted(true)
-    const userData = localStorage.getItem("user")
-    if (userData) {
-      try {
-        const user = JSON.parse(userData)
-        setUserRole(user.role || "")
-      } catch {}
-    }
     fetchEntries()
     fetchVehicles()
     fetchFarmers()
@@ -244,12 +240,17 @@ export default function GodownInwardPage() {
     setAllowEditInwardNo(false)
   }
 
-  const handleEdit = (entry: GodownInward) => {
+  const handleView = (entry: GodownInward) => {
+    setViewingEntry(entry)
+    setShowViewDialog(true)
+  }
+
+  const handleEdit = async (entry: GodownInward) => {
     setFormData({
       entryDate: entry.entryDate,
       inwardNo: entry.inwardNo || "",
       purchaseInvoiceNo: entry.purchaseInvoiceNo || "",
-      purchaseBillNo: "",
+      purchaseBillNo: entry.purchaseInvoiceNo || "",
       purchaseBillId: "",
       supplierName: entry.supplierName || "",
       selectedFarmerId: "",
@@ -261,10 +262,49 @@ export default function GodownInwardPage() {
       totalAmount: String(entry.totalAmount || ""),
       notes: entry.notes || "",
     })
-    setCages(entry.cages && entry.cages.length > 0 ? entry.cages : [emptyCage()])
     setEditingId(entry.id)
     setAllowEditInwardNo(false)
     setShowDialog(true)
+    setPurchaseCages([])
+    setSelectedCageIds(new Set())
+    setCages([emptyCage()])
+
+    // Load existing cage details linked to this inward so they can be edited
+    try {
+      setLoadingCages(true)
+      let linkedCages = entry.cages
+      if (!linkedCages || linkedCages.length === 0) {
+        linkedCages = await purchasesApi.getCagesByInwardId(entry.id)
+      }
+      if (Array.isArray(linkedCages) && linkedCages.length > 0) {
+        const mapped = linkedCages.map((c: any) => ({
+          ...c,
+          id: String(c.id ?? ""),
+          cageId: c.cageId || "",
+          numberOfBirds: Number(c.numberOfBirds ?? 0),
+          purchaseWeight: Number(c.purchaseWeight ?? c.cageWeight ?? 0),
+          godownWeight: String(
+            c.godownInwardWeight ?? c.cageWeight ?? c.godownWeight ?? c.purchaseWeight ?? "",
+          ),
+        }))
+        setPurchaseCages(mapped)
+        setSelectedCageIds(new Set(mapped.map((c) => c.id).filter(Boolean)))
+        setCages(
+          mapped.map((c) => ({
+            id: c.id,
+            cageId: c.cageId,
+            birdType: "",
+            numberOfBirds: c.numberOfBirds,
+            cageWeight: Number(c.godownWeight) || 0,
+          })),
+        )
+      }
+    } catch (error) {
+      console.error("Failed to load cage details for edit:", error)
+      toast.error("Failed to load cage details")
+    } finally {
+      setLoadingCages(false)
+    }
   }
 
   const calculateTotal = () => {
@@ -306,32 +346,39 @@ export default function GodownInwardPage() {
         ratePerKg,
         totalAmount,
         notes: formData.notes || undefined,
-        cages: cages
-          .filter(c => Number(c.numberOfBirds ?? 0) > 0 || Number(c.cageWeight ?? 0) > 0)
-          .map(c => ({
+        cageIds: Array.from(selectedCageIds),
+        cages: (selectedCageIds.size > 0
+          ? purchaseCages.filter((c) => selectedCageIds.has(c.id))
+          : cages
+        )
+          .filter((c: any) => Number(c.numberOfBirds ?? 0) > 0 || Number(c.godownWeight ?? c.cageWeight ?? 0) > 0 || c.id)
+          .map((c: any) => ({
+            id: c.id || undefined,
             cageId: c.cageId || undefined,
             birdType: c.birdType || undefined,
             numberOfBirds: Number(c.numberOfBirds ?? 0) || 0,
-            cageWeight: Number(c.cageWeight ?? 0) || 0,
+            cageWeight: Number(c.godownWeight ?? c.cageWeight ?? 0) || 0,
+            godownInwardWeight: Number(c.godownWeight ?? c.cageWeight ?? 0) || 0,
           })),
       }
 
+      let savedId = editingId
       if (editingId) {
         await godownApi.inward.update(editingId, entryData)
         toast.success("Entry updated successfully")
       } else {
-        await godownApi.inward.create(entryData)
+        const created = await godownApi.inward.create(entryData)
+        savedId = (created as any)?.id || null
         toast.success("Entry created successfully")
       }
 
-      // Mark selected purchase cages as in_godown with their godown inward weights
-      if (selectedCageIds.size > 0) {
+      // Ensure cages are linked to this inward with per-cage godown weights
+      if (selectedCageIds.size > 0 && savedId) {
         try {
           const selectedCages = purchaseCages.filter(c => selectedCageIds.has(c.id))
-          // Group by weight for batch update — pass individual weights
           for (const cage of selectedCages) {
             const godownWeight = Number(cage.godownWeight) || undefined
-            await purchasesApi.markCagesInGodown([cage.id], godownWeight)
+            await purchasesApi.markCagesInGodown([cage.id], savedId, godownWeight)
           }
         } catch { toast.error("Entry saved but failed to update cage status") }
       }
@@ -575,6 +622,18 @@ export default function GodownInwardPage() {
     return f
   }, [entries, searchQuery, dateRangeStart, dateRangeEnd])
 
+  const inwardStats = useMemo(() => {
+    return filteredEntries.reduce(
+      (acc, entry) => {
+        acc.totalBirds += Number(entry.numberOfBirds || 0)
+        acc.totalWeight += Number(entry.totalWeight || 0)
+        acc.totalAmount += Number(entry.totalAmount || 0)
+        return acc
+      },
+      { totalBirds: 0, totalWeight: 0, totalAmount: 0 },
+    )
+  }, [filteredEntries])
+
   if (!mounted) return null
 
   return (
@@ -660,12 +719,14 @@ export default function GodownInwardPage() {
                   </Select>
                 </div>
 
-                {/* Remaining cages from purchase bill */}
-                {formData.purchaseBillId && (
+                {/* Remaining cages from purchase bill / linked cages when editing */}
+                {(formData.purchaseBillId || (editingId && (purchaseCages.length > 0 || loadingCages))) && (
                   <div className="border rounded-lg p-3 bg-blue-50 space-y-2">
                     <div className="flex items-center justify-between">
                       <Label className="text-blue-900 font-semibold">
-                        Remaining Cages from {formData.purchaseBillNo}
+                        {editingId && !formData.purchaseBillId
+                          ? "Cage Details (editable)"
+                          : `Remaining Cages from ${formData.purchaseBillNo}`}
                       </Label>
                       {loadingCages && <span className="text-xs text-muted-foreground">Loading...</span>}
                       {!loadingCages && purchaseCages.length > 0 && (
@@ -914,6 +975,27 @@ export default function GodownInwardPage() {
           </Dialog>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Birds</p>
+              <p className="text-2xl font-bold">{inwardStats.totalBirds.toLocaleString("en-IN")}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Weight</p>
+              <p className="text-2xl font-bold">{inwardStats.totalWeight.toFixed(2)} kg</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Amount</p>
+              <p className="text-2xl font-bold">₹{inwardStats.totalAmount.toFixed(2)}</p>
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
           <CardHeader>
             <div className="flex flex-wrap items-center gap-3">
@@ -990,19 +1072,26 @@ export default function GodownInwardPage() {
                         <TableCell>₹{entry.ratePerKg ? Number(entry.ratePerKg).toFixed(2) : "0.00"}</TableCell>
                         <TableCell className="font-semibold">₹{entry.totalAmount ? Number(entry.totalAmount).toFixed(2) : "0.00"}</TableCell>
                       <TableCell>
-                        {userRole !== 'staff' && userRole !== 'Staff' && (
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handlePrintInward(entry)}>
-                              <Printer size={16} />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(entry)}>
-                              <Edit2 size={16} />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(entry.id)}>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm" title="View" onClick={() => handleView(entry)}>
+                            <Eye size={16} />
+                          </Button>
+                          {canUpdate('godown') && (
+                            <>
+                              <Button variant="ghost" size="sm" title="Print" onClick={() => handlePrintInward(entry)}>
+                                <Printer size={16} />
+                              </Button>
+                              <Button variant="ghost" size="sm" title="Edit" onClick={() => handleEdit(entry)}>
+                                <Edit2 size={16} />
+                              </Button>
+                            </>
+                          )}
+                          {canDelete('godown') && (
+                            <Button variant="ghost" size="sm" title="Delete" onClick={() => handleDelete(entry.id)}>
                               <Trash2 size={16} />
                             </Button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   )})}
@@ -1011,6 +1100,72 @@ export default function GodownInwardPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* View Dialog */}
+        <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Godown Inward Details</DialogTitle>
+              <DialogDescription>View complete inward entry information</DialogDescription>
+            </DialogHeader>
+            {viewingEntry && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Entry Date</Label>
+                    <div className="text-sm font-medium">{new Date(viewingEntry.entryDate).toLocaleDateString()}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Inward No</Label>
+                    <div className="text-sm font-medium">{viewingEntry.inwardNo || "N/A"}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Purchase / Reference No</Label>
+                    <div className="text-sm font-medium">{viewingEntry.purchaseInvoiceNo || "N/A"}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Source / Supplier</Label>
+                    <div className="text-sm font-medium">{viewingEntry.supplierName || "N/A"}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Number of Birds</Label>
+                    <div className="text-sm font-medium">{viewingEntry.numberOfBirds ?? 0}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Average Weight</Label>
+                    <div className="text-sm font-medium">
+                      {viewingEntry.averageWeight != null ? Number(viewingEntry.averageWeight).toFixed(2) : "N/A"} kg
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Total Weight</Label>
+                    <div className="text-sm font-medium">
+                      {viewingEntry.totalWeight != null ? Number(viewingEntry.totalWeight).toFixed(2) : "N/A"} kg
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Rate per Kg</Label>
+                    <div className="text-sm font-medium">
+                      ₹{viewingEntry.ratePerKg != null ? Number(viewingEntry.ratePerKg).toFixed(2) : "0.00"}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Total Amount</Label>
+                    <div className="text-sm font-medium">
+                      ₹{viewingEntry.totalAmount != null ? Number(viewingEntry.totalAmount).toFixed(2) : "0.00"}
+                    </div>
+                  </div>
+                  {viewingEntry.notes && (
+                    <div className="space-y-1 md:col-span-2">
+                      <Label className="text-muted-foreground">Notes</Label>
+                      <div className="text-sm font-medium">{viewingEntry.notes}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   )

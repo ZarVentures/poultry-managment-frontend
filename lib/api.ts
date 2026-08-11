@@ -470,6 +470,56 @@ export interface GodownSummary {
   totalMortality: number;
   totalExpenses: number;
   currentStock: number;
+  totalInwardWeight?: number;
+  totalSoldWeight?: number;
+  totalMortalityWeight?: number;
+  currentWeight?: number;
+  totalInwardValue?: number;
+  totalSoldValue?: number;
+  currentValue?: number;
+}
+
+export interface StockLedgerEntry {
+  date: string;
+  movementType: 'INWARD' | 'SALE' | 'MORTALITY' | 'RETURN';
+  referenceType: string;
+  referenceId: string;
+  referenceNo: string;
+  party: string;
+  purchaseInvoiceNo?: string | null;
+  vehicleId?: string | null;
+  birdsIn: number;
+  birdsOut: number;
+  weightIn: number;
+  weightOut: number;
+  ratePerKg?: number | null;
+  amount?: number | null;
+  notes?: string | null;
+  runningBirds: number;
+  runningWeight: number;
+}
+
+export interface StockLedgerResponse {
+  startDate: string | null;
+  endDate: string | null;
+  opening: { birds: number; weight: number };
+  period: {
+    birdsIn: number;
+    birdsOut: number;
+    weightIn: number;
+    weightOut: number;
+    amountIn: number;
+    amountOut: number;
+    soldBirds?: number;
+    soldWeight?: number;
+    mortalityBirds?: number;
+    mortalityWeight?: number;
+    returnBirds?: number;
+    returnWeight?: number;
+  };
+  closing: { birds: number; weight: number };
+  entries: StockLedgerEntry[];
+  totalEntries: number;
 }
 
 // Mortality (Transport) Interface
@@ -480,12 +530,15 @@ export interface MortalityRecord {
   purchaseOrderId?: string;
   purchaseDate: string;
   farmerName: string;
-  farmLocation: string;
+  farmLocation?: string;
   cageIdNumber?: string;
   totalBirdsPurchased: number;
   numberOfBirdsDied: number;
+  weightOfDeadBirds?: number;
+  ratePerKg?: number;
+  amount?: number;
   cause: string;
-  notes: string;
+  notes?: string;
   mortalityDate?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -1180,11 +1233,11 @@ export const purchasesApi = {
       body: JSON.stringify({ cageIds, saleWeight }),
     }),
 
-  // Mark cage IDs as in_godown
-  markCagesInGodown: (cageIds: string[], godownInwardWeight?: number) =>
+  // Mark cage IDs as in_godown (must pass godownInwardId so cages link to the entry)
+  markCagesInGodown: (cageIds: string[], godownInwardId: string, godownInwardWeight?: number) =>
     apiRequest<void>('/cages/mark-in-godown', {
       method: 'PATCH',
-      body: JSON.stringify({ cageIds, godownInwardWeight }),
+      body: JSON.stringify({ cageIds, godownInwardId, godownInwardWeight }),
     }),
 
   // Get full cage journey for weight loss tracking
@@ -1382,6 +1435,22 @@ export const godownApi = {
 
   // Summary
   getSummary: () => apiRequest<GodownSummary>('/godown/summary'),
+
+  // Stock Ledger
+  getStockLedger: (filters?: {
+    startDate?: string
+    endDate?: string
+    type?: string
+    search?: string
+  }) => {
+    const q = new URLSearchParams()
+    if (filters?.startDate) q.set('startDate', filters.startDate)
+    if (filters?.endDate) q.set('endDate', filters.endDate)
+    if (filters?.type && filters.type !== 'all') q.set('type', filters.type)
+    if (filters?.search) q.set('search', filters.search)
+    const s = q.toString()
+    return apiRequest<StockLedgerResponse>(`/godown/stock-ledger${s ? `?${s}` : ''}`)
+  },
 };
 
 export type PaymentMethodVoucher =
@@ -1550,11 +1619,16 @@ export const permissionsApi = {
 // REPORTS API
 // ============================================
 export const reportsApi = {
-  getOutstandingReport: (filters?: { page?: number; limit?: number; sortBy?: string }) => {
+  getOutstandingReport: (filters?: { page?: number; limit?: number; sortBy?: string; startDate?: string; endDate?: string; retailerId?: string; paymentStatus?: string; search?: string }) => {
     const params = new URLSearchParams();
     if (filters?.page) params.append('page', String(filters.page));
     if (filters?.limit) params.append('limit', String(filters.limit));
     if (filters?.sortBy) params.append('sortBy', filters.sortBy || 'outstanding');
+    if (filters?.startDate) params.append('startDate', filters.startDate);
+    if (filters?.endDate) params.append('endDate', filters.endDate);
+    if (filters?.retailerId) params.append('retailerId', filters.retailerId);
+    if (filters?.paymentStatus) params.append('paymentStatus', filters.paymentStatus);
+    if (filters?.search) params.append('search', filters.search);
     return apiRequest<{
       data: any[];
       total: number;
@@ -1597,12 +1671,16 @@ export const mortalityApi = {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
+    const qs = params.toString();
     return apiRequest<{
       totalBirdsPurchased: number;
       totalBirdsDeath: number;
+      farmDeaths?: number;
+      godownDeaths?: number;
+      totalWeight?: number;
       totalValue: number;
       totalRecords: number;
-    }>(`/mortality/stats?${params.toString()}`);
+    }>(`/mortality/stats${qs ? `?${qs}` : ''}`);
   },
 
   getOne: (id: string) => apiRequest<MortalityRecord>(`/mortality/${id}`),

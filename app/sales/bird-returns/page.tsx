@@ -247,7 +247,7 @@ export default function VehicleBirdReturnsPage() {
           retailerId: fullSale.retailerId || "",
           customerName: fullSale.customerName,
         }))
-        toast.success(`Loaded vehicle sale details! Rate: ₹${rate.toFixed(2)}/kg`)
+        toast.success(`Loaded vehicle sale details! Rate: Γé╣${rate.toFixed(2)}/kg`)
       }
     } catch (error) {
       console.error("Failed to load full sale details:", error)
@@ -448,7 +448,7 @@ export default function VehicleBirdReturnsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Refund Amount (₹)</Label>
+                    <Label>Refund Amount (Γé╣)</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -458,7 +458,7 @@ export default function VehicleBirdReturnsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Adjustment Amount (₹)</Label>
+                    <Label>Adjustment Amount (Γé╣)</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -578,7 +578,7 @@ export default function VehicleBirdReturnsPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Refund</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₹{stats.totalRefund.toFixed(2)}</div>
+              <div className="text-2xl font-bold">Γé╣{stats.totalRefund.toFixed(2)}</div>
             </CardContent>
           </Card>
         </div>
@@ -677,7 +677,7 @@ export default function VehicleBirdReturnsPage() {
                           {birdReturn.returnedToInventory ? (
                             birdReturn.inventoryLocation === 'Isolation Pen' ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800">
-                                ⚠️ Isolation Pen
+                                ΓÜá∩╕Å Isolation Pen
                               </span>
                             ) : (
                               <span className="text-sm font-medium text-muted-foreground">{birdReturn.inventoryLocation || 'Main Godown'}</span>
@@ -686,7 +686,7 @@ export default function VehicleBirdReturnsPage() {
                             <span className="text-xs text-muted-foreground italic">No Restock (Mortality)</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right">₹{Number(birdReturn.refundAmount || 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">Γé╣{Number(birdReturn.refundAmount || 0).toFixed(2)}</TableCell>
                         <TableCell>{getStatusBadge(birdReturn.status)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">

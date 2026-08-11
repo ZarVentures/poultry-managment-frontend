@@ -11,6 +11,7 @@ import { Download, Table as TableIcon, BarChart3, PieChart as PieChartIcon, File
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
+import { mortalityApi } from "@/lib/api"
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D']
 
@@ -116,15 +117,17 @@ export default function ReportsPage() {
 
     sections.push({
       title: 'Sales',
-      headers: ['Bill No', 'Date', 'Customer', 'Birds', 'Weight', 'Shortage (kg)', 'Amount', 'Status'],
+      headers: ['Bill No', 'Date', 'Customer', 'Birds', 'Weight', 'Shortage (kg)', 'Deductions', 'Amount', 'Status'],
       rows: salesData?.sales?.length
         ? salesData.sales.map((s: any) => [
             s.invoiceNumber || '', new Date(s.saleDate).toLocaleDateString('en-GB'), s.customerName || '',
             String(s.totalBirds || s.numberOfBirds || 0),
             `${(parseFloat(s.totalWeight) || parseFloat(s.quantity) || 0).toFixed(2)} kg`,
-            `${(() => { const kg = parseFloat(s.weightShortageKg || 0); if (kg > 0) return kg.toFixed(2); const amt = parseFloat(s.weightShortage || 0); const rate = parseFloat(s.unitPrice || 0); return (amt > 0 && rate > 0) ? (amt / rate).toFixed(2) : '0.00'; })()} kg`, `Rs. ${parseFloat(s.netAmount || 0).toFixed(2)}`, s.paymentStatus || '',
+            `${(() => { const kg = parseFloat(s.weightShortageKg || 0); if (kg > 0) return kg.toFixed(2); const amt = parseFloat(s.weightShortage || 0); const rate = parseFloat(s.unitPrice || 0); return (amt > 0 && rate > 0) ? (amt / rate).toFixed(2) : '0.00'; })()} kg`,
+            `Rs. ${(parseFloat(s.weightShortage || 0) + parseFloat(s.mortalityDeduction || 0) + parseFloat(s.otherDeduction || 0)).toFixed(2)}`,
+            `Rs. ${parseFloat(s.netAmount || 0).toFixed(2)}`, s.paymentStatus || '',
           ])
-        : noData(8),
+        : noData(9),
     })
 
     sections.push({
@@ -140,15 +143,19 @@ export default function ReportsPage() {
         : noData(8),
     })
 
+    const mortalityRowsForExport = Array.isArray(mortalityData) ? mortalityData : mortalityData?.records || []
+
     sections.push({
       title: 'Mortality',
-      headers: ['Order #', 'Date', 'Supplier', 'Weight', 'Mortality Deduction'],
-      rows: mortalityData?.purchases?.length
-        ? mortalityData.purchases.map((p: any) => [
-            p.orderNumber || '', new Date(p.orderDate).toLocaleDateString('en-GB'), p.supplierName || '',
-            `${parseFloat(p.totalWeight || 0).toFixed(2)} kg`, `Rs. ${parseFloat(p.mortalityDeduction || 0).toFixed(2)}`,
+      headers: ['Date', 'Birds Died', 'Weight (kg)', 'Amount'],
+      rows: mortalityRowsForExport.length
+        ? mortalityRowsForExport.map((record: any) => [
+            new Date(record.purchaseDate || record.mortalityDate || record.createdAt || '').toLocaleDateString('en-GB'),
+            String(parseFloat(record.numberOfBirdsDied || record.mortalityBirds || 0).toFixed(0)),
+            `${parseFloat(record.weightOfDeadBirds || record.mortalityWeight || 0).toFixed(2)} kg`,
+            `Rs. ${parseFloat(record.amount || record.mortalityDeduction || 0).toFixed(2)}`,
           ])
-        : noData(5),
+        : noData(4),
     })
 
     sections.push({
@@ -234,6 +241,19 @@ export default function ReportsPage() {
     doc.save(`reports_${startDate}_${endDate}.pdf`)
   }
 
+  const fetchMortalityReport = async () => {
+    try {
+      setLoading(true)
+      const data = await mortalityApi.getAll(startDate, endDate)
+      setMortalityData(data)
+    } catch (error: any) {
+      console.error('Error fetching mortality report:', error)
+      toast.error(error.message || 'Failed to load mortality report')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const generateAllReports = () => {
     if (!startDate || !endDate) return toast.error('Select date range')
     fetchReport('profit-loss', setProfitLossData)
@@ -243,7 +263,7 @@ export default function ReportsPage() {
     fetchReport('purchases', setPurchaseData)
     fetchReport('sales', setSalesData)
     fetchReport('godown-sales', setGodownSalesData)
-    fetchReport('mortality', setMortalityData)
+    fetchMortalityReport()
     fetchReport('outstanding', setOutstandingData)
     fetchStockReport()
   }
@@ -263,6 +283,89 @@ export default function ReportsPage() {
     } catch (error: any) {
       toast.error(error.message || 'Failed to load stock data')
     }
+  }
+
+  const salesRows = salesData?.sales || []
+  const n = (v: any) => {
+    const x = Number(v)
+    return Number.isFinite(x) ? x : 0
+  }
+  const normalizeStatus = (value: any) => String(value || '').trim().toLowerCase()
+  const salesSummaryDerived = {
+    totalSales: salesRows.length,
+    totalBirds: salesRows.reduce((sum: number, s: any) => sum + n(s.totalBirds || s.numberOfBirds || s.birds || s.quantity), 0),
+    totalWeight: salesRows.reduce((sum: number, s: any) => sum + n(s.totalWeight || s.weight || s.quantity || s.totalQuantity), 0),
+    totalRevenue: salesRows.reduce((sum: number, s: any) => sum + n(s.netAmount || s.totalAmount || s.amount || s.totalNetAmount), 0),
+    totalWeightShortageKg: salesRows.reduce((sum: number, s: any) => {
+      const kg = n(s.weightShortageKg)
+      if (kg > 0) return sum + kg
+      const shortageAmount = n(s.weightShortage)
+      const rate = n(s.unitPrice)
+      return sum + (shortageAmount > 0 && rate > 0 ? shortageAmount / rate : 0)
+    }, 0),
+    totalDeductions: salesRows.reduce((sum: number, s: any) => {
+      const weightShortageAmount = n(s.weightShortage)
+      const mortality = n(s.mortalityDeduction)
+      const other = n(s.otherDeduction)
+      return sum + weightShortageAmount + mortality + other
+    }, 0),
+    totalPaid: salesRows.filter((s: any) => normalizeStatus(s.paymentStatus || s.status) === 'paid').length,
+    totalPending: salesRows.filter((s: any) => normalizeStatus(s.paymentStatus || s.status) === 'pending').length,
+    totalPartial: salesRows.filter((s: any) => normalizeStatus(s.paymentStatus || s.status) === 'partial').length,
+  }
+  const salesSummary = {
+    totalSales: n(salesData?.summary?.totalSales) > 0 ? n(salesData?.summary?.totalSales) : salesSummaryDerived.totalSales,
+    totalBirds: n(salesData?.summary?.totalBirds || salesData?.summary?.numberOfBirds) > 0 ? n(salesData?.summary?.totalBirds || salesData?.summary?.numberOfBirds) : salesSummaryDerived.totalBirds,
+    totalWeight: n(salesData?.summary?.totalWeight || salesData?.summary?.totalQuantity) > 0 ? n(salesData?.summary?.totalWeight || salesData?.summary?.totalQuantity) : salesSummaryDerived.totalWeight,
+    totalRevenue: n(salesData?.summary?.totalNetAmount || salesData?.summary?.totalAmount || salesData?.summary?.revenue) > 0 ? n(salesData?.summary?.totalNetAmount || salesData?.summary?.totalAmount || salesData?.summary?.revenue) : salesSummaryDerived.totalRevenue,
+    totalDeductions: n(salesData?.summary?.totalDeductions) > 0 ? n(salesData?.summary?.totalDeductions) : salesSummaryDerived.totalDeductions,
+    totalWeightShortageKg: n(salesData?.summary?.totalWeightShortageKg) > 0 ? n(salesData?.summary?.totalWeightShortageKg) : salesSummaryDerived.totalWeightShortageKg,
+    totalPaid: n(salesData?.summary?.totalPaid) > 0 ? n(salesData?.summary?.totalPaid) : salesSummaryDerived.totalPaid,
+    totalPending: n(salesData?.summary?.totalPending) > 0 ? n(salesData?.summary?.totalPending) : salesSummaryDerived.totalPending,
+  }
+
+  const purchaseRows = purchaseData?.purchases || []
+  const purchaseSummaryDerived = {
+    totalOrders: purchaseRows.length,
+    totalBirds: purchaseRows.reduce((sum: number, p: any) => sum + n(p.totalBirds || p.numberOfBirds || p.birds || p.quantity), 0),
+    totalWeight: purchaseRows.reduce((sum: number, p: any) => sum + n(p.totalWeight || p.weight || p.quantity || p.totalQuantity), 0),
+    totalAmount: purchaseRows.reduce((sum: number, p: any) => sum + n(p.netAmount || p.totalAmount || p.amount || p.totalNetAmount), 0),
+    totalPaid: purchaseRows.filter((p: any) => normalizeStatus(p.purchasePaymentStatus || p.paymentStatus || p.status) === 'paid').length,
+    totalPending: purchaseRows.filter((p: any) => normalizeStatus(p.purchasePaymentStatus || p.paymentStatus || p.status) === 'pending').length,
+    totalPartial: purchaseRows.filter((p: any) => normalizeStatus(p.purchasePaymentStatus || p.paymentStatus || p.status) === 'partial').length,
+  }
+
+  const purchaseSummary = {
+    totalOrders: n(purchaseData?.summary?.totalOrders) > 0 ? n(purchaseData?.summary?.totalOrders) : purchaseSummaryDerived.totalOrders,
+    totalBirds: n(purchaseData?.summary?.totalBirds || purchaseData?.summary?.numberOfBirds) > 0 ? n(purchaseData?.summary?.totalBirds || purchaseData?.summary?.numberOfBirds) : purchaseSummaryDerived.totalBirds,
+    totalWeight: n(purchaseData?.summary?.totalWeight || purchaseData?.summary?.totalQuantity) > 0 ? n(purchaseData?.summary?.totalWeight || purchaseData?.summary?.totalQuantity) : purchaseSummaryDerived.totalWeight,
+    totalAmount: n(purchaseData?.summary?.totalNetAmount || purchaseData?.summary?.totalAmount || purchaseData?.summary?.amount) > 0 ? n(purchaseData?.summary?.totalNetAmount || purchaseData?.summary?.totalAmount || purchaseData?.summary?.amount) : purchaseSummaryDerived.totalAmount,
+    totalPaid: n(purchaseData?.summary?.totalPaid) > 0 ? n(purchaseData?.summary?.totalPaid) : purchaseSummaryDerived.totalPaid,
+    totalPending: n(purchaseData?.summary?.totalPending) > 0 ? n(purchaseData?.summary?.totalPending) : purchaseSummaryDerived.totalPending,
+  }
+
+  const godownSalesRows = godownSalesData?.sales || []
+  const godownSalesSummary = {
+    totalSales: n(godownSalesData?.summary?.totalSales) > 0 ? n(godownSalesData?.summary?.totalSales) : godownSalesRows.length,
+    totalAmount: n(godownSalesData?.summary?.totalAmount) > 0 ? n(godownSalesData?.summary?.totalAmount) : godownSalesRows.reduce((sum: number, s: any) => sum + n(s.totalAmount || s.amount || s.netAmount), 0),
+    totalBirds: n(godownSalesData?.summary?.totalBirds || godownSalesData?.summary?.numberOfBirds) > 0 ? n(godownSalesData?.summary?.totalBirds || godownSalesData?.summary?.numberOfBirds) : godownSalesRows.reduce((sum: number, s: any) => sum + n(s.numberOfBirds || s.totalBirds || s.birds || s.quantity), 0),
+  }
+
+  const mortalityRows = Array.isArray(mortalityData) ? mortalityData : mortalityData?.records || []
+  const getMortalityFieldValue = (row: any, keys: string[]) => {
+    for (const key of keys) {
+      const value = row?.[key]
+      if (value === null || value === undefined || value === '') continue
+      const parsed = Number(value)
+      if (Number.isFinite(parsed)) return parsed
+    }
+    return 0
+  }
+  const mortalitySummary = {
+    totalOrders: n(mortalityData?.summary?.totalOrders) > 0 ? n(mortalityData?.summary?.totalOrders) : mortalityRows.length,
+    totalMortalityWeight: n(mortalityData?.summary?.totalMortalityWeight) > 0 ? n(mortalityData?.summary?.totalMortalityWeight) : mortalityRows.reduce((sum: number, record: any) => sum + getMortalityFieldValue(record, ['weightOfDeadBirds', 'mortalityWeight', 'deadWeight', 'totalMortalityWeight']), 0),
+    totalMortalityDeduction: n(mortalityData?.summary?.totalMortalityDeduction) > 0 ? n(mortalityData?.summary?.totalMortalityDeduction) : mortalityRows.reduce((sum: number, record: any) => sum + getMortalityFieldValue(record, ['amount', 'mortalityDeduction', 'mortalityAmount', 'deductionAmount']), 0),
+    averageMortalityPerOrder: n(mortalityData?.summary?.averageMortalityPerOrder) > 0 ? n(mortalityData?.summary?.averageMortalityPerOrder) : (mortalityRows.length > 0 ? mortalityRows.reduce((sum: number, record: any) => sum + getMortalityFieldValue(record, ['amount', 'mortalityDeduction', 'mortalityAmount', 'deductionAmount']), 0) / mortalityRows.length : 0),
   }
 
   return (
@@ -413,23 +516,23 @@ export default function ReportsPage() {
                     <div className="grid grid-cols-5 gap-4">
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Total Orders</p>
-                        <p className="text-2xl font-bold">{purchaseData.summary.totalOrders}</p>
+                        <p className="text-2xl font-bold">{purchaseSummary.totalOrders}</p>
                       </div>
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Total Birds</p>
-                        <p className="text-2xl font-bold">{purchaseData.summary.totalBirds || purchaseData.summary.numberOfBirds || 0}</p>
+                        <p className="text-2xl font-bold">{purchaseSummary.totalBirds}</p>
                       </div>
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Total Weight</p>
-                        <p className="text-2xl font-bold">{((parseFloat(purchaseData.summary.totalWeight) || parseFloat(purchaseData.summary.totalQuantity) || 0)).toFixed(2)} kg</p>
+                        <p className="text-2xl font-bold">{purchaseSummary.totalWeight.toFixed(2)} kg</p>
                       </div>
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Total Amount</p>
-                        <p className="text-2xl font-bold">₹{purchaseData.summary.totalNetAmount.toFixed(2)}</p>
+                        <p className="text-2xl font-bold">₹{purchaseSummary.totalAmount.toFixed(2)}</p>
                       </div>
                       <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Paid</p>
-                        <p className="text-2xl font-bold text-green-600">{purchaseData.summary.totalPaid}</p>
+                        <p className="text-sm text-muted-foreground">Paid Orders</p>
+                        <p className="text-2xl font-bold text-green-600">{purchaseSummary.totalPaid}</p>
                       </div>
                     </div>
                     {viewMode === 'table' && (
@@ -453,7 +556,7 @@ export default function ReportsPage() {
                               <TableCell>{purchase.supplierName}</TableCell>
                               <TableCell className="text-right">{purchase.numberOfBirds || purchase.totalBirds || 0}</TableCell>
                               <TableCell className="text-right">{((parseFloat(purchase.totalWeight) || parseFloat(purchase.quantity) || 0)).toFixed(2)} kg</TableCell>
-                              <TableCell className="text-right">₹{parseFloat(purchase.totalAmount || purchase.netAmount).toFixed(2)}</TableCell>
+                              <TableCell className="text-right">₹{parseFloat(purchase.netAmount || purchase.totalAmount || 0).toFixed(2)}</TableCell>
                               <TableCell>
                                 <span className={`px-2 py-1 rounded text-xs ${purchase.purchasePaymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
                                     purchase.purchasePaymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
@@ -517,34 +620,46 @@ export default function ReportsPage() {
               <CardContent>
                 {!salesData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-7 gap-4">
+                    <div className="grid grid-cols-8 gap-4">
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Total Sales</p>
-                        <p className="text-2xl font-bold">{salesData.summary.totalSales}</p>
+                        <p className="text-2xl font-bold">{salesSummary.totalSales}</p>
                       </div>
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Total Birds</p>
-                        <p className="text-2xl font-bold">{salesData.summary.totalBirds || salesData.summary.numberOfBirds || 0}</p>
+                        <p className="text-2xl font-bold">
+                          {salesSummary.totalBirds}
+                        </p>
                       </div>
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Total Weight</p>
-                        <p className="text-2xl font-bold">{((parseFloat(salesData.summary.totalQuantity) || parseFloat(salesData.summary.totalWeight) || 0)).toFixed(2)} kg</p>
+                        <p className="text-2xl font-bold">
+                          {salesSummary.totalWeight.toFixed(2)} kg
+                        </p>
                       </div>
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Revenue</p>
-                        <p className="text-2xl font-bold">₹{salesData.summary.totalNetAmount.toFixed(2)}</p>
+                        <p className="text-2xl font-bold">₹{salesSummary.totalRevenue.toFixed(2)}</p>
+                      </div>
+                      <div className="p-4 border rounded">
+                        <p className="text-sm text-muted-foreground">Total Deductions</p>
+                        <p className="text-2xl font-bold text-red-600">
+                          ₹{salesSummary.totalDeductions.toFixed(2)}
+                        </p>
                       </div>
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Wt Shortage (kg)</p>
-                        <p className="text-2xl font-bold text-orange-600">{salesData.summary.totalWeightShortageKg?.toFixed(2) || '0.00'} kg</p>
+                        <p className="text-2xl font-bold text-orange-600">
+                          {salesSummary.totalWeightShortageKg.toFixed(2)} kg
+                        </p>
                       </div>
                       <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Paid</p>
-                        <p className="text-2xl font-bold text-green-600">{salesData.summary.totalPaid || 0}</p>
+                        <p className="text-sm text-muted-foreground">Paid Orders</p>
+                        <p className="text-2xl font-bold text-green-600">{salesSummary.totalPaid}</p>
                       </div>
                       <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Pending</p>
-                        <p className="text-2xl font-bold text-red-600">{salesData.summary.totalPending || 0}</p>
+                        <p className="text-sm text-muted-foreground">Pending Orders</p>
+                        <p className="text-2xl font-bold text-red-600">{salesSummary.totalPending}</p>
                       </div>
                     </div>
                     {viewMode === 'table' && (
@@ -634,22 +749,18 @@ export default function ReportsPage() {
               <CardContent>
                 {!godownSalesData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Total Sales</p>
-                        <p className="text-2xl font-bold">{godownSalesData.summary.totalSales}</p>
-                      </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Weight Loss</p>
-                        <p className="text-2xl font-bold text-orange-600">{godownSalesData.summary.totalWeightLoss?.toFixed(2) || '0.00'} kg</p>
+                        <p className="text-2xl font-bold">{godownSalesSummary.totalSales}</p>
                       </div>
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Total Amount</p>
-                        <p className="text-2xl font-bold">₹{godownSalesData.summary.totalAmount?.toFixed(2) || '0.00'}</p>
+                        <p className="text-2xl font-bold">₹{godownSalesSummary.totalAmount.toFixed(2)}</p>
                       </div>
                       <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Avg Loss/Sale</p>
-                        <p className="text-2xl font-bold">{godownSalesData.summary.avgWeightLoss?.toFixed(2) || '0.00'} kg</p>
+                        <p className="text-sm text-muted-foreground">Total Birds</p>
+                        <p className="text-2xl font-bold">{godownSalesSummary.totalBirds}</p>
                       </div>
                     </div>
                     {viewMode === 'table' && (
@@ -705,7 +816,7 @@ export default function ReportsPage() {
               <CardHeader>
                 <div className="flex justify-between">
                   <CardTitle>Mortality Report</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => mortalityData && downloadCSV(mortalityData.purchases, 'mortality')}>
+                  <Button variant="outline" size="sm" onClick={() => mortalityData && downloadCSV(Array.isArray(mortalityData) ? mortalityData : mortalityData.records || [], 'mortality')}>
                     <Download className="mr-2" size={16} />CSV
                   </Button>
                 </div>
@@ -713,45 +824,47 @@ export default function ReportsPage() {
               <CardContent>
                 {!mortalityData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-4 gap-4">
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Orders with Mortality</p>
-                        <p className="text-2xl font-bold">{mortalityData.summary.totalOrders}</p>
+                        <p className="text-2xl font-bold">{mortalitySummary.totalOrders}</p>
                       </div>
+                        <div className="p-4 border rounded">
+                          <p className="text-sm text-muted-foreground">Total Mortality Weight</p>
+                          <p className="text-2xl font-bold text-orange-600">{mortalitySummary.totalMortalityWeight.toFixed(2)} kg</p>
+                        </div>
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Total Deduction</p>
-                        <p className="text-2xl font-bold text-red-600">₹{mortalityData.summary.totalMortalityDeduction.toFixed(2)}</p>
+                        <p className="text-2xl font-bold text-red-600">₹{mortalitySummary.totalMortalityDeduction.toFixed(2)}</p>
                       </div>
                       <div className="p-4 border rounded">
                         <p className="text-sm text-muted-foreground">Average per Order</p>
-                        <p className="text-2xl font-bold">₹{mortalityData.summary.averageMortalityPerOrder.toFixed(2)}</p>
+                        <p className="text-2xl font-bold">₹{mortalitySummary.averageMortalityPerOrder.toFixed(2)}</p>
                       </div>
                     </div>
-                    {viewMode === 'table' && mortalityData.purchases.length > 0 && (
+                    {viewMode === 'table' && mortalityRows.length > 0 && (
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Order #</TableHead>
                             <TableHead>Date</TableHead>
-                            <TableHead>Supplier</TableHead>
-                            <TableHead>Weight</TableHead>
-                            <TableHead>Mortality Deduction</TableHead>
+                            <TableHead className="text-right">Birds Died</TableHead>
+                            <TableHead className="text-right">Weight (kg)</TableHead>
+                            <TableHead>Amount</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {mortalityData.purchases.map((purchase: any, i: number) => (
+                          {mortalityRows.map((record: any, i: number) => (
                             <TableRow key={i}>
-                              <TableCell>{purchase.orderNumber}</TableCell>
-                              <TableCell>{new Date(purchase.orderDate).toLocaleDateString()}</TableCell>
-                              <TableCell>{purchase.supplierName}</TableCell>
-                              <TableCell>{parseFloat(purchase.totalWeight).toFixed(2)} kg</TableCell>
-                              <TableCell className="text-red-600">₹{parseFloat(purchase.mortalityDeduction).toFixed(2)}</TableCell>
+                              <TableCell>{new Date(record.purchaseDate || record.mortalityDate || record.createdAt || '').toLocaleDateString()}</TableCell>
+                              <TableCell className="text-right">{getMortalityFieldValue(record, ['numberOfBirdsDied', 'mortalityBirds', 'birdsDied', 'deadBirds', 'totalBirdsDied'])}</TableCell>
+                              <TableCell className="text-right">{getMortalityFieldValue(record, ['weightOfDeadBirds', 'mortalityWeight', 'deadWeight', 'totalMortalityWeight']).toFixed(2)} kg</TableCell>
+                              <TableCell className="text-red-600">₹{getMortalityFieldValue(record, ['amount', 'mortalityDeduction', 'mortalityAmount', 'deductionAmount']).toFixed(2)}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
                       </Table>
                     )}
-                    {mortalityData.purchases.length === 0 && (
+                    {mortalityRows.length === 0 && (
                       <p className="text-center py-8 text-muted-foreground">No mortality data in selected period</p>
                     )}
                   </div>
