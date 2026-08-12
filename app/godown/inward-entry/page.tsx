@@ -246,22 +246,6 @@ export default function GodownInwardPage() {
   }
 
   const handleEdit = async (entry: GodownInward) => {
-    setFormData({
-      entryDate: entry.entryDate,
-      inwardNo: entry.inwardNo || "",
-      purchaseInvoiceNo: entry.purchaseInvoiceNo || "",
-      purchaseBillNo: entry.purchaseInvoiceNo || "",
-      purchaseBillId: "",
-      supplierName: entry.supplierName || "",
-      selectedFarmerId: "",
-      vehicleId: entry.vehicleId || "",
-      numberOfBirds: String(entry.numberOfBirds || ""),
-      averageWeight: String(entry.averageWeight || ""),
-      totalWeight: String(entry.totalWeight || ""),
-      ratePerKg: String(entry.ratePerKg || ""),
-      totalAmount: String(entry.totalAmount || ""),
-      notes: entry.notes || "",
-    })
     setEditingId(entry.id)
     setAllowEditInwardNo(false)
     setShowDialog(true)
@@ -269,10 +253,29 @@ export default function GodownInwardPage() {
     setSelectedCageIds(new Set())
     setCages([emptyCage()])
 
-    // Load existing cage details linked to this inward so they can be edited
     try {
       setLoadingCages(true)
-      let linkedCages = entry.cages
+      const fullEntry = await godownApi.inward.getOne(entry.id).catch(() => entry)
+      const sourceEntry = fullEntry || entry
+
+      setFormData({
+        entryDate: sourceEntry.entryDate,
+        inwardNo: sourceEntry.inwardNo || "",
+        purchaseInvoiceNo: sourceEntry.purchaseInvoiceNo || "",
+        purchaseBillNo: sourceEntry.purchaseInvoiceNo || "",
+        purchaseBillId: purchaseBills.find((b) => b.orderNumber === sourceEntry.purchaseInvoiceNo)?.id || "",
+        supplierName: sourceEntry.supplierName || "",
+        selectedFarmerId: "",
+        vehicleId: sourceEntry.vehicleId || "",
+        numberOfBirds: String(sourceEntry.numberOfBirds || ""),
+        averageWeight: String(sourceEntry.averageWeight || ""),
+        totalWeight: String(sourceEntry.totalWeight || ""),
+        ratePerKg: String(sourceEntry.ratePerKg || ""),
+        totalAmount: String(sourceEntry.totalAmount || ""),
+        notes: sourceEntry.notes || "",
+      })
+
+      let linkedCages = sourceEntry.cages
       if (!linkedCages || linkedCages.length === 0) {
         linkedCages = await purchasesApi.getCagesByInwardId(entry.id)
       }
