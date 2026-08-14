@@ -1,12 +1,19 @@
 'use client'
 
 import React from 'react'
-import Link from 'next/link'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ArrowUpRight, BookOpen, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Building2, Calendar, FileText } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { ArrowUpRight, TrendingUp, TrendingDown, DollarSign, Calendar, FileText } from 'lucide-react'
 import { billingApi } from '@/lib/api'
+
+interface StatementRow {
+  label: string
+  value: number
+  type: string
+  section?: string
+}
 
 interface StatementItem {
   label: string
@@ -16,163 +23,213 @@ interface StatementItem {
   negative?: boolean
   positive?: boolean
   dark?: boolean
+  indent?: boolean
 }
 
 interface StatementSection {
-  section?: string
+  section: string
   items: StatementItem[]
+}
+
+const fmtCurrency = (amount: number) => {
+  const n = Number(amount) || 0
+  const formatted = Math.abs(n).toLocaleString('en-IN')
+  if (n < 0) return `-₹${formatted}`
+  return `₹${formatted}`
 }
 
 const CompanyLedgerReportPage = () => {
   const [data, setData] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
+  const [dateFrom, setDateFrom] = React.useState('')
+  const [dateTo, setDateTo] = React.useState('')
+
+  const fetchReport = React.useCallback(async () => {
+    try {
+      setLoading(true)
+      const res = await billingApi.getCompanyReport(
+        dateFrom || undefined,
+        dateTo || undefined,
+      )
+      setData(res)
+    } catch (err) {
+      console.error(err)
+      setData(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [dateFrom, dateTo])
 
   React.useEffect(() => {
-    billingApi.getCompanyReport().then((res) => {
-      setData(res)
-      setLoading(false)
-    }).catch((err) => {
-      console.error(err)
-      setLoading(false)
-    })
-  }, [])
+    fetchReport()
+  }, [fetchReport])
 
   const summary = data?.summary || { totalRevenue: 0, grossProfit: 0, operatingExpenses: 0, netProfit: 0 }
 
   const detailedStatement: StatementSection[] = data?.detailedStatement?.length
     ? (() => {
-        const rows = data.detailedStatement as Array<{ label: string; value: number; type: string }>
-        const toItem = (row: { label: string; value: number; type: string }): StatementItem => ({
-          label: row.label,
-          amount: row.label === 'Closing Stock (Less)' ? -Math.abs(Number(row.value || 0)) : Number(row.value || 0),
-          bold: ['Total Sales Revenue', 'Cost of Goods Sold', 'Gross Profit', 'Total Operating Expenses', 'Net Profit / Loss'].includes(row.label),
-          highlight: ['Total Sales Revenue', 'Gross Profit', 'Net Profit / Loss'].includes(row.label),
-          positive: row.type === 'income' || (row.type === 'profit' && Number(row.value) >= 0),
-          negative: row.label === 'Closing Stock (Less)' || (row.type === 'profit' && Number(row.value) < 0),
-          dark: row.label === 'Net Profit / Loss',
-        })
+        const rows = data.detailedStatement as StatementRow[]
+        const sectionLabels: Record<string, string> = {
+          REVENUE: 'REVENUE',
+          COGS: 'COST OF GOODS SOLD',
+          OPERATING: 'OPERATING EXPENSES',
+          PROFIT: '',
+        }
 
-        const revenueEnd = rows.findIndex(r => r.label === 'Total Sales Revenue')
-        const grossIdx = rows.findIndex(r => r.label === 'Gross Profit')
-        const opExpStart = grossIdx >= 0 ? grossIdx + 1 : -1
-        const opExpEnd = rows.findIndex(r => r.label === 'Total Operating Expenses')
-        const netIdx = rows.findIndex(r => r.label === 'Net Profit / Loss')
+        const toItem = (row: StatementRow): StatementItem => {
+          const value = Number(row.value) || 0
+          const isDeduction = row.type === 'deduction' || row.label === 'Closing Stock (Less)'
+          const displayAmount = isDeduction ? -Math.abs(value) : value
+          const isLoss = row.type === 'profit' && value < 0
+
+          return {
+            label: row.label,
+            amount: displayAmount,
+            indent: row.label.startsWith('  '),
+            bold: ['Total Sales Revenue', 'Cost of Goods Sold', 'Gross Profit', 'Total Operating Expenses', 'Net Profit / Loss'].includes(row.label),
+            highlight: ['Total Sales Revenue', 'Gross Profit', 'Net Profit / Loss'].includes(row.label),
+            positive: (row.type === 'income' || (row.type === 'profit' && value >= 0)) && !isDeduction,
+            negative: isDeduction || isLoss,
+            dark: row.label === 'Net Profit / Loss',
+          }
+        }
 
         const sections: StatementSection[] = []
-        if (revenueEnd >= 0) {
-          sections.push({ section: 'REVENUE', items: rows.slice(0, revenueEnd + 1).map(toItem) })
+        let currentSection = ''
+        let currentItems: StatementItem[] = []
+
+        const flush = () => {
+          if (currentItems.length) {
+            sections.push({
+              section: sectionLabels[currentSection] ?? currentSection,
+              items: currentItems,
+            })
+            currentItems = []
+          }
         }
-        if (grossIdx >= 0) {
-          sections.push({ section: 'COST OF GOODS SOLD', items: rows.slice(revenueEnd + 1, grossIdx + 1).map(toItem) })
+
+        for (const row of rows) {
+          const section = row.section || 'OTHER'
+          if (section !== currentSection) {
+            flush()
+            currentSection = section
+          }
+          currentItems.push(toItem(row))
         }
-        if (opExpStart >= 0 && opExpEnd >= opExpStart) {
-          sections.push({ section: 'OPERATING EXPENSES', items: rows.slice(opExpStart, opExpEnd + 1).map(toItem) })
-        }
-        if (netIdx >= 0) {
-          sections.push({ section: '', items: rows.slice(netIdx).map(toItem) })
-        }
-        return sections.length ? sections : [{ items: rows.map(toItem) }]
+        flush()
+
+        return sections
       })()
     : []
 
   const keyInsight = {
-    title: data?.keyInsights?.map((k: any) => k.message).join('. ') || 'Loading insights...',
+    title: data?.keyInsights?.map((k: any) => k.message).join('. ') || 'No insights for selected period.',
     netProfitMargin: data?.summary?.totalRevenue ? ((data.summary.netProfit / data.summary.totalRevenue) * 100).toFixed(1) : 0,
     expenseRatio: data?.summary?.totalRevenue ? ((data.summary.operatingExpenses / data.summary.totalRevenue) * 100).toFixed(1) : 0,
   }
 
+  const grossMargin = summary.totalRevenue
+    ? ((summary.grossProfit / summary.totalRevenue) * 100).toFixed(1)
+    : '0.0'
+
+  const dateRangeLabel = dateFrom && dateTo
+    ? `${dateFrom} to ${dateTo}`
+    : dateFrom
+      ? `From ${dateFrom}`
+      : dateTo
+        ? `Up to ${dateTo}`
+        : 'All time'
+
   const auditLog = data?.auditLog ? [
-    { status: 'success', label: `Data Processed (${data.auditLog.dataSources.salesCount} Sales, ${data.auditLog.dataSources.purchasesCount} Purchases)`, user: 'System', time: new Date(data.auditLog.generatedAt).toLocaleString() }
+    {
+      status: 'success',
+      label: `Data Processed (${data.auditLog.dataSources.salesCount} Sales, ${data.auditLog.dataSources.godownSalesCount || 0} Godown Sales, ${data.auditLog.dataSources.purchasesCount} Purchases, ${data.auditLog.dataSources.expensesCount + (data.auditLog.dataSources.godownExpensesCount || 0)} Expenses)`,
+      user: 'System',
+      time: new Date(data.auditLog.generatedAt).toLocaleString(),
+    },
   ] : []
 
-  if (loading) return <DashboardLayout><div className="p-8 text-center text-gray-500">Loading Report Data...</div></DashboardLayout>
+  if (loading && !data) {
+    return <DashboardLayout><div className="p-8 text-center text-gray-500">Loading Report Data...</div></DashboardLayout>
+  }
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
-        {/* Header */}
-        {/* Header Section */}
-<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
-  
-  {/* Left Content */}
-  <div>
-    <h1 className="text-4xl md:text-5xl font-extrabold text-black">
-      Performance Overview
-    </h1>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Performance Overview</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Consolidated Profit & Loss statement{dateRangeLabel !== 'All time' ? ` for ${dateRangeLabel}` : ''}.
+          </p>
+        </div>
 
-    <p className="text-gray-500 text-lg mt-3">
-      Consolidated Profit & Loss statement for the current fiscal year.
-    </p>
-  </div>
+        <Card className="border border-gray-200 p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">From Date</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="pl-10" />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">To Date</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="pl-10" />
+              </div>
+            </div>
+            <div className="sm:col-span-2 flex gap-2">
+              <Button variant="outline" onClick={() => { setDateFrom(''); setDateTo('') }} disabled={!dateFrom && !dateTo}>
+                Clear Dates
+              </Button>
+            </div>
+          </div>
+        </Card>
 
-  {/* Right Toggle */}
-  <div className="bg-gray-100 p-2 rounded-2xl flex items-center gap-2 w-fit">
-    
-    <button className="bg-white shadow-sm px-6 py-3 rounded-xl text-lg font-semibold text-black">
-      YTD 2024
-    </button>
-
-    <button className="px-6 py-3 rounded-xl text-lg font-semibold text-gray-500 hover:bg-white transition">
-      Q1 2024
-    </button>
-  </div>
-</div>
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 ${loading ? 'opacity-60 pointer-events-none' : ''}`}>
           <Card className="border border-gray-200 p-5 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-gray-500">TOTAL REVENUE</CardTitle>
-            </CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-gray-500">TOTAL REVENUE</CardTitle></CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-gray-900">₹{(summary.totalRevenue || 0).toLocaleString('en-IN')}</span>
+                <span className="text-2xl font-bold text-gray-900">{fmtCurrency(summary.totalRevenue || 0)}</span>
                 <TrendingUp className="w-8 h-8 text-green-200" />
               </div>
-              <div className="text-xs text-green-600 mt-1">↑ 12.5% Increase</div>
             </CardContent>
           </Card>
           <Card className="border border-gray-200 p-5 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-gray-500">GROSS PROFIT</CardTitle>
-            </CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-gray-500">GROSS PROFIT</CardTitle></CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-gray-900">₹{(summary.grossProfit || 0).toLocaleString('en-IN')}</span>
+                <span className={`text-2xl font-bold ${summary.grossProfit < 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                  {fmtCurrency(summary.grossProfit || 0)}
+                </span>
                 <ArrowUpRight className="w-8 h-8 text-blue-200" />
               </div>
-              <div className="text-xs text-gray-500 mt-1">63.3% Gross Margin</div>
+              <div className={`text-xs mt-1 ${summary.grossProfit < 0 ? 'text-red-500' : 'text-gray-500'}`}>{grossMargin}% Gross Margin</div>
             </CardContent>
           </Card>
           <Card className="border border-gray-200 p-5 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-gray-500">OP. EXPENSES</CardTitle>
-            </CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-gray-500">OP. EXPENSES</CardTitle></CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-gray-900">₹{(summary.operatingExpenses || 0).toLocaleString('en-IN')}</span>
+                <span className="text-2xl font-bold text-gray-900">{fmtCurrency(summary.operatingExpenses || 0)}</span>
                 <TrendingDown className="w-8 h-8 text-orange-200" />
               </div>
-              <div className="text-xs text-gray-500 mt-1">Managed Efficiently</div>
             </CardContent>
           </Card>
-          <Card className="border border-green-600 bg-green-900/90 p-5 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-white">NET PROFIT (YTD)</CardTitle>
-            </CardHeader>
+          <Card className={`border p-5 shadow-sm ${summary.netProfit >= 0 ? 'border-green-600 bg-green-900/90' : 'border-red-600 bg-red-900/90'}`}>
+            <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-white">NET PROFIT</CardTitle></CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-white">₹{(summary.netProfit || 0).toLocaleString('en-IN')}</span>
-                <DollarSign className="w-8 h-8 text-green-300" />
+                <span className="text-2xl font-bold text-white">{fmtCurrency(summary.netProfit || 0)}</span>
+                <DollarSign className="w-8 h-8 text-white/60" />
               </div>
-              <div className="text-xs text-green-200 mt-1">+ TARGET ACHIEVED</div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Detailed Statement Table */}
+        <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${loading ? 'opacity-60 pointer-events-none' : ''}`}>
           <div className="col-span-2">
             <Card className="border border-gray-200 p-0 shadow-sm">
               <div className="flex items-center justify-between px-6 pt-6 pb-2">
@@ -188,7 +245,9 @@ const CompanyLedgerReportPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {detailedStatement.map((section, idx) => (
+                    {detailedStatement.length === 0 ? (
+                      <tr><td colSpan={2} className="py-8 text-center text-gray-500">No data for selected period</td></tr>
+                    ) : detailedStatement.map((section, idx) => (
                       <React.Fragment key={idx}>
                         {section.section && (
                           <tr className="bg-gray-50">
@@ -196,20 +255,22 @@ const CompanyLedgerReportPage = () => {
                           </tr>
                         )}
                         {section.items.map((item, j) => (
-                          <tr key={j} className={item.highlight ? (item.positive ? 'bg-green-50' : item.dark ? 'bg-gray-900 text-white' : 'bg-gray-100') : ''}>
-                            <td className={
-                              'py-1 px-2 ' +
-                              (item.bold ? 'font-bold ' : '') +
-                              (item.negative ? 'text-red-500 ' : '')
-                            }>{item.label}</td>
-                            <td className={
-                              'py-1 px-2 text-right ' +
-                              (item.bold ? 'font-bold ' : '') +
-                              (item.negative ? 'text-red-500 ' : '') +
-                              (item.positive ? 'text-green-600 ' : '') +
-                              (item.dark ? 'text-white ' : '')
-                            }>
-                              ₹{Math.abs(item.amount || 0).toLocaleString('en-IN')}
+                          <tr key={j} className={
+                            item.highlight
+                              ? item.negative && item.dark
+                                ? 'bg-red-900 text-white'
+                                : item.negative
+                                  ? 'bg-red-50'
+                                  : item.dark
+                                    ? 'bg-gray-900 text-white'
+                                    : 'bg-green-50'
+                              : ''
+                          }>
+                            <td className={`py-1 px-2 ${item.indent ? 'pl-6 text-gray-600' : ''} ${item.bold ? 'font-bold' : ''} ${item.negative ? 'text-red-600' : ''}`}>
+                              {item.label}
+                            </td>
+                            <td className={`py-1 px-2 text-right ${item.bold ? 'font-bold' : ''} ${item.negative ? 'text-red-600' : ''} ${item.positive ? 'text-green-600' : ''} ${item.dark ? 'text-white' : ''}`}>
+                              {fmtCurrency(item.amount)}
                             </td>
                           </tr>
                         ))}
@@ -220,18 +281,14 @@ const CompanyLedgerReportPage = () => {
               </div>
             </Card>
           </div>
-          {/* Side Panel */}
           <div className="flex flex-col gap-6">
-            {/* Key Insight */}
             <Card className="border border-gray-200 p-5 shadow-sm">
-              <div className="mb-2 font-semibold text-gray-800 flex items-center gap-2">
-                <span>Key Insight</span>
-              </div>
+              <div className="mb-2 font-semibold text-gray-800">Key Insight</div>
               <div className="text-gray-600 text-sm mb-4">{keyInsight.title}</div>
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-500">NET PROFIT MARGIN</span>
-                  <span className="font-bold text-green-700">{keyInsight.netProfitMargin}%</span>
+                  <span className={`font-bold ${Number(keyInsight.netProfitMargin) < 0 ? 'text-red-600' : 'text-green-700'}`}>{keyInsight.netProfitMargin}%</span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-500">EXPENSE RATIO</span>
@@ -239,24 +296,17 @@ const CompanyLedgerReportPage = () => {
                 </div>
               </div>
             </Card>
-            {/* Activity Audit Log */}
             <Card className="border border-gray-200 p-5 shadow-sm">
-              <div className="mb-2 font-semibold text-gray-800 flex items-center gap-2">
-                <span>Activity Audit Log</span>
-              </div>
+              <div className="mb-2 font-semibold text-gray-800">Activity Audit Log</div>
               <div className="flex flex-col gap-3">
                 {auditLog.map((log, idx) => (
                   <div key={idx} className="flex items-center gap-2 text-sm">
-                    <span className={
-                      'w-2 h-2 rounded-full ' +
-                      (log.status === 'success' ? 'bg-green-500' : log.status === 'warning' ? 'bg-orange-400' : 'bg-blue-400')
-                    }></span>
+                    <span className="w-2 h-2 rounded-full bg-green-500" />
                     <span className="font-medium text-gray-900">{log.label}</span>
-                    <span className="text-gray-400 ml-auto">{log.user} • {log.time}</span>
+                    <span className="text-gray-400 ml-auto text-xs">{log.time}</span>
                   </div>
                 ))}
               </div>
-              <Button variant="outline" size="sm" className="mt-4 w-full">Full Activity Trail</Button>
             </Card>
           </div>
         </div>

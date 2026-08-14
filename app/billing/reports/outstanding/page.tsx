@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertTriangle, Download, Printer, ChevronLeft, ChevronRight, Calendar, Search } from 'lucide-react'
-import { reportsApi, retailersApi } from '@/lib/api'
+import { reportsApi } from '@/lib/api'
 import { Input } from '@/components/ui/input'
 
 interface RetailerOutstanding {
@@ -28,18 +28,12 @@ const OutstandingReportPage = () => {
   const [sortBy, setSortBy] = useState('outstanding')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const [retailerId, setRetailerId] = useState('all')
   const [paymentStatus, setPaymentStatus] = useState('all')
   const [search, setSearch] = useState('')
-  const [retailers, setRetailers] = useState<any[]>([])
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
+  const [pageSize] = useState(20)
   const [totalItems, setTotalItems] = useState(0)
   const [summary, setSummary] = useState<any>(null)
-
-  useEffect(() => {
-    retailersApi.getActive().then((res) => setRetailers(Array.isArray(res) ? res : [])).catch(() => {})
-  }, [])
 
   const fetchData = async () => {
     try {
@@ -50,7 +44,6 @@ const OutstandingReportPage = () => {
         sortBy,
         startDate: dateFrom || undefined,
         endDate: dateTo || undefined,
-        retailerId: retailerId !== 'all' ? retailerId : undefined,
         paymentStatus: paymentStatus !== 'all' ? paymentStatus : undefined,
         search: search || undefined,
       })
@@ -66,9 +59,9 @@ const OutstandingReportPage = () => {
 
   useEffect(() => {
     fetchData()
-  }, [currentPage, sortBy, dateFrom, dateTo, retailerId, paymentStatus, search])
+  }, [currentPage, sortBy, dateFrom, dateTo, paymentStatus, search])
 
-  const sorted = data // Already sorted by backend
+  const sorted = data
 
   const totalOutstanding = summary?.totalOutstanding || 0
   const totalOverpaid = summary?.totalOverpaid || 0
@@ -139,7 +132,7 @@ const OutstandingReportPage = () => {
         )}
 
         <Card className="border border-gray-200 p-4 no-print">
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">From Date</label>
               <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setCurrentPage(1) }} className="pl-10" /></div>
@@ -147,16 +140,6 @@ const OutstandingReportPage = () => {
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">To Date</label>
               <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setCurrentPage(1) }} className="pl-10" /></div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Retailer</label>
-              <Select value={retailerId} onValueChange={v => { setRetailerId(v); setCurrentPage(1) }}>
-                <SelectTrigger><SelectValue placeholder="All Retailers" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Retailers</SelectItem>
-                  {retailers.map(r => <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">Payment Status</label>
