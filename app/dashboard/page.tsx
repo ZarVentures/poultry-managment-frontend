@@ -26,21 +26,23 @@ const EXPENSE_COLORS: Record<string, string> = {
 const CHART_COLORS = ["#10b981", "#6366f1", "#f59e0b", "#3b82f6", "#8b5cf6", "#ec4899"]
 
 function StatCard({
-  title, value, sub, icon: Icon, color = "text-foreground", trend,
+  title, value, sub, icon: Icon, color = "text-foreground", trend, chipClass = "bg-primary/10 text-primary",
 }: {
   title: string; value: string | number; sub?: string
-  icon: React.ElementType; color?: string; trend?: "up" | "down" | null
+  icon: React.ElementType; color?: string; trend?: "up" | "down" | null; chipClass?: string
 }) {
   return (
-    <Card>
-      <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+    <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5">
+      <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <Icon size={18} className="text-muted-foreground" />
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${chipClass}`}>
+          <Icon size={18} />
+        </span>
       </CardHeader>
       <CardContent>
-        <div className={`text-2xl font-bold ${color}`}>{value}</div>
+        <div className={`text-xl sm:text-2xl font-bold tracking-tight ${color}`}>{value}</div>
         {sub && (
-          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+          <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
             {trend === "up" && <ArrowUpRight size={12} className="text-green-500" />}
             {trend === "down" && <ArrowDownRight size={12} className="text-red-500" />}
             {sub}
@@ -221,9 +223,12 @@ export default function DashboardPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Live overview of your poultry farm</p>
+        <div className="flex items-center gap-4">
+          
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Dashboard</h1>
+            <p className="-mt-2 text-sm text-muted-foreground sm:text-base">Live overview of your poultry farm</p>
+          </div>
         </div>
 
         {/* Date Range Filter */}
@@ -234,12 +239,12 @@ export default function DashboardPage() {
             onDateRangeChange={handleDateRangeChange}
           />
           {(dateRangeStart && dateRangeEnd) && (
-            <span className="text-xs text-muted-foreground bg-blue-50 border border-blue-200 px-2 py-1 rounded">
+            <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
               {dateRangeStart.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} – {dateRangeEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
             </span>
           )}
           {!dateRangeStart && (
-            <span className="text-xs text-muted-foreground">Showing: This Month</span>
+            <span className="rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground">Showing: This Month</span>
           )}
         </div>
 
@@ -252,6 +257,7 @@ export default function DashboardPage() {
             icon={Wallet}
             color="text-green-600"
             trend="up"
+            chipClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
           />
           <StatCard
             title="Total Purchases (This Month)"
@@ -259,6 +265,7 @@ export default function DashboardPage() {
             sub={`${purchasesSummary?.totalOrders || 0} orders`}
             icon={ShoppingCart}
             color="text-red-600"
+            chipClass="bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400"
           />
           <StatCard
             title="Total Expenses (This Month)"
@@ -266,6 +273,7 @@ export default function DashboardPage() {
             sub="All categories"
             icon={IndianRupee}
             color="text-yellow-600"
+            chipClass="bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400"
           />
           <StatCard
             title="Net Profit / Loss"
@@ -274,20 +282,42 @@ export default function DashboardPage() {
             icon={isProfit ? TrendingUp : TrendingDown}
             color={isProfit ? "text-green-600" : "text-red-600"}
             trend={isProfit ? "up" : "down"}
+            chipClass={isProfit
+              ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
+              : "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400"}
           />
         </div>
 
         {/* Row 2 - Master Data Counts */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <StatCard title="Farmers" value={loading ? "..." : farmerCount} sub="Registered" icon={Tractor} />
-          <StatCard title="Retailers" value={loading ? "..." : retailerCount} sub="Registered" icon={Users} />
-          <StatCard title="Active Vehicles" value={loading ? "..." : vehicleCount} sub="Active" icon={Truck} />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <StatCard
+            title="Farmers"
+            value={loading ? "..." : farmerCount}
+            sub="Registered"
+            icon={Tractor}
+            chipClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
+          />
+          <StatCard
+            title="Retailers"
+            value={loading ? "..." : retailerCount}
+            sub="Registered"
+            icon={Users}
+            chipClass="bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400"
+          />
+          <StatCard
+            title="Active Vehicles"
+            value={loading ? "..." : vehicleCount}
+            sub="Active"
+            icon={Truck}
+            chipClass="bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400"
+          />
           <StatCard
             title="Birds Sold"
             value={loading ? "..." : (kpis?.totalBirdsSold || 0).toLocaleString()}
             sub="Total birds this month"
             icon={Bird}
             color="text-blue-600"
+            chipClass="bg-teal-100 text-teal-600 dark:bg-teal-500/15 dark:text-teal-400"
           />
           <StatCard
             title="Birds Mortality"
@@ -299,13 +329,14 @@ export default function DashboardPage() {
             }
             icon={AlertCircle}
             color="text-red-500"
+            chipClass="bg-red-100 text-red-500 dark:bg-red-500/15 dark:text-red-400"
           />
         </div>
 
         {/* Row 3 - Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Monthly Trends */}
-          <Card>
+          <Card className="min-w-0 rounded-2xl">
             <CardHeader>
               <CardTitle>Monthly Trends</CardTitle>
               <CardDescription>Sales, Expenses & Profit over last 6 months</CardDescription>
@@ -317,26 +348,41 @@ export default function DashboardPage() {
                   Expense: { label: "Expenses", color: "#f59e0b" },
                   Profit: { label: "Profit", color: "#6366f1" },
                 }}
-                className="h-72"
+                className="h-64 w-full min-w-0 overflow-hidden sm:h-72"
               >
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartTrends}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis tickFormatter={(v) => `₹${(Number(v) / 1000).toFixed(0)}k`} />
-                    <Tooltip formatter={(v: number) => `₹${v.toLocaleString()}`} />
-                    <Legend />
-                    <Line type="monotone" dataKey="Sale" stroke="#10b981" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="Expense" stroke="#f59e0b" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="Profit" stroke="#6366f1" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
+                <LineChart
+                  data={chartTrends}
+                  margin={{ top: 10, right: 12, bottom: 4, left: 4 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="month"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    minTickGap={12}
+                    interval="preserveStartEnd"
+                    tick={{ fontSize: 11 }}
+                  />
+                  <YAxis
+                    width={44}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => `₹${(Number(v) / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip formatter={(v: number) => `₹${v.toLocaleString()}`} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Line type="monotone" dataKey="Sale" stroke="#10b981" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Expense" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Profit" stroke="#6366f1" strokeWidth={2} dot={false} />
+                </LineChart>
               </ChartContainer>
             </CardContent>
           </Card>
 
           {/* Expense Breakdown */}
-          <Card>
+          <Card className="rounded-2xl">
             <CardHeader>
               <CardTitle>Expense Breakdown</CardTitle>
               <CardDescription>By category this month</CardDescription>
@@ -347,18 +393,20 @@ export default function DashboardPage() {
                   No expense data for this month
                 </div>
               ) : (
-                <div className="flex gap-4 items-center h-72">
-                  <ResponsiveContainer width="55%" height="100%">
-                    <PieChart>
-                      <Pie data={expensePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={false}>
-                        {expensePieData.map((entry, i) => (
-                          <Cell key={entry.name} fill={EXPENSE_COLORS[entry.name] || CHART_COLORS[i % CHART_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(v: number) => `₹${v.toLocaleString()}`} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="flex-1 space-y-2">
+                <div className="flex flex-col sm:flex-row gap-4 items-center">
+                  <div className="w-full sm:w-[55%] h-48 sm:h-72 shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={expensePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={false}>
+                          {expensePieData.map((entry, i) => (
+                            <Cell key={entry.name} fill={EXPENSE_COLORS[entry.name] || CHART_COLORS[i % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v: number) => `₹${v.toLocaleString()}`} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex-1 space-y-2 w-full sm:w-auto min-w-0">
                     {expensePieData.map((e, i) => (
                       <div key={e.name} className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-1.5">
@@ -378,28 +426,42 @@ export default function DashboardPage() {
         {/* Row 4 - Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Sales */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Sales</CardTitle>
-              <CardDescription>Last 5 transactions</CardDescription>
+          <Card className="rounded-2xl">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-3 pl-1">
+  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+    <TrendingUp size={18} />
+  </span>
+
+  <div>
+    <CardTitle className="text-base font-semibold">Recent Sales</CardTitle>
+    <CardDescription>Last 5 transactions</CardDescription>
+  </div>
+</div>
             </CardHeader>
             <CardContent>
               {recentSales.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">No sales yet</p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-1.5">
                   {recentSales.map((sale) => (
-                    <div key={sale.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                      <div>
-                        <p className="text-sm font-medium">{sale.customerName || sale.invoiceNumber}</p>
-                        <p className="text-xs text-muted-foreground">{sale.saleDate?.split("T")[0]} · {sale.productType}</p>
+                    <div
+                      key={sale.id}
+                      className="group flex items-center gap-3 rounded-xl border-b border-border/60 px-2 py-2.5 transition-colors last:border-0 last:pb-1 hover:bg-emerald-50/60 dark:hover:bg-emerald-500/5"
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                        <TrendingUp size={16} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">{sale.customerName || sale.invoiceNumber}</p>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{sale.saleDate?.split("T")[0]} · {sale.productType}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-green-600">₹{Number(sale.totalAmount || 0).toLocaleString()}</p>
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                          sale.paymentStatus === "paid" ? "bg-green-100 text-green-700" :
-                          sale.paymentStatus === "partial" ? "bg-yellow-100 text-yellow-700" :
-                          "bg-red-100 text-red-700"
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">₹{Number(sale.totalAmount || 0).toLocaleString()}</p>
+                        <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          sale.paymentStatus === "paid" ? "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400" :
+                          sale.paymentStatus === "partial" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-400" :
+                          "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400"
                         }`}>{sale.paymentStatus}</span>
                       </div>
                     </div>
@@ -410,28 +472,41 @@ export default function DashboardPage() {
           </Card>
 
           {/* Recent Purchases */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Purchases</CardTitle>
-              <CardDescription>Last 5 purchase orders</CardDescription>
+          <Card className="rounded-2xl">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-3">
+                <span className="ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400">
+  <Package size={18} />
+</span>
+                <div>
+                  <CardTitle className="text-base font-semibold">Recent Purchases</CardTitle>
+                  <CardDescription>Last 5 purchase orders</CardDescription>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {recentPurchases.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">No purchases yet</p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-1.5">
                   {recentPurchases.map((po) => (
-                    <div key={po.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                      <div>
-                        <p className="text-sm font-medium">{po.supplierName || po.orderNumber}</p>
-                        <p className="text-xs text-muted-foreground">{po.orderDate?.split("T")[0]} · {po.orderNumber}</p>
+                    <div
+                      key={po.id}
+                      className="group flex items-center gap-3 rounded-xl border-b border-border/60 px-2 py-2.5 transition-colors last:border-0 last:pb-1 hover:bg-red-50/60 dark:hover:bg-red-500/5"
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400">
+                        <Package size={16} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">{po.supplierName || po.orderNumber}</p>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{po.orderDate?.split("T")[0]} · {po.orderNumber}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-red-600">₹{Number(po.totalAmount || 0).toLocaleString()}</p>
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                          po.status === "received" ? "bg-green-100 text-green-700" :
-                          po.status === "cancelled" ? "bg-red-100 text-red-700" :
-                          "bg-yellow-100 text-yellow-700"
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm font-semibold tabular-nums text-red-600 dark:text-red-400">₹{Number(po.totalAmount || 0).toLocaleString()}</p>
+                        <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          po.status === "received" ? "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400" :
+                          po.status === "cancelled" ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400" :
+                          "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-400"
                         }`}>{po.status}</span>
                       </div>
                     </div>

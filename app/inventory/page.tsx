@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Package, Bird, FileText, Calendar, AlertCircle, Percent, ChevronLeft, ChevronRight } from "lucide-react"
+import { Bird, FileText, ChevronLeft, ChevronRight, Warehouse, Gauge, PackagePlus, PackageCheck } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -101,82 +101,224 @@ export default function InventoryPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Godown Overview</h1>
-            <p className="text-muted-foreground">Current status and capacity</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Godown Overview</h1>
+              <p className="-mt-2 text-sm text-muted-foreground">Current status and capacity</p>
+            </div>
           </div>
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="self-start sm:self-auto">
             <Link href="/godown/stock-ledger">View Stock Ledger</Link>
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          <Card className="p-4">
-            <p className="text-sm font-medium text-muted-foreground">Capacity</p>
-            <div className="text-2xl font-bold">{capacity}</div>
-            <div className="flex gap-1 mt-2">
-              <Input type="number" size={1} value={capacityInput} onChange={e => setCapacityInput(e.target.value)} className="h-7 text-xs" />
-              <Button size="sm" className="h-7 text-xs" onClick={handleSaveCapacity}>Set</Button>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 [&>*]:break-words">
+          <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium text-muted-foreground">Capacity</p>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                <Warehouse size={17} />
+              </span>
             </div>
-          </Card>
-          <Card className="p-4">
-            <p className="text-sm font-medium text-muted-foreground">Available Birds</p>
-            <div className="text-2xl font-bold">{totalBirdsAvailable}</div>
-            <p className="text-xs text-muted-foreground">In Stock</p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-sm font-medium text-muted-foreground">Utilization</p>
-            <div className="text-2xl font-bold">{capacityUtilizationPercent}%</div>
-            <div className="w-full bg-gray-200 h-1.5 rounded-full mt-2"><div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${capacityUtilizationPercent}%` }} /></div>
-          </Card>
-          <Card className="p-4">
-            <p className="text-sm font-medium text-muted-foreground">Total Inward</p>
-            <div className="text-2xl font-bold">{summary?.totalInward || 0}</div>
-          </Card>
-          <Card className="p-4">
-            <p className="text-sm font-medium text-muted-foreground">Total Sold</p>
-            <div className="text-2xl font-bold">{summary?.totalSold || 0}</div>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <div className="flex flex-wrap justify-between items-center gap-2">
-              <CardTitle className="flex items-center gap-2"><FileText size={20} />Purchase Invoice Stock</CardTitle>
-              <DateRangeFilter startDate={dateRangeStart} endDate={dateRangeEnd} onDateRangeChange={(s, e) => { setDateRangeStart(s); setDateRangeEnd(e); setCurrentPage(1) }} />
+            <div className="mt-3 text-2xl font-bold tracking-tight">{capacity.toLocaleString()}</div>
+            <div className="mt-auto flex gap-2 pt-4">
+              <Input type="number" value={capacityInput} onChange={e => setCapacityInput(e.target.value)} className="h-9 min-w-0 flex-1 text-sm" placeholder={String(DEFAULT_CAPACITY)} />
+              <Button onClick={handleSaveCapacity} className="h-9 shrink-0">Set</Button>
             </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Invoice No</TableHead><TableHead>Date</TableHead><TableHead>Birds</TableHead><TableHead>Weight</TableHead><TableHead>Supplier</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredInwardEntries.map(e => (
-                  <TableRow key={e.id}>
-                    <TableCell className="font-bold">{e.purchaseInvoiceNo}</TableCell>
-                    <TableCell>{new Date(e.entryDate).toLocaleDateString()}</TableCell>
-                    <TableCell>{e.numberOfBirds}</TableCell>
-                    <TableCell>{e.totalWeight}kg</TableCell>
-                    <TableCell>{e.supplierName || "-"}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-          {totalInwardItems > pageSize && (
-            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t">
-              <div className="text-sm text-gray-500">Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalInwardItems)} of {totalInwardItems}</div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1 || loading}><ChevronLeft size={16} /></Button>
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage * pageSize >= totalInwardItems || loading}><ChevronRight size={16} /></Button>
+          </div>
+          <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium text-muted-foreground">Available Birds</p>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-600 dark:bg-teal-500/15 dark:text-teal-400">
+                <Bird size={17} />
+              </span>
+            </div>
+            <div className="mt-3 text-2xl font-bold tracking-tight">{totalBirdsAvailable.toLocaleString()}</div>
+            <p className="mt-auto pt-4 text-xs text-muted-foreground">In Stock</p>
+          </div>
+          <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium text-muted-foreground">Utilization</p>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
+                <Gauge size={17} />
+              </span>
+            </div>
+            <div className="mt-3 text-2xl font-bold tracking-tight">{capacityUtilizationPercent}%</div>
+            <div className="mt-auto pt-4">
+              <div className="w-full h-2 rounded-full bg-muted">
+                <div className="h-2 rounded-full bg-emerald-500 transition-all" style={{ width: `${capacityUtilizationPercent}%` }} />
               </div>
             </div>
+          </div>
+          <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium text-muted-foreground">Total Inward</p>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400">
+                <PackagePlus size={17} />
+              </span>
+            </div>
+            <div className="mt-3 text-2xl font-bold tracking-tight">{(summary?.totalInward ?? 0).toLocaleString()}</div>
+            <p className="mt-auto pt-4 text-xs text-muted-foreground">Total birds in</p>
+          </div>
+          <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium text-muted-foreground">Total Sold</p>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
+                <PackageCheck size={17} />
+              </span>
+            </div>
+            <div className="mt-3 text-2xl font-bold tracking-tight">{(summary?.totalSold ?? 0).toLocaleString()}</div>
+            <p className="mt-auto pt-4 text-xs text-muted-foreground">Total birds sold</p>
+          </div>
+        </div>
+
+        <Card className="w-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+  <CardHeader className="border-b border-border px-4 py-4 sm:px-6">
+    <div className="flex w-full flex-col gap-4 lg:flex-row lg:items-center lg:gap-20">
+      
+      {/* Title */}
+      <CardTitle className="flex items-center gap-3 text-lg font-semibold">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+          <FileText size={18} />
+        </span>
+
+        <span className="leading-tight">
+          Purchase Invoice Stock
+        </span>
+      </CardTitle>
+
+      {/* Date Range - Right Side */}
+      <div className="flex w-full justify-start lg:w-auto lg:justify-end">
+        <DateRangeFilter
+          startDate={dateRangeStart}
+          endDate={dateRangeEnd}
+          onDateRangeChange={(s, e) => {
+            setDateRangeStart(s)
+            setDateRangeEnd(e)
+            setCurrentPage(1)
+          }}
+        />
+      </div>
+    </div>
+  </CardHeader>
+
+  <CardContent className="p-0">
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow className="border-b bg-muted/40 hover:bg-muted/40">
+            <TableHead className="whitespace-nowrap px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
+              Invoice No
+            </TableHead>
+
+            <TableHead className="whitespace-nowrap px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Date
+            </TableHead>
+
+            <TableHead className="whitespace-nowrap px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Birds
+            </TableHead>
+
+            <TableHead className="whitespace-nowrap px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Weight
+            </TableHead>
+
+            <TableHead className="whitespace-nowrap px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Supplier
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+
+        <TableBody>
+          {filteredInwardEntries.length === 0 ? (
+            <TableRow className="hover:bg-transparent">
+              <TableCell
+                colSpan={5}
+                className="h-28 px-4 text-center text-sm text-muted-foreground sm:px-6"
+              >
+                No invoice data found
+              </TableCell>
+            </TableRow>
+          ) : (
+            filteredInwardEntries.map((e) => (
+              <TableRow
+                key={e.id}
+                className="border-b last:border-0 transition-colors hover:bg-muted/30"
+              >
+                <TableCell className="px-4 py-3.5 font-semibold text-foreground sm:px-6">
+                  {e.purchaseInvoiceNo}
+                </TableCell>
+
+                <TableCell className="whitespace-nowrap px-4 py-3.5 text-sm text-muted-foreground">
+                  {new Date(e.entryDate).toLocaleDateString()}
+                </TableCell>
+
+                <TableCell className="px-4 py-3.5 font-medium tabular-nums text-foreground">
+                  {e.numberOfBirds}
+                </TableCell>
+
+                <TableCell className="px-4 py-3.5 font-medium tabular-nums text-muted-foreground">
+                  {e.totalWeight} kg
+                </TableCell>
+
+                <TableCell className="max-w-[16rem] truncate px-4 py-3.5 text-foreground">
+                  {e.supplierName || "-"}
+                </TableCell>
+              </TableRow>
+            ))
           )}
-        </Card>
+        </TableBody>
+      </Table>
+    </div>
+  </CardContent>
+
+  {totalInwardItems > pageSize && (
+    <div className="flex flex-col gap-3 border-t bg-muted/30 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      
+      <div className="text-sm text-muted-foreground">
+        Showing{" "}
+        <span className="font-medium text-foreground">
+          {(currentPage - 1) * pageSize + 1}
+        </span>{" "}
+        to{" "}
+        <span className="font-medium text-foreground">
+          {Math.min(currentPage * pageSize, totalInwardItems)}
+        </span>{" "}
+        of{" "}
+        <span className="font-medium text-foreground">
+          {totalInwardItems}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-9 w-9 p-0"
+          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+          disabled={currentPage === 1 || loading}
+          aria-label="Previous page"
+        >
+          <ChevronLeft size={16} />
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-9 w-9 p-0"
+          onClick={() => setCurrentPage((p) => p + 1)}
+          disabled={currentPage * pageSize >= totalInwardItems || loading}
+          aria-label="Next page"
+        >
+          <ChevronRight size={16} />
+        </Button>
+      </div>
+
+    </div>
+  )}
+</Card>
       </div>
     </DashboardLayout>
   )

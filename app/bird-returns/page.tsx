@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, CheckCircle, XCircle, Clock, Package, AlertTriangle } from "lucide-react"
+import { Plus, Edit2, Trash2, CheckCircle, XCircle, Clock, Package, AlertTriangle, RotateCcw, CheckCircle2, PackageCheck, Bird, IndianRupee } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
@@ -253,7 +253,7 @@ export default function BirdReturnsPage() {
           retailerId: fullSale.retailerId || "",
           customerName: fullSale.customerName,
         }))
-        toast.success(`Loaded godown sale details! Rate: Γé╣${rate.toFixed(2)}/kg`)
+        toast.success(`Loaded godown sale details! Rate: ₹${rate.toFixed(2)}/kg`)
       }
     } catch (error) {
       console.error("Failed to load full sale details:", error)
@@ -338,19 +338,21 @@ export default function BirdReturnsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Godown Bird Returns & Tracking</h1>
-            <p className="text-muted-foreground">Manage returned birds and track refunds</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Godown Bird Returns & Tracking</h1>
+              <p className="mt-0.5 text-sm text-muted-foreground">Manage returned birds and track refunds</p>
+            </div>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}>
-                <Plus className="mr-2" size={20} />
+              <Button onClick={resetForm} className="shrink-0 self-start sm:self-auto">
+                <Plus className="mr-0" size={20} />
                 Record Return
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" aria-describedby="dialog-description">
+            <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-xl lg:max-w-3xl max-h-[90vh] overflow-y-auto" aria-describedby="dialog-description">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Edit Return" : "Record Bird Return"}</DialogTitle>
                 <p id="dialog-description" className="sr-only">
@@ -358,7 +360,7 @@ export default function BirdReturnsPage() {
                 </p>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Return Date *</Label>
                     <DatePicker
@@ -397,7 +399,7 @@ export default function BirdReturnsPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Number of Birds Returned *</Label>
                     <Input
@@ -452,9 +454,9 @@ export default function BirdReturnsPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Refund Amount (Γé╣)</Label>
+                    <Label>Refund Amount (₹)</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -464,7 +466,7 @@ export default function BirdReturnsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Adjustment Amount (Γé╣)</Label>
+                    <Label>Adjustment Amount (₹)</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -502,53 +504,71 @@ export default function BirdReturnsPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-5">
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0 px-3 sm:px-6">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Returns</CardTitle>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <RotateCcw size={18} />
+              </span>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold whitespace-nowrap sm:text-2xl">{stats.total}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0 px-3 sm:px-6">
               <CardTitle className="text-sm font-medium text-muted-foreground">Pending</CardTitle>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-yellow-100 text-yellow-600 dark:bg-yellow-500/15 dark:text-yellow-400">
+                <Clock size={18} />
+              </span>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold text-yellow-600 whitespace-nowrap sm:text-2xl">{stats.pending}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0 px-3 sm:px-6">
               <CardTitle className="text-sm font-medium text-muted-foreground">Approved</CardTitle>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
+                <CheckCircle2 size={18} />
+              </span>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{stats.approved}</div>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold text-blue-600 whitespace-nowrap sm:text-2xl">{stats.approved}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0 px-3 sm:px-6">
               <CardTitle className="text-sm font-medium text-muted-foreground">Processed</CardTitle>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-400">
+                <PackageCheck size={18} />
+              </span>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.processed}</div>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold text-green-600 whitespace-nowrap sm:text-2xl">{stats.processed}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0 px-3 sm:px-6">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Birds</CardTitle>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                <Bird size={18} />
+              </span>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalBirds}</div>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold whitespace-nowrap sm:text-2xl">{stats.totalBirds}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0 px-3 sm:px-6">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Refund</CardTitle>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
+                <IndianRupee size={18} />
+              </span>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">Γé╣{stats.totalRefund.toFixed(2)}</div>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold whitespace-nowrap sm:text-2xl">₹{stats.totalRefund.toFixed(2)}</div>
             </CardContent>
           </Card>
         </div>
@@ -565,7 +585,7 @@ export default function BirdReturnsPage() {
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -600,7 +620,7 @@ export default function BirdReturnsPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <Table>
+                <Table className="min-w-[820px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Return #</TableHead>
@@ -642,7 +662,7 @@ export default function BirdReturnsPage() {
                             <span className="text-sm font-medium">{getReasonLabel(birdReturn.returnReason)}</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right">Γé╣{Number(birdReturn.refundAmount || 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">₹{Number(birdReturn.refundAmount || 0).toFixed(2)}</TableCell>
                         <TableCell>{getStatusBadge(birdReturn.status)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">

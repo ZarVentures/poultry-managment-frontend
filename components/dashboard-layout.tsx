@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useDevMode } from "@/lib/dev-mode"
 import { setDevLogger } from "@/lib/api"
 import { PermissionsProvider, usePermissions } from "@/lib/permissions"
+import { useIsMobile } from "@/hooks/use-mobile"
 import {
   BarChart3, Users, Package, ShoppingCart, TrendingUp,
   LogOut, Menu, X, Home, Settings, ChevronDown, Users2,
@@ -71,6 +72,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
 function DashboardLayoutInner({ children, user }: { children: React.ReactNode; user: User }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [godownOpen, setGodownOpen] = useState(false)
   const [billingOpen, setBillingOpen] = useState(false)
   const [masterEntriesOpen, setMasterEntriesOpen] = useState(false)
@@ -78,6 +80,7 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
   const [salesOpen, setSalesOpen] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
+  const isMobile = useIsMobile()
   const { isDevMode, logs, clearLogs, addLog } = useDevMode()
   const [showDevPanel, setShowDevPanel] = useState(false)
   const { canRead, loading: permissionsLoading, isAdmin } = usePermissions()
@@ -86,6 +89,24 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
     setDevLogger(addLog)
     return () => setDevLogger(null)
   }, [addLog])
+
+  // Keep the sidebar fully expanded on mobile and reset the drawer when switching breakpoints
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(true)
+      setMobileSidebarOpen(false)
+    }
+  }, [isMobile])
+
+  // Close the mobile drawer on navigation
+  useEffect(() => {
+    if (isMobile) setMobileSidebarOpen(false)
+  }, [pathname, isMobile])
+
+  const toggleSidebar = () => {
+    if (isMobile) setMobileSidebarOpen((open) => !open)
+    else setSidebarOpen((open) => !open)
+  }
 
   // Block direct URL access when Settings matrix denies View
   useEffect(() => {
@@ -117,16 +138,31 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
   const showUsers = canRead("users")
   const showSettings = canRead("settings") || isAdmin
 
+  const isGodownActive = pathname.startsWith("/godown") || pathname.startsWith("/inventory") || pathname.startsWith("/bird-returns");
+  const isPurchasesActive = pathname.startsWith("/purchases");
+  const isSalesActive = pathname.startsWith("/sales");
+  const isMasterActive = pathname.startsWith("/farmers") || pathname.startsWith("/retailers") || pathname.startsWith("/vehicles");
+  const isBillingActive = pathname.startsWith("/billing");
+
   return (
     <div className="flex h-screen bg-background">
-      <aside className={`${sidebarOpen ? "w-64" : "w-20"} bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col`}>
-        <div className="p-6 border-b border-sidebar-border">
-          <div className="flex items-center justify-between">
-            {sidebarOpen && <h1 className="text-xl font-bold text-sidebar-foreground">🐔 Poultry Sathi</h1>}
-            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)} className="text-sidebar-foreground">
-              <Menu size={20} />
-            </Button>
-          </div>
+      {isMobile && mobileSidebarOpen && (
+        <div className="fixed inset-0 z-30 bg-black/50 md:hidden" onClick={() => setMobileSidebarOpen(false)} />
+      )}
+      <aside
+        className={[
+          "bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300",
+          "fixed inset-y-0 left-0 z-40 w-64",
+          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full",
+          "md:relative md:inset-auto md:translate-x-0",
+          sidebarOpen ? "md:w-64" : "md:w-20",
+        ].join(" ")}
+      >
+        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
+          {sidebarOpen && <h1 className="truncate text-xl font-bold text-sidebar-foreground">🐔 Poultry Sathi</h1>}
+          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="shrink-0 text-sidebar-foreground">
+            {isMobile ? (mobileSidebarOpen ? <X size={20} /> : <Menu size={20} />) : <Menu size={20} />}
+          </Button>
         </div>
 
         <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
@@ -138,7 +174,7 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
             <div className="space-y-1">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setGodownOpen(!godownOpen)}>
+                  <Button variant="ghost" className={`w-full justify-start ${isGodownActive ? "bg-[#6EE7B7] text-[#1F2937] hover:bg-[#5BC9A0]" : "text-sidebar-foreground hover:!bg-sidebar-accent hover:!text-sidebar-accent-foreground"}`} onClick={() => setGodownOpen(!godownOpen)}>
                     <Package size={20} />
                     {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Godown</span><ChevronDown size={16} className={`transition-transform ${godownOpen ? "rotate-180" : ""}`} /></>)}
                   </Button>
@@ -161,7 +197,7 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
             <div className="space-y-1">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setPurchasesOpen(!purchasesOpen)}>
+                  <Button variant="ghost" className={`w-full justify-start ${isPurchasesActive ? "bg-[#6EE7B7] text-[#1F2937] hover:bg-[#5BC9A0]" : "text-sidebar-foreground hover:!bg-sidebar-accent hover:!text-sidebar-accent-foreground"}`} onClick={() => setPurchasesOpen(!purchasesOpen)}>
                     <ShoppingCart size={20} />
                     {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Purchases</span><ChevronDown size={16} className={`transition-transform ${purchasesOpen ? "rotate-180" : ""}`} /></>)}
                   </Button>
@@ -181,7 +217,7 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
             <div className="space-y-1">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setSalesOpen(!salesOpen)}>
+                  <Button variant="ghost" className={`w-full justify-start ${isSalesActive ? "bg-[#6EE7B7] text-[#1F2937] hover:bg-[#5BC9A0]" : "text-sidebar-foreground hover:!bg-sidebar-accent hover:!text-sidebar-accent-foreground"}`} onClick={() => setSalesOpen(!salesOpen)}>
                     <TrendingUp size={20} />
                     {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Sales</span><ChevronDown size={16} className={`transition-transform ${salesOpen ? "rotate-180" : ""}`} /></>)}
                   </Button>
@@ -210,7 +246,7 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
             <div className="space-y-1">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setMasterEntriesOpen(!masterEntriesOpen)}>
+                  <Button variant="ghost" className={`w-full justify-start ${isMasterActive ? "bg-[#6EE7B7] text-[#1F2937] hover:bg-[#5BC9A0]" : "text-sidebar-foreground hover:!bg-sidebar-accent hover:!text-sidebar-accent-foreground"}`} onClick={() => setMasterEntriesOpen(!masterEntriesOpen)}>
                     <Users2 size={20} />
                     {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Master Entries</span><ChevronDown size={16} className={`transition-transform ${masterEntriesOpen ? "rotate-180" : ""}`} /></>)}
                   </Button>
@@ -238,7 +274,7 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
             <div className="space-y-1">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setBillingOpen(!billingOpen)}>
+                  <Button variant="ghost" className={`w-full justify-start ${isBillingActive ? "bg-[#6EE7B7] text-[#1F2937] hover:bg-[#5BC9A0]" : "text-sidebar-foreground hover:!bg-sidebar-accent hover:!text-sidebar-accent-foreground"}`} onClick={() => setBillingOpen(!billingOpen)}>
                     <CreditCard size={20} />
                     {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Billing</span><ChevronDown size={16} className={`transition-transform ${billingOpen ? "rotate-180" : ""}`} /></>)}
                   </Button>
@@ -277,7 +313,7 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
         <div className="border-t border-sidebar-border p-3">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={handleLogout}>
+              <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:!bg-sidebar-accent hover:!text-sidebar-accent-foreground" onClick={handleLogout}>
                 <LogOut size={20} />
                 {sidebarOpen && <span className="ml-2">Logout</span>}
               </Button>
@@ -290,14 +326,24 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
       <div
         className="flex-1 flex flex-col overflow-hidden"
         onClick={() => {
-          if (sidebarOpen) setSidebarOpen(false)
+          if (isMobile && mobileSidebarOpen) setMobileSidebarOpen(false)
         }}
       >
-        <header className=" bg-blue-600 bg-card border-b border-border px-6 py-4 flex justify-between items-center relative ">
-          <h2 className="text-lg font-semibold text-foreground  px-4 py-2 rounded-md">Welcome, {user.email}</h2>
+        <header className="relative flex h-16 items-center justify-between gap-3 border-b border-border bg-card px-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen(true)}
+              aria-label="Open menu"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-foreground md:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <h2 className="truncate text-base font-semibold text-foreground sm:text-lg">Welcome, {user.name}</h2>
+          </div>
 
           {IS_STAGING && (
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+            <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-2">
               <div className="flex items-center gap-2 bg-green-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-md tracking-wide">
                 <span className="w-2 h-2 rounded-full bg-white animate-pulse inline-block" />
                 STAGING ENVIRONMENT
@@ -311,8 +357,8 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
             </div>
           )}
 
-          <div className="flex items-center gap-4">
-            <div className="text-sm text-muted-foreground">Role: {user.role}</div>
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="max-w-28 truncate text-xs text-muted-foreground sm:max-w-none sm:text-sm">Role: {user.role}</div>
           </div>
         </header>
 
@@ -324,7 +370,7 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.18, ease: "easeInOut" }}
-              className="container mx-auto p-6"
+              className="container mx-auto p-4 sm:p-6"
             >
               {children}
             </motion.div>
@@ -339,7 +385,7 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
             {showDevPanel ? "Hide" : "API Logs"} {logs.length > 0 && `(${logs.length})`}
           </Button>
           {showDevPanel && (
-            <div className="absolute bottom-10 right-0 w-[600px] max-h-[70vh] bg-gray-950 text-green-400 rounded-xl shadow-2xl border border-purple-700 flex flex-col overflow-hidden">
+            <div className="absolute bottom-10 right-0 w-[calc(100vw-2rem)] sm:w-[600px] max-h-[70vh] bg-gray-950 text-green-400 rounded-xl shadow-2xl border border-purple-700 flex flex-col overflow-hidden">
               <div className="flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-purple-700">
                 <span className="text-xs font-bold text-purple-300 flex items-center gap-1">
                   <Terminal size={12} /> DEV MODE — API Request Log
@@ -392,9 +438,11 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
 function SidebarLink({ href, icon: Icon, label, open, isSubItem = false, target }: {
   href: string; icon: React.ComponentType<{ size: number }>; label: string; open: boolean; isSubItem?: boolean; target?: string
 }) {
+  const pathname = usePathname();
+  const isActive = pathname === href || pathname === href + "/";
   const isExternal = href.startsWith('http://') || href.startsWith('https://');
   const buttonContent = (
-    <Button variant="ghost" className={`w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent ${isSubItem ? "pl-8 text-sm" : ""}`}>
+    <Button variant="ghost" className={`w-full justify-start ${isActive ? "bg-[#6EE7B7] text-[#1F2937] hover:bg-[#5BC9A0]" : "text-sidebar-foreground hover:!bg-sidebar-accent hover:!text-sidebar-accent-foreground"} ${isSubItem ? "pl-8 text-sm" : ""}`}>
       <Icon size={20} />
       {open && <span className="ml-2">{label}</span>}
     </Button>

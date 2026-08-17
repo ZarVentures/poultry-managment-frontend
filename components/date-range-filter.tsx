@@ -50,25 +50,25 @@ export function DateRangeFilter({ startDate, endDate, onDateRangeChange }: DateR
   }
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
       <Label className="text-sm font-medium whitespace-nowrap">Date Range:</Label>
-      <div className="flex items-center gap-2">
+      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
         <RangePicker
           value={value}
           onChange={handleChange}
           format="DD-MMM-YYYY"
           disabledDate={disabledDate}
-          popupClassName="no-calendar-shadow"
+          classNames={{ popup: { root: "no-calendar-shadow" } }}
           className="premium-datepicker h-9"
         />
-        <Button variant="outline" size="sm" onClick={handleThisMonth} className="h-9 text-xs">
+        <Button variant="outline" size="sm" onClick={handleThisMonth} className="ml-2 h-9 rounded-full px-3.5 text-xs">
           This Month
         </Button>
-        <Button variant="outline" size="sm" onClick={handleLastMonth} className="h-9 text-xs">
+        <Button variant="outline" size="sm" onClick={handleLastMonth} className="h-9 rounded-full px-3.5 text-xs">
           Last Month
         </Button>
         {(startDate || endDate) && (
-          <Button variant="ghost" size="sm" onClick={handleClear} className="h-9 px-2">
+          <Button variant="outline" size="icon" onClick={handleClear} className="rounded-full" aria-label="Clear date range">
             <X className="h-4 w-4" />
           </Button>
         )}

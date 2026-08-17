@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X, Printer, Eye } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Printer, Eye, PackagePlus, Bird, Scale, IndianRupee } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
@@ -543,6 +543,12 @@ export default function GodownInwardPage() {
             .label { font-size: 9px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.08em; }
             .footer-row { display: flex; justify-content: center; align-items: center; margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 10px; }
             .thank-you { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #111; }
+            @media (max-width: 640px) {
+              .header-row { flex-direction: column; align-items: stretch; }
+              .invoice-meta { text-align: left; min-width: 0; }
+              .info-grid, .bottom-grid { grid-template-columns: 1fr; }
+              .signature-row { flex-direction: column; }
+            }
             @media print { body { background: #fff; } .invoice-shell { box-shadow: none; border: 1px solid #ddd; } }
           </style>
         </head>
@@ -550,12 +556,39 @@ export default function GodownInwardPage() {
       </html>
     `
 
-    const printWindow = window.open('', '_blank')
-    if (printWindow) {
-      printWindow.document.write(printContent)
-      printWindow.document.close()
-      printWindow.onload = () => printWindow.print()
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'fixed'
+    iframe.style.right = '0'
+    iframe.style.bottom = '0'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = '0'
+    iframe.setAttribute('aria-hidden', 'true')
+    document.body.appendChild(iframe)
+
+    const cleanup = () => {
+      window.setTimeout(() => iframe.remove(), 100)
     }
+
+    iframe.onload = () => {
+      const win = iframe.contentWindow
+      if (!win) return cleanup()
+      win.focus()
+      win.addEventListener('afterprint', cleanup)
+      try {
+        win.print()
+      } catch {
+        cleanup()
+      }
+    }
+
+    const iframeDoc = iframe.contentDocument
+    if (iframeDoc) {
+      iframeDoc.open()
+      iframeDoc.write(printContent)
+      iframeDoc.close()
+    }
+    window.setTimeout(cleanup, 30000)
   }
 
   const handleDelete = async (id: string) => {
@@ -642,27 +675,34 @@ export default function GodownInwardPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Godown Inward Entry</h1>
-            <p className="text-muted-foreground">Record stock received into godown</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold leading-tight tracking-tight sm:text-3xl">
+  Godown Inward Entry
+</h1>
+
+<p className="mt-0 text-sm leading-tight text-muted-foreground">
+  Record stock received into godown
+</p>  </div>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}>
-                <Plus className="mr-2" size={20} />
+              <Button onClick={resetForm} className="shrink-0 self-start sm:self-auto">
+                <Plus className="mr-0" size={20} />
                 New Entry
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col" aria-describedby="dialog-description">
-              <DialogHeader>
-                <DialogTitle>{editingId ? "Edit Entry" : "New Entry"}</DialogTitle>
+            <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-xl lg:max-w-2xl max-h-[90vh] flex flex-col rounded-2xl" aria-describedby="dialog-description">
+              <DialogHeader className="pb-1">
+                <DialogTitle className="text-xl">{editingId ? "Edit Entry" : "New Entry"}</DialogTitle>
                 <p id="dialog-description" className="sr-only">
                   {editingId ? "Edit godown inward entry details" : "Create a new godown inward entry"}
                 </p>
               </DialogHeader>
-              <div className="space-y-4 overflow-y-auto flex-1 pr-1 pb-2">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="flex-1 space-y-5 overflow-y-auto pr-1 pb-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Entry Date *</Label>
                     <DatePicker
@@ -860,7 +900,7 @@ export default function GodownInwardPage() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Select Farmer (Optional)</Label>
                     <Select value={formData.selectedFarmerId || undefined} onValueChange={handleFarmerChange} disabled={loading}>
@@ -907,7 +947,7 @@ export default function GodownInwardPage() {
                   </Select>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Number of Birds *</Label>
                     <Input
@@ -933,7 +973,7 @@ export default function GodownInwardPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Rate per Kg *</Label>
                     <Input
@@ -978,32 +1018,44 @@ export default function GodownInwardPage() {
           </Dialog>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">Total Birds</p>
-              <p className="text-2xl font-bold">{inwardStats.totalBirds.toLocaleString("en-IN")}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">Total Weight</p>
-              <p className="text-2xl font-bold">{inwardStats.totalWeight.toFixed(2)} kg</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">Total Amount</p>
-              <p className="text-2xl font-bold">₹{inwardStats.totalAmount.toFixed(2)}</p>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 [&>*]:break-words">
+          <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium text-muted-foreground">Total Birds</p>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-600 dark:bg-teal-500/15 dark:text-teal-400">
+                <Bird size={17} />
+              </span>
+            </div>
+            <div className="mt-3 text-2xl font-bold tracking-tight">{inwardStats.totalBirds.toLocaleString("en-IN")}</div>
+            <p className="mt-auto pt-4 text-xs text-muted-foreground">Birds received</p>
+          </div>
+          <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium text-muted-foreground">Total Weight</p>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
+                <Scale size={17} />
+              </span>
+            </div>
+            <div className="mt-3 text-2xl font-bold tracking-tight">{inwardStats.totalWeight.toFixed(2)} kg</div>
+            <p className="mt-auto pt-4 text-xs text-muted-foreground">Total weight received</p>
+          </div>
+          <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium text-muted-foreground">Total Amount</p>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                <IndianRupee size={17} />
+              </span>
+            </div>
+            <div className="mt-3 text-2xl font-bold tracking-tight">₹{inwardStats.totalAmount.toFixed(2)}</div>
+            <p className="mt-auto pt-4 text-xs text-muted-foreground">Total inward value</p>
+          </div>
         </div>
 
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <CardTitle>Inward Entries</CardTitle>
-              <div className="flex items-center gap-2 flex-wrap ml-auto">
+              <div className="flex flex-wrap items-center gap-2">
                 <DateRangeFilter
                   startDate={dateRangeStart}
                   endDate={dateRangeEnd}
@@ -1013,7 +1065,7 @@ export default function GodownInwardPage() {
                   placeholder="Search by bill no or supplier..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-[220px]"
+                  className="w-full sm:w-[220px]"
                 />
                 {(searchQuery || dateRangeStart) && (
                   <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(''); setDateRangeStart(undefined); setDateRangeEnd(undefined) }}>
@@ -1031,18 +1083,18 @@ export default function GodownInwardPage() {
                 {entries.length === 0 ? 'No entries found' : 'No entries match your filters'}
               </p>
             ) : (
-              <Table>
+              <Table className="[&_td]:px-3 [&_td]:py-2.5 [&_th]:px-3 [&_th]:py-3">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Entry Date</TableHead>
-                    <TableHead>Inward No</TableHead>
-                    <TableHead>Reference No</TableHead>
-                    <TableHead>Source</TableHead>
-                    <TableHead>Birds</TableHead>
-                    <TableHead>Weight (Kg)</TableHead>
-                    <TableHead>Rate/Kg</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Actions</TableHead>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Entry Date</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Inward No</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reference No</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Source</TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Birds</TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Weight (Kg)</TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rate/Kg</TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount</TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1070,10 +1122,10 @@ export default function GodownInwardPage() {
                         </TableCell>
                         <TableCell>{entry.purchaseInvoiceNo || "-"}</TableCell>
                         <TableCell>{entry.supplierName}</TableCell>
-                        <TableCell>{entry.numberOfBirds}</TableCell>
-                        <TableCell>{entry.totalWeight ? Number(entry.totalWeight).toFixed(2) : "-"}</TableCell>
-                        <TableCell>₹{entry.ratePerKg ? Number(entry.ratePerKg).toFixed(2) : "0.00"}</TableCell>
-                        <TableCell className="font-semibold">₹{entry.totalAmount ? Number(entry.totalAmount).toFixed(2) : "0.00"}</TableCell>
+                        <TableCell className="text-right">{entry.numberOfBirds}</TableCell>
+                        <TableCell className="text-right">{entry.totalWeight ? Number(entry.totalWeight).toFixed(2) : "-"}</TableCell>
+                        <TableCell className="text-right">₹{entry.ratePerKg ? Number(entry.ratePerKg).toFixed(2) : "0.00"}</TableCell>
+                        <TableCell className="text-right font-semibold">₹{entry.totalAmount ? Number(entry.totalAmount).toFixed(2) : "0.00"}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           <Button variant="ghost" size="sm" title="View" onClick={() => handleView(entry)}>
@@ -1106,14 +1158,14 @@ export default function GodownInwardPage() {
 
         {/* View Dialog */}
         <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Godown Inward Details</DialogTitle>
+          <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-xl lg:max-w-2xl max-h-[90vh] flex flex-col rounded-2xl">
+            <DialogHeader className="pb-1">
+              <DialogTitle className="text-xl">Godown Inward Details</DialogTitle>
               <DialogDescription>View complete inward entry information</DialogDescription>
             </DialogHeader>
             {viewingEntry && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="flex-1 space-y-4 overflow-y-auto pr-1 pb-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
                     <Label className="text-muted-foreground">Entry Date</Label>
                     <div className="text-sm font-medium">{new Date(viewingEntry.entryDate).toLocaleDateString()}</div>
@@ -1159,7 +1211,7 @@ export default function GodownInwardPage() {
                     </div>
                   </div>
                   {viewingEntry.notes && (
-                    <div className="space-y-1 md:col-span-2">
+                    <div className="space-y-1 sm:col-span-2">
                       <Label className="text-muted-foreground">Notes</Label>
                       <div className="text-sm font-medium">{viewingEntry.notes}</div>
                     </div>

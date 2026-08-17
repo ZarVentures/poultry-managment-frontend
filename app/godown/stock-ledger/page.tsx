@@ -225,27 +225,34 @@ export default function StockLedgerPage() {
   return (
     <DashboardLayout>
       <div className="space-y-8 print:space-y-4">
-        <div className="flex items-start justify-between gap-4 print:hidden">
-          <div>
-            <Link href="/inventory" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-2">
+        <div className="flex flex-col gap-4 print:hidden lg:flex-row lg:items-start lg:gap-20">
+          <div className="min-w-0">
+            <Link href="/inventory" className="mb-2 inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-foreground">
               <ArrowLeft size={14} className="mr-1" /> Back to Godown Overview
             </Link>
-            <h1 className="text-3xl font-bold tracking-tight">Stock Ledger</h1>
-            <p className="text-muted-foreground mt-1">
-              Chronological bird stock movements with opening, period, and closing balance
-            </p>
+            <div className="flex items-center gap-3">
+              
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Stock Ledger</h1>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Chronological bird stock movements with opening, period, and closing balance
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={downloadCSV}>
-              <Download size={14} className="mr-1" /> CSV
-            </Button>
-            <Button variant="outline" size="sm" onClick={downloadPDF}>
-              <FileText size={14} className="mr-1" /> PDF
-            </Button>
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer size={14} className="mr-1" /> Print
-            </Button>
-          </div>
+          <div className="flex shrink-0 flex-wrap gap-2 self-start lg:ml-auto">
+  <Button variant="outline" size="sm" onClick={downloadCSV}>
+    <Download size={14} className="mr-1" /> CSV
+  </Button>
+
+  <Button variant="outline" size="sm" onClick={downloadPDF}>
+    <FileText size={14} className="mr-1" /> PDF
+  </Button>
+
+  <Button variant="outline" size="sm" onClick={handlePrint}>
+    <Printer size={14} className="mr-1" /> Print
+  </Button>
+</div>
         </div>
 
         <div className="hidden print:block text-center mb-4">
@@ -254,7 +261,7 @@ export default function StockLedgerPage() {
           <p className="text-sm">{fmtDate(dateFrom)} — {fmtDate(dateTo)}</p>
         </div>
 
-        <Card className="p-4 print:hidden">
+        <Card className="rounded-2xl p-4 print:hidden">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
             <div>
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
@@ -304,74 +311,74 @@ export default function StockLedgerPage() {
           </div>
         </Card>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
-          <Card className="p-4 border-blue-200 bg-blue-50/50">
-            <div className="flex items-center gap-2 text-xs text-blue-700 font-medium mb-1">
-              <Bird size={14} /> Opening
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7 [&>*]:break-words">
+          <Card className="rounded-2xl border-blue-200 bg-blue-50/50 p-4">
+            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-blue-700">
+              <Bird size={20} /> Opening
             </div>
-            <div className="text-2xl font-bold text-blue-900">{fmtNum(opening.birds)}</div>
-            <div className="text-xs text-blue-600 mt-0.5">{fmtNum(opening.weight, 2)} kg</div>
+            <div className="text-xl font-bold tracking-tight text-blue-900 sm:text-2xl">{fmtNum(opening.birds)}</div>
+            <div className="mt-0.5 text-xs text-blue-600">{fmtNum(opening.weight, 2)} kg</div>
           </Card>
-          <Card className="p-4 border-emerald-200 bg-emerald-50/50">
-            <div className="flex items-center gap-2 text-xs text-emerald-700 font-medium mb-1">
-              <PackagePlus size={14} /> Inward
+          <Card className="rounded-2xl border-emerald-200 bg-emerald-50/50 p-4">
+            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-emerald-700">
+              <PackagePlus size={20} /> Inward
             </div>
-            <div className="text-2xl font-bold text-emerald-900">+{fmtNum(period.birdsIn - returnBirds)}</div>
-            <div className="text-xs text-emerald-600 mt-0.5">{fmtNum(Math.max(0, period.weightIn - returnWeight), 2)} kg</div>
+            <div className="text-xl font-bold tracking-tight text-emerald-900 sm:text-2xl">+{fmtNum(period.birdsIn - returnBirds)}</div>
+            <div className="mt-0.5 text-xs text-emerald-600">{fmtNum(Math.max(0, period.weightIn - returnWeight), 2)} kg</div>
           </Card>
-          <Card className="p-4 border-violet-200 bg-violet-50/50">
-            <div className="flex items-center gap-2 text-xs text-violet-700 font-medium mb-1">
-              <Undo2 size={14} /> Returns
+          <Card className="rounded-2xl border-violet-200 bg-violet-50/50 p-4">
+            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-violet-700">
+              <Undo2 size={20} /> Returns
             </div>
-            <div className="text-2xl font-bold text-violet-900">+{fmtNum(returnBirds)}</div>
-            <div className="text-xs text-violet-600 mt-0.5">{fmtNum(returnWeight, 2)} kg</div>
+            <div className="text-xl font-bold tracking-tight text-violet-900 sm:text-2xl">+{fmtNum(returnBirds)}</div>
+            <div className="mt-0.5 text-xs text-violet-600">{fmtNum(returnWeight, 2)} kg</div>
           </Card>
-          <Card className="p-4 border-orange-200 bg-orange-50/50">
-            <div className="flex items-center gap-2 text-xs text-orange-700 font-medium mb-1">
-              <PackageMinus size={14} /> Sold
+          <Card className="rounded-2xl border-orange-200 bg-orange-50/50 p-4">
+            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-orange-700">
+              <PackageMinus size={20} /> Sold
             </div>
-            <div className="text-2xl font-bold text-orange-900">−{fmtNum(soldBirds)}</div>
-            <div className="text-xs text-orange-600 mt-0.5">{fmtNum(soldWeight, 2)} kg</div>
+            <div className="text-xl font-bold tracking-tight text-orange-900 sm:text-2xl">−{fmtNum(soldBirds)}</div>
+            <div className="mt-0.5 text-xs text-orange-600">{fmtNum(soldWeight, 2)} kg</div>
           </Card>
-          <Card className="p-4 border-red-200 bg-red-50/50">
-            <div className="flex items-center gap-2 text-xs text-red-700 font-medium mb-1">
-              <AlertCircle size={14} /> Mortality
+          <Card className="rounded-2xl border-red-200 bg-red-50/50 p-4">
+            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-red-700">
+              <AlertCircle size={20} /> Mortality
             </div>
-            <div className="text-2xl font-bold text-red-900">−{fmtNum(mortalityBirds)}</div>
-            <div className="text-xs text-red-600 mt-0.5">{fmtNum(mortalityWeight, 2)} kg</div>
+            <div className="text-xl font-bold tracking-tight text-red-900 sm:text-2xl">−{fmtNum(mortalityBirds)}</div>
+            <div className="mt-0.5 text-xs text-red-600">{fmtNum(mortalityWeight, 2)} kg</div>
           </Card>
-          <Card className="p-4 border-indigo-200 bg-indigo-50/50">
-            <div className="flex items-center gap-2 text-xs text-indigo-700 font-medium mb-1">
-              <Scale size={14} /> Closing
+          <Card className="rounded-2xl border-indigo-200 bg-indigo-50/50 p-4">
+            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-indigo-700">
+              <Scale size={20} /> Closing
             </div>
-            <div className="text-2xl font-bold text-indigo-900">{fmtNum(closing.birds)}</div>
-            <div className="text-xs text-indigo-600 mt-0.5">{fmtNum(closing.weight, 2)} kg</div>
+            <div className="text-xl font-bold tracking-tight text-indigo-900 sm:text-2xl">{fmtNum(closing.birds)}</div>
+            <div className="mt-0.5 text-xs text-indigo-600">{fmtNum(closing.weight, 2)} kg</div>
           </Card>
-          <Card className="p-4 border-slate-200 bg-slate-50/50">
-            <div className="text-xs text-slate-600 font-medium mb-1">Period Value</div>
+          <Card className="rounded-2xl border-slate-200 bg-slate-50/50 p-4">
+            <div className="mb-1 text-xs font-medium text-slate-600">Period Value</div>
             <div className="text-sm font-semibold text-slate-800">In ₹{fmtNum(period.amountIn, 2)}</div>
             <div className="text-sm font-semibold text-slate-800">Out ₹{fmtNum(period.amountOut, 2)}</div>
           </Card>
         </div>
 
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden rounded-2xl">
           <div className="overflow-x-auto">
-            <Table>
+            <Table className="[&_td]:px-3 [&_td]:py-2.5 [&_th]:px-3 [&_th]:py-3">
               <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Reference</TableHead>
-                  <TableHead>Party / Detail</TableHead>
-                  <TableHead>Purchase Inv</TableHead>
-                  <TableHead className="text-right text-emerald-700">Birds In</TableHead>
-                  <TableHead className="text-right text-orange-700">Birds Out</TableHead>
-                  <TableHead className="text-right">Wt In</TableHead>
-                  <TableHead className="text-right">Wt Out</TableHead>
-                  <TableHead className="text-right">Rate</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right font-semibold">Bal. Birds</TableHead>
-                  <TableHead className="text-right font-semibold">Bal. Wt</TableHead>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Type</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reference</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Party / Detail</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Purchase Inv</TableHead>
+                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-emerald-700">Birds In</TableHead>
+                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-orange-700">Birds Out</TableHead>
+                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Wt In</TableHead>
+                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Wt Out</TableHead>
+                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rate</TableHead>
+                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount</TableHead>
+                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bal. Birds</TableHead>
+                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bal. Wt</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
