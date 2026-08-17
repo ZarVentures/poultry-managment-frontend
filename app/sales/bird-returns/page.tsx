@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, CheckCircle, XCircle, Clock, Package, AlertTriangle } from "lucide-react"
+import { Plus, Edit2, Trash2, CheckCircle, XCircle, Clock, Package, AlertTriangle, RotateCcw, Bird, IndianRupee } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
@@ -247,7 +247,7 @@ export default function VehicleBirdReturnsPage() {
           retailerId: fullSale.retailerId || "",
           customerName: fullSale.customerName,
         }))
-        toast.success(`Loaded vehicle sale details! Rate: Γé╣${rate.toFixed(2)}/kg`)
+        toast.success(`Loaded vehicle sale details! Rate: ₹${rate.toFixed(2)}/kg`)
       }
     } catch (error) {
       console.error("Failed to load full sale details:", error)
@@ -332,19 +332,19 @@ export default function VehicleBirdReturnsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Vehicle Bird Returns & Tracking</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Vehicle Bird Returns & Tracking</h1>
             <p className="text-muted-foreground">Manage returned birds and track credits from vehicle sales</p>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}>
-                <Plus className="mr-2" size={20} />
+              <Button onClick={resetForm} className="shrink-0 self-start sm:self-auto">
+                <Plus className="mr-0" size={20} />
                 Record Vehicle Return
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" aria-describedby="dialog-description">
+            <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-3xl max-h-[90vh] overflow-y-auto" aria-describedby="dialog-description">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Edit Vehicle Return" : "Record Vehicle Bird Return"}</DialogTitle>
                 <p id="dialog-description" className="sr-only">
@@ -352,7 +352,7 @@ export default function VehicleBirdReturnsPage() {
                 </p>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Return Date *</Label>
                     <DatePicker
@@ -391,7 +391,7 @@ export default function VehicleBirdReturnsPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Number of Birds Returned *</Label>
                     <Input
@@ -446,9 +446,9 @@ export default function VehicleBirdReturnsPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Refund Amount (Γé╣)</Label>
+                    <Label>Refund Amount (₹)</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -458,7 +458,7 @@ export default function VehicleBirdReturnsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Adjustment Amount (Γé╣)</Label>
+                    <Label>Adjustment Amount (₹)</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -469,7 +469,7 @@ export default function VehicleBirdReturnsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Return to Inventory?</Label>
                     <Select
@@ -518,7 +518,7 @@ export default function VehicleBirdReturnsPage() {
                   />
                 </div>
 
-                <div className="flex gap-2 pt-4">
+                <div className="flex flex-col-reverse gap-2 sm:flex-row pt-4">
                   <Button onClick={handleSave} disabled={loading} className="flex-1">
                     {loading ? "Saving..." : editingId ? "Update Return" : "Record Vehicle Return"}
                   </Button>
@@ -532,53 +532,71 @@ export default function VehicleBirdReturnsPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Returns</CardTitle>
+        <div className="grid grid-cols-2 gap-2 md:gap-4 lg:grid-cols-3 2xl:grid-cols-6">
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <RotateCcw size={18} className="text-gray-500 shrink-0" />
+                Total Returns
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold whitespace-nowrap sm:text-2xl">{stats.total}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Pending</CardTitle>
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Clock size={18} className="text-yellow-600 shrink-0" />
+                Pending
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold text-yellow-600 whitespace-nowrap sm:text-2xl">{stats.pending}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Approved</CardTitle>
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <CheckCircle size={18} className="text-blue-600 shrink-0" />
+                Approved
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{stats.approved}</div>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold text-blue-600 whitespace-nowrap sm:text-2xl">{stats.approved}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Processed</CardTitle>
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Package size={18} className="text-green-600 shrink-0" />
+                Processed
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.processed}</div>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold text-green-600 whitespace-nowrap sm:text-2xl">{stats.processed}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Birds</CardTitle>
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Bird size={18} className="text-cyan-600 shrink-0" />
+                Total Birds
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalBirds}</div>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold text-cyan-600 whitespace-nowrap sm:text-2xl">{stats.totalBirds.toLocaleString("en-IN")}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Refund</CardTitle>
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <IndianRupee size={18} className="text-orange-600 shrink-0" />
+                Total Refund
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">Γé╣{stats.totalRefund.toFixed(2)}</div>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold text-orange-600 whitespace-nowrap sm:text-2xl">₹{stats.totalRefund.toFixed(2)}</div>
             </CardContent>
           </Card>
         </div>
@@ -586,16 +604,15 @@ export default function VehicleBirdReturnsPage() {
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-wrap gap-4">
-              <div className="flex-1 min-w-[200px]">
-                <Input
-                  placeholder="Search by return number, customer, or invoice..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <Input
+                placeholder="Search by return number, customer, or invoice..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full sm:flex-1 sm:min-w-[200px]"
+              />
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -630,7 +647,7 @@ export default function VehicleBirdReturnsPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <Table>
+                <Table className="min-w-[900px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Return #</TableHead>
@@ -677,7 +694,7 @@ export default function VehicleBirdReturnsPage() {
                           {birdReturn.returnedToInventory ? (
                             birdReturn.inventoryLocation === 'Isolation Pen' ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800">
-                                ΓÜá∩╕Å Isolation Pen
+                                Isolation Pen
                               </span>
                             ) : (
                               <span className="text-sm font-medium text-muted-foreground">{birdReturn.inventoryLocation || 'Main Godown'}</span>
@@ -686,10 +703,10 @@ export default function VehicleBirdReturnsPage() {
                             <span className="text-xs text-muted-foreground italic">No Restock (Mortality)</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right">Γé╣{Number(birdReturn.refundAmount || 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">₹{Number(birdReturn.refundAmount || 0).toFixed(2)}</TableCell>
                         <TableCell>{getStatusBadge(birdReturn.status)}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-end gap-1 sm:gap-2">
                             {birdReturn.status === 'pending' && (
                               <>
                                 <Button
@@ -699,8 +716,8 @@ export default function VehicleBirdReturnsPage() {
                                   disabled={loading}
                                   className="text-green-600 hover:text-green-700"
                                 >
-                                  <CheckCircle size={14} className="mr-1" />
-                                  Approve
+                                  <CheckCircle size={14} className="sm:mr-1" />
+                                  <span className="hidden sm:inline">Approve</span>
                                 </Button>
                                 <Button
                                   size="sm"
@@ -709,8 +726,8 @@ export default function VehicleBirdReturnsPage() {
                                   disabled={loading}
                                   className="text-red-600 hover:text-red-700"
                                 >
-                                  <XCircle size={14} className="mr-1" />
-                                  Reject
+                                  <XCircle size={14} className="sm:mr-1" />
+                                  <span className="hidden sm:inline">Reject</span>
                                 </Button>
                               </>
                             )}
@@ -722,8 +739,8 @@ export default function VehicleBirdReturnsPage() {
                                 disabled={loading}
                                   className="text-blue-600 hover:text-blue-700"
                               >
-                                <Package size={14} className="mr-1" />
-                                Process
+                                <Package size={14} className="sm:mr-1" />
+                                <span className="hidden sm:inline">Process</span>
                               </Button>
                             )}
                             {birdReturn.status !== 'processed' && (

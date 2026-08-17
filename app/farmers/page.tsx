@@ -291,7 +291,7 @@ export default function FarmersPage() {
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
               <Button onClick={resetForm}>
-                <Plus className="mr-2" size={20} />
+                <Plus className="mr-0" size={20} />
                 Add New Farmer
               </Button>
             </DialogTrigger>

@@ -25,7 +25,7 @@ const PROD_API_BASE =
 
 const LOCAL_API_BASE =
   process.env.NEXT_PUBLIC_LOCAL_API_BASE?.trim() ||
-  "http://localhost:3001/api/v1";
+  "https://13.234.140.190.nip.io/staging/api/v1";
 
 // ─── Custom domain → environment mapping ─────────────────────────────────
 // Add/edit your custom staging domain here. Matches with or without "www.".

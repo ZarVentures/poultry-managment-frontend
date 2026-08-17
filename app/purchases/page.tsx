@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, Download, Printer, Eye, Paperclip, X, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, Edit2, Trash2, Download, Printer, Eye, Paperclip, X, ChevronLeft, ChevronRight, ShoppingCart, Bird, IndianRupee, Wallet } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
@@ -443,14 +443,39 @@ export default function PurchasesPage() {
       </html>
     `
 
-    const printWindow = window.open('', '_blank')
-    if (printWindow) {
-      printWindow.document.write(printContent)
-      printWindow.document.close()
-      printWindow.onload = () => {
-        printWindow.print()
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'fixed'
+    iframe.style.right = '0'
+    iframe.style.bottom = '0'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = '0'
+    iframe.setAttribute('aria-hidden', 'true')
+    document.body.appendChild(iframe)
+
+    const cleanup = () => {
+      window.setTimeout(() => iframe.remove(), 100)
+    }
+
+    iframe.onload = () => {
+      const win = iframe.contentWindow
+      if (!win) return cleanup()
+      win.focus()
+      win.addEventListener('afterprint', cleanup)
+      try {
+        win.print()
+      } catch {
+        cleanup()
       }
     }
+
+    const iframeDoc = iframe.contentDocument
+    if (iframeDoc) {
+      iframeDoc.open()
+      iframeDoc.write(printContent)
+      iframeDoc.close()
+    }
+    window.setTimeout(cleanup, 30000)
   }
 
   const handleDelete = async (id: string) => {
@@ -509,16 +534,16 @@ export default function PurchasesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold">Purchase Orders</h1>
             <p className="text-muted-foreground">Manage your purchase orders</p>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}><Plus className="mr-2" size={20} />Add New Purchase</Button>
+              <Button onClick={resetForm} className="shrink-0 self-start sm:self-auto"><Plus className="mr-0" size={20} />Add New Purchase</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col" aria-describedby="purchase-dialog-desc">
+            <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-xl lg:max-w-2xl xl:max-w-4xl max-h-[90vh] flex flex-col" aria-describedby="purchase-dialog-desc">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Edit Purchase Order" : "New Purchase Order"}</DialogTitle>
                 <p id="purchase-dialog-desc" className="sr-only">Purchase order form</p>
@@ -531,7 +556,7 @@ export default function PurchasesPage() {
                     <CardTitle className="text-blue-900 text-base">Section 1: Header Information</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 pt-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <Label>Purchase Bill No *</Label>
@@ -563,7 +588,7 @@ export default function PurchasesPage() {
                       <Input value={formData.branch} onChange={e => setFormData(prev => ({ ...prev, branch: e.target.value }))} placeholder="Branch name" disabled={loading} />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Farmer Name *</Label>
                         <FarmerSearch value={formData.farmerId} onChange={handleFarmerChange} disabled={loading} />
@@ -574,7 +599,7 @@ export default function PurchasesPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Farm Location</Label>
                         <Input value={formData.farmLocation} placeholder="Auto-filled" disabled className="bg-gray-50" />
@@ -619,13 +644,13 @@ export default function PurchasesPage() {
                   </CardHeader>
                   <CardContent className="space-y-4 pt-4">
                     <div className="space-y-3">
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="hidden sm:grid grid-cols-3 gap-4">
                         <Label className="text-sm font-medium">Cage ID</Label>
                         <Label className="text-sm font-medium">Number of Birds</Label>
                         <Label className="text-sm font-medium">Cage Weight (Kg)</Label>
                       </div>
                       {cages.map((cage, i) => (
-                        <div key={i} className="grid grid-cols-3 gap-4">
+                        <div key={i} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                           <Input placeholder="Cage ID" value={cage.cageId} onChange={e => updateCage(i, "cageId", e.target.value)} disabled={loading} />
                           <Input type="number" placeholder="Birds" value={cage.numberOfBirds} onChange={e => updateCage(i, "numberOfBirds", e.target.value)} disabled={loading} onWheel={(e) => e.currentTarget.blur()}  />
                           <div className="flex gap-1">
@@ -639,7 +664,7 @@ export default function PurchasesPage() {
                       </Button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Total Weight (Kg)</Label>
                         <Input value={totalWeight.toFixed(2)} disabled className="bg-gray-50" />
@@ -682,13 +707,13 @@ export default function PurchasesPage() {
 
                     <div className="space-y-3">
                       <Label className="text-sm font-semibold">Payment Breakdown</Label>
-                      <div className="grid grid-cols-[1fr_1fr_auto] gap-4 items-center">
+                      <div className="hidden sm:grid grid-cols-[1fr_1fr_auto] gap-4 items-center">
                         <Label className="text-sm font-medium">Payment Mode</Label>
                         <Label className="text-sm font-medium">Amount (₹)</Label>
                         <Label className="text-sm font-medium">Advance?</Label>
                       </div>
                       {payments.map((p, i) => (
-                        <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-4 items-center">
+                        <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-4 items-center">
                           <Select value={p.mode} onValueChange={v => updatePayment(i, "mode", v)} disabled={loading}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
@@ -723,7 +748,7 @@ export default function PurchasesPage() {
                       </Button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t">
                       <div className="space-y-2">
                         <Label>Total Payment Made (₹)</Label>
                         <Input value={`₹${totalPaymentMade.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-green-700" />
@@ -748,15 +773,20 @@ export default function PurchasesPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 [&>*]:break-words">
   <Card>
     <CardHeader className="pb-2">
-      <CardTitle className="text-sm font-medium text-muted-foreground">
-        Total Purchases
-      </CardTitle>
+      <div className="flex items-start justify-between gap-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          Total Purchases
+        </CardTitle>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
+          <ShoppingCart size={17} />
+        </span>
+      </div>
     </CardHeader>
     <CardContent>
-      <div className="text-3xl font-bold text-blue-600">
+      <div className="text-xl sm:text-2xl font-bold text-blue-600">
         {stats.total}
       </div>
     </CardContent>
@@ -764,12 +794,17 @@ export default function PurchasesPage() {
 
   <Card>
     <CardHeader className="pb-2">
-      <CardTitle className="text-sm font-medium text-muted-foreground">
-        Total Birds
-      </CardTitle>
+      <div className="flex items-start justify-between gap-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          Total Birds
+        </CardTitle>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-400">
+          <Bird size={17} />
+        </span>
+      </div>
     </CardHeader>
     <CardContent>
-      <div className="text-3xl font-bold text-purple-600">
+      <div className="text-xl sm:text-2xl font-bold text-purple-600">
         {stats.totalBirds}
       </div>
     </CardContent>
@@ -777,12 +812,17 @@ export default function PurchasesPage() {
 
   <Card>
     <CardHeader className="pb-2">
-      <CardTitle className="text-sm font-medium text-muted-foreground">
-        Total Value (₹)
-      </CardTitle>
+      <div className="flex items-start justify-between gap-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          Total Value (₹)
+        </CardTitle>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
+          <IndianRupee size={17} />
+        </span>
+      </div>
     </CardHeader>
     <CardContent>
-      <div className="text-3xl font-bold text-orange-600">
+      <div className="text-xl sm:text-2xl font-bold text-orange-600">
         ₹{stats.totalValue.toFixed(2)}
       </div>
     </CardContent>
@@ -790,12 +830,17 @@ export default function PurchasesPage() {
 
   <Card>
     <CardHeader className="pb-2">
-      <CardTitle className="text-sm font-medium text-muted-foreground">
-        Total Paid (₹)
-      </CardTitle>
+      <div className="flex items-start justify-between gap-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          Total Paid (₹)
+        </CardTitle>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-400">
+          <Wallet size={17} />
+        </span>
+      </div>
     </CardHeader>
     <CardContent>
-      <div className="text-3xl font-bold text-green-600">
+      <div className="text-xl sm:text-2xl font-bold text-green-600">
         ₹{stats.totalPaid.toFixed(2)}
       </div>
     </CardContent>
@@ -917,7 +962,7 @@ export default function PurchasesPage() {
         {/* Invoice View Modal */}
         {showInvoiceModal && viewingPurchase && (
           <Dialog open={showInvoiceModal} onOpenChange={setShowInvoiceModal}>
-            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+            <DialogContent className="sm:max-w-2xl max-sm:max-w-[calc(100%-2rem)] max-h-[90vh] flex flex-col">
               <DialogHeader>
                 <DialogTitle>Purchase Bill ₹� {viewingPurchase.orderNumber}</DialogTitle>
               </DialogHeader>
@@ -935,9 +980,9 @@ export default function PurchasesPage() {
                 </div>
                 {viewingPurchase.cages && viewingPurchase.cages.length > 0 && (
                   <div>
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="flex flex-col gap-2 items-start sm:flex-row sm:items-center sm:justify-between mb-1">
                       <span className="text-xs font-semibold">Cage Details</span>
-                      <div className="flex gap-2 text-xs">
+                      <div className="flex flex-wrap gap-2 text-xs">
                         <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700">Pending: {viewingPurchase.cages.filter(c => !c.status || c.status === 'pending').length}</span>
                         <span className="px-2 py-0.5 rounded bg-green-100 text-green-700">Sold: {viewingPurchase.cages.filter(c => c.status === 'sold').length}</span>
                         <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700">In Godown: {viewingPurchase.cages.filter(c => c.status === 'in_godown').length}</span>

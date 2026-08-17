@@ -19,7 +19,7 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Edit2, Trash2, Download, Printer, X, Eye } from "lucide-react"
+import { Plus, Edit2, Trash2, Download, Printer, X, Eye, Bug, FileText, IndianRupee } from "lucide-react"
 import { DateRangeFilter } from "@/components/date-range-filter"
 import { useDateFilter } from "@/contexts/date-filter-context"
 import { mortalityApi, purchasesApi, type PurchaseOrder } from "@/lib/api"
@@ -520,25 +520,25 @@ export default function MortalityPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Mortality Tracking</h1>
+            <h1 className="text-2xl font-bold sm:text-3xl">Mortality Tracking</h1>
             <p className="text-muted-foreground">Record and manage bird mortality</p>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}>
-                <Plus className="mr-2" size={20} />
+              <Button onClick={resetForm} className="shrink-0 self-start sm:self-auto">
+                <Plus className="mr-0" size={20} />
                 Add New Mortality
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Edit Mortality Record" : "Add New Mortality"}</DialogTitle>
                 <DialogDescription>Enter mortality details</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Date <span className="text-red-500">*</span></Label>
                     <DatePicker
@@ -559,7 +559,7 @@ export default function MortalityPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Total Weight of Dead Birds (kg)</Label>
                     <Input
@@ -638,29 +638,38 @@ export default function MortalityPage() {
           </Dialog>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0 px-3 sm:px-6">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Mortality Birds (Qty)</CardTitle>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400">
+                <Bug size={18} />
+              </span>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-red-600">{totalMortalityBirds}</div>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold text-red-600 whitespace-nowrap sm:text-2xl">{totalMortalityBirds}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0 px-3 sm:px-6">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Mortality Records</CardTitle>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <FileText size={18} />
+              </span>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{totalRecords}</div>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold whitespace-nowrap sm:text-2xl">{totalRecords}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0 px-3 sm:px-6">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Value (₹)</CardTitle>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
+                <IndianRupee size={18} />
+              </span>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">₹{totalValue.toFixed(2)}</div>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold whitespace-nowrap sm:text-2xl">₹{totalValue.toFixed(2)}</div>
             </CardContent>
           </Card>
         </div>
@@ -678,14 +687,14 @@ export default function MortalityPage() {
                   endDate={dateRangeEnd}
                   onDateRangeChange={handleDateRangeChange}
                 />
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <Label className="text-sm font-medium whitespace-nowrap">Filter:</Label>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-1 sm:flex-none">
                     <Input
                       placeholder="Search by invoice or farmer name..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-[200px]"
+                      className="w-full sm:w-[200px]"
                     />
                     {searchQuery && (
                       <Button
@@ -720,7 +729,7 @@ export default function MortalityPage() {
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-[700px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="font-bold">Purchase Date</TableHead>
@@ -764,7 +773,7 @@ export default function MortalityPage() {
                               : "—"}
                         </TableCell>
                         <TableCell>{mortality.cause || "N/A"}</TableCell>
-                        <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="text-right flex justify-end gap-1 sm:gap-2" onClick={(e) => e.stopPropagation()}>
                           <Button variant="outline" size="icon" title="View" onClick={() => handleView(mortality)}>
                             <Eye size={16} />
                           </Button>
@@ -790,14 +799,14 @@ export default function MortalityPage() {
 
         {/* View Dialog */}
         <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Mortality Record Details</DialogTitle>
               <DialogDescription>View complete mortality record information</DialogDescription>
             </DialogHeader>
             {viewingMortality && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Record Number</Label>
                     <div className="text-sm font-medium">{viewingMortality.recordNumber}</div>

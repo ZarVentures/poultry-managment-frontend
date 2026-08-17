@@ -32,6 +32,16 @@
   --chart-4: 43 74% 66%;
   --chart-5: 27 87% 67%;
   --radius: 0.5rem;
+
+  /* Sidebar */
+  --sidebar: 233 23% 30%;
+  --sidebar-foreground: 0 0% 100%;
+  --sidebar-primary: 0 0% 100%;
+  --sidebar-primary-foreground: 233 23% 30%;
+  --sidebar-accent: 233 20% 32%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 233 18% 34%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
 }
 
 .dark {
@@ -59,6 +69,16 @@
   --chart-3: 30 80% 55%;
   --chart-4: 280 65% 60%;
   --chart-5: 340 75% 55%;
+
+  /* Sidebar */
+  --sidebar: 233 23% 30%;
+  --sidebar-foreground: 0 0% 100%;
+  --sidebar-primary: 0 0% 100%;
+  --sidebar-primary-foreground: 233 23% 30%;
+  --sidebar-accent: 233 20% 32%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 233 18% 34%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
 }
 
 @layer base {
@@ -136,6 +156,15 @@
 /* React DatePicker Custom Styles */
 .react-datepicker-wrapper {
   width: 100%;
+}
+
+/* Make the antd RangePicker fill available width on small screens */
+@media (max-width: 640px) {
+  .premium-datepicker.ant-picker,
+  .premium-datepicker.ant-picker-range {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
 }
 
 /* Ant Design DatePicker Premium Styling */

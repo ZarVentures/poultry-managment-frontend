@@ -10,9 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X, Paperclip, Wallet, TrendingUp, ShoppingCart, Clock, Eye, MoreHorizontal, Layers, Printer } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Paperclip, Wallet, TrendingUp, ShoppingCart, Clock, Eye, Layers, Printer, Scale } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
 import { salesApi, retailersApi, vehiclesApi, purchasesApi, settingsApi, type Sale as ApiSale } from "@/lib/api"
 import { usePermissions } from "@/lib/permissions"
@@ -838,14 +837,39 @@ export default function SalesPage() {
       </html>
     `
 
-    const printWindow = window.open('', '_blank')
-    if (printWindow) {
-      printWindow.document.write(printContent)
-      printWindow.document.close()
-      printWindow.onload = () => {
-        printWindow.print()
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'fixed'
+    iframe.style.right = '0'
+    iframe.style.bottom = '0'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = '0'
+    iframe.setAttribute('aria-hidden', 'true')
+    document.body.appendChild(iframe)
+
+    const cleanup = () => {
+      window.setTimeout(() => iframe.remove(), 100)
+    }
+
+    iframe.onload = () => {
+      const win = iframe.contentWindow
+      if (!win) return cleanup()
+      win.focus()
+      win.addEventListener('afterprint', cleanup)
+      try {
+        win.print()
+      } catch {
+        cleanup()
       }
     }
+
+    const iframeDoc = iframe.contentDocument
+    if (iframeDoc) {
+      iframeDoc.open()
+      iframeDoc.write(printContent)
+      iframeDoc.close()
+    }
+    window.setTimeout(cleanup, 30000)
   }
 
   const handleDelete = async (id: string) => {
@@ -897,21 +921,21 @@ export default function SalesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Sales Tracking</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Sales Tracking</h1>
             <p className="text-muted-foreground">Manage your sales records</p>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}><Plus className="mr-2" size={20} />Add New Sale</Button>
+              <Button onClick={resetForm} className="shrink-0 self-start sm:self-auto"><Plus className="mr-2" size={20} />Add New Sale</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col" aria-describedby="sale-dialog-desc">
+            <DialogContent className="sm:max-w-5xl max-sm:max-w-[calc(100%-2rem)] max-h-[90vh] flex flex-col" aria-describedby="sale-dialog-desc">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Edit Sale" : "Add New Sale"}</DialogTitle>
                 <p id="sale-dialog-desc" className="sr-only">Sale form</p>
               </DialogHeader>
-              <div className="space-y-5 overflow-y-auto flex-1 pr-1 pb-2">
+              <div className="space-y-5 overflow-y-auto flex-1 pr-1 pb-2 overflow-x-hidden">
 
                 {/* Section 1: Header */}
                 <Card className="border-blue-200">
@@ -948,7 +972,7 @@ export default function SalesPage() {
                       </Select>
                     </div>
                     {/* Sale No + Sale Date — 2 col */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <Label>Sale No. (Auto-generated)</Label>
@@ -1179,7 +1203,7 @@ export default function SalesPage() {
                       )
                     })()}
 
-                    <div className="grid grid-cols-2 gap-4 mt-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                       <div className="space-y-2">
                         <Label>Shop / Retailer *</Label>
                         <Select value={formData.retailerId || '__none__'} onValueChange={v => handleRetailerChange(v === '__none__' ? '' : v)} disabled={loading || isReadOnly}>
@@ -1204,7 +1228,7 @@ export default function SalesPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Sale Mode</Label>
                         <Select value={formData.saleMode} onValueChange={(v: any) => setFormData(f => ({ ...f, saleMode: v }))} disabled={loading || isReadOnly}>
@@ -1229,10 +1253,10 @@ export default function SalesPage() {
 
                     <div className="space-y-2">
                       <Label>Attach Sales Sheet (PDF/JPG/PNG)</Label>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
                         <input ref={saleFileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => setSaleFile(e.target.files?.[0] || null)} />
                         <Button type="button" variant="outline" size="sm" onClick={() => saleFileRef.current?.click()} disabled={loading || isReadOnly}><Paperclip size={14} className="mr-1" /> Choose File</Button>
-                        {saleFile && <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-1 rounded"><span>{saleFile.name}</span>{!isReadOnly && <button onClick={() => setSaleFile(null)}><X size={12} /></button>}</div>}
+                        {saleFile && <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-1 rounded min-w-0"><span className="truncate">{saleFile.name}</span>{!isReadOnly && <button onClick={() => setSaleFile(null)}><X size={12} /></button>}</div>}
                       </div>
                     </div>
 
@@ -1249,7 +1273,7 @@ export default function SalesPage() {
                     <CardTitle className="text-green-900 text-base">Section 2: Customer Details</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-4 space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <Label>Customer Name *</Label>
                         <Input value={formData.customerName} onChange={e => setFormData(f => ({ ...f, customerName: e.target.value }))} placeholder="Customer name" disabled={loading || isReadOnly} />
@@ -1312,16 +1336,16 @@ export default function SalesPage() {
                     {/* Weight Loss & Bearable Limit Analysis Card */}
                     {selectedCageList.length > 0 && (
                       <div className="border border-orange-200 rounded-lg p-4 bg-orange-50/50 space-y-3">
-                        <div className="flex justify-between items-center">
+                        <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
                           <h4 className="text-sm font-bold text-orange-900 flex items-center gap-1.5">
                             ⚖️ Cage Weight Loss & Bearable Limit Analysis
                           </h4>
-                          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-orange-100 text-orange-800">
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-orange-100 text-orange-800 w-fit">
                             Limit: {bearableLossType === 'percentage' ? `${bearableLossValue}%` : `${bearableLossValue} kg`}
                           </span>
                         </div>
                         
-                        <div className="grid grid-cols-3 gap-4 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                           <div className="space-y-1 bg-white p-2.5 rounded border border-orange-100 shadow-sm">
                             <span className="text-muted-foreground font-medium block">Total Weight Loss</span>
                             <span className="text-sm font-bold text-gray-900 block">{totalWeightLoss.toFixed(2)} kg</span>
@@ -1382,7 +1406,7 @@ export default function SalesPage() {
                     <div className="space-y-2">
                       <Label>Payment Status</Label>
                       <Select value={formData.paymentStatus} onValueChange={(v: any) => setFormData(f => ({ ...f, paymentStatus: v }))} disabled={loading || isReadOnly}>
-                        <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="w-full sm:w-[200px]"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="paid">Paid</SelectItem>
                           <SelectItem value="pending">Pending</SelectItem>
@@ -1391,12 +1415,12 @@ export default function SalesPage() {
                       </Select>
                     </div>
                     <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Label className="text-sm font-medium">Payment Mode</Label>
                         <Label className="text-sm font-medium">Amount (₹)</Label>
                       </div>
                       {payments.map((p, i) => (
-                        <div key={i} className="grid grid-cols-2 gap-4">
+                        <div key={i} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <Select value={p.mode} onValueChange={v => updatePayment(i, "mode", v)} disabled={loading || isReadOnly}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
@@ -1416,14 +1440,14 @@ export default function SalesPage() {
                       ))}
                       {!isReadOnly && <Button type="button" variant="outline" size="sm" onClick={addPayment} disabled={loading}><Plus size={14} className="mr-1" /> Add Payment Mode</Button>}
                     </div>
-                    <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t">
                       <div className="space-y-2"><Label>Total Received (₹)</Label><Input value={`₹${totalPaymentMade.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-green-700" /></div>
                       <div className="space-y-2"><Label>Balance (₹)</Label><Input value={`₹${balance.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-red-600" /></div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <div className="flex gap-2 justify-end">
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   {isReadOnly ? (
                     <Button onClick={() => setShowDialog(false)} className="bg-blue-600 hover:bg-blue-700">Close</Button>
                   ) : (
@@ -1445,86 +1469,87 @@ export default function SalesPage() {
         </div>
 
         {/* Mini Dashboard */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 gap-2 md:gap-4 lg:grid-cols-3 2xl:grid-cols-6">
 
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="min-w-0">
+            <CardHeader className="px-3 pb-2 sm:px-6">
               <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <ShoppingCart size={14} className="text-blue-600" />
+                <ShoppingCart size={18} className="text-blue-600 shrink-0" />
                 Total Sales
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold text-blue-600 whitespace-nowrap sm:text-2xl">
                 {stats.count}
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">
+          <Card className="min-w-0">
+            <CardHeader className="px-3 pb-2 sm:px-6">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Scale size={18} className="text-purple-600 shrink-0" />
                 Total Weight
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold text-purple-600 whitespace-nowrap sm:text-2xl">
                 {Number((stats as any).totalWeight ?? 0).toFixed(0)} kg
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="min-w-0">
+            <CardHeader className="px-3 pb-2 sm:px-6">
               <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <Layers size={14} className="text-cyan-600" />
+                <Layers size={18} className="text-cyan-600 shrink-0" />
                 Total Birds
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-cyan-600">
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold text-cyan-600 whitespace-nowrap sm:text-2xl">
                 {stats.totalBirds.toLocaleString("en-IN")}
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="min-w-0">
+            <CardHeader className="px-3 pb-2 sm:px-6">
               <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <TrendingUp size={14} className="text-orange-600" />
+                <TrendingUp size={18} className="text-orange-600 shrink-0" />
                 Revenue
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold text-orange-600 whitespace-nowrap sm:text-2xl">
                 ₹{stats.totalRevenue.toFixed(0)}
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="min-w-0">
+            <CardHeader className="px-3 pb-2 sm:px-6">
               <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <Wallet size={14} className="text-green-600" />
+                <Wallet size={18} className="text-green-600 shrink-0" />
                 Received
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold text-green-600 whitespace-nowrap sm:text-2xl">
                 ₹{stats.totalReceived.toFixed(0)}
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="min-w-0">
+            <CardHeader className="px-3 pb-2 sm:px-6">
               <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <Clock size={14} className="text-red-600" />
+                <Clock size={18} className="text-red-600 shrink-0" />
                 Pending
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl font-bold text-red-600 whitespace-nowrap sm:text-2xl">
                 ₹{stats.totalPending.toFixed(0)}
               </div>
             </CardContent>
@@ -1542,7 +1567,7 @@ export default function SalesPage() {
               </div> */}
               <div className="flex items-center gap-2 flex-wrap">
                 <DateRangeFilter startDate={dateRangeStart} endDate={dateRangeEnd} onDateRangeChange={(s, e) => { setDateRangeStart(s); setDateRangeEnd(e) }} />
-                <Input placeholder="Search bill no, customer..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[180px]" />
+                <Input placeholder="Search bill no, customer..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full sm:w-[180px]" />
                 {/* <Input placeholder="Filter by location..." value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="w-[160px]" /> */}
                 {/* <Select value={filterRetailer || '__all__'} onValueChange={v => setFilterRetailer(v === '__all__' ? '' : v)}>
                   <SelectTrigger className="w-[160px]"><SelectValue placeholder="All Retailers" /></SelectTrigger>
@@ -1552,7 +1577,7 @@ export default function SalesPage() {
                   </SelectContent>
                 </Select> */}
                 <Select value={filterPaymentStatus || '__all__'} onValueChange={v => setFilterPaymentStatus(v === '__all__' ? '' : v)}>
-                  <SelectTrigger className="w-[140px]"><SelectValue placeholder="All Status" /></SelectTrigger>
+                  <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="All Status" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__all__">All Status</SelectItem>
                     <SelectItem value="paid">Paid</SelectItem>
@@ -1578,7 +1603,7 @@ export default function SalesPage() {
               <p className="text-center py-8 text-muted-foreground">No sales found</p>
             ) : (
               <div className="overflow-x-auto">
-                <Table>
+                <Table className="min-w-[1000px]">
 
                   <TableHeader>
                     <TableRow>
@@ -1673,7 +1698,7 @@ export default function SalesPage() {
 
             {/* Pagination UI */}
             {totalRecords > 0 && (
-              <div className="flex items-center justify-between px-4 py-4 border-t">
+              <div className="flex flex-col gap-3 px-4 py-4 border-t sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-sm text-muted-foreground">
                   Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalRecords)} of {totalRecords} entries
                 </div>

@@ -267,48 +267,48 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
 
   return (
     <DashboardLayout>
-      <div className="p-6 space-y-6">
+      <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">{config.pageTitle}</h1>
             <p className="text-muted-foreground text-sm">{config.subtitle}</p>
           </div>
-          <Button onClick={openCreate} className="gap-2">
+          <Button onClick={openCreate} className="shrink-0 self-start sm:self-auto gap-2">
             <Plus className="size-4" /> New Voucher
           </Button>
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-3 items-end bg-white p-4 rounded-xl border">
-          <div>
+        <div className="flex flex-col gap-3 bg-white p-4 rounded-xl border sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="w-full sm:w-auto">
             <label className="text-xs font-medium text-gray-500 mb-1 block">From</label>
             <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              className="w-full sm:w-[160px] border border-gray-300 rounded-lg px-3 py-2 text-sm" />
           </div>
-          <div>
+          <div className="w-full sm:w-auto">
             <label className="text-xs font-medium text-gray-500 mb-1 block">To</label>
             <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              className="w-full sm:w-[160px] border border-gray-300 rounded-lg px-3 py-2 text-sm" />
           </div>
-          <div>
+          <div className="w-full sm:w-auto">
             <label className="text-xs font-medium text-gray-500 mb-1 block">Status</label>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+              className="w-full sm:w-[160px] border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
               <option value="">All</option>
               <option value="paid">Paid</option>
               <option value="pending">Pending</option>
               <option value="cancelled">Cancelled</option>
             </select>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchVouchers} className="mt-auto">
+          <Button variant="outline" size="sm" onClick={fetchVouchers} className="w-full sm:w-auto">
             Refresh
           </Button>
         </div>
 
         {/* Table */}
         <div className="bg-white rounded-xl border overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[760px]">
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Voucher #</th>
@@ -353,7 +353,7 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
                           </button>
                         )}
                         {v.status === "pending" && (
-                          <button onClick={() => handleApprove(v.id)} className="p1.5 rounded hover:bg-gray-100 text-green-600" title="Approve">
+                          <button onClick={() => handleApprove(v.id)} className="p-1.5 rounded hover:bg-gray-100 text-green-600" title="Approve">
                             <CheckCircle className="size-4" />
                           </button>
                         )}
@@ -372,7 +372,7 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
 
       {/* Create / Edit Dialog */}
       <Dialog open={showForm} onOpenChange={(o) => { if (!o) { setShowForm(false); resetForm(); } }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? "Edit Voucher" : "New Voucher"}</DialogTitle>
           </DialogHeader>

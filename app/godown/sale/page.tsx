@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X, Printer } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Printer, ShoppingCart, Bird, Scale, IndianRupee, BadgeCheck, Clock } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateRangeFilter } from "@/components/date-range-filter"
@@ -368,14 +368,39 @@ export default function GodownSalePage() {
       </html>
     `
 
-    const printWindow = window.open('', '_blank')
-    if (printWindow) {
-      printWindow.document.write(printContent)
-      printWindow.document.close()
-      printWindow.onload = () => {
-        printWindow.print()
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'fixed'
+    iframe.style.right = '0'
+    iframe.style.bottom = '0'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = '0'
+    iframe.setAttribute('aria-hidden', 'true')
+    document.body.appendChild(iframe)
+
+    const cleanup = () => {
+      window.setTimeout(() => iframe.remove(), 100)
+    }
+
+    iframe.onload = () => {
+      const win = iframe.contentWindow
+      if (!win) return cleanup()
+      win.focus()
+      win.addEventListener('afterprint', cleanup)
+      try {
+        win.print()
+      } catch {
+        cleanup()
       }
     }
+
+    const iframeDoc = iframe.contentDocument
+    if (iframeDoc) {
+      iframeDoc.open()
+      iframeDoc.write(printContent)
+      iframeDoc.close()
+    }
+    window.setTimeout(cleanup, 30000)
   }
 
   const handlePrintSale = (sale: GodownSale) => {
@@ -537,42 +562,70 @@ export default function GodownSalePage() {
       </html>
     `
 
-    const printWindow = window.open('', '_blank')
-    if (printWindow) {
-      printWindow.document.write(printContent)
-      printWindow.document.close()
-      printWindow.onload = () => {
-        printWindow.print()
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'fixed'
+    iframe.style.right = '0'
+    iframe.style.bottom = '0'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = '0'
+    iframe.setAttribute('aria-hidden', 'true')
+    document.body.appendChild(iframe)
+
+    const cleanup = () => {
+      window.setTimeout(() => iframe.remove(), 100)
+    }
+
+    iframe.onload = () => {
+      const win = iframe.contentWindow
+      if (!win) return cleanup()
+      win.focus()
+      win.addEventListener('afterprint', cleanup)
+      try {
+        win.print()
+      } catch {
+        cleanup()
       }
     }
+
+    const iframeDoc = iframe.contentDocument
+    if (iframeDoc) {
+      iframeDoc.open()
+      iframeDoc.write(printContent)
+      iframeDoc.close()
+    }
+    window.setTimeout(cleanup, 30000)
   }
 
   if (!mounted) return null
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Godown Sales</h1>
-            <p className="text-muted-foreground">Record sales from godown</p>
+      <div className="space-y-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Godown Sales</h1>
+              <p className="mt-0.5 text-sm text-muted-foreground">Record sales from godown</p>
+            </div>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}>
-                <Plus className="mr-2" size={20} />
+              <Button onClick={resetForm} className="shrink-0 self-start sm:self-auto">
+                <Plus className="mr-0" size={20} />
                 New Sale
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col" aria-describedby="dialog-description">
-              <DialogHeader>
-                <DialogTitle>{editingId ? "Edit Sale" : "New Sale"}</DialogTitle>
+            <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-xl lg:max-w-2xl max-h-[90vh] flex flex-col rounded-2xl" aria-describedby="dialog-description">
+              <DialogHeader className="pb-1">
+                <DialogTitle className="text-xl">{editingId ? "Edit Sale" : "New Sale"}</DialogTitle>
                 <p id="dialog-description" className="sr-only">
                   {editingId ? "Edit godown sale details" : "Create a new godown sale"}
                 </p>
               </DialogHeader>
-              <div className="space-y-4 overflow-y-auto flex-1 pr-1 pb-2">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="flex-1 space-y-5 overflow-y-auto pr-1 pb-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Sale Date *</Label>
                     <DatePicker
@@ -628,7 +681,7 @@ export default function GodownSalePage() {
                   </Select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Phone</Label>
                     <Input value={retailers.find(r => r.id === formData.retailerId)?.phone || ""} disabled className="bg-gray-50" />
@@ -649,7 +702,7 @@ export default function GodownSalePage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Number of Birds *</Label>
                     <Input
@@ -698,7 +751,7 @@ export default function GodownSalePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Total Amount (₹)</Label>
                     <Input
@@ -729,18 +782,18 @@ export default function GodownSalePage() {
                 </div>
 
                 {/* Payment Breakdown Card */}
-                <Card className="border-purple-200">
-                  <CardHeader className="bg-purple-50 border-b border-purple-100 py-3">
-                    <CardTitle className="text-purple-900 text-sm">Payment Breakdown</CardTitle>
+                <Card className="rounded-2xl border-purple-200">
+                  <CardHeader className="border-b border-purple-100 bg-purple-50 px-5 py-3">
+                    <CardTitle className="text-sm text-purple-900">Payment Breakdown</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3 pt-4">
                     <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="hidden gap-4 sm:grid sm:grid-cols-2">
                         <Label className="text-sm font-medium">Payment Mode</Label>
                         <Label className="text-sm font-medium">Amount (₹)</Label>
                       </div>
                       {payments.map((p, i) => (
-                        <div key={i} className="grid grid-cols-2 gap-4">
+                        <div key={i} className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                           <Select value={p.mode} onValueChange={v => updatePayment(i, "mode", v as PaymentMode)} disabled={loading}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
@@ -768,7 +821,7 @@ export default function GodownSalePage() {
                                 variant="ghost" 
                                 size="sm" 
                                 onClick={() => removePayment(i)} 
-                                className="px-2 text-red-500"
+                                className="shrink-0 px-2 text-red-500"
                               >
                                 <X size={14} />
                               </Button>
@@ -786,7 +839,7 @@ export default function GodownSalePage() {
                         <Plus size={14} className="mr-1" /> Add Payment Mode
                       </Button>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                    <div className="grid grid-cols-1 gap-4 border-t pt-2 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label>Total Received (₹)</Label>
                         <Input 
@@ -823,7 +876,7 @@ export default function GodownSalePage() {
                   <Button onClick={handleSave} className="flex-1" disabled={loading}>
                     {loading ? "Saving..." : editingId ? "Update" : "Create"}
                   </Button>
-                  <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}>
+                  <Button variant="outline" size="icon" onClick={() => setShowDialog(false)} disabled={loading} aria-label="Cancel">
                     <X size={20} />
                   </Button>
                 </div>
@@ -832,70 +885,82 @@ export default function GodownSalePage() {
           </Dialog>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">Total Birds</p>
-              <p className="text-2xl font-bold">{salesStats.totalBirds.toLocaleString("en-IN")}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">Total Weight</p>
-              <p className="text-2xl font-bold">{salesStats.totalWeight.toFixed(2)} kg</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">Total Amount</p>
-              <p className="text-2xl font-bold">₹{salesStats.totalAmount.toFixed(2)}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">Total Paid</p>
-              <p className="text-2xl font-bold text-green-700">₹{salesStats.totalPaid.toFixed(2)}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">Total Pending</p>
-              <p className="text-2xl font-bold text-red-600">₹{salesStats.totalPending.toFixed(2)}</p>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 [&>*]:break-words">
+          <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium text-muted-foreground">Total Birds</p>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                <Bird size={17} />
+              </span>
+            </div>
+            <div className="mt-3 text-2xl font-bold tracking-tight">{salesStats.totalBirds.toLocaleString("en-IN")}</div>
+            <p className="mt-auto pt-4 text-xs text-muted-foreground">Birds sold</p>
+          </div>
+          <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium text-muted-foreground">Total Weight</p>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                <Scale size={17} />
+              </span>
+            </div>
+            <div className="mt-3 text-2xl font-bold tracking-tight">{salesStats.totalWeight.toFixed(2)} kg</div>
+            <p className="mt-auto pt-4 text-xs text-muted-foreground">Weight sold</p>
+          </div>
+          <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium text-muted-foreground">Total Amount</p>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                <IndianRupee size={17} />
+              </span>
+            </div>
+            <div className="mt-3 text-2xl font-bold tracking-tight">₹{salesStats.totalAmount.toFixed(2)}</div>
+            <p className="mt-auto pt-4 text-xs text-muted-foreground">Total sale value</p>
+          </div>
+          <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium text-muted-foreground">Total Paid</p>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                <BadgeCheck size={17} />
+              </span>
+            </div>
+            <div className="mt-3 text-2xl font-bold tracking-tight text-green-700">₹{salesStats.totalPaid.toFixed(2)}</div>
+            <p className="mt-auto pt-4 text-xs text-muted-foreground">Amount received</p>
+          </div>
+          <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium text-muted-foreground">Total Pending</p>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
+                <Clock size={17} />
+              </span>
+            </div>
+            <div className="mt-3 text-2xl font-bold tracking-tight text-red-600">₹{salesStats.totalPending.toFixed(2)}</div>
+            <p className="mt-auto pt-4 text-xs text-muted-foreground">Balance pending</p>
+          </div>
         </div>
 
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader>
-            <div className="flex justify-between items-start">
-              {/* <div>
-                <CardTitle>Sales List</CardTitle>
-                <p className="text-sm text-muted-foreground">View and manage godown sales</p>
-              </div> */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <DateRangeFilter
-                  startDate={dateRangeStart}
-                  endDate={dateRangeEnd}
-                  onDateRangeChange={handleDateRangeChange}
-                />
-                <div className="flex items-center gap-2">
-                  <Label className="text-sm font-medium whitespace-nowrap">Filter:</Label>
-                  <Input
-                    placeholder="Search by customer..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-[250px]"
-                  />
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePrintReport}
-                >
-                  <Printer className="mr-2" size={16} />
-                  Print Report
-                </Button>
-              </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                placeholder="Search by customer..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-9 w-full rounded-full sm:w-[170px]"
+              />
+              <DateRangeFilter
+                startDate={dateRangeStart}
+                endDate={dateRangeEnd}
+                onDateRangeChange={handleDateRangeChange}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 rounded-full"
+                onClick={handlePrintReport}
+              >
+                <Printer className="mr-2" size={16} />
+                Print Report
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -908,66 +973,64 @@ export default function GodownSalePage() {
                   : "No sales found"}
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="font-bold">GDS No</TableHead>
-                      <TableHead className="font-bold">Date</TableHead>
-                      <TableHead className="font-bold">Customer</TableHead>
-                      <TableHead className="font-bold">Birds</TableHead>
-                      <TableHead className="font-bold">Rate</TableHead>
-                      <TableHead className="font-bold">Total</TableHead>
-                      <TableHead className="font-bold">Received</TableHead>
-                      <TableHead className="font-bold">Balance</TableHead>
-                      <TableHead className="font-bold">Status</TableHead>
-                      <TableHead className="font-bold">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredSales.map((sale) => {
-                      const totalAmount = Number(sale.totalAmount || 0)
-                      const amountReceived = Number((sale as any).amountReceived || 0)
-                      const balance = Math.max(0, totalAmount - amountReceived)
-                      
-                      return (
-                        <TableRow key={sale.id}>
-                          <TableCell>{sale.invoiceNumber || "-"}</TableCell>
-                          <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
-                          <TableCell>{sale.customerName}</TableCell>
-                          <TableCell>{sale.numberOfBirds} birds</TableCell>
-                          <TableCell>₹{Number(sale.ratePerKg || 0).toFixed(2)}/kg</TableCell>
-                          <TableCell>₹{totalAmount.toFixed(2)}</TableCell>
-                          <TableCell className="text-green-700 font-medium">₹{amountReceived.toFixed(2)}</TableCell>
-                          <TableCell className="text-red-600 font-medium">₹{balance.toFixed(2)}</TableCell>
-                          <TableCell>
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                              (sale as any).paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                              (sale as any).paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {(sale as any).paymentStatus || 'pending'}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button variant="ghost" size="sm" onClick={() => handleEdit(sale)}>
-                                <Edit2 size={16} />
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handlePrintSale(sale)}>
-                                <Printer size={16} />
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleDelete(sale.id)}>
-                                <Trash2 size={16} />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+              <Table className="min-w-[860px] [&_td]:px-3 [&_td]:py-2.5 [&_th]:px-3 [&_th]:py-3">
+                <TableHeader>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">GDS No</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Customer</TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Birds</TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rate</TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total</TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Received</TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Balance</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredSales.map((sale) => {
+                    const totalAmount = Number(sale.totalAmount || 0)
+                    const amountReceived = Number((sale as any).amountReceived || 0)
+                    const balance = Math.max(0, totalAmount - amountReceived)
+                    
+                    return (
+                      <TableRow key={sale.id}>
+                        <TableCell>{sale.invoiceNumber || "-"}</TableCell>
+                        <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
+                        <TableCell>{sale.customerName}</TableCell>
+                        <TableCell className="text-right">{sale.numberOfBirds} birds</TableCell>
+                        <TableCell className="text-right">₹{Number(sale.ratePerKg || 0).toFixed(2)}/kg</TableCell>
+                        <TableCell className="text-right">₹{totalAmount.toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-medium text-green-700">₹{amountReceived.toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-medium text-red-600">₹{balance.toFixed(2)}</TableCell>
+                        <TableCell>
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                            (sale as any).paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                            (sale as any).paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {(sale as any).paymentStatus || 'pending'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1.5">
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(sale)}>
+                              <Edit2 size={16} />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handlePrintSale(sale)}>
+                              <Printer size={16} />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(sale.id)}>
+                              <Trash2 size={16} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
             )}
           </CardContent>
         </Card>

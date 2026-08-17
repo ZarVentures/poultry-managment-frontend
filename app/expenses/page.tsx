@@ -284,10 +284,10 @@ export default function ExpensesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Expenses & Financial Tracking</h1>
-            <p className="text-muted-foreground">Track all farm expenses and costs</p>
+            <h1 className="text-2xl sm:text-3xl font-bold">Expenses & Financial Tracking</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">Track all farm expenses and costs</p>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
@@ -296,7 +296,7 @@ export default function ExpensesPage() {
                 Add New Expense
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl" aria-describedby="dialog-description">
+            <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto" aria-describedby="dialog-description">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Edit Expense" : "New Expense"}</DialogTitle>
                 <p id="dialog-description" className="sr-only">
@@ -314,7 +314,7 @@ export default function ExpensesPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Date *</Label>
                     <DatePicker
@@ -352,7 +352,7 @@ export default function ExpensesPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Amount *</Label>
                     <Input
@@ -410,22 +410,22 @@ export default function ExpensesPage() {
           </Dialog>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 px-3 sm:px-6">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Expense (₹)</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">₹{stats.total.toFixed(0)}</div>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl sm:text-2xl font-bold whitespace-nowrap">₹{stats.total.toFixed(0)}</div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 px-3 sm:px-6">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Expense By Category</CardTitle>
               <p className="text-xs text-muted-foreground">Expenses breakdown by category</p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 sm:px-6">
               <div className="space-y-2">
                 {categories.slice(0, 6).map(cat => (
                   <div key={cat.id} className="flex items-center justify-between">
@@ -433,7 +433,7 @@ export default function ExpensesPage() {
                       <span>{getCategoryIcon(cat.name.toLowerCase())}</span>
                       <span className="text-sm">{cat.name}</span>
                     </div>
-                    <span className="text-sm font-medium">₹{(stats.byCategory[cat.id] || 0).toFixed(0)}</span>
+                    <span className="text-sm font-medium whitespace-nowrap">₹{(stats.byCategory[cat.id] || 0).toFixed(0)}</span>
                   </div>
                 ))}
                 {categories.length === 0 && <p className="text-sm text-muted-foreground animate-pulse">Loading categories...</p>}
@@ -446,39 +446,37 @@ export default function ExpensesPage() {
 
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-start">
-              <div className="flex items-center gap-2 flex-wrap">
-                <DateRangeFilter
-                  startDate={dateRangeStart}
-                  endDate={dateRangeEnd}
-                  onDateRangeChange={handleDateRangeChange}
+            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+              <DateRangeFilter
+                startDate={dateRangeStart}
+                endDate={dateRangeEnd}
+                onDateRangeChange={handleDateRangeChange}
+              />
+              <div className="flex items-center gap-2">
+                <Label className="text-sm font-medium whitespace-nowrap">Filter:</Label>
+                <Input
+                  placeholder="Search by owner, description..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full sm:w-[250px]"
                 />
-                <div className="flex items-center gap-2">
-                  <Label className="text-sm font-medium whitespace-nowrap">Filter:</Label>
-                  <Input
-                    placeholder="Search by owner, description..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-[250px]"
-                  />
-                </div>
-                {/* <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownloadPDF}
-                >
-                  <Download className="mr-2" size={16} />
-                  Download PDF
-                </Button> */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePrintReport}
-                >
-                  <Printer className="mr-2" size={16} />
-                  Print Report
-                </Button>
               </div>
+              {/* <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadPDF}
+              >
+                <Download className="mr-2" size={16} />
+                Download PDF
+              </Button> */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrintReport}
+              >
+                <Printer className="mr-2" size={16} />
+                Print Report
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -492,7 +490,7 @@ export default function ExpensesPage() {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <Table>
+                <Table className="min-w-[800px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Expense Owner</TableHead>
