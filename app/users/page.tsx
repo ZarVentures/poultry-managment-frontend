@@ -234,9 +234,9 @@ export default function UsersPage() {
       // Search filter
       const searchLower = searchQuery.toLowerCase()
       const matchesSearch = !searchQuery ||
-        user.name.toLowerCase().includes(searchLower) ||
-        user.email.toLowerCase().includes(searchLower) ||
-        (user.phone && user.phone.toLowerCase().includes(searchLower))
+        (user.name || "").toLowerCase().includes(searchLower) ||
+        (user.email || "").toLowerCase().includes(searchLower) ||
+        (user.phone || "").toLowerCase().includes(searchLower)
 
       // Role filter
       const matchesRole = roleFilter === "all" || user.role === roleFilter
