@@ -9,10 +9,9 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, CheckCircle, XCircle, Clock, Package, AlertTriangle, RotateCcw, Bird, IndianRupee } from "lucide-react"
+import { Plus, Edit2, Trash2, CheckCircle, XCircle, Clock, Package, AlertTriangle, RotateCcw, Bird, IndianRupee, Calendar, Search } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { DateRangeFilter } from "@/components/date-range-filter"
 import { vehicleBirdReturnsApi, salesApi, type VehicleBirdReturn, type CreateVehicleBirdReturnDto } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -602,17 +601,36 @@ export default function VehicleBirdReturnsPage() {
         </div>
 
         {/* Filters */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <Input
-                placeholder="Search by return number, customer, or invoice..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full sm:flex-1 sm:min-w-[200px]"
-              />
+        <Card className="rounded-2xl p-4 print:hidden">
+          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+            <div className="md:w-[320px]">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Search</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                <Input
+                  placeholder="Search by return number, customer, or invoice..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-10 rounded-full pl-9 w-full sm:w-[200px] md:w-[320px]"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+                <Calendar size={12} /> From
+              </label>
+              <Input type="date" className="w-full sm:w-[160px] h-10 rounded-full" value={dateRangeStart ? `${dateRangeStart.getFullYear()}-${String(dateRangeStart.getMonth() + 1).padStart(2, "0")}-${String(dateRangeStart.getDate()).padStart(2, "0")}` : ""} onChange={(e) => { const v = e.target.value; if (v) { const [y, m, d] = v.split("-").map(Number); setDateRangeStart(new Date(y, m - 1, d)) } else { setDateRangeStart(undefined) } }} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+                <Calendar size={12} /> To
+              </label>
+              <Input type="date" className="w-full sm:w-[160px] h-10 rounded-full" value={dateRangeEnd ? `${dateRangeEnd.getFullYear()}-${String(dateRangeEnd.getMonth() + 1).padStart(2, "0")}-${String(dateRangeEnd.getDate()).padStart(2, "0")}` : ""} onChange={(e) => { const v = e.target.value; if (v) { const [y, m, d] = v.split("-").map(Number); setDateRangeEnd(new Date(y, m - 1, d)) } else { setDateRangeEnd(undefined) } }} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px] h-10 rounded-full">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -623,16 +641,8 @@ export default function VehicleBirdReturnsPage() {
                   <SelectItem value="processed">Processed</SelectItem>
                 </SelectContent>
               </Select>
-              <DateRangeFilter
-                startDate={dateRangeStart}
-                endDate={dateRangeEnd}
-                onDateRangeChange={(start, end) => {
-                  setDateRangeStart(start)
-                  setDateRangeEnd(end)
-                }}
-              />
             </div>
-          </CardContent>
+          </div>
         </Card>
 
         {/* Returns Table */}

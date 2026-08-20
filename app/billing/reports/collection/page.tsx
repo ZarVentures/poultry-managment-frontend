@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Download, Printer, Calendar, Banknote, CreditCard, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Download, Printer, Calendar, Banknote, CreditCard, CheckCircle, ChevronLeft, ChevronRight, CircleDollarSign } from 'lucide-react'
 import { reportsApi } from '@/lib/api'
 
 const CollectionReportPage = () => {
@@ -102,31 +102,31 @@ const CollectionReportPage = () => {
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <div className="flex items-center justify-between no-print">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 no-print">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Collection Report</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Collection Report</h1>
             <p className="text-muted-foreground mt-2">Payments received from sales</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={downloadCSV} type="button"><Download className="w-4 h-4 mr-2" />Export</Button>
-            <Button variant="outline" onClick={handlePrint} type="button"><Printer className="w-4 h-4 mr-2" />Print</Button>
+            <Button variant="outline" onClick={downloadCSV} type="button" className="rounded-full h-10"><Download className="w-4 h-4 mr-2" />Export</Button>
+            <Button variant="outline" onClick={handlePrint} type="button" className="rounded-full h-10"><Printer className="w-4 h-4 mr-2" />Print</Button>
           </div>
         </div>
 
-        <Card className="border border-gray-200 p-6 no-print">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="rounded-2xl p-4 no-print">
+          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">From Date</label>
-              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="pl-10" /></div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">From Date</label>
+              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-10 rounded-full pl-10 w-full sm:w-[160px]" /></div>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">To Date</label>
-              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="pl-10" /></div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">To Date</label>
+              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-10 rounded-full pl-10 w-full sm:w-[160px]" /></div>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Payment Mode</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Payment Mode</label>
               <Select value={modeFilter} onValueChange={setModeFilter}>
-                <SelectTrigger><SelectValue placeholder="All Modes" /></SelectTrigger>
+                <SelectTrigger className="!h-10 rounded-full w-full sm:w-[160px]"><SelectValue placeholder="All Modes" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Modes</SelectItem>
                   <SelectItem value="cash">Cash</SelectItem>
@@ -139,20 +139,43 @@ const CollectionReportPage = () => {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 no-print">
-          <Card className="border border-green-200 bg-green-50 p-6">
-            <p className="text-sm text-gray-600 font-medium">Total Collected</p>
-            <p className="text-2xl font-bold text-green-600 mt-2">₹{totalCollected.toLocaleString('en-IN')}</p>
-            <p className="text-xs text-gray-600 mt-2">{filtered.length} transactions</p>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 no-print">
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Total Collected</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600"><CircleDollarSign size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 min-w-0 truncate">₹{totalCollected.toLocaleString('en-IN')}</div>
+              <p className="text-xs text-muted-foreground mt-1.5 truncate">{filtered.length} transactions</p>
+            </CardContent>
           </Card>
-          <Card className="border border-gray-200 p-6">
-            <div className="flex items-start justify-between mb-2"><div><p className="text-xs text-gray-600 font-medium">Cash</p><p className="text-xl font-bold text-gray-900 mt-1">₹{modeBreakdown('cash').toLocaleString('en-IN')}</p></div><Banknote className="w-5 h-5 text-green-600 opacity-30" /></div>
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Cash</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600"><Banknote size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight min-w-0 truncate">₹{modeBreakdown('cash').toLocaleString('en-IN')}</div>
+            </CardContent>
           </Card>
-          <Card className="border border-gray-200 p-6">
-            <div className="flex items-start justify-between mb-2"><div><p className="text-xs text-gray-600 font-medium">Bank / UPI</p><p className="text-xl font-bold text-gray-900 mt-1">₹{(modeBreakdown('bank') + modeBreakdown('upi') + modeBreakdown('bank_transfer')).toLocaleString('en-IN')}</p></div><CreditCard className="w-5 h-5 text-blue-600 opacity-30" /></div>
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Bank / UPI</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600"><CreditCard size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-blue-600 min-w-0 truncate">₹{(modeBreakdown('bank') + modeBreakdown('upi') + modeBreakdown('bank_transfer')).toLocaleString('en-IN')}</div>
+            </CardContent>
           </Card>
-          <Card className="border border-gray-200 p-6">
-            <div className="flex items-start justify-between mb-2"><div><p className="text-xs text-gray-600 font-medium">Cheque</p><p className="text-xl font-bold text-gray-900 mt-1">₹{modeBreakdown('cheque').toLocaleString('en-IN')}</p></div><CheckCircle className="w-5 h-5 text-amber-600 opacity-30" /></div>
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Cheque</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600"><CheckCircle size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-yellow-600 min-w-0 truncate">₹{modeBreakdown('cheque').toLocaleString('en-IN')}</div>
+            </CardContent>
           </Card>
         </div>
 

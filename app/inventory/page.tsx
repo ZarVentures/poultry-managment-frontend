@@ -4,11 +4,10 @@ import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Bird, FileText, ChevronLeft, ChevronRight, Warehouse, Gauge, PackagePlus, PackageCheck } from "lucide-react"
+import { Bird, FileText, ChevronLeft, ChevronRight, Warehouse, Gauge, PackagePlus, PackageCheck, Calendar } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DateRangeFilter } from "@/components/date-range-filter"
 import { godownApi, settingsApi } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -106,7 +105,7 @@ export default function InventoryPage() {
             
             <div className="min-w-0">
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Godown Overview</h1>
-              <p className="-mt-2 text-sm text-muted-foreground">Current status and capacity</p>
+              <p className="mt-2 text-sm text-muted-foreground">Current status and capacity</p>
             </div>
           </div>
           <Button variant="outline" asChild className="self-start sm:self-auto">
@@ -174,36 +173,33 @@ export default function InventoryPage() {
           </div>
         </div>
 
-        <Card className="w-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-  <CardHeader className="border-b border-border px-4 py-4 sm:px-6">
-    <div className="flex w-full flex-col gap-4 lg:flex-row lg:items-center lg:gap-20">
-      
-      {/* Title */}
-      <CardTitle className="flex items-center gap-3 text-lg font-semibold">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
-          <FileText size={18} />
-        </span>
+        
 
-        <span className="leading-tight">
-          Purchase Invoice Stock
-        </span>
+        <Card className="rounded-2xl p-4 print:hidden">
+          
+          
+          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+            <CardTitle className="flex items-center gap-3 text-lg font-semibold">
+        
+
+        
       </CardTitle>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+                <Calendar size={12} /> From
+              </label>
+              <Input type="date" className="w-full sm:w-[160px] h-10 rounded-full" value={dateRangeStart ? `${dateRangeStart.getFullYear()}-${String(dateRangeStart.getMonth() + 1).padStart(2, "0")}-${String(dateRangeStart.getDate()).padStart(2, "0")}` : ""} onChange={(e) => { const v = e.target.value; if (v) { const [y, m, d] = v.split("-").map(Number); setDateRangeStart(new Date(y, m - 1, d)) } else { setDateRangeStart(undefined) } setCurrentPage(1) }} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+                <Calendar size={12} /> To
+              </label>
+              <Input type="date" className="w-full sm:w-[160px] h-10 rounded-full" value={dateRangeEnd ? `${dateRangeEnd.getFullYear()}-${String(dateRangeEnd.getMonth() + 1).padStart(2, "0")}-${String(dateRangeEnd.getDate()).padStart(2, "0")}` : ""} onChange={(e) => { const v = e.target.value; if (v) { const [y, m, d] = v.split("-").map(Number); setDateRangeEnd(new Date(y, m - 1, d)) } else { setDateRangeEnd(undefined) } setCurrentPage(1) }} />
+            </div>
+          </div>
+        </Card>
 
-      {/* Date Range - Right Side */}
-      <div className="flex w-full justify-start lg:w-auto lg:justify-end">
-        <DateRangeFilter
-          startDate={dateRangeStart}
-          endDate={dateRangeEnd}
-          onDateRangeChange={(s, e) => {
-            setDateRangeStart(s)
-            setDateRangeEnd(e)
-            setCurrentPage(1)
-          }}
-        />
-      </div>
-    </div>
-  </CardHeader>
-
+        <Card>
   <CardContent className="p-0">
     <div className="overflow-x-auto">
       <Table>

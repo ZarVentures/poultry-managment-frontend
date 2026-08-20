@@ -10,10 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, Download, Printer, Eye, Paperclip, X, ChevronLeft, ChevronRight, ShoppingCart, Bird, IndianRupee, Wallet } from "lucide-react"
+import { Plus, Edit2, Trash2, Download, Printer, Eye, Paperclip, X, ChevronLeft, ChevronRight, ShoppingCart, Bird, IndianRupee, Wallet, Calendar, Search } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { DateRangeFilter } from "@/components/date-range-filter"
 import { purchasesApi, farmersApi, vehiclesApi, type PurchaseOrder as ApiPurchaseOrder, type Farmer } from "@/lib/api"
 import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
@@ -848,30 +847,45 @@ export default function PurchasesPage() {
 </div>
 
         {/* Table */}
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-start flex-wrap gap-3">
-              {/* <div>
-                <CardTitle>Purchase Orders List</CardTitle>
-                <p className="text-sm text-muted-foreground">View and manage all purchase orders</p>
-              </div> */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <DateRangeFilter startDate={dateRangeStart} endDate={dateRangeEnd} onDateRangeChange={(s, e) => { setDateRangeStart(s); setDateRangeEnd(e); setCurrentPage(1) }} />
-                <Input placeholder="Search by bill no, farmer..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1) }} className="w-[220px]" />
-                <Select value={filterPaymentStatus || '__all__'} onValueChange={v => { setFilterPaymentStatus(v === '__all__' ? '' : v); setCurrentPage(1) }}>
-    <SelectTrigger className="w-[160px]">
-      <SelectValue placeholder="All Status" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="__all__">All Status</SelectItem>
-      <SelectItem value="paid">Paid</SelectItem>
-      <SelectItem value="pending">Pending</SelectItem>
-      <SelectItem value="partial">Partial</SelectItem>
-    </SelectContent>
-  </Select>
+        <Card className="rounded-2xl p-4 print:hidden">
+          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+            <div className="md:w-[320px]">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Search</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                <Input placeholder="Search by bill no, farmer..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1) }} className="h-10 rounded-full pl-9 w-full sm:w-[220px] md:w-[320px]" />
               </div>
             </div>
-          </CardHeader>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+                <Calendar size={12} /> From
+              </label>
+              <Input type="date" className="w-full sm:w-[160px] h-10 rounded-full" value={dateRangeStart ? `${dateRangeStart.getFullYear()}-${String(dateRangeStart.getMonth() + 1).padStart(2, "0")}-${String(dateRangeStart.getDate()).padStart(2, "0")}` : ""} onChange={(e) => { const v = e.target.value; if (v) { const [y, m, d] = v.split("-").map(Number); setDateRangeStart(new Date(y, m - 1, d)); setCurrentPage(1) } else { setDateRangeStart(undefined); setCurrentPage(1) } }} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+                <Calendar size={12} /> To
+              </label>
+              <Input type="date" className="w-full sm:w-[160px] h-10 rounded-full" value={dateRangeEnd ? `${dateRangeEnd.getFullYear()}-${String(dateRangeEnd.getMonth() + 1).padStart(2, "0")}-${String(dateRangeEnd.getDate()).padStart(2, "0")}` : ""} onChange={(e) => { const v = e.target.value; if (v) { const [y, m, d] = v.split("-").map(Number); setDateRangeEnd(new Date(y, m - 1, d)); setCurrentPage(1) } else { setDateRangeEnd(undefined); setCurrentPage(1) } }} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
+              <Select value={filterPaymentStatus || '__all__'} onValueChange={v => { setFilterPaymentStatus(v === '__all__' ? '' : v); setCurrentPage(1) }}>
+                <SelectTrigger className="rounded-full h-10 w-[160px]">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All Status</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="partial">Partial</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
           <CardContent>
             {loading && purchases.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">Loading...</p>

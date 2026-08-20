@@ -4,15 +4,15 @@ import { useState, useEffect, useMemo } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Legend, Tooltip, ResponsiveContainer,
 } from "recharts"
 import { ChartContainer } from "@/components/ui/chart"
-import { Download, TrendingUp, TrendingDown, DollarSign, ArrowUpRight, ArrowDownRight, Calendar, X } from "lucide-react"
+import { Download, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Calendar, X, Wallet, Receipt, BadgeDollarSign, CircleDollarSign, Users, Truck } from "lucide-react"
 import { format, startOfMonth, eachMonthOfInterval, parseISO, isWithinInterval, subMonths, startOfDay, endOfDay } from "date-fns"
 import { salesApi, expensesApi, purchasesApi, godownApi } from "@/lib/api"
-import { DateRangeFilter } from "@/components/date-range-filter"
 
 interface Sale {
   id: string
@@ -411,107 +411,186 @@ export default function FinancialAnalyticsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center flex-wrap gap-3">
-          <div>
-            <h1 className="text-3xl font-bold">Financial Analytics</h1>
-            <p className="text-muted-foreground">Comprehensive financial insights and performance metrics</p>
+      <div className="space-y-4 sm:space-y-6 w-full min-w-0 max-w-full overflow-x-hidden">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+          <div className="min-w-0 shrink-0">
+            <h1 className="text-xl sm:text-3xl font-bold">Financial Analytics</h1>
+            <p className="mt-2 text-xs sm:text-sm text-muted-foreground">Comprehensive financial insights and performance metrics</p>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <DateRangeFilter
-              startDate={dateRangeStart}
-              endDate={dateRangeEnd}
-              onDateRangeChange={(s, e) => { setDateRangeStart(s); setDateRangeEnd(e) }}
-            />
-            {(dateRangeStart || dateRangeEnd) && (
-              <Button variant="outline" size="sm" onClick={() => { setDateRangeStart(undefined); setDateRangeEnd(undefined) }}>
-                <X size={14} className="mr-1" /> Clear Filter
-              </Button>
-            )}
-            <Button>
-              <Download className="mr-2" size={20} />
-              Export Report
-            </Button>
-          </div>
+          <Button size="sm" className="h-10 shrink-0 self-end sm:self-auto rounded-md">
+            <Download className="mr-1.5" size={16} />
+            Export Report
+          </Button>
         </div>
+
+        <div className="print:hidden">
+  <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+    <div>
+      <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+        <Calendar size={12} /> From
+      </label>
+
+      <Input
+        type="date"
+        className="rounded-full w-full sm:w-[160px] h-10"
+        value={
+          dateRangeStart
+            ? `${dateRangeStart.getFullYear()}-${String(dateRangeStart.getMonth() + 1).padStart(2, "0")}-${String(dateRangeStart.getDate()).padStart(2, "0")}`
+            : ""
+        }
+        onChange={(e) => {
+          const v = e.target.value
+
+          if (v) {
+            const [y, m, d] = v.split("-").map(Number)
+            setDateRangeStart(new Date(y, m - 1, d))
+          } else {
+            setDateRangeStart(undefined)
+          }
+        }}
+      />
+    </div>
+
+    <div>
+      <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+        <Calendar size={12} /> To
+      </label>
+
+      <Input
+        type="date"
+        className="rounded-full w-full sm:w-[160px] h-10"
+        value={
+          dateRangeEnd
+            ? `${dateRangeEnd.getFullYear()}-${String(dateRangeEnd.getMonth() + 1).padStart(2, "0")}-${String(dateRangeEnd.getDate()).padStart(2, "0")}`
+            : ""
+        }
+        onChange={(e) => {
+          const v = e.target.value
+
+          if (v) {
+            const [y, m, d] = v.split("-").map(Number)
+            setDateRangeEnd(new Date(y, m - 1, d))
+          } else {
+            setDateRangeEnd(undefined)
+          }
+        }}
+      />
+    </div>
+
+    {(dateRangeStart && dateRangeEnd) && (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          setDateRangeStart(undefined)
+          setDateRangeEnd(undefined)
+        }}
+        className="h-10 rounded-full"
+      >
+        <X size={14} className="mr-1" /> Clear
+      </Button>
+    )}
+
+    {!dateRangeStart && !dateRangeEnd && (
+      <span className="h-10 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground flex items-center justify-center">
+        Showing: All Time
+      </span>
+    )}
+  </div>
+</div>
+
         {(dateRangeStart && dateRangeEnd) && (
-          <div className="text-sm text-muted-foreground bg-blue-50 border border-blue-200 rounded px-3 py-2">
+          <div className="text-xs sm:text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2">
             Showing data from <strong>{format(dateRangeStart, 'dd MMM yyyy')}</strong> to <strong>{format(dateRangeEnd, 'dd MMM yyyy')}</strong>
             {' '}— {filteredSales.length} sales, {filteredExpenses.length} expenses, {filteredPurchases.length} purchases
           </div>
         )}
 
         {/* Key Financial Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">₹{financialMetrics.totalRevenue.toLocaleString()}</div>
-              <div className="flex items-center mt-2 text-xs">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Total Revenue */}
+          <Card className="overflow-hidden">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-muted-foreground leading-tight">Total Revenue</span>
+                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                  <TrendingUp size={16} className="text-emerald-600" />
+                </div>
+              </div>
+              <div className="text-lg sm:text-xl font-bold truncate">₹{financialMetrics.totalRevenue.toLocaleString()}</div>
+              <div className="flex items-center mt-1.5 text-[10px] sm:text-xs">
                 {growthRates.revenueGrowth >= 0 ? (
-                  <TrendingUp className="text-green-600 mr-1" size={16} />
+                  <TrendingUp className="text-green-600 mr-0.5 shrink-0" size={12} />
                 ) : (
-                  <TrendingDown className="text-red-600 mr-1" size={16} />
+                  <TrendingDown className="text-red-600 mr-0.5 shrink-0" size={12} />
                 )}
-                <span className={growthRates.revenueGrowth >= 0 ? "text-green-600" : "text-red-600"}>
+                <span className={`truncate ${growthRates.revenueGrowth >= 0 ? "text-green-600" : "text-red-600"}`}>
                   {Math.abs(growthRates.revenueGrowth).toFixed(1)}% vs last month
                 </span>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Costs</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">₹{financialMetrics.totalCost.toLocaleString()}</div>
-              <div className="flex items-center mt-2 text-xs">
-                <span className="text-muted-foreground">
-                  Expenses: ₹{financialMetrics.totalExpenses.toLocaleString()}
-                </span>
+          {/* Total Costs */}
+          <Card className="overflow-hidden">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-muted-foreground leading-tight">Total Costs</span>
+                <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                  <Receipt size={16} className="text-red-600" />
+                </div>
               </div>
-              <div className="flex items-center mt-1 text-xs">
-                <span className="text-muted-foreground">
+              <div className="text-lg sm:text-xl font-bold truncate">₹{financialMetrics.totalCost.toLocaleString()}</div>
+              <div className="mt-1.5 space-y-0.5">
+                <div className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                  Expenses: ₹{financialMetrics.totalExpenses.toLocaleString()}
+                </div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground truncate">
                   Purchases: ₹{financialMetrics.totalPurchases.toLocaleString()}
-                </span>
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Net Profit</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={`text-3xl font-bold ${financialMetrics.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
+          {/* Net Profit */}
+          <Card className="overflow-hidden">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-muted-foreground leading-tight">Net Profit</span>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${financialMetrics.netProfit >= 0 ? "bg-blue-100 dark:bg-blue-900/30" : "bg-red-100 dark:bg-red-900/30"}`}>
+                  <BadgeDollarSign size={16} className={financialMetrics.netProfit >= 0 ? "text-blue-600" : "text-red-600"} />
+                </div>
+              </div>
+              <div className={`text-lg sm:text-xl font-bold truncate ${financialMetrics.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
                 ₹{financialMetrics.netProfit.toLocaleString()}
               </div>
-              <div className="flex items-center mt-2 text-xs">
+              <div className="flex items-center mt-1.5 text-[10px] sm:text-xs">
                 {growthRates.profitGrowth >= 0 ? (
-                  <ArrowUpRight className="text-green-600 mr-1" size={16} />
+                  <ArrowUpRight className="text-green-600 mr-0.5 shrink-0" size={12} />
                 ) : (
-                  <ArrowDownRight className="text-red-600 mr-1" size={16} />
+                  <ArrowDownRight className="text-red-600 mr-0.5 shrink-0" size={12} />
                 )}
-                <span className={growthRates.profitGrowth >= 0 ? "text-green-600" : "text-red-600"}>
+                <span className={`truncate ${growthRates.profitGrowth >= 0 ? "text-green-600" : "text-red-600"}`}>
                   {Math.abs(growthRates.profitGrowth).toFixed(1)}% vs last month
                 </span>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Profit Margin</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={`text-3xl font-bold ${financialMetrics.profitMargin >= 0 ? "text-green-600" : "text-red-600"}`}>
+          {/* Profit Margin */}
+          <Card className="overflow-hidden">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-muted-foreground leading-tight">Profit Margin</span>
+                <div className="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0">
+                  <CircleDollarSign size={16} className="text-violet-600" />
+                </div>
+              </div>
+              <div className={`text-lg sm:text-xl font-bold ${financialMetrics.profitMargin >= 0 ? "text-green-600" : "text-red-600"}`}>
                 {financialMetrics.profitMargin.toFixed(1)}%
               </div>
-              <div className="flex items-center mt-2 text-xs">
-                <DollarSign className="text-muted-foreground mr-1" size={16} />
+              <div className="flex items-center mt-1.5 text-[10px] sm:text-xs">
+                <Wallet className="text-muted-foreground mr-0.5 shrink-0" size={12} />
                 <span className="text-muted-foreground">ROI: {financialMetrics.roi.toFixed(1)}%</span>
               </div>
             </CardContent>
@@ -519,143 +598,161 @@ export default function FinancialAnalyticsPage() {
         </div>
 
         {/* Revenue vs Costs Trend */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Revenue vs Costs Trend</CardTitle>
-              <CardDescription>12-month financial performance overview</CardDescription>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          <Card className="overflow-hidden min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm sm:text-base">Revenue vs Costs Trend</CardTitle>
+              <CardDescription className="text-xs">12-month financial performance overview</CardDescription>
             </CardHeader>
-            <CardContent>
-              <ChartContainer
-                config={{
-                  revenue: { label: "Revenue", color: "#10b981" },
-                  totalCost: { label: "Total Costs", color: "#ef4444" },
-                  profit: { label: "Profit", color: "#3b82f6" },
-                }}
-                className="h-72 w-full"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={monthlyTrends}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="monthShort" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} width={60} tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} />
-                    <Tooltip formatter={(value: number) => `₹${value.toLocaleString()}`} />
-                    <Legend />
-                    <Area type="monotone" dataKey="revenue" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
-                    <Area type="monotone" dataKey="totalCost" stackId="2" stroke="#ef4444" fill="#ef4444" fillOpacity={0.6} />
-                    <Line type="monotone" dataKey="profit" stroke="#3b82f6" strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </ChartContainer>
+            <CardContent className="p-2 sm:p-4 lg:p-6 min-w-0">
+              <div className="w-full min-w-0 h-[220px] sm:h-[260px] lg:h-[280px]">
+                <ChartContainer
+                  config={{
+                    revenue: { label: "Revenue", color: "#10b981" },
+                    totalCost: { label: "Total Costs", color: "#ef4444" },
+                    profit: { label: "Profit", color: "#3b82f6" },
+                  }}
+                  className="h-full w-full aspect-auto"
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={monthlyTrends} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="monthShort" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                      <YAxis tick={{ fontSize: 10 }} width={45} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+                      <Tooltip formatter={(value: number) => `₹${value.toLocaleString()}`} />
+                      <Legend wrapperStyle={{ fontSize: '11px' }} />
+                      <Area type="monotone" dataKey="revenue" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
+                      <Area type="monotone" dataKey="totalCost" stackId="2" stroke="#ef4444" fill="#ef4444" fillOpacity={0.6} />
+                      <Line type="monotone" dataKey="profit" stroke="#3b82f6" strokeWidth={2} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Profit Margin Trend</CardTitle>
-              <CardDescription>Monthly profitability percentage</CardDescription>
+          <Card className="overflow-hidden min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm sm:text-base">Profit Margin Trend</CardTitle>
+              <CardDescription className="text-xs">Monthly profitability percentage</CardDescription>
             </CardHeader>
-            <CardContent>
-              <ChartContainer
-                config={{
-                  profitMargin: { label: "Profit Margin %", color: "#10b981" },
-                }}
-                className="h-72 w-full"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={monthlyTrends}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="monthShort" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} width={45} />
-                    <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="profitMargin"
-                      stroke="#10b981"
-                      strokeWidth={2}
-                      name="Profit Margin %"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartContainer>
+            <CardContent className="p-2 sm:p-4 lg:p-6 min-w-0">
+              <div className="w-full min-w-0 h-[220px] sm:h-[260px] lg:h-[280px]">
+                <ChartContainer
+                  config={{
+                    profitMargin: { label: "Profit Margin %", color: "#10b981" },
+                  }}
+                  className="h-full w-full aspect-auto"
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={monthlyTrends} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="monthShort" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                      <YAxis tick={{ fontSize: 10 }} width={35} />
+                      <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+                      <Legend wrapperStyle={{ fontSize: '11px' }} />
+                      <Line
+                        type="monotone"
+                        dataKey="profitMargin"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        name="Profit Margin %"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Expense Breakdown and Payment Status */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Expense Breakdown</CardTitle>
-              <CardDescription>Distribution by category</CardDescription>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          <Card className="overflow-hidden min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm sm:text-base">Expense Breakdown</CardTitle>
+              <CardDescription className="text-xs">Distribution by category</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 sm:p-4 lg:p-6 min-w-0">
               {expenseBreakdown.length > 0 ? (
-                <ChartContainer
-                  config={expenseBreakdown.reduce((acc, item) => {
-                    acc[item.name.toLowerCase()] = { label: item.name, color: item.fill }
-                    return acc
-                  }, {} as any)}
-                  className="h-80"
-                >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={expenseBreakdown}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={(entry) => `${entry.name}: ${entry.percentage}%`}
-                        outerRadius={100}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {expenseBreakdown.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value: number) => `₹${value.toLocaleString()}`} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
+                <div className="w-full min-w-0">
+                  <div className="w-full h-[200px] sm:h-[240px] lg:h-[280px]">
+                    <ChartContainer
+                      config={expenseBreakdown.reduce((acc, item) => {
+                        acc[item.name.toLowerCase()] = { label: item.name, color: item.fill }
+                        return acc
+                      }, {} as any)}
+                      className="h-full w-full aspect-auto"
+                    >
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={expenseBreakdown}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius="35%"
+                            outerRadius="65%"
+                            paddingAngle={2}
+                            dataKey="value"
+                          >
+                            {expenseBreakdown.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value: number) => `₹${value.toLocaleString()}`} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </ChartContainer>
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2">
+                    {expenseBreakdown.map((entry) => (
+                      <div key={entry.name} className="flex items-center gap-1.5 text-[10px] sm:text-xs">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.fill }} />
+                        <span className="text-muted-foreground truncate">{entry.name}</span>
+                        <span className="font-medium">{entry.percentage}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ) : (
-                <div className="h-80 flex items-center justify-center text-muted-foreground">
+                <div className="h-[200px] sm:h-[240px] lg:h-[280px] flex items-center justify-center text-sm text-muted-foreground">
                   No expense data available
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment Status Analysis</CardTitle>
-              <CardDescription>Sales by payment status</CardDescription>
+          <Card className="overflow-hidden min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm sm:text-base">Payment Status Analysis</CardTitle>
+              <CardDescription className="text-xs">Sales by payment status</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 sm:p-4 lg:p-6 min-w-0">
               {paymentStatusAnalysis.length > 0 ? (
-                <ChartContainer
-                  config={{
-                    paid: { label: "Paid", color: "#10b981" },
-                    pending: { label: "Pending", color: "#f59e0b" },
-                    partial: { label: "Partial", color: "#3b82f6" },
-                  }}
-                  className="h-80"
-                >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={paymentStatusAnalysis}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="status" />
-                      <YAxis />
-                      <Tooltip formatter={(value: number) => `₹${value.toLocaleString()}`} />
-                      <Legend />
-                      <Bar dataKey="amount" fill="#10b981" name="Amount" />
-                      <Bar dataKey="count" fill="#3b82f6" name="Count" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
+                <div className="w-full min-w-0 h-[220px] sm:h-[260px] lg:h-[300px]">
+                  <ChartContainer
+                    config={{
+                      paid: { label: "Paid", color: "#10b981" },
+                      pending: { label: "Pending", color: "#f59e0b" },
+                      partial: { label: "Partial", color: "#3b82f6" },
+                    }}
+                    className="h-full w-full aspect-auto"
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={paymentStatusAnalysis} margin={{ top: 5, right: 10, left: 5, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="status" tick={{ fontSize: 10 }} interval={0} />
+                        <YAxis tick={{ fontSize: 10 }} width={45} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)} />
+                        <Tooltip formatter={(value: number) => `₹${value.toLocaleString()}`} />
+                        <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px', flexWrap: 'wrap', justifyContent: 'center' }} />
+                        <Bar dataKey="amount" fill="#10b981" name="Amount" />
+                        <Bar dataKey="count" fill="#3b82f6" name="Count" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </div>
               ) : (
-                <div className="h-80 flex items-center justify-center text-muted-foreground">
+                <div className="h-[220px] sm:h-[260px] lg:h-[300px] flex items-center justify-center text-sm text-muted-foreground">
                   No payment data available
                 </div>
               )}
@@ -664,57 +761,63 @@ export default function FinancialAnalyticsPage() {
         </div>
 
         {/* Top Customers and Suppliers */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Top 10 Customers</CardTitle>
-              <CardDescription>By total revenue</CardDescription>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          <Card className="overflow-hidden min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                <Users size={16} className="text-muted-foreground shrink-0" />
+                Top 10 Customers
+              </CardTitle>
+              <CardDescription className="text-xs">By total revenue</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-2 sm:p-4 lg:p-6 pt-0 sm:pt-4 min-w-0">
               {topCustomers.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-1.5 sm:space-y-2">
                   {topCustomers.map((customer, index) => (
-                    <div key={customer.customer} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold">
+                    <div key={customer.customer} className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-muted/50 gap-2 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0 shrink">
+                        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-primary/10 flex items-center justify-center text-[9px] sm:text-[10px] font-semibold shrink-0">
                           {index + 1}
                         </div>
-                        <span className="font-medium">{customer.customer}</span>
+                        <span className="text-[11px] sm:text-xs lg:text-sm font-medium truncate">{customer.customer}</span>
                       </div>
-                      <span className="font-bold text-green-600">₹{customer.amount.toLocaleString()}</span>
+                      <span className="text-[11px] sm:text-xs lg:text-sm font-bold text-green-600 whitespace-nowrap shrink-0">₹{customer.amount.toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="h-40 flex items-center justify-center text-muted-foreground">
+                <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
                   No customer data available
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Top 10 Suppliers</CardTitle>
-              <CardDescription>By total purchase amount</CardDescription>
+          <Card className="overflow-hidden min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                <Truck size={16} className="text-muted-foreground shrink-0" />
+                Top 10 Suppliers
+              </CardTitle>
+              <CardDescription className="text-xs">By total purchase amount</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-2 sm:p-4 lg:p-6 pt-0 sm:pt-4 min-w-0">
               {topSuppliers.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-1.5 sm:space-y-2">
                   {topSuppliers.map((supplier, index) => (
-                    <div key={supplier.supplier} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold">
+                    <div key={supplier.supplier} className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-muted/50 gap-2 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0 shrink">
+                        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-primary/10 flex items-center justify-center text-[9px] sm:text-[10px] font-semibold shrink-0">
                           {index + 1}
                         </div>
-                        <span className="font-medium">{supplier.supplier}</span>
+                        <span className="text-[11px] sm:text-xs lg:text-sm font-medium truncate">{supplier.supplier}</span>
                       </div>
-                      <span className="font-bold text-red-600">₹{supplier.amount.toLocaleString()}</span>
+                      <span className="text-[11px] sm:text-xs lg:text-sm font-bold text-red-600 whitespace-nowrap shrink-0">₹{supplier.amount.toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="h-40 flex items-center justify-center text-muted-foreground">
+                <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
                   No supplier data available
                 </div>
               )}

@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertTriangle, Download, Printer, ChevronLeft, ChevronRight, Calendar, Search } from 'lucide-react'
+import { AlertTriangle, Download, Printer, ChevronLeft, ChevronRight, Calendar, Search, CircleDollarSign, BadgeDollarSign, Users } from 'lucide-react'
 import { reportsApi, retailersApi } from '@/lib/api'
 import { Input } from '@/components/ui/input'
 
@@ -101,31 +101,46 @@ const OutstandingReportPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
-        <div className="flex items-center justify-between">
+      <div className="space-y-8 w-full min-w-0 overflow-x-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Outstanding Report</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Outstanding Report</h1>
             <p className="text-muted-foreground mt-2">Pending balance per retailer from actual sales data</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={downloadCSV} type="button"><Download className="w-4 h-4 mr-2" />Export</Button>
-            <Button variant="outline" onClick={() => window.print()} type="button"><Printer className="w-4 h-4 mr-2" />Print</Button>
+            <Button variant="outline" onClick={downloadCSV} type="button" className="rounded-full h-10"><Download className="w-4 h-4 mr-2" />Export</Button>
+            <Button variant="outline" onClick={() => window.print()} type="button" className="rounded-full h-10"><Printer className="w-4 h-4 mr-2" />Print</Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="border border-red-200 bg-red-50 p-6">
-            <p className="text-sm text-gray-600 font-medium">Total Outstanding</p>
-            <p className="text-3xl font-bold text-red-600 mt-2">₹{totalOutstanding.toLocaleString('en-IN')}</p>
-            <p className="text-xs text-gray-600 mt-2">From {overdueCount} retailers</p>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Total Outstanding</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600"><CircleDollarSign size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-red-600 min-w-0 truncate">₹{totalOutstanding.toLocaleString('en-IN')}</div>
+              <p className="text-xs text-muted-foreground mt-1.5 truncate">From {overdueCount} retailers</p>
+            </CardContent>
           </Card>
-          <Card className="border border-blue-200 bg-blue-50 p-6">
-            <p className="text-sm text-gray-600 font-medium">Overpaid Amount</p>
-            <p className="text-3xl font-bold text-blue-600 mt-2">₹{totalOverpaid.toLocaleString('en-IN')}</p>
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Overpaid Amount</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600"><BadgeDollarSign size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-blue-600 min-w-0 truncate">₹{totalOverpaid.toLocaleString('en-IN')}</div>
+            </CardContent>
           </Card>
-          <Card className="border border-green-200 bg-green-50 p-6">
-            <p className="text-sm text-gray-600 font-medium">Total Retailers</p>
-            <p className="text-3xl font-bold text-green-600 mt-2">{totalRetailersCount}</p>
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Total Retailers</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600"><Users size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 min-w-0 truncate">{totalRetailersCount}</div>
+            </CardContent>
           </Card>
         </div>
 
@@ -138,20 +153,24 @@ const OutstandingReportPage = () => {
           </Alert>
         )}
 
-        <Card className="border border-gray-200 p-4 no-print">
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">From Date</label>
-              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setCurrentPage(1) }} className="pl-10" /></div>
+        <Card className="rounded-2xl p-4 no-print">
+          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+            <div className="md:w-[320px]">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Search</label>
+              <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" /><Input placeholder="Name or phone" value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1) }} className="h-10 rounded-full pl-9" /></div>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">To Date</label>
-              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setCurrentPage(1) }} className="pl-10" /></div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">From Date</label>
+              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setCurrentPage(1) }} className="h-10 rounded-full pl-10 w-full sm:w-[160px]" /></div>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Retailer</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">To Date</label>
+              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setCurrentPage(1) }} className="h-10 rounded-full pl-10 w-full sm:w-[160px]" /></div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Retailer</label>
               <Select value={retailerId} onValueChange={v => { setRetailerId(v); setCurrentPage(1) }}>
-                <SelectTrigger><SelectValue placeholder="All Retailers" /></SelectTrigger>
+                <SelectTrigger className="!h-10 rounded-full w-full sm:w-[160px]"><SelectValue placeholder="All Retailers" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Retailers</SelectItem>
                   {retailers.map(r => <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>)}
@@ -159,9 +178,9 @@ const OutstandingReportPage = () => {
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Payment Status</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Payment Status</label>
               <Select value={paymentStatus} onValueChange={v => { setPaymentStatus(v); setCurrentPage(1) }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="!h-10 rounded-full w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="outstanding">Outstanding</SelectItem>
@@ -171,23 +190,19 @@ const OutstandingReportPage = () => {
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Sort By</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Sort By</label>
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="!h-10 rounded-full w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="outstanding">Outstanding (Highest)</SelectItem>
                   <SelectItem value="name">Name (A-Z)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Search</label>
-              <div className="relative"><Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input placeholder="Name or phone" value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1) }} className="pl-10" /></div>
-            </div>
           </div>
         </Card>
 
-        <Card className="border border-gray-200 overflow-hidden">
+        <Card className="rounded-2xl border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -235,9 +250,9 @@ const OutstandingReportPage = () => {
           </div>
 
           {totalItems > pageSize && (
-            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-200">
-              <div className="text-sm text-gray-500">
-                Showing <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-medium">{Math.min(currentPage * pageSize, totalItems)}</span> of <span className="font-medium">{totalItems}</span> retailers
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200">
+              <div className="text-xs sm:text-sm text-gray-500 text-center sm:text-left">
+                Showing <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span>–<span className="font-medium">{Math.min(currentPage * pageSize, totalItems)}</span> of <span className="font-medium">{totalItems}</span> retailers
               </div>
               <div className="flex gap-2">
                 <Button
@@ -245,6 +260,7 @@ const OutstandingReportPage = () => {
                   size="sm"
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1 || loading}
+                  className="rounded-full h-9"
                 >
                   <ChevronLeft className="w-4 h-4 mr-1" /> Previous
                 </Button>
@@ -253,6 +269,7 @@ const OutstandingReportPage = () => {
                   size="sm"
                   onClick={() => setCurrentPage(p => p + 1)}
                   disabled={currentPage * pageSize >= totalItems || loading}
+                  className="rounded-full h-9"
                 >
                   Next <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>

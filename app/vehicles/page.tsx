@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X, Download, Printer, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Download, Printer, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Truck, Zap, Calendar, Search } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { vehiclesApi, type Vehicle as ApiVehicle } from "@/lib/api"
@@ -171,15 +171,23 @@ export default function VehiclesPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div><h1 className="text-3xl font-bold">Vehicles Management</h1><p className="text-muted-foreground">Manage all vehicles</p></div>
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">Vehicles Management</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">Manage all vehicles</p>
+          </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
-            <DialogTrigger asChild><Button onClick={resetForm}><Plus className="mr-2" size={20} />New Vehicle</Button></DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogTrigger asChild>
+              <Button onClick={resetForm} className="w-fit h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm md:h-10 md:px-4 md:text-sm">
+                <Plus className="mr-1 sm:mr-0" size={16} />
+                New Vehicle
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>{editingId ? "Edit Vehicle" : "New Vehicle"}</DialogTitle></DialogHeader>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2"><Label>Vehicle Number *</Label><Input value={formData.vehicleNumber} onChange={e => setFormData({ ...formData, vehicleNumber: e.target.value })} placeholder="Number" disabled={loading} /></div>
                   <div className="space-y-2"><Label>Type *</Label>
                     <Select value={formData.vehicleType} onValueChange={v => setFormData({ ...formData, vehicleType: v })} disabled={loading}>
@@ -187,21 +195,15 @@ export default function VehiclesPage() {
                       <SelectContent><SelectItem value="Truck">Truck</SelectItem><SelectItem value="Mini Truck">Mini Truck</SelectItem><SelectItem value="Pickup Van">Pickup Van</SelectItem></SelectContent>
                     </Select>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2"><Label>Driver Name *</Label><Input value={formData.driverName} onChange={e => setFormData({ ...formData, driverName: e.target.value })} placeholder="Driver" disabled={loading} /></div>
                   <div className="space-y-2"><Label>Phone *</Label><Input value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} placeholder="Phone" disabled={loading} /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2"><Label>Owner Name</Label><Input value={formData.ownerName} onChange={e => setFormData({ ...formData, ownerName: e.target.value })} placeholder="Owner" disabled={loading} /></div>
                   <div className="space-y-2"><Label>Join Date *</Label><DatePicker value={formData.joinDate} onChange={d => setFormData({ ...formData, joinDate: d })} disabled={loading} /></div>
                 </div>
                 <div className="space-y-2"><Label>Address</Label><Input value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} placeholder="Address" disabled={loading} /></div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2"><Label>Capacity</Label><Input value={formData.totalCapacity} onChange={e => setFormData({ ...formData, totalCapacity: e.target.value })} placeholder="Capacity" disabled={loading} /></div>
                   <div className="space-y-2"><Label>Fuel Tank</Label><Input value={formData.petrolTankCapacity} onChange={e => setFormData({ ...formData, petrolTankCapacity: e.target.value })} placeholder="Fuel Tank" disabled={loading} /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2"><Label>Fuel Type</Label>
                     <Select value={formData.fuelType} onValueChange={v => setFormData({ ...formData, fuelType: v })} disabled={loading}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
@@ -218,68 +220,145 @@ export default function VehiclesPage() {
                   </Select>
                 </div>
                 <div className="space-y-2"><Label>Notes</Label><Textarea value={formData.note} onChange={e => setFormData({ ...formData, note: e.target.value })} placeholder="Notes" rows={2} disabled={loading} /></div>
-                <div className="flex gap-2">
+                <div className="flex flex-col-reverse sm:flex-row gap-2">
                   <Button onClick={handleSave} className="flex-1" disabled={loading}>{loading ? "Saving..." : editingId ? "Update" : "Create"}</Button>
-                  <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}><X size={20} /></Button>
+                  <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}>Cancel</Button>
                 </div>
               </div>
             </DialogContent>
           </Dialog>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Vehicles</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-blue-600">{totalItems}</div></CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Active</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-green-600">{vehicles.filter(v => v.status === 'active').length}</div></CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Page</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-orange-600">{currentPage}</div></CardContent></Card>
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <CardTitle className="flex items-center gap-2 text-xs sm:text-sm font-medium text-muted-foreground">
+                <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-100">
+                  <Truck size={14} className="text-blue-600" />
+                </span>
+                Total Vehicles
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl sm:text-2xl font-bold whitespace-nowrap text-blue-600">{totalItems}</div>
+            </CardContent>
+          </Card>
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <CardTitle className="flex items-center gap-2 text-xs sm:text-sm font-medium text-muted-foreground">
+                <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-green-100">
+                  <Zap size={14} className="text-green-600" />
+                </span>
+                Active
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl sm:text-2xl font-bold whitespace-nowrap text-green-600">{vehicles.filter(v => v.status === 'active').length}</div>
+            </CardContent>
+          </Card>
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <CardTitle className="flex items-center gap-2 text-xs sm:text-sm font-medium text-muted-foreground">
+                <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100">
+                  <Calendar size={14} className="text-amber-600" />
+                </span>
+                Page
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl sm:text-2xl font-bold whitespace-nowrap text-orange-600">{currentPage}</div>
+            </CardContent>
+          </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-start flex-wrap gap-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Input placeholder="Search driver or vehicle..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-[250px]" />
-                <Button variant="outline" size="sm" onClick={handlePrintReport}><Printer className="mr-2" size={16} /> Print Report</Button>
-              </div>
+        <Card className="rounded-2xl p-4 print:hidden">
+          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+            <div className="relative md:w-[320px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+              <Input
+                placeholder="Search driver or vehicle..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="h-10 rounded-full pl-9"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                >
+                  <X size={14} />
+                </Button>
+              )}
             </div>
-          </CardHeader>
-          <CardContent>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrintReport}
+              className="rounded-full h-10"
+            >
+              <Printer className="mr-1" size={16} />
+              Print Report
+            </Button>
+          </div>
+          <CardContent className="px-3 sm:px-6">
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-[700px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Vehicle No</TableHead><TableHead>Type</TableHead><TableHead>Owner</TableHead>
-                    <TableHead><Button variant="ghost" size="sm" onClick={handleSort}>Driver {sortOrder === 'asc' ? <ArrowUp size={16} /> : sortOrder === 'desc' ? <ArrowDown size={16} /> : <ArrowUpDown size={16} />}</Button></TableHead>
-                    <TableHead>Phone</TableHead><TableHead>Join Date</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead>
+                    <TableHead className="whitespace-nowrap">Vehicle No</TableHead>
+                    <TableHead className="whitespace-nowrap">Type</TableHead>
+                    <TableHead className="whitespace-nowrap">Owner</TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      <Button variant="ghost" size="sm" onClick={handleSort}>
+                        Driver
+                        {sortOrder === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : sortOrder === 'desc' ? <ArrowDown className="ml-2 h-4 w-4" /> : <ArrowUpDown className="ml-2 h-4 w-4" />}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">Phone</TableHead>
+                    <TableHead className="whitespace-nowrap">Join Date</TableHead>
+                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredVehicles.map(v => (
-                    <TableRow key={v.id}>
-                      <TableCell className="font-medium">{v.vehicleNumber}</TableCell><TableCell>{v.vehicleType}</TableCell><TableCell>{v.ownerName || "-"}</TableCell>
-                      <TableCell>{v.driverName}</TableCell><TableCell>{v.phone}</TableCell>
-                      <TableCell>{new Date(v.joinDate).toLocaleDateString()}</TableCell>
-                      <TableCell><span className={`px-2 py-1 rounded-full text-xs font-medium ${v.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{v.status}</span></TableCell>
-                      <TableCell>
-                        {(canUpdate('vehicles') || canDelete('vehicles')) && (
-                          <div className="flex gap-2">
-                            {canUpdate('vehicles') && (
-                              <Button variant="ghost" size="sm" onClick={() => handleEdit(v)}><Edit2 size={16} /></Button>
-                            )}
-                            {canDelete('vehicles') && (
-                              <Button variant="ghost" size="sm" onClick={() => handleDelete(v.id)}><Trash2 size={16} /></Button>
-                            )}
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredVehicles.length === 0 ? (
+                    <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No vehicles found.</TableCell></TableRow>
+                  ) : (
+                    filteredVehicles.map(v => (
+                      <TableRow key={v.id}>
+                        <TableCell className="font-medium whitespace-nowrap">{v.vehicleNumber}</TableCell>
+                        <TableCell className="whitespace-nowrap">{v.vehicleType}</TableCell>
+                        <TableCell className="whitespace-nowrap">{v.ownerName || "-"}</TableCell>
+                        <TableCell className="whitespace-nowrap">{v.driverName}</TableCell>
+                        <TableCell className="whitespace-nowrap">{v.phone}</TableCell>
+                        <TableCell className="whitespace-nowrap">{new Date(v.joinDate).toLocaleDateString()}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${v.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{v.status}</span>
+                        </TableCell>
+                        <TableCell>
+                          {(canUpdate('vehicles') || canDelete('vehicles')) && (
+                            <div className="flex gap-1 sm:gap-2">
+                              {canUpdate('vehicles') && (
+                                <Button variant="ghost" size="sm" onClick={() => handleEdit(v)}><Edit2 size={16} /></Button>
+                              )}
+                              {canDelete('vehicles') && (
+                                <Button variant="ghost" size="sm" onClick={() => handleDelete(v.id)}><Trash2 size={16} /></Button>
+                              )}
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
           </CardContent>
           {totalItems > pageSize && (
-            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-200">
-              <div className="text-sm text-gray-500">Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalItems)} of {totalItems}</div>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 sm:px-6 py-4 bg-gray-50 border-t border-gray-200">
+              <div className="text-xs sm:text-sm text-gray-500 text-center sm:text-left">Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalItems)} of {totalItems}</div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1 || loading}><ChevronLeft size={16} /></Button>
                 <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage * pageSize >= totalItems || loading}><ChevronRight size={16} /></Button>

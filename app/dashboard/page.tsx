@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer, Tooltip,
@@ -12,11 +13,10 @@ import { ChartContainer } from "@/components/ui/chart"
 import {
   TrendingUp, TrendingDown, ShoppingCart, DollarSign,
   Users, Truck, Package, AlertCircle, ArrowUpRight, ArrowDownRight,
-  Bird, BarChart3, Tractor, Wallet, IndianRupee,
+  Bird, BarChart3, Tractor, Wallet, IndianRupee, Calendar,
 } from "lucide-react"
 import { farmersApi, retailersApi, vehiclesApi, purchasesApi, salesApi, mortalityApi } from "@/lib/api"
 import { getApiBaseUrl } from "@/lib/api-base-url"
-import { DateRangeFilter } from "@/components/date-range-filter"
 
 const EXPENSE_COLORS: Record<string, string> = {
   feed: "#10b981", labor: "#6366f1", medicine: "#f59e0b",
@@ -227,26 +227,96 @@ export default function DashboardPage() {
           
           <div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Dashboard</h1>
-            <p className="-mt-2 text-sm text-muted-foreground sm:text-base">Live overview of your poultry farm</p>
+            <p className="mt-2 text-sm text-muted-foreground sm:text-base">Live overview of your poultry farm</p>
           </div>
         </div>
 
         {/* Date Range Filter */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <DateRangeFilter
-            startDate={dateRangeStart}
-            endDate={dateRangeEnd}
-            onDateRangeChange={handleDateRangeChange}
-          />
-          {(dateRangeStart && dateRangeEnd) && (
-            <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-              {dateRangeStart.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} – {dateRangeEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-            </span>
-          )}
-          {!dateRangeStart && (
-            <span className="rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground">Showing: This Month</span>
-          )}
-        </div>
+        {/* Date Range Filter */}
+<div className="print:hidden w-full">
+  <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+    <div>
+      <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+        <Calendar size={12} /> From
+      </label>
+
+      <Input
+        type="date"
+        className="rounded-full w-full sm:w-[160px] h-10"
+        value={
+          dateRangeStart
+            ? `${dateRangeStart.getFullYear()}-${String(dateRangeStart.getMonth() + 1).padStart(2, "0")}-${String(dateRangeStart.getDate()).padStart(2, "0")}`
+            : ""
+        }
+        onChange={(e) => {
+          const v = e.target.value
+
+          if (v) {
+            const [y, m, d] = v.split("-").map(Number)
+            const d2 = new Date(y, m - 1, d)
+
+            setDateRangeStart(d2)
+            handleDateRangeChange(d2, dateRangeEnd)
+          } else {
+            setDateRangeStart(undefined)
+            handleDateRangeChange(undefined, dateRangeEnd)
+          }
+        }}
+      />
+    </div>
+
+    <div>
+      <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+        <Calendar size={12} /> To
+      </label>
+
+      <Input
+        type="date"
+        className="rounded-full w-full sm:w-[160px] h-10"
+        value={
+          dateRangeEnd
+            ? `${dateRangeEnd.getFullYear()}-${String(dateRangeEnd.getMonth() + 1).padStart(2, "0")}-${String(dateRangeEnd.getDate()).padStart(2, "0")}`
+            : ""
+        }
+        onChange={(e) => {
+          const v = e.target.value
+
+          if (v) {
+            const [y, m, d] = v.split("-").map(Number)
+            const d2 = new Date(y, m - 1, d)
+
+            setDateRangeEnd(d2)
+            handleDateRangeChange(dateRangeStart, d2)
+          } else {
+            setDateRangeEnd(undefined)
+            handleDateRangeChange(dateRangeStart, undefined)
+          }
+        }}
+      />
+    </div>
+
+    {dateRangeStart && dateRangeEnd && (
+      <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+        {dateRangeStart.toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+        })}{" "}
+        –{" "}
+        {dateRangeEnd.toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })}
+      </span>
+    )}
+
+    {!dateRangeStart && (
+      <span className="h-10 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground flex items-center justify-center">
+        Showing: This Month
+      </span>
+    )}
+  </div>
+</div>
 
         {/* Row 1 - Financial KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

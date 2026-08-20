@@ -92,15 +92,15 @@ const CompanyLedgerReportPage = () => {
       <div className="space-y-8">
         {/* Header */}
         {/* Header Section */}
-<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
   
   {/* Left Content */}
   <div>
-    <h1 className="text-4xl md:text-5xl font-extrabold text-black">
+    <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-black">
       Performance Overview
     </h1>
 
-    <p className="text-gray-500 text-lg mt-3">
+    <p className="text-gray-500 text-sm sm:text-md mt-3">
       Consolidated Profit & Loss statement for the current fiscal year.
     </p>
   </div>
@@ -119,53 +119,45 @@ const CompanyLedgerReportPage = () => {
 </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border border-gray-200 p-5 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-gray-500">TOTAL REVENUE</CardTitle>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">TOTAL REVENUE</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600"><TrendingUp size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-gray-900">₹{(summary.totalRevenue || 0).toLocaleString('en-IN')}</span>
-                <TrendingUp className="w-8 h-8 text-green-200" />
-              </div>
-              <div className="text-xs text-green-600 mt-1">↑ 12.5% Increase</div>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 min-w-0 truncate">₹{(summary.totalRevenue || 0).toLocaleString('en-IN')}</div>
+              <p className="text-xs text-muted-foreground mt-1.5 truncate">↑ 12.5% Increase</p>
             </CardContent>
           </Card>
-          <Card className="border border-gray-200 p-5 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-gray-500">GROSS PROFIT</CardTitle>
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">GROSS PROFIT</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600"><ArrowUpRight size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-gray-900">₹{(summary.grossProfit || 0).toLocaleString('en-IN')}</span>
-                <ArrowUpRight className="w-8 h-8 text-blue-200" />
-              </div>
-              <div className="text-xs text-gray-500 mt-1">63.3% Gross Margin</div>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 min-w-0 truncate">₹{(summary.grossProfit || 0).toLocaleString('en-IN')}</div>
+              <p className="text-xs text-muted-foreground mt-1.5 truncate">63.3% Gross Margin</p>
             </CardContent>
           </Card>
-          <Card className="border border-gray-200 p-5 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-gray-500">OP. EXPENSES</CardTitle>
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">OP. EXPENSES</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600"><TrendingDown size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-gray-900">₹{(summary.operatingExpenses || 0).toLocaleString('en-IN')}</span>
-                <TrendingDown className="w-8 h-8 text-orange-200" />
-              </div>
-              <div className="text-xs text-gray-500 mt-1">Managed Efficiently</div>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-yellow-600 min-w-0 truncate">₹{(summary.operatingExpenses || 0).toLocaleString('en-IN')}</div>
+              <p className="text-xs text-muted-foreground mt-1.5 truncate">Managed Efficiently</p>
             </CardContent>
           </Card>
-          <Card className="border border-green-600 bg-green-900/90 p-5 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-white">NET PROFIT (YTD)</CardTitle>
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">NET PROFIT (YTD)</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600"><DollarSign size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-white">₹{(summary.netProfit || 0).toLocaleString('en-IN')}</span>
-                <DollarSign className="w-8 h-8 text-green-300" />
-              </div>
-              <div className="text-xs text-green-200 mt-1">+ TARGET ACHIEVED</div>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 min-w-0 truncate">₹{(summary.netProfit || 0).toLocaleString('en-IN')}</div>
+              <p className="text-xs text-muted-foreground mt-1.5 truncate">+ TARGET ACHIEVED</p>
             </CardContent>
           </Card>
         </div>
@@ -174,7 +166,7 @@ const CompanyLedgerReportPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Detailed Statement Table */}
           <div className="col-span-2">
-            <Card className="border border-gray-200 p-0 shadow-sm">
+            <Card className="rounded-2xl border border-gray-200 p-0 shadow-sm">
               <div className="flex items-center justify-between px-6 pt-6 pb-2">
                 <h3 className="text-lg font-semibold text-gray-900">Detailed Statement</h3>
                 <Button variant="ghost" size="sm"><FileText className="w-4 h-4 mr-2" />Export PDF</Button>
@@ -223,7 +215,7 @@ const CompanyLedgerReportPage = () => {
           {/* Side Panel */}
           <div className="flex flex-col gap-6">
             {/* Key Insight */}
-            <Card className="border border-gray-200 p-5 shadow-sm">
+            <Card className="rounded-2xl border border-gray-200 p-4 sm:p-5 shadow-sm">
               <div className="mb-2 font-semibold text-gray-800 flex items-center gap-2">
                 <span>Key Insight</span>
               </div>
@@ -240,7 +232,7 @@ const CompanyLedgerReportPage = () => {
               </div>
             </Card>
             {/* Activity Audit Log */}
-            <Card className="border border-gray-200 p-5 shadow-sm">
+            <Card className="rounded-2xl border border-gray-200 p-4 sm:p-5 shadow-sm">
               <div className="mb-2 font-semibold text-gray-800 flex items-center gap-2">
                 <span>Activity Audit Log</span>
               </div>

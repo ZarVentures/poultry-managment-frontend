@@ -17,7 +17,7 @@ import {
   Calculator, Truck, AlertCircle, Terminal, Copy, Trash2,
   ChartNoAxesCombined, Tractor, User, PackageOpen, PackagePlus,
   PackageCheck, CreditCard, BookOpen,
-  TrendingDown,
+  TrendingDown, Building2, MessageSquare, Palette, Bell, Lock, ShieldCheck, Tag,
 } from "lucide-react"
 
 const IS_STAGING = process.env.NEXT_PUBLIC_IS_STAGING === 'true'
@@ -78,6 +78,7 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
   const [masterEntriesOpen, setMasterEntriesOpen] = useState(false)
   const [purchasesOpen, setPurchasesOpen] = useState(false)
   const [salesOpen, setSalesOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
   const isMobile = useIsMobile()
@@ -143,6 +144,7 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
   const isSalesActive = pathname.startsWith("/sales");
   const isMasterActive = pathname.startsWith("/farmers") || pathname.startsWith("/retailers") || pathname.startsWith("/vehicles");
   const isBillingActive = pathname.startsWith("/billing");
+  const isSettingsActive = pathname.startsWith("/settings");
 
   return (
     <div className="flex h-screen bg-background">
@@ -302,7 +304,29 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
           )}
 
           {showSettings && (
-            <SidebarLink href="/settings" icon={Settings} label="Settings" open={sidebarOpen} />
+            <div className="space-y-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" className={`w-full justify-start ${isSettingsActive ? "bg-[#6EE7B7] text-[#1F2937] hover:bg-[#5BC9A0]" : "text-sidebar-foreground hover:!bg-sidebar-accent hover:!text-sidebar-accent-foreground"}`} onClick={() => setSettingsOpen(!settingsOpen)}>
+                    <Settings size={20} />
+                    {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Settings</span><ChevronDown size={16} className={`transition-transform ${settingsOpen ? "rotate-180" : ""}`} /></>)}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="bg-foreground text-background">Settings</TooltipContent>
+              </Tooltip>
+              {settingsOpen && sidebarOpen && (
+                <div className="ml-4 space-y-1 border-l border-sidebar-border">
+                  <SidebarLink href="/settings/general" icon={Building2} label="General" open={true} isSubItem={true} />
+                  <SidebarLink href="/settings/communication" icon={MessageSquare} label="Communication Hub" open={true} isSubItem={true} />
+                  <SidebarLink href="/settings/display" icon={Palette} label="Appearance" open={true} isSubItem={true} />
+                  <SidebarLink href="/settings/notifications" icon={Bell} label="Notifications" open={true} isSubItem={true} />
+                  <SidebarLink href="/settings/security" icon={Lock} label="Security" open={true} isSubItem={true} />
+                  <SidebarLink href="/settings/permissions" icon={ShieldCheck} label="Permissions" open={true} isSubItem={true} />
+                  <SidebarLink href="/settings/categories" icon={Tag} label="Expense Categories" open={true} isSubItem={true} />
+                  <SidebarLink href="/settings/developer" icon={Terminal} label="Developer" open={true} isSubItem={true} />
+                </div>
+              )}
+            </div>
           )}
 
           {IS_STAGING && (

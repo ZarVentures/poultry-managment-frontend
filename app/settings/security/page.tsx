@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,7 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Shield, ShieldCheck, ShieldOff } from "lucide-react"
 import { authApi } from "@/lib/api"
 import { toast } from "sonner"
-import Image from "next/image"
 
 export default function SecurityPage() {
   const [mounted, setMounted] = useState(false)
@@ -92,44 +90,47 @@ export default function SecurityPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6 max-w-2xl">
-        <div>
-          <h1 className="text-3xl font-bold">Security</h1>
-          <p className="text-muted-foreground">Manage your account security settings</p>
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <ShieldCheck size={22} />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Security</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Manage your account security settings</p>
+          </div>
         </div>
 
-        <Card>
-          <CardHeader>
+        <div className="rounded-2xl border bg-card p-5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              {is2FAEnabled ? <ShieldCheck className="text-green-600" size={24} /> : <Shield className="text-muted-foreground" size={24} />}
+              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${is2FAEnabled ? 'bg-green-100 text-green-600' : 'bg-muted text-muted-foreground'}`}>
+                {is2FAEnabled ? <ShieldCheck size={20} /> : <Shield size={20} />}
+              </div>
               <div>
-                <CardTitle>Two-Factor Authentication (2FA)</CardTitle>
-                <CardDescription>
+                <p className="font-medium text-sm sm:text-base">Two-Factor Authentication (2FA)</p>
+                <p className="text-sm text-muted-foreground">
                   {is2FAEnabled
-                    ? "2FA is active. Your account is protected with an authenticator app."
-                    : "Add an extra layer of security using Google Authenticator or Microsoft Authenticator."}
-                </CardDescription>
+                    ? "2FA is active. Your account is protected."
+                    : "Add an extra layer of security using Google or Microsoft Authenticator."}
+                </p>
               </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${is2FAEnabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                  {is2FAEnabled ? "Enabled" : "Disabled"}
-                </span>
-              </div>
+            <div className="flex items-center gap-3">
+              <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${is2FAEnabled ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
+                {is2FAEnabled ? "Enabled" : "Disabled"}
+              </span>
               {is2FAEnabled ? (
-                <Button variant="destructive" size="sm" onClick={() => { setDisableCode(""); setShowDisableModal(true) }} disabled={loading}>
-                  <ShieldOff size={14} className="mr-1" /> Disable 2FA
+                <Button variant="destructive" size="sm" className="rounded-full" onClick={() => { setDisableCode(""); setShowDisableModal(true) }} disabled={loading}>
+                  <ShieldOff size={14} className="mr-1" /> Disable
                 </Button>
               ) : (
-                <Button size="sm" onClick={handleEnable} disabled={loading}>
-                  <ShieldCheck size={14} className="mr-1" /> Enable 2FA
+                <Button size="sm" className="rounded-full" onClick={handleEnable} disabled={loading}>
+                  <ShieldCheck size={14} className="mr-1" /> Enable
                 </Button>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Setup Modal */}
         <Dialog open={showSetupModal} onOpenChange={setShowSetupModal}>
@@ -143,10 +144,10 @@ export default function SecurityPage() {
               </p>
               {qrCodeDataUrl && (
                 <div className="flex justify-center">
-                  <img src={qrCodeDataUrl} alt="2FA QR Code" className="w-48 h-48 border rounded" />
+                  <img src={qrCodeDataUrl} alt="2FA QR Code" className="w-48 h-48 border rounded-xl" />
                 </div>
               )}
-              <div className="bg-gray-50 rounded p-3 text-xs font-mono text-center break-all text-muted-foreground">
+              <div className="bg-muted rounded-xl p-3 text-xs font-mono text-center break-all text-muted-foreground">
                 Manual key: {secret}
               </div>
               <div className="space-y-2">
@@ -158,11 +159,11 @@ export default function SecurityPage() {
                   placeholder="000000"
                   value={setupCode}
                   onChange={e => setSetupCode(e.target.value.replace(/\D/g, ''))}
-                  className="text-center text-xl tracking-widest"
+                  className="text-center text-xl tracking-widest h-12"
                   autoFocus
                 />
               </div>
-              <Button className="w-full" onClick={handleConfirmSetup} disabled={loading || setupCode.length !== 6}>
+              <Button className="w-full rounded-full" onClick={handleConfirmSetup} disabled={loading || setupCode.length !== 6}>
                 {loading ? "Verifying..." : "Confirm & Enable 2FA"}
               </Button>
             </div>
@@ -184,10 +185,10 @@ export default function SecurityPage() {
                 placeholder="000000"
                 value={disableCode}
                 onChange={e => setDisableCode(e.target.value.replace(/\D/g, ''))}
-                className="text-center text-xl tracking-widest"
+                className="text-center text-xl tracking-widest h-12"
                 autoFocus
               />
-              <Button variant="destructive" className="w-full" onClick={handleDisable} disabled={loading || disableCode.length !== 6}>
+              <Button variant="destructive" className="w-full rounded-full" onClick={handleDisable} disabled={loading || disableCode.length !== 6}>
                 {loading ? "Disabling..." : "Disable 2FA"}
               </Button>
             </div>

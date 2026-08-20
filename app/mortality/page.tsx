@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,8 +19,7 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Edit2, Trash2, Download, Printer, X, Eye, Bug, FileText, IndianRupee } from "lucide-react"
-import { DateRangeFilter } from "@/components/date-range-filter"
+import { Plus, Edit2, Trash2, Printer, X, Eye, Bug, FileText, IndianRupee, Calendar, Search } from "lucide-react"
 import { useDateFilter } from "@/contexts/date-filter-context"
 import { mortalityApi, purchasesApi, type PurchaseOrder } from "@/lib/api"
 import { usePermissions } from "@/lib/permissions"
@@ -674,59 +673,52 @@ export default function MortalityPage() {
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              {/* <div>
-                <CardTitle>Mortality List</CardTitle>
-                <CardDescription>View and manage all mortality records</CardDescription>
-              </div> */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <DateRangeFilter
-                  startDate={dateRangeStart}
-                  endDate={dateRangeEnd}
-                  onDateRangeChange={handleDateRangeChange}
-                />
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <Label className="text-sm font-medium whitespace-nowrap">Filter:</Label>
-                  <div className="flex items-center gap-2 flex-1 sm:flex-none">
-                    <Input
-                      placeholder="Search by invoice or farmer name..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full sm:w-[200px]"
-                    />
-                    {searchQuery && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setSearchQuery("")}
-                        className="h-10 w-10"
-                      >
-                        <X size={16} />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                {/* <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownloadPDF}
-                >
-                  <Download className="mr-2" size={16} />
-                  Download PDF
-                </Button> */}
+        <Card className="rounded-2xl p-4 print:hidden">
+          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+            <div className="relative md:w-[320px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+              <Input
+                placeholder="Search by invoice or farmer name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-10 rounded-full pl-9"
+              />
+              {searchQuery && (
                 <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePrintReport}
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
                 >
-                  <Printer className="mr-2" size={16} />
-                  Print Report
+                  <X size={14} />
                 </Button>
-              </div>
+              )}
             </div>
-          </CardHeader>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Calendar size={12} /> From
+              </label>
+              <Input type="date" className="w-full sm:w-[160px] h-10 rounded-full" value={dateRangeStart ? `${dateRangeStart.getFullYear()}-${String(dateRangeStart.getMonth() + 1).padStart(2, "0")}-${String(dateRangeStart.getDate()).padStart(2, "0")}` : ""} onChange={(e) => { const v = e.target.value; if (v) { const [y, m, d] = v.split("-").map(Number); handleDateRangeChange(new Date(y, m - 1, d), dateRangeEnd) } else { handleDateRangeChange(undefined, dateRangeEnd) } }} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Calendar size={12} /> To
+              </label>
+              <Input type="date" className="w-full sm:w-[160px] h-10 rounded-full" value={dateRangeEnd ? `${dateRangeEnd.getFullYear()}-${String(dateRangeEnd.getMonth() + 1).padStart(2, "0")}-${String(dateRangeEnd.getDate()).padStart(2, "0")}` : ""} onChange={(e) => { const v = e.target.value; if (v) { const [y, m, d] = v.split("-").map(Number); handleDateRangeChange(dateRangeStart, new Date(y, m - 1, d)) } else { handleDateRangeChange(dateRangeStart, undefined) } }} />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrintReport}
+              className="rounded-full h-10"
+            >
+              <Printer className="mr-1" size={16} />
+              Print Report
+            </Button>
+          </div>
+        </Card>
+
+        <Card>
           <CardContent>
             <div className="overflow-x-auto">
               <Table className="min-w-[700px]">
