@@ -150,6 +150,7 @@ export interface User {
   joinDate: string;
   lastLogin?: string;
   notes?: string;
+  tenantId?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -711,10 +712,50 @@ export const usersApi = {
 // AUTH API
 // ============================================
 export const authApi = {
+  // ── Legacy email/password (backward compat) ───────────────────────────────
   login: (email: string, password: string) =>
     apiRequest<{ accessToken: string; user: User } | { status: '2FA_REQUIRED'; tempToken: string }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
+    }),
+
+  // ── Phone + OTP: Login ────────────────────────────────────────────────────
+  loginSendOtp: (phoneNumber: string) =>
+    apiRequest<{ message: string; devOtp: string }>('/auth/login/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber }),
+    }),
+
+  loginVerifyOtp: (phoneNumber: string, otp: string) =>
+    apiRequest<{ accessToken: string; user: User } | { status: '2FA_REQUIRED'; tempToken: string }>('/auth/login/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber, otp }),
+    }),
+
+  // ── Phone + OTP: Registration ─────────────────────────────────────────────
+  registerSendOtp: (name: string, phoneNumber: string) =>
+    apiRequest<{ message: string; devOtp: string }>('/auth/register/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ name, phoneNumber }),
+    }),
+
+  registerVerifyOtp: (name: string, phoneNumber: string, otp: string) =>
+    apiRequest<{ accessToken: string; user: User }>('/auth/register/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ name, phoneNumber, otp }),
+    }),
+
+  // ── Deprecated helpers (kept for any callers still using them) ────────────
+  sendOtp: (identifier: string) =>
+    apiRequest<{ message: string; devOtp: string }>('/auth/login/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber: identifier }),
+    }),
+
+  verifyOtp: (identifier: string, otp: string) =>
+    apiRequest<{ accessToken: string; user: User } | { status: '2FA_REQUIRED'; tempToken: string }>('/auth/login/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber: identifier, otp }),
     }),
 
   logout: () => {
@@ -724,7 +765,7 @@ export const authApi = {
     }
   },
 
-  // 2FA
+  // ── 2FA ───────────────────────────────────────────────────────────────────
   get2FAStatus: () =>
     apiRequest<{ isTwoFactorEnabled: boolean }>('/auth/2fa/status'),
 
@@ -748,6 +789,41 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ tempToken, code }),
     }),
+};
+
+// ============================================
+// TENANTS API
+// ============================================
+export interface Tenant {
+  id: string;
+  name: string;
+  type?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  currency?: string;
+  countryCode?: string;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export const tenantsApi = {
+  create: (data: {
+    name: string;
+    type?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    currency?: string;
+    countryCode?: string;
+  }) =>
+    apiRequest<{ tenant: Tenant; accessToken: string; user: User }>('/tenants', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getMe: () => apiRequest<Tenant>('/tenants/me'),
 };
 
 // ============================================
@@ -1551,6 +1627,7 @@ export default {
   vehicles: vehiclesApi,
   users: usersApi,
   auth: authApi,
+  tenants: tenantsApi,
   inventory: inventoryApi,
   sales: salesApi,
   expenses: expensesApi,
