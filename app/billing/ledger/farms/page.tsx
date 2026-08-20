@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { Download, Printer, ArrowLeft, Calendar, FileText } from 'lucide-react'
+import { Download, Printer, ArrowLeft, Calendar, FileText, CircleDollarSign, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
 import { purchasesApi, farmersApi, billingApi, settingsApi } from '@/lib/api'
 
 const FarmLedgerPage = () => {
@@ -267,25 +267,25 @@ ${rowsHtml}
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Farm Ledger</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Farm Ledger</h1>
             <p className="text-gray-600 mt-2">Complete ledger including purchases, payments, and vouchers</p>
           </div>
-          <Link href="/billing" className="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 print:hidden">
+          <Link href="/billing" className="inline-flex items-center rounded-full h-10 border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 print:hidden">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Link>
         </div>
 
-        <Card className="border border-gray-200 p-6 print:hidden">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Select Farmer</label>
+        <Card className="rounded-2xl p-4 print:hidden">
+          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+            <div className="md:w-[200px]">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Select Farmer</label>
               {loadingFarmers ? <p className="text-sm text-gray-500">Loading...</p> : farmers.length === 0 ? (
                 <p className="text-sm text-gray-500">No farmers with purchase orders found</p>
               ) : (
                 <Select value={selectedId} onValueChange={setSelectedId}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="!h-10 rounded-full"><SelectValue /></SelectTrigger>
                   <SelectContent className="max-h-60 overflow-y-auto">
                     {farmers.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
                   </SelectContent>
@@ -293,42 +293,62 @@ ${rowsHtml}
               )}
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">From Date</label>
-              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="pl-10" /></div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">From Date</label>
+              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-10 rounded-full pl-10 w-full sm:w-[160px]" /></div>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">To Date</label>
-              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="pl-10" /></div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">To Date</label>
+              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-10 rounded-full pl-10 w-full sm:w-[160px]" /></div>
             </div>
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print:hidden">
-          <Card className="p-4 border border-gray-200">
-            <p className="text-sm font-medium text-gray-600">Opening Balance</p>
-            <p className="text-2xl font-bold text-gray-900 mt-2">₹{openingBalance.toLocaleString('en-IN')}</p>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 print:hidden">
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Opening Balance</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600"><Wallet size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-gray-900 min-w-0 truncate">₹{openingBalance.toLocaleString('en-IN')}</div>
+            </CardContent>
           </Card>
-          <Card className="p-4 border border-red-200 bg-red-50">
-            <p className="text-sm font-medium text-red-800">Total Paid (Debit) (₹)</p>
-            <p className="text-2xl font-bold text-red-600 mt-2">₹{totalDebit.toLocaleString('en-IN')}</p>
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Total Paid (Debit)</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600"><TrendingDown size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-red-600 min-w-0 truncate">₹{totalDebit.toLocaleString('en-IN')}</div>
+            </CardContent>
           </Card>
-          <Card className="p-4 border border-green-200 bg-green-50">
-            <p className="text-sm font-medium text-green-800">Total Purchases (Credit) (₹)</p>
-            <p className="text-2xl font-bold text-green-600 mt-2">₹{totalCredit.toLocaleString('en-IN')}</p>
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Total Purchases (Credit)</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600"><TrendingUp size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 min-w-0 truncate">₹{totalCredit.toLocaleString('en-IN')}</div>
+            </CardContent>
           </Card>
-          <Card className="p-4 border border-blue-200 bg-blue-50">
-            <p className="text-sm font-medium text-blue-900">Closing Balance</p>
-            <p className="text-2xl font-bold text-blue-700 mt-2">₹{closingBalance.toLocaleString('en-IN')}</p>
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Closing Balance</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600"><CircleDollarSign size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-blue-700 min-w-0 truncate">₹{closingBalance.toLocaleString('en-IN')}</div>
+            </CardContent>
           </Card>
         </div>
 
-        <div className="flex gap-3 print:hidden">
-          <Button variant="outline" onClick={downloadCSV} type="button"><Download className="w-4 h-4 mr-2" />Export CSV</Button>
-          <Button variant="outline" onClick={downloadPDF} type="button"><FileText className="w-4 h-4 mr-2" />Download PDF</Button>
-          <Button variant="outline" onClick={handlePrint} type="button"><Printer className="w-4 h-4 mr-2" />Print</Button>
+        <div className="flex flex-wrap gap-2 sm:gap-3 print:hidden">
+          <Button variant="outline" onClick={downloadCSV} type="button" className="rounded-full h-10"><Download className="w-4 h-4 mr-2" />Export CSV</Button>
+          <Button variant="outline" onClick={downloadPDF} type="button" className="rounded-full h-10"><FileText className="w-4 h-4 mr-2" />Download PDF</Button>
+          <Button variant="outline" onClick={handlePrint} type="button" className="rounded-full h-10"><Printer className="w-4 h-4 mr-2" />Print</Button>
         </div>
 
-        <Card className="border border-gray-200 overflow-hidden print:overflow-visible print:border-none print:shadow-none">
+        <Card className="rounded-2xl border border-gray-200 overflow-hidden print:overflow-visible print:border-none print:shadow-none">
           <div className="overflow-x-auto print:overflow-visible">
             <Table>
               <TableHeader>

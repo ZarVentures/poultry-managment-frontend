@@ -227,9 +227,7 @@ export default function StockLedgerPage() {
       <div className="space-y-8 print:space-y-4">
         <div className="flex flex-col gap-4 print:hidden lg:flex-row lg:items-start lg:gap-20">
           <div className="min-w-0">
-            <Link href="/inventory" className="mb-2 inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-foreground">
-              <ArrowLeft size={14} className="mr-1" /> Back to Godown Overview
-            </Link>
+            
             <div className="flex items-center gap-3">
               
               <div className="min-w-0">
@@ -261,55 +259,7 @@ export default function StockLedgerPage() {
           <p className="text-sm">{fmtDate(dateFrom)} — {fmtDate(dateTo)}</p>
         </div>
 
-        <Card className="rounded-2xl p-4 print:hidden">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
-                <Calendar size={12} /> From
-              </label>
-              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
-                <Calendar size={12} /> To
-              </label>
-              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
-              <Select value={type} onValueChange={setType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Movements</SelectItem>
-                  <SelectItem value="inward">Inward (+)</SelectItem>
-                  <SelectItem value="sale">Sale (−)</SelectItem>
-                  <SelectItem value="return">Return (+)</SelectItem>
-                  <SelectItem value="mortality">Mortality (−)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="lg:col-span-2">
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Search</label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    className="pl-8"
-                    placeholder="Ref no, party, invoice, notes..."
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && setSearch(searchInput.trim())}
-                  />
-                </div>
-                <Button onClick={() => setSearch(searchInput.trim())} disabled={loading}>
-                  {loading ? "Loading..." : "Apply"}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </Card>
+        
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7 [&>*]:break-words">
           <Card className="rounded-2xl border-blue-200 bg-blue-50/50 p-4">
@@ -360,7 +310,59 @@ export default function StockLedgerPage() {
             <div className="text-sm font-semibold text-slate-800">Out ₹{fmtNum(period.amountOut, 2)}</div>
           </Card>
         </div>
-
+<Card className="rounded-2xl p-4 print:hidden">
+          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+            <div className="md:flex-1 md:min-w-[220px]">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Search</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    className="rounded-full pl-8"
+                    placeholder="Ref no, party, invoice, notes..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && setSearch(searchInput.trim())}
+                  />
+                </div>
+                <Button onClick={() => setSearch(searchInput.trim())} disabled={loading} className="rounded-full">
+                  {loading ? "Loading..." : "Apply"}
+                </Button>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1 ">
+                <Calendar size={12} /> From
+              </label>
+              <Input 
+              className="rounded-full"
+              type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+                <Calendar size={12} /> To
+              </label>
+              <Input 
+              className="rounded-full"
+              type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
+              <Select value={type} onValueChange={setType}>
+                <SelectTrigger className="rounded-full">
+                  <SelectValue placeholder="All types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Movements</SelectItem>
+                  <SelectItem value="inward">Inward (+)</SelectItem>
+                  <SelectItem value="sale">Sale (−)</SelectItem>
+                  <SelectItem value="return">Return (+)</SelectItem>
+                  <SelectItem value="mortality">Mortality (−)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </Card>
         <Card className="overflow-hidden rounded-2xl">
           <div className="overflow-x-auto">
             <Table className="[&_td]:px-3 [&_td]:py-2.5 [&_th]:px-3 [&_th]:py-3">

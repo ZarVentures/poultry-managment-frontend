@@ -10,10 +10,13 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X, Download, Printer } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Download, Printer, Wallet, TrendingUp, IndianRupee, Calendar, Search } from "lucide-react"
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend,
+} from "recharts"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { DateRangeFilter } from "@/components/date-range-filter"
 import { expensesApi, expenseCategoriesApi, type Expense as ApiExpense, type ExpenseCategory } from "@/lib/api"
 import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
@@ -173,6 +176,47 @@ export default function ExpensesPage() {
     }
   }, [expenses, categories])
 
+  const CHART_COLORS = ["#10b981", "#6366f1", "#f59e0b", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"]
+
+  const chartData = useMemo(() => {
+    const all = categories
+      .filter(cat => (stats.byCategory[cat.id] || 0) > 0)
+      .map(cat => ({
+        name: cat.name,
+        amount: Math.round(stats.byCategory[cat.id] || 0),
+      }))
+      .sort((a, b) => b.amount - a.amount)
+    if (stats.total <= 0) return all
+    return all.filter(item => (item.amount / stats.total) * 100 >= 1)
+  }, [categories, stats.byCategory, stats.total])
+
+  const donutData = useMemo(() => {
+    const all = chartData.map(item => ({
+      name: item.name,
+      value: item.amount,
+      percentage: stats.total > 0 ? Math.round((item.amount / stats.total) * 1000) / 10 : 0,
+    })).filter(item => item.value > 0)
+    const negligibleTotal = all.reduce((sum, d) => d.percentage < 1 ? sum + d.value : sum, 0)
+    return all
+      .filter(d => d.percentage >= 1 || all.length <= 3)
+      .map(d => {
+        if (d.percentage < 1 && negligibleTotal > 0) {
+          return { ...d, name: "Other", value: d.value, percentage: stats.total > 0 ? Math.round((negligibleTotal / stats.total) * 1000) / 10 : 0 }
+        }
+        return d
+      })
+      .reduce<{ name: string; value: number; percentage: number }[]>((acc, item) => {
+        const existing = acc.find(a => a.name === item.name)
+        if (existing) { existing.value += item.value; existing.percentage = stats.total > 0 ? Math.round((existing.value / stats.total) * 1000) / 10 : 0 }
+        else acc.push({ ...item })
+        return acc
+      }, [])
+      .sort((a, b) => b.value - a.value)
+  }, [chartData, stats.total])
+
+  const topCategoryName = donutData.length > 0 ? donutData.reduce((a, b) => a.value > b.value ? a : b).name : ""
+  const topCategoryPct = donutData.length > 0 ? donutData.reduce((a, b) => a.value > b.value ? a : b).percentage : 0
+
   const filteredExpenses = useMemo(() => {
     let filtered = [...expenses]
 
@@ -291,9 +335,10 @@ export default function ExpensesPage() {
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}>
-                <Plus className="mr-2" size={20} />
-                Add New Expense
+              <Button onClick={resetForm} className="w-fit h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm md:h-10 md:px-4 md:text-sm">
+                <Plus className="mr-1 sm:mr-0" size={16} />
+                <span className="hidden sm:inline">Add New Expense</span>
+                <span className="sm:hidden">Add Expense</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto" aria-describedby="dialog-description">
@@ -410,75 +455,200 @@ export default function ExpensesPage() {
           </Dialog>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Card className="min-w-0">
-            <CardHeader className="pb-2 px-3 sm:px-6">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Expense (₹)</CardTitle>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Card 1 — Total Expense Metric */}
+          <Card className="min-w-0 rounded-xl shadow-sm">
+            <CardHeader className="pb-2 px-4 sm:px-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Expense</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">All tracked expenses</p>
+                </div>
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-emerald-100">
+                  <Wallet size={20} className="text-emerald-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="px-3 sm:px-6">
-              <div className="text-xl sm:text-2xl font-bold whitespace-nowrap">₹{stats.total.toFixed(0)}</div>
+            <CardContent className="px-4 sm:px-6 space-y-4">
+              <div>
+                <p className="text-2xl sm:text-3xl font-bold whitespace-nowrap">₹{stats.total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</p>
+                <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium">
+                  <TrendingUp size={12} />
+                  Total tracked
+                </span>
+              </div>
+              <div className="border-t pt-3 space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Top Categories</p>
+                {categories.slice(0, 5).map(cat => {
+                  const amt = stats.byCategory[cat.id] || 0
+                  const pct = stats.total > 0 ? ((amt / stats.total) * 100).toFixed(1) : "0"
+                  return (
+                    <div key={cat.id} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-base shrink-0">{getCategoryIcon(cat.name.toLowerCase())}</span>
+                        <span className="truncate">{cat.name}</span>
+                      </div>
+                      <span className="font-medium whitespace-nowrap ml-2">₹{amt.toLocaleString("en-IN", { maximumFractionDigits: 0 })} <span className="text-muted-foreground font-normal">({pct}%)</span></span>
+                    </div>
+                  )
+                })}
+                {categories.length === 0 && <p className="text-xs text-muted-foreground animate-pulse">Loading…</p>}
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="min-w-0">
-            <CardHeader className="pb-2 px-3 sm:px-6">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Expense By Category</CardTitle>
-              <p className="text-xs text-muted-foreground">Expenses breakdown by category</p>
+          {/* Card 2 — Expense By Category (Bar Chart) */}
+          <Card className="min-w-0 rounded-xl shadow-sm">
+            <CardHeader className="pb-2 px-4 sm:px-6">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Expense By Category</CardTitle>
+              <p className="text-xs text-muted-foreground">Vertical breakdown</p>
             </CardHeader>
-            <CardContent className="px-3 sm:px-6">
-              <div className="space-y-2">
-                {categories.slice(0, 6).map(cat => (
-                  <div key={cat.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span>{getCategoryIcon(cat.name.toLowerCase())}</span>
-                      <span className="text-sm">{cat.name}</span>
-                    </div>
-                    <span className="text-sm font-medium whitespace-nowrap">₹{(stats.byCategory[cat.id] || 0).toFixed(0)}</span>
+            <CardContent className="px-2 sm:px-4 pb-4">
+              {chartData.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-12">No category data</p>
+              ) : (
+                <div className="space-y-3">
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={chartData} margin={{ top: 20, right: 8, left: 0, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fontSize: 10, fill: "#64748b" }}
+                        axisLine={false}
+                        tickLine={false}
+                        interval={0}
+                        angle={0}
+                        textAnchor="middle"
+                        height={36}
+                        tickFormatter={(v: string) => v.length > 8 ? v.slice(0, 7) + "…" : v}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 10, fill: "#94a3b8" }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
+                        width={35}
+                      />
+                      <Tooltip
+                        formatter={(value: number) => [`₹${value.toLocaleString("en-IN")}`, "Amount"]}
+                        contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
+                        cursor={{ fill: "rgba(16,185,129,0.06)" }}
+                      />
+                      <Bar dataKey="amount" radius={[4, 4, 0, 0]} maxBarSize={48} label={{ position: "top", fontSize: 9, fill: "#64748b", formatter: (v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v) }}>
+                        {chartData.map((_, i) => (
+                          <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                  {topCategoryName && (
+                    <p className="text-xs text-muted-foreground text-center px-2">
+                      Breakdown: <span className="font-medium text-foreground">{topCategoryName}</span> is{" "}
+                      <span className="font-semibold text-emerald-600">{topCategoryPct}%</span> of total
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Card 3 — Expense Distribution (% Donut) */}
+          <Card className="min-w-0 rounded-xl shadow-sm">
+            <CardHeader className="pb-2 px-4 sm:px-6">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Expense Distribution</CardTitle>
+              <p className="text-xs text-muted-foreground">Percentage share by category</p>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6">
+              {donutData.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-12">No distribution data</p>
+              ) : (
+                <div className="flex flex-col items-center">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={donutData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius="45%"
+                        outerRadius="78%"
+                        paddingAngle={3}
+                        labelLine={false}
+                        stroke="none"
+                      >
+                        {donutData.map((_, i) => (
+                          <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number) => [`₹${value.toLocaleString("en-IN")}`, "Amount"]}
+                        contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 mt-3 w-full">
+                    {donutData.map((item, i) => (
+                      <div key={item.name} className="flex items-center gap-2 text-xs min-w-0">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+                        <span className="truncate text-muted-foreground">{item.name}</span>
+                        <span className="font-semibold shrink-0">{item.percentage}%</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-                {categories.length === 0 && <p className="text-sm text-muted-foreground animate-pulse">Loading categories...</p>}
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
         <h2 className="text-xl font-semibold">All Expenses</h2>
 
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
-              <DateRangeFilter
-                startDate={dateRangeStart}
-                endDate={dateRangeEnd}
-                onDateRangeChange={handleDateRangeChange}
+        <Card className="rounded-2xl p-4 print:hidden">
+          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+            <div className="relative md:w-[320px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+              <Input
+                placeholder="Search by owner, description..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-10 rounded-full pl-9"
               />
-              <div className="flex items-center gap-2">
-                <Label className="text-sm font-medium whitespace-nowrap">Filter:</Label>
-                <Input
-                  placeholder="Search by owner, description..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full sm:w-[250px]"
-                />
-              </div>
-              {/* <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownloadPDF}
-              >
-                <Download className="mr-2" size={16} />
-                Download PDF
-              </Button> */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrintReport}
-              >
-                <Printer className="mr-2" size={16} />
-                Print Report
-              </Button>
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                >
+                  <X size={14} />
+                </Button>
+              )}
             </div>
-          </CardHeader>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Calendar size={12} /> From
+              </label>
+              <Input type="date" className="w-full sm:w-[160px] h-10 rounded-full" value={dateRangeStart ? `${dateRangeStart.getFullYear()}-${String(dateRangeStart.getMonth() + 1).padStart(2, "0")}-${String(dateRangeStart.getDate()).padStart(2, "0")}` : ""} onChange={(e) => { const v = e.target.value; if (v) { const [y, m, d] = v.split("-").map(Number); handleDateRangeChange(new Date(y, m - 1, d), dateRangeEnd) } else { handleDateRangeChange(undefined, dateRangeEnd) } }} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Calendar size={12} /> To
+              </label>
+              <Input type="date" className="w-full sm:w-[160px] h-10 rounded-full" value={dateRangeEnd ? `${dateRangeEnd.getFullYear()}-${String(dateRangeEnd.getMonth() + 1).padStart(2, "0")}-${String(dateRangeEnd.getDate()).padStart(2, "0")}` : ""} onChange={(e) => { const v = e.target.value; if (v) { const [y, m, d] = v.split("-").map(Number); handleDateRangeChange(dateRangeStart, new Date(y, m - 1, d)) } else { handleDateRangeChange(dateRangeStart, undefined) } }} />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrintReport}
+              className="rounded-full h-10"
+            >
+              <Printer className="mr-1" size={16} />
+              Print Report
+            </Button>
+          </div>
+        </Card>
+        <Card>
           <CardContent>
             {loading && expenses.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">Loading...</p>
@@ -490,16 +660,16 @@ export default function ExpensesPage() {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <Table className="min-w-[800px]">
+                <Table className="min-w-[640px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Expense Owner</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Description</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Payment Method</TableHead>
-                      <TableHead>Attachment</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Payment</TableHead>
+                      <TableHead className="hidden sm:table-cell">Attachment</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -507,15 +677,15 @@ export default function ExpensesPage() {
                     {filteredExpenses.map((expense) => (
                       <TableRow key={expense.id}>
                         <TableCell className="text-sm text-muted-foreground">{expense.expenseOwner || "-"}</TableCell>
-                        <TableCell>{new Date(expense.expenseDate).toLocaleDateString()}</TableCell>
+                        <TableCell className="whitespace-nowrap">{new Date(expense.expenseDate).toLocaleDateString()}</TableCell>
                         <TableCell className="capitalize">{expense.expenseCategory?.name || expense.category || "-"}</TableCell>
-                        <TableCell>{expense.description}</TableCell>
-                        <TableCell className="font-semibold">₹{Number(expense.amount).toFixed(2)}</TableCell>
-                        <TableCell className="capitalize">{expense.paymentMethod.replace('_', ' ')}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">-</TableCell>
+                        <TableCell className="max-w-[120px] truncate">{expense.description}</TableCell>
+                        <TableCell className="text-right font-semibold whitespace-nowrap">₹{Number(expense.amount).toFixed(2)}</TableCell>
+                        <TableCell className="capitalize whitespace-nowrap">{expense.paymentMethod.replace('_', ' ')}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">-</TableCell>
                         <TableCell>
                           {(canUpdate('expenses') || canDelete('expenses')) && (
-                            <div className="flex gap-2">
+                            <div className="flex gap-1 sm:gap-2">
                               {canUpdate('expenses') && (
                                 <Button variant="ghost" size="sm" onClick={() => handleEdit(expense)}>
                                   <Edit2 size={16} />

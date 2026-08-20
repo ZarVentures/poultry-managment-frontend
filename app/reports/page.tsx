@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Download, Table as TableIcon, BarChart3, PieChart as PieChartIcon, FileText } from "lucide-react"
+import { Download, Table as TableIcon, BarChart3, PieChart as PieChartIcon, FileText, IndianRupee, TrendingDown, TrendingUp, Receipt, Wallet, Percent, ShoppingCart, Bird, Weight, CheckCircle, Package, AlertTriangle, Clock, Skull, Calculator, AlertCircle, Users, Home, Tag, MinusCircle } from "lucide-react"
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
@@ -384,18 +384,81 @@ export default function ReportsPage() {
       : 0,
   }
 
+  // Godown Sales: payment status distribution for pie
+  const godownSalesStatusCounts = (godownSalesRows || []).reduce(
+    (acc: Record<string, number>, s: any) => {
+      const st = normalizeStatus(s.paymentStatus || s.status)
+      if (st === 'paid') acc.paid++
+      else if (st === 'partial') acc.partial++
+      else acc.pending++
+      return acc
+    },
+    { paid: 0, partial: 0, pending: 0 }
+  )
+  const godownSalesPieData = [
+    { name: 'Paid', value: godownSalesStatusCounts.paid },
+    { name: 'Partial', value: godownSalesStatusCounts.partial },
+    { name: 'Pending', value: godownSalesStatusCounts.pending },
+  ].filter(d => d.value > 0)
+
+  // Mortality: bar (birds died per date) + pie (top dates by birds died)
+  const mortalityByDateMap = mortalityRows.reduce((acc: Record<string, number>, record: any) => {
+    const date = formatDate(record.purchaseDate || record.mortalityDate || record.createdAt || '')
+    const birds = getMortalityFieldValue(record, ['numberOfBirdsDied', 'mortalityBirds', 'birdsDied', 'deadBirds', 'totalBirdsDied'])
+    if (!acc[date]) acc[date] = 0
+    acc[date] += birds
+    return acc
+  }, {} as Record<string, number>)
+  const mortalityBarData = Object.entries(mortalityByDateMap)
+    .map(([date, birds]) => ({ name: date, value: birds }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 10)
+  const mortalityPieData = mortalityBarData.slice(0, 6)
+
+  // Stock Type: bar (stock level per item) + pie (by type)
+  const inventoryBarData = (stockData?.inventory || []).map((item: any) => ({
+    name: (item.name || item.itemName || 'Unknown').slice(0, 12),
+    value: item.currentStockLevel ?? 0,
+  })).filter((d: any) => d.value > 0).slice(0, 10)
+  const inventoryByTypeMap = (stockData?.inventory || []).reduce((acc: Record<string, number>, item: any) => {
+    const type = item.type || item.itemType || 'Other'
+    if (!acc[type]) acc[type] = 0
+    acc[type] += item.currentStockLevel ?? 0
+    return acc
+  }, {} as Record<string, number>)
+  const inventoryPieData = (Object.entries(inventoryByTypeMap) as [string, number][])
+    .map(([name, value]) => ({ name, value }))
+    .filter(d => d.value > 0)
+    .sort((a, b) => b.value - a.value)
+
+  // Outstanding: bar (outstanding by retailer) + pie (outstanding vs overpaid)
+  const outstandingBarData = (outstandingData?.data || []).slice(0, 10).map((r: any) => ({
+    name: (r.name || 'Unknown').slice(0, 12),
+    value: r.outstanding || 0,
+  }))
+  const outstandingPieData = [
+    { name: 'Outstanding', value: outstandingData?.summary?.totalOutstanding || 0 },
+    { name: 'Overpaid', value: outstandingData?.summary?.totalOverpaid || 0 },
+  ].filter(d => d.value > 0)
+
+  // Farm-wise: pie (cost by farm, top 6)
+  const farmPieData = (farmWiseData?.farms || []).slice(0, 6).map((farm: any) => ({
+    name: (farm.farmerName || 'Unknown').slice(0, 12),
+    value: farm.totalCost || 0,
+  }))
+
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6 overflow-hidden min-w-0">
         <div>
-          <h1 className="text-3xl font-bold">Reports</h1>
-          <p className="text-muted-foreground">Comprehensive business analytics</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">Reports</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">Comprehensive business analytics</p>
         </div>
 
-        <Card>
-          <CardHeader><CardTitle>Date Range</CardTitle></CardHeader>
-          <CardContent>
-            <div className="flex gap-4">
+        <Card className="overflow-hidden min-w-0">
+          <CardHeader className="px-3 sm:px-6"><CardTitle className="text-base sm:text-lg">Date Range</CardTitle></CardHeader>
+          <CardContent className="px-3 sm:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
               <div className="flex-1">
                 <label className="text-sm font-medium mb-2 block">Start Date</label>
                 <DatePicker value={startDate} onChange={setStartDate} placeholder="Start" />
@@ -404,13 +467,15 @@ export default function ReportsPage() {
                 <label className="text-sm font-medium mb-2 block">End Date</label>
                 <DatePicker value={endDate} onChange={setEndDate} placeholder="End" />
               </div>
-              <Button onClick={generateAllReports} className="mt-7">Generate</Button>
-              <Button variant="outline" onClick={downloadAllPDF} className="mt-7"><FileText className="mr-2" size={16} />PDF</Button>
+              <div className="flex gap-2 sm:mt-7">
+                <Button onClick={generateAllReports} className="flex-1 sm:flex-none">Generate</Button>
+                <Button variant="outline" onClick={downloadAllPDF} className="flex-1 sm:flex-none"><FileText className="mr-2" size={16} />PDF</Button>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant={viewMode === 'table' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('table')}>
             <TableIcon className="mr-2" size={16} />Table
           </Button>
@@ -422,63 +487,85 @@ export default function ReportsPage() {
           </Button>
         </div>
 
-        <Tabs defaultValue="profitloss">
-          <TabsList className="grid w-full grid-cols-5" style={{ height: 'auto' }}>
-            <TabsTrigger value="profitloss">P&L</TabsTrigger>
-            <TabsTrigger value="purchases">Purchases</TabsTrigger>
-            <TabsTrigger value="sales">Sales</TabsTrigger>
-            <TabsTrigger value="godownsales">Godown Sales</TabsTrigger>
-            <TabsTrigger value="mortality">Mortality</TabsTrigger>
-            <TabsTrigger value="stock">Stock Type</TabsTrigger>
-            <TabsTrigger value="expenses">Expenses</TabsTrigger>
-            <TabsTrigger value="farm">Farm-wise</TabsTrigger>
-            <TabsTrigger value="customer">Customer-wise</TabsTrigger>
-            <TabsTrigger value="outstanding">Outstanding</TabsTrigger>
+        <Tabs defaultValue="profitloss" className="min-w-0 overflow-hidden">
+          <TabsList className="grid grid-cols-5 w-full gap-1 h-auto p-1 2xl:flex 2xl:flex-nowrap 2xl:overflow-x-auto">
+            <TabsTrigger value="profitloss" className="truncate text-xs sm:text-sm 2xl:shrink-0">P&L</TabsTrigger>
+            <TabsTrigger value="purchases" className="truncate text-xs sm:text-sm 2xl:shrink-0">Purchases</TabsTrigger>
+            
+            <TabsTrigger value="godownsales" className="truncate text-xs sm:text-sm 2xl:shrink-0">Godown Sales</TabsTrigger>
+            <TabsTrigger value="mortality" className="truncate text-xs sm:text-sm 2xl:shrink-0">Mortality</TabsTrigger>
+            
+            <TabsTrigger value="stock" className="truncate text-xs sm:text-sm 2xl:shrink-0">Stock Type</TabsTrigger>
+            <TabsTrigger value="sales" className="truncate text-xs sm:text-sm 2xl:shrink-0">Sales</TabsTrigger>
+            <TabsTrigger value="expenses" className="truncate text-xs sm:text-sm 2xl:shrink-0">Expenses</TabsTrigger>
+            <TabsTrigger value="customer" className="truncate text-xs sm:text-sm 2xl:shrink-0">Customer-wise</TabsTrigger>
+            <TabsTrigger value="farm" className="truncate text-xs sm:text-sm 2xl:shrink-0">Farm-wise</TabsTrigger>
+            
+            <TabsTrigger value="outstanding" className="truncate text-xs sm:text-sm 2xl:shrink-0">Outstanding</TabsTrigger>
           </TabsList>
 
           {/* Profit & Loss */}
           <TabsContent value="profitloss">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between">
-                  <CardTitle>Profit & Loss Statement</CardTitle>
+            <Card className="overflow-hidden min-w-0">
+              <CardHeader className="px-3 sm:px-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg">Profit & Loss Statement</CardTitle>
                   <Button variant="outline" size="sm" onClick={() => profitLossData && downloadCSV([profitLossData.summary], 'pl')}>
                     <Download className="mr-2" size={16} />CSV
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 sm:px-6">
                 {loading ? <p className="text-center py-8">Loading...</p> : !profitLossData ? (
                   <p className="text-center py-8 text-muted-foreground">Select dates and generate</p>
                 ) : (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Revenue</p>
-                        <p className="text-2xl font-bold text-green-600">₹{profitLossData.summary.totalRevenue.toFixed(2)}</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-green-50"><TrendingUp size={16} className="text-green-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Revenue</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-green-600 whitespace-nowrap">₹{profitLossData.summary.totalRevenue.toFixed(2)}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Cost</p>
-                        <p className="text-2xl font-bold text-red-600">₹{profitLossData.summary.totalCost.toFixed(2)}</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-red-50"><TrendingDown size={16} className="text-red-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Cost</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-red-600 whitespace-nowrap">₹{profitLossData.summary.totalCost.toFixed(2)}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Gross Profit</p>
-                        <p className="text-2xl font-bold">₹{profitLossData.summary.grossProfit.toFixed(2)}</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-blue-50"><IndianRupee size={16} className="text-blue-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Gross Profit</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">₹{profitLossData.summary.grossProfit.toFixed(2)}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Expenses</p>
-                        <p className="text-2xl font-bold text-orange-600">₹{profitLossData.summary.totalExpenses.toFixed(2)}</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-orange-50"><Receipt size={16} className="text-orange-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Expenses</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-orange-600 whitespace-nowrap">₹{profitLossData.summary.totalExpenses.toFixed(2)}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Net Profit</p>
-                        <p className="text-2xl font-bold text-blue-600">₹{profitLossData.summary.netProfit.toFixed(2)}</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-blue-50"><Wallet size={16} className="text-blue-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Net Profit</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-blue-600 whitespace-nowrap">₹{profitLossData.summary.netProfit.toFixed(2)}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Margin</p>
-                        <p className="text-2xl font-bold">{profitLossData.summary.profitMargin.toFixed(2)}%</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-purple-50"><Percent size={16} className="text-purple-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Margin</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{profitLossData.summary.profitMargin.toFixed(2)}%</p>
                       </div>
                     </div>
                     {viewMode === 'chart' && (
+                      <div className="w-full min-w-0 overflow-hidden">
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={[
                           { name: 'Revenue', value: profitLossData.summary.totalRevenue },
@@ -493,8 +580,10 @@ export default function ReportsPage() {
                           <Bar dataKey="value" fill="#8884d8" />
                         </BarChart>
                       </ResponsiveContainer>
+                    </div>
                     )}
                     {viewMode === 'pie' && (
+                      <div className="w-full min-w-0 overflow-hidden">
                       <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                           <Pie data={[
@@ -508,6 +597,7 @@ export default function ReportsPage() {
                           <Legend />
                         </PieChart>
                       </ResponsiveContainer>
+                    </div>
                     )}
                   </div>
                 )}
@@ -517,76 +607,94 @@ export default function ReportsPage() {
 
           {/* Purchases Report */}
           <TabsContent value="purchases">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between">
-                  <CardTitle>Purchase Report</CardTitle>
+            <Card className="overflow-hidden min-w-0">
+              <CardHeader className="px-3 sm:px-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg">Purchase Report</CardTitle>
                   <Button variant="outline" size="sm" onClick={() => purchaseData && downloadCSV(purchaseData.purchases, 'purchases')}>
                     <Download className="mr-2" size={16} />CSV
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 sm:px-6">
                 {!purchaseData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-5 gap-4">
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Orders</p>
-                        <p className="text-2xl font-bold">{purchaseSummary.totalOrders}</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-blue-50"><ShoppingCart size={16} className="text-blue-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Orders</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{purchaseSummary.totalOrders}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Birds</p>
-                        <p className="text-2xl font-bold">{purchaseSummary.totalBirds}</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-cyan-50"><Bird size={16} className="text-cyan-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Birds</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{purchaseSummary.totalBirds}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Weight</p>
-                        <p className="text-2xl font-bold">{purchaseSummary.totalWeight.toFixed(2)} kg</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-indigo-50"><Weight size={16} className="text-indigo-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Weight</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{purchaseSummary.totalWeight.toFixed(2)} kg</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Amount</p>
-                        <p className="text-2xl font-bold">₹{purchaseSummary.totalAmount.toFixed(2)}</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-orange-50"><IndianRupee size={16} className="text-orange-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Amount</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">₹{purchaseSummary.totalAmount.toFixed(2)}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Paid Orders</p>
-                        <p className="text-2xl font-bold text-green-600">{purchaseSummary.totalPaid}</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-green-50"><CheckCircle size={16} className="text-green-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Paid Orders</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-green-600 whitespace-nowrap">{purchaseSummary.totalPaid}</p>
                       </div>
                     </div>
                     {viewMode === 'table' && (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Order #</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Supplier</TableHead>
-                            <TableHead className="text-right">Birds</TableHead>
-                            <TableHead className="text-right">Weight</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
-                            <TableHead>Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {purchaseData.purchases.map((purchase: any) => (
-                            <TableRow key={purchase.id}>
-                              <TableCell>{purchase.orderNumber}</TableCell>
-                              <TableCell>{new Date(purchase.orderDate).toLocaleDateString()}</TableCell>
-                              <TableCell>{purchase.supplierName}</TableCell>
-                              <TableCell className="text-right">{purchase.numberOfBirds || purchase.totalBirds || 0}</TableCell>
-                              <TableCell className="text-right">{((parseFloat(purchase.totalWeight) || parseFloat(purchase.quantity) || 0)).toFixed(2)} kg</TableCell>
-                              <TableCell className="text-right">₹{parseFloat(purchase.netAmount || purchase.totalAmount || 0).toFixed(2)}</TableCell>
-                              <TableCell>
-                                <span className={`px-2 py-1 rounded text-xs ${purchase.purchasePaymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                                    purchase.purchasePaymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                                      'bg-red-100 text-red-800'
-                                  }`}>
-                                  {purchase.purchasePaymentStatus}
-                                </span>
-                              </TableCell>
+                      <div className="overflow-x-auto">
+                        <Table className="min-w-[700px]">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Order #</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Supplier</TableHead>
+                              <TableHead className="text-right">Birds</TableHead>
+                              <TableHead className="text-right">Weight</TableHead>
+                              <TableHead className="text-right">Amount</TableHead>
+                              <TableHead>Status</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {purchaseData.purchases.map((purchase: any) => (
+                              <TableRow key={purchase.id}>
+                                <TableCell>{purchase.orderNumber}</TableCell>
+                                <TableCell>{new Date(purchase.orderDate).toLocaleDateString()}</TableCell>
+                                <TableCell>{purchase.supplierName}</TableCell>
+                                <TableCell className="text-right">{purchase.numberOfBirds || purchase.totalBirds || 0}</TableCell>
+                                <TableCell className="text-right">{((parseFloat(purchase.totalWeight) || parseFloat(purchase.quantity) || 0)).toFixed(2)} kg</TableCell>
+                                <TableCell className="text-right">₹{parseFloat(purchase.netAmount || purchase.totalAmount || 0).toFixed(2)}</TableCell>
+                                <TableCell>
+                                  <span className={`px-2 py-1 rounded text-xs ${purchase.purchasePaymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                                      purchase.purchasePaymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                                        'bg-red-100 text-red-800'
+                                    }`}>
+                                    {purchase.purchasePaymentStatus}
+                                  </span>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
                     )}
                     {viewMode === 'chart' && (
+                      <div className="w-full min-w-0 overflow-hidden">
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={[
                           { name: 'Paid', value: purchaseData.summary.totalPaid },
@@ -600,8 +708,10 @@ export default function ReportsPage() {
                           <Bar dataKey="value" fill="#8884d8" />
                         </BarChart>
                       </ResponsiveContainer>
+                    </div>
                     )}
                     {viewMode === 'pie' && (
+                      <div className="w-full min-w-0 overflow-hidden">
                       <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                           <Pie data={[
@@ -615,6 +725,7 @@ export default function ReportsPage() {
                           <Legend />
                         </PieChart>
                       </ResponsiveContainer>
+                    </div>
                     )}
                   </div>
                 )}
@@ -624,98 +735,117 @@ export default function ReportsPage() {
 
           {/* Sales Report */}
           <TabsContent value="sales">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between">
-                  <CardTitle>Sales Report</CardTitle>
+            <Card className="overflow-hidden min-w-0">
+              <CardHeader className="px-3 sm:px-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg">Sales Report</CardTitle>
                   <Button variant="outline" size="sm" onClick={() => salesData && downloadCSV(salesData.sales, 'sales')}>
                     <Download className="mr-2" size={16} />CSV
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 sm:px-6">
                 {!salesData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-8 gap-4">
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Sales</p>
-                        <p className="text-2xl font-bold">{salesSummary.totalSales}</p>
+                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-blue-50"><BarChart3 size={16} className="text-blue-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Sales</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{salesSummary.totalSales}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Birds</p>
-                        <p className="text-2xl font-bold">
-                          {salesSummary.totalBirds}
-                        </p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-cyan-50"><Bird size={16} className="text-cyan-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Birds</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{salesSummary.totalBirds}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Weight</p>
-                        <p className="text-2xl font-bold">
-                          {salesSummary.totalWeight.toFixed(2)} kg
-                        </p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-indigo-50"><Weight size={16} className="text-indigo-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Weight</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{salesSummary.totalWeight.toFixed(2)} kg</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Revenue</p>
-                        <p className="text-2xl font-bold">₹{salesSummary.totalRevenue.toFixed(2)}</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-green-50"><IndianRupee size={16} className="text-green-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Revenue</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">₹{salesSummary.totalRevenue.toFixed(2)}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Deductions</p>
-                        <p className="text-2xl font-bold text-red-600">
-                          ₹{salesSummary.totalDeductions.toFixed(2)}
-                        </p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-red-50"><MinusCircle size={16} className="text-red-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Deductions</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-red-600 whitespace-nowrap">₹{salesSummary.totalDeductions.toFixed(2)}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Wt Shortage (kg)</p>
-                        <p className="text-2xl font-bold text-orange-600">
-                          {salesSummary.totalWeightShortageKg.toFixed(2)} kg
-                        </p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-orange-50"><AlertTriangle size={16} className="text-orange-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Wt Shortage (kg)</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-orange-600 whitespace-nowrap">{salesSummary.totalWeightShortageKg.toFixed(2)} kg</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Paid Orders</p>
-                        <p className="text-2xl font-bold text-green-600">{salesSummary.totalPaid}</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-green-50"><CheckCircle size={16} className="text-green-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Paid Orders</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-green-600 whitespace-nowrap">{salesSummary.totalPaid}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Pending Orders</p>
-                        <p className="text-2xl font-bold text-red-600">{salesSummary.totalPending}</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-red-50"><Clock size={16} className="text-red-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Pending Orders</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-red-600 whitespace-nowrap">{salesSummary.totalPending}</p>
                       </div>
                     </div>
                     {viewMode === 'table' && (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Bill No</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Customer</TableHead>
-                            <TableHead className="text-right">Birds</TableHead>
-                            <TableHead className="text-right">Weight</TableHead>
-                            <TableHead>Wt Shortage</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
-                            <TableHead>Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {salesData.sales.map((sale: any) => (
-                            <TableRow key={sale.id}>
-                              <TableCell>{sale.invoiceNumber}</TableCell>
-                              <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
-                              <TableCell>{sale.customerName}</TableCell>
-                              <TableCell className="text-right">{sale.totalBirds || sale.numberOfBirds || 0}</TableCell>
-                              <TableCell className="text-right">{((parseFloat(sale.totalWeight) || parseFloat(sale.quantity) || 0)).toFixed(2)} kg</TableCell>
-                              <TableCell className="text-orange-600">{(() => { const kg = parseFloat(sale.weightShortageKg || 0); if (kg > 0) return kg.toFixed(2); const amt = parseFloat(sale.weightShortage || 0); const rate = parseFloat(sale.unitPrice || 0); return (amt > 0 && rate > 0) ? (amt / rate).toFixed(2) : '0.00'; })()} kg</TableCell>
-                              <TableCell className="text-right">₹{parseFloat(sale.netAmount).toFixed(2)}</TableCell>
-                              <TableCell>
-                                <span className={`px-2 py-1 rounded text-xs ${sale.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                                    sale.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                                      'bg-red-100 text-red-800'
-                                  }`}>
-                                  {sale.paymentStatus}
-                                </span>
-                              </TableCell>
+                      <div className="overflow-x-auto">
+                        <Table className="min-w-[800px]">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Bill No</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Customer</TableHead>
+                              <TableHead className="text-right">Birds</TableHead>
+                              <TableHead className="text-right">Weight</TableHead>
+                              <TableHead>Wt Shortage</TableHead>
+                              <TableHead className="text-right">Amount</TableHead>
+                              <TableHead>Status</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {salesData.sales.map((sale: any) => (
+                              <TableRow key={sale.id}>
+                                <TableCell>{sale.invoiceNumber}</TableCell>
+                                <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
+                                <TableCell>{sale.customerName}</TableCell>
+                                <TableCell className="text-right">{sale.totalBirds || sale.numberOfBirds || 0}</TableCell>
+                                <TableCell className="text-right">{((parseFloat(sale.totalWeight) || parseFloat(sale.quantity) || 0)).toFixed(2)} kg</TableCell>
+                                <TableCell className="text-orange-600">{(() => { const kg = parseFloat(sale.weightShortageKg || 0); if (kg > 0) return kg.toFixed(2); const amt = parseFloat(sale.weightShortage || 0); const rate = parseFloat(sale.unitPrice || 0); return (amt > 0 && rate > 0) ? (amt / rate).toFixed(2) : '0.00'; })()} kg</TableCell>
+                                <TableCell className="text-right">₹{parseFloat(sale.netAmount).toFixed(2)}</TableCell>
+                                <TableCell>
+                                  <span className={`px-2 py-1 rounded text-xs ${sale.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                                      sale.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                                        'bg-red-100 text-red-800'
+                                    }`}>
+                                    {sale.paymentStatus}
+                                  </span>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
                     )}
                     {viewMode === 'chart' && (
+                      <div className="w-full min-w-0 overflow-hidden">
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={[
                           { name: 'Paid', value: salesData.summary.totalPaid },
@@ -729,8 +859,10 @@ export default function ReportsPage() {
                           <Bar dataKey="value" fill="#00C49F" />
                         </BarChart>
                       </ResponsiveContainer>
+                    </div>
                     )}
                     {viewMode === 'pie' && (
+                      <div className="w-full min-w-0 overflow-hidden">
                       <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                           <Pie data={[
@@ -744,6 +876,7 @@ export default function ReportsPage() {
                           <Legend />
                         </PieChart>
                       </ResponsiveContainer>
+                    </div>
                     )}
                   </div>
                 )}
@@ -753,63 +886,75 @@ export default function ReportsPage() {
 
           {/* Godown Sales Report */}
           <TabsContent value="godownsales">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between">
-                  <CardTitle>Godown Sales Report</CardTitle>
+            <Card className="overflow-hidden min-w-0">
+              <CardHeader className="px-3 sm:px-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg">Godown Sales Report</CardTitle>
                   <Button variant="outline" size="sm" onClick={() => godownSalesData && downloadCSV(godownSalesData.sales, 'godown-sales')}>
                     <Download className="mr-2" size={16} />CSV
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 sm:px-6">
                 {!godownSalesData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Sales</p>
-                        <p className="text-2xl font-bold">{godownSalesSummary.totalSales}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-blue-50"><Package size={16} className="text-blue-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Sales</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{godownSalesSummary.totalSales}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Amount</p>
-                        <p className="text-2xl font-bold">₹{godownSalesSummary.totalAmount.toFixed(2)}</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-orange-50"><IndianRupee size={16} className="text-orange-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Amount</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">₹{godownSalesSummary.totalAmount.toFixed(2)}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Birds</p>
-                        <p className="text-2xl font-bold">{godownSalesSummary.totalBirds}</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-cyan-50"><Bird size={16} className="text-cyan-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Birds</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{godownSalesSummary.totalBirds}</p>
                       </div>
                     </div>
                     {viewMode === 'table' && (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Bill No</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Customer</TableHead>
-                            <TableHead>Birds</TableHead>
-                            <TableHead>Weight</TableHead>
-                            <TableHead>Wt Shortage</TableHead>
-                            <TableHead>Amount</TableHead>
-                            <TableHead>Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {godownSalesData.sales.map((sale: any) => (
-                            <TableRow key={sale.id}>
-                              <TableCell className="font-mono">{sale.invoiceNumber || sale.saleNo || '-'}</TableCell>
-                              <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
-                              <TableCell>{sale.customerName || '-'}</TableCell>
-                              <TableCell className="text-right">{sale.numberOfBirds || 0}</TableCell>
-                              <TableCell className="text-right">{parseFloat(sale.totalWeight || 0).toFixed(2)} kg</TableCell>
-                              <TableCell className="text-right text-orange-600">{parseFloat(sale.weightLoss || 0).toFixed(2)} kg</TableCell>
-                              <TableCell className="text-right">₹{parseFloat(sale.totalAmount || 0).toFixed(2)}</TableCell>
-                              <TableCell><span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${sale.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' : sale.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>{sale.paymentStatus || '-'}</span></TableCell>
+                      <div className="overflow-x-auto">
+                        <Table className="min-w-[700px]">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Bill No</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Customer</TableHead>
+                              <TableHead>Birds</TableHead>
+                              <TableHead>Weight</TableHead>
+                              <TableHead>Wt Shortage</TableHead>
+                              <TableHead>Amount</TableHead>
+                              <TableHead>Status</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {godownSalesData.sales.map((sale: any) => (
+                              <TableRow key={sale.id}>
+                                <TableCell className="font-mono">{sale.invoiceNumber || sale.saleNo || '-'}</TableCell>
+                                <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
+                                <TableCell>{sale.customerName || '-'}</TableCell>
+                                <TableCell className="text-right">{sale.numberOfBirds || 0}</TableCell>
+                                <TableCell className="text-right">{parseFloat(sale.totalWeight || 0).toFixed(2)} kg</TableCell>
+                                <TableCell className="text-right text-orange-600">{parseFloat(sale.weightLoss || 0).toFixed(2)} kg</TableCell>
+                                <TableCell className="text-right">₹{parseFloat(sale.totalAmount || 0).toFixed(2)}</TableCell>
+                                <TableCell><span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${sale.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' : sale.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>{sale.paymentStatus || '-'}</span></TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
                     )}
                     {viewMode === 'chart' && (
+                      <div className="w-full min-w-0 overflow-hidden">
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={godownSalesData.sales.slice(0, 10)}>
                           <CartesianGrid strokeDasharray="3 3" />
@@ -819,6 +964,20 @@ export default function ReportsPage() {
                           <Bar dataKey="weightLoss" fill="#FF8042" name="Weight Loss (kg)" />
                         </BarChart>
                       </ResponsiveContainer>
+                    </div>
+                    )}
+                    {viewMode === 'pie' && godownSalesPieData.length > 0 && (
+                      <div className="w-full min-w-0 overflow-hidden">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie data={godownSalesPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                            {godownSalesPieData.map((_: any, index: number) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
                     )}
                   </div>
                 )}
@@ -828,60 +987,100 @@ export default function ReportsPage() {
 
           {/* Mortality Report */}
           <TabsContent value="mortality">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between">
-                  <CardTitle>Mortality Report</CardTitle>
+            <Card className="overflow-hidden min-w-0">
+              <CardHeader className="px-3 sm:px-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg">Mortality Report</CardTitle>
                   <Button variant="outline" size="sm" onClick={() => mortalityRows.length && downloadCSV(mortalityRows, 'mortality')}>
                     <Download className="mr-2" size={16} />CSV
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 sm:px-6">
                 {!mortalityData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
                   <div className="space-y-6">
-                      <div className="grid grid-cols-4 gap-4">
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Orders with Mortality</p>
-                        <p className="text-2xl font-bold">{mortalitySummary.totalOrders}</p>
-                      </div>
-                        <div className="p-4 border rounded">
-                          <p className="text-sm text-muted-foreground">Total Mortality Weight</p>
-                          <p className="text-2xl font-bold text-orange-600">{mortalitySummary.totalMortalityWeight.toFixed(2)} kg</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-red-50"><Skull size={16} className="text-red-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Orders with Mortality</p>
                         </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Deduction</p>
-                        <p className="text-2xl font-bold text-red-600">₹{mortalitySummary.totalMortalityDeduction.toFixed(2)}</p>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{mortalitySummary.totalOrders}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Average per Order</p>
-                        <p className="text-2xl font-bold">₹{mortalitySummary.averageMortalityPerOrder.toFixed(2)}</p>
+                        <div className="p-3 sm:p-4 border rounded min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="p-1.5 rounded-md bg-orange-50"><Weight size={16} className="text-orange-600" /></div>
+                            <p className="text-xs sm:text-sm text-muted-foreground">Total Mortality Weight</p>
+                          </div>
+                          <p className="text-lg sm:text-2xl font-bold text-orange-600 whitespace-nowrap">{mortalitySummary.totalMortalityWeight.toFixed(2)} kg</p>
+                        </div>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-red-50"><IndianRupee size={16} className="text-red-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Deduction</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-red-600 whitespace-nowrap">₹{mortalitySummary.totalMortalityDeduction.toFixed(2)}</p>
+                      </div>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-blue-50"><Calculator size={16} className="text-blue-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Average per Order</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">₹{mortalitySummary.averageMortalityPerOrder.toFixed(2)}</p>
                       </div>
                     </div>
                     {viewMode === 'table' && mortalityRows.length > 0 && (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead className="text-right">Birds Died</TableHead>
-                            <TableHead className="text-right">Weight (kg)</TableHead>
-                            <TableHead>Amount</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {mortalityRows.map((record: any, i: number) => (
-                            <TableRow key={i}>
-                              <TableCell>{formatDate(record.purchaseDate || record.mortalityDate || record.createdAt || '')}</TableCell>
-                              <TableCell className="text-right">{getMortalityFieldValue(record, ['numberOfBirdsDied', 'mortalityBirds', 'birdsDied', 'deadBirds', 'totalBirdsDied'])}</TableCell>
-                              <TableCell className="text-right">{getMortalityFieldValue(record, ['weightOfDeadBirds', 'mortalityWeight', 'deadWeight', 'totalMortalityWeight']).toFixed(2)} kg</TableCell>
-                              <TableCell className="text-red-600">₹{getMortalityFieldValue(record, ['amount', 'mortalityDeduction', 'mortalityAmount', 'deductionAmount']).toFixed(2)}</TableCell>
+                      <div className="overflow-x-auto">
+                        <Table className="min-w-[500px]">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Date</TableHead>
+                              <TableHead className="text-right">Birds Died</TableHead>
+                              <TableHead className="text-right">Weight (kg)</TableHead>
+                              <TableHead>Amount</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {mortalityRows.map((record: any, i: number) => (
+                              <TableRow key={i}>
+                                <TableCell>{formatDate(record.purchaseDate || record.mortalityDate || record.createdAt || '')}</TableCell>
+                                <TableCell className="text-right">{getMortalityFieldValue(record, ['numberOfBirdsDied', 'mortalityBirds', 'birdsDied', 'deadBirds', 'totalBirdsDied'])}</TableCell>
+                                <TableCell className="text-right">{getMortalityFieldValue(record, ['weightOfDeadBirds', 'mortalityWeight', 'deadWeight', 'totalMortalityWeight']).toFixed(2)} kg</TableCell>
+                                <TableCell className="text-red-600">₹{getMortalityFieldValue(record, ['amount', 'mortalityDeduction', 'mortalityAmount', 'deductionAmount']).toFixed(2)}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
                     )}
                     {mortalityRows.length === 0 && (
                       <p className="text-center py-8 text-muted-foreground">No mortality data in selected period</p>
+                    )}
+                    {viewMode === 'chart' && mortalityBarData.length > 0 && (
+                      <div className="w-full min-w-0 overflow-hidden">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={mortalityBarData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="value" fill="#FF8042" name="Birds Died" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    )}
+                    {viewMode === 'pie' && mortalityPieData.length > 0 && (
+                      <div className="w-full min-w-0 overflow-hidden">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie data={mortalityPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                            {mortalityPieData.map((_: any, index: number) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
                     )}
                   </div>
                 )}
@@ -891,10 +1090,10 @@ export default function ReportsPage() {
 
           {/* Available Stock */}
           <TabsContent value="stock">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between">
-                  <CardTitle>Available Stock in Godown</CardTitle>
+            <Card className="overflow-hidden min-w-0">
+              <CardHeader className="px-3 sm:px-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg">Available Stock in Godown</CardTitle>
                   <Button variant="outline" size="sm" onClick={() => {
                     if (!stockData) return
                     const summary = [
@@ -908,55 +1107,92 @@ export default function ReportsPage() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 sm:px-6">
                 {!stockData ? <p className="text-center py-8 text-muted-foreground">Generate stock report</p> : (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="p-4 border rounded bg-blue-50">
-                        <p className="text-sm text-muted-foreground">Birds in Godown</p>
-                        <p className="text-2xl font-bold text-blue-600">{stockData.godown?.currentStock ?? 0}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                      <div className="p-3 sm:p-4 border rounded bg-blue-50 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-blue-100"><Package size={16} className="text-blue-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Birds in Godown</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-blue-600 whitespace-nowrap">{stockData.godown?.currentStock ?? 0}</p>
                       </div>
-                      <div className="p-4 border rounded bg-indigo-50">
-                        <p className="text-sm text-muted-foreground">Bird Weight</p>
-                        <p className="text-2xl font-bold text-indigo-600">{(stockData.godown?.currentWeight ?? 0).toFixed(2)} kg</p>
+                      <div className="p-3 sm:p-4 border rounded bg-indigo-50 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-indigo-100"><Weight size={16} className="text-indigo-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Bird Weight</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-indigo-600 whitespace-nowrap">{(stockData.godown?.currentWeight ?? 0).toFixed(2)} kg</p>
                       </div>
-                      <div className="p-4 border rounded bg-teal-50">
-                        <p className="text-sm text-muted-foreground">Bird Value</p>
-                        <p className="text-2xl font-bold text-teal-600">₹{(stockData.godown?.currentValue ?? 0).toFixed(2)}</p>
+                      <div className="p-3 sm:p-4 border rounded bg-teal-50 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-teal-100"><IndianRupee size={16} className="text-teal-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Bird Value</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-teal-600 whitespace-nowrap">₹{(stockData.godown?.currentValue ?? 0).toFixed(2)}</p>
                       </div>
                     </div>
 
                     {(() => {
                       const filtered = stockData.inventory || []
                       return filtered.length > 0 ? (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Item Name</TableHead>
-                              <TableHead>Type</TableHead>
-                              <TableHead className="text-right">Stock Level</TableHead>
-                              <TableHead className="text-right">Unit</TableHead>
-                              <TableHead className="text-right">Reorder Level</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {filtered.map((item: any, i: number) => (
-                              <TableRow key={i}>
-                                <TableCell className="font-medium">{item.name}</TableCell>
-                                <TableCell className="capitalize">{item.type || item.itemType || '-'}</TableCell>
-                                <TableCell className={`text-right ${item.currentStockLevel <= (item.reorderLevel || 0) ? 'text-red-600 font-bold' : ''}`}>
-                                  {item.currentStockLevel ?? 0}
-                                </TableCell>
-                                <TableCell className="text-right">{item.unit || 'kg'}</TableCell>
-                                <TableCell className="text-right">{item.reorderLevel || '-'}</TableCell>
+                        <div className="overflow-x-auto">
+                          <Table className="min-w-[500px]">
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Item Name</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead className="text-right">Stock Level</TableHead>
+                                <TableHead className="text-right">Unit</TableHead>
+                                <TableHead className="text-right">Reorder Level</TableHead>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                            </TableHeader>
+                            <TableBody>
+                              {filtered.map((item: any, i: number) => (
+                                <TableRow key={i}>
+                                  <TableCell className="font-medium">{item.name}</TableCell>
+                                  <TableCell className="capitalize">{item.type || item.itemType || '-'}</TableCell>
+                                  <TableCell className={`text-right ${item.currentStockLevel <= (item.reorderLevel || 0) ? 'text-red-600 font-bold' : ''}`}>
+                                    {item.currentStockLevel ?? 0}
+                                  </TableCell>
+                                  <TableCell className="text-right">{item.unit || 'kg'}</TableCell>
+                                  <TableCell className="text-right">{item.reorderLevel || '-'}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
                       ) : (
                         <p className="text-center py-4 text-muted-foreground">No items match filters</p>
                       )
                     })()}
+                    {viewMode === 'chart' && inventoryBarData.length > 0 && (
+                      <div className="w-full min-w-0 overflow-hidden">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={inventoryBarData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="value" fill="#8884d8" name="Stock Level" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    )}
+                    {viewMode === 'pie' && inventoryPieData.length > 0 && (
+                      <div className="w-full min-w-0 overflow-hidden">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie data={inventoryPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                            {inventoryPieData.map((_: any, index: number) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -965,51 +1201,60 @@ export default function ReportsPage() {
 
           {/* Expense Breakdown */}
           <TabsContent value="expenses">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between">
-                  <CardTitle>Expense Breakdown</CardTitle>
+            <Card className="overflow-hidden min-w-0">
+              <CardHeader className="px-3 sm:px-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg">Expense Breakdown</CardTitle>
                   <Button variant="outline" size="sm" onClick={() => expenseData && downloadCSV(expenseData.breakdown, 'expenses')}>
                     <Download className="mr-2" size={16} />CSV
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 sm:px-6">
                 {!expenseData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Expenses</p>
-                        <p className="text-2xl font-bold">₹{expenseData.summary.totalExpenses.toFixed(2)}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-orange-50"><Receipt size={16} className="text-orange-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Expenses</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">₹{expenseData.summary.totalExpenses.toFixed(2)}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Categories</p>
-                        <p className="text-2xl font-bold">{expenseData.summary.categoryCount}</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-blue-50"><Tag size={16} className="text-blue-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Categories</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{expenseData.summary.categoryCount}</p>
                       </div>
                     </div>
                     {viewMode === 'table' && (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Category</TableHead>
-                            <TableHead>Amount</TableHead>
-                            <TableHead>Percentage</TableHead>
-                            <TableHead>Count</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {expenseData.breakdown.map((item: any, i: number) => (
-                            <TableRow key={i}>
-                              <TableCell>{item.category}</TableCell>
-                              <TableCell>₹{item.amount.toFixed(2)}</TableCell>
-                              <TableCell>{item.percentage.toFixed(1)}%</TableCell>
-                              <TableCell>{item.count}</TableCell>
+                      <div className="overflow-x-auto">
+                        <Table className="min-w-[500px]">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Category</TableHead>
+                              <TableHead>Amount</TableHead>
+                              <TableHead>Percentage</TableHead>
+                              <TableHead>Count</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {expenseData.breakdown.map((item: any, i: number) => (
+                              <TableRow key={i}>
+                                <TableCell>{item.category}</TableCell>
+                                <TableCell>₹{item.amount.toFixed(2)}</TableCell>
+                                <TableCell>{item.percentage.toFixed(1)}%</TableCell>
+                                <TableCell>{item.count}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
                     )}
                     {viewMode === 'chart' && (
+                      <div className="w-full min-w-0 overflow-hidden">
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={expenseData.breakdown}>
                           <CartesianGrid strokeDasharray="3 3" />
@@ -1019,8 +1264,10 @@ export default function ReportsPage() {
                           <Bar dataKey="amount" fill="#82ca9d" />
                         </BarChart>
                       </ResponsiveContainer>
+                    </div>
                     )}
                     {viewMode === 'pie' && (
+                      <div className="w-full min-w-0 overflow-hidden">
                       <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                           <Pie data={expenseData.breakdown} dataKey="amount" nameKey="category" cx="50%" cy="50%" outerRadius={100} label>
@@ -1030,6 +1277,7 @@ export default function ReportsPage() {
                           <Legend />
                         </PieChart>
                       </ResponsiveContainer>
+                    </div>
                     )}
                   </div>
                 )}
@@ -1039,55 +1287,67 @@ export default function ReportsPage() {
 
           {/* Farm-wise */}
           <TabsContent value="farm">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between">
-                  <CardTitle>Farm-wise Profit</CardTitle>
+            <Card className="overflow-hidden min-w-0">
+              <CardHeader className="px-3 sm:px-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg">Farm-wise Profit</CardTitle>
                   <Button variant="outline" size="sm" onClick={() => farmWiseData && downloadCSV(farmWiseData.farms, 'farms')}>
                     <Download className="mr-2" size={16} />CSV
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 sm:px-6">
                 {!farmWiseData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Farms</p>
-                        <p className="text-2xl font-bold">{farmWiseData.summary.totalFarms}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-green-50"><Home size={16} className="text-green-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Farms</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{farmWiseData.summary.totalFarms}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Cost</p>
-                        <p className="text-2xl font-bold">₹{farmWiseData.summary.totalCost.toFixed(2)}</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-orange-50"><IndianRupee size={16} className="text-orange-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Cost</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">₹{farmWiseData.summary.totalCost.toFixed(2)}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Orders</p>
-                        <p className="text-2xl font-bold">{farmWiseData.summary.totalOrders}</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-blue-50"><ShoppingCart size={16} className="text-blue-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Orders</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{farmWiseData.summary.totalOrders}</p>
                       </div>
                     </div>
                     {viewMode === 'table' && (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Farmer</TableHead>
-                            <TableHead>Orders</TableHead>
-                            <TableHead>Total Cost</TableHead>
-                            <TableHead>Weight</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {farmWiseData.farms.map((farm: any, i: number) => (
-                            <TableRow key={i}>
-                              <TableCell>{farm.farmerName}</TableCell>
-                              <TableCell>{farm.totalOrders}</TableCell>
-                              <TableCell>₹{farm.totalCost.toFixed(2)}</TableCell>
-                              <TableCell>{farm.totalWeight.toFixed(2)} kg</TableCell>
+                      <div className="overflow-x-auto">
+                        <Table className="min-w-[500px]">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Farmer</TableHead>
+                              <TableHead>Orders</TableHead>
+                              <TableHead>Total Cost</TableHead>
+                              <TableHead>Weight</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {farmWiseData.farms.map((farm: any, i: number) => (
+                              <TableRow key={i}>
+                                <TableCell>{farm.farmerName}</TableCell>
+                                <TableCell>{farm.totalOrders}</TableCell>
+                                <TableCell>₹{farm.totalCost.toFixed(2)}</TableCell>
+                                <TableCell>{farm.totalWeight.toFixed(2)} kg</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
                     )}
                     {viewMode === 'chart' && (
+                      <div className="w-full min-w-0 overflow-hidden">
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={farmWiseData.farms.slice(0, 10)}>
                           <CartesianGrid strokeDasharray="3 3" />
@@ -1097,6 +1357,20 @@ export default function ReportsPage() {
                           <Bar dataKey="totalCost" fill="#8884d8" />
                         </BarChart>
                       </ResponsiveContainer>
+                    </div>
+                    )}
+                    {viewMode === 'pie' && farmPieData.length > 0 && (
+                      <div className="w-full min-w-0 overflow-hidden">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie data={farmPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                            {farmPieData.map((_: any, index: number) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
                     )}
                   </div>
                 )}
@@ -1106,55 +1380,67 @@ export default function ReportsPage() {
 
           {/* Customer-wise */}
           <TabsContent value="customer">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between">
-                  <CardTitle>Customer-wise Sales</CardTitle>
+            <Card className="overflow-hidden min-w-0">
+              <CardHeader className="px-3 sm:px-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg">Customer-wise Sales</CardTitle>
                   <Button variant="outline" size="sm" onClick={() => customerWiseData && downloadCSV(customerWiseData.customers, 'customers')}>
                     <Download className="mr-2" size={16} />CSV
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 sm:px-6">
                 {!customerWiseData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Customers</p>
-                        <p className="text-2xl font-bold">{customerWiseData.summary.totalCustomers}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-blue-50"><Users size={16} className="text-blue-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Customers</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{customerWiseData.summary.totalCustomers}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Revenue</p>
-                        <p className="text-2xl font-bold">₹{customerWiseData.summary.totalRevenue.toFixed(2)}</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-green-50"><IndianRupee size={16} className="text-green-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Revenue</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">₹{customerWiseData.summary.totalRevenue.toFixed(2)}</p>
                       </div>
-                      <div className="p-4 border rounded">
-                        <p className="text-sm text-muted-foreground">Total Sales</p>
-                        <p className="text-2xl font-bold">{customerWiseData.summary.totalSales}</p>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-purple-50"><BarChart3 size={16} className="text-purple-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Sales</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{customerWiseData.summary.totalSales}</p>
                       </div>
                     </div>
                     {viewMode === 'table' && (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Customer</TableHead>
-                            <TableHead>Sales</TableHead>
-                            <TableHead>Revenue</TableHead>
-                            <TableHead>Quantity</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {customerWiseData.customers.map((customer: any, i: number) => (
-                            <TableRow key={i}>
-                              <TableCell>{customer.customerName}</TableCell>
-                              <TableCell>{customer.totalSales}</TableCell>
-                              <TableCell>₹{customer.totalRevenue.toFixed(2)}</TableCell>
-                              <TableCell>{customer.totalQuantity.toFixed(2)}</TableCell>
+                      <div className="overflow-x-auto">
+                        <Table className="min-w-[500px]">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Customer</TableHead>
+                              <TableHead>Sales</TableHead>
+                              <TableHead>Revenue</TableHead>
+                              <TableHead>Quantity</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {customerWiseData.customers.map((customer: any, i: number) => (
+                              <TableRow key={i}>
+                                <TableCell>{customer.customerName}</TableCell>
+                                <TableCell>{customer.totalSales}</TableCell>
+                                <TableCell>₹{customer.totalRevenue.toFixed(2)}</TableCell>
+                                <TableCell>{customer.totalQuantity.toFixed(2)}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
                     )}
                     {viewMode === 'chart' && (
+                      <div className="w-full min-w-0 overflow-hidden">
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={customerWiseData.customers.slice(0, 10)}>
                           <CartesianGrid strokeDasharray="3 3" />
@@ -1164,8 +1450,10 @@ export default function ReportsPage() {
                           <Bar dataKey="totalRevenue" fill="#00C49F" />
                         </BarChart>
                       </ResponsiveContainer>
+                    </div>
                     )}
                     {viewMode === 'pie' && (
+                      <div className="w-full min-w-0 overflow-hidden">
                       <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                           <Pie data={customerWiseData.customers.slice(0, 6)} dataKey="totalRevenue" nameKey="customerName" cx="50%" cy="50%" outerRadius={100} label>
@@ -1175,6 +1463,7 @@ export default function ReportsPage() {
                           <Legend />
                         </PieChart>
                       </ResponsiveContainer>
+                    </div>
                     )}
                   </div>
                 )}
@@ -1184,56 +1473,93 @@ export default function ReportsPage() {
 
           {/* Outstanding */}
           <TabsContent value="outstanding">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between">
-                  <CardTitle>Retailer Outstanding</CardTitle>
+            <Card className="overflow-hidden min-w-0">
+              <CardHeader className="px-3 sm:px-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg">Retailer Outstanding</CardTitle>
                   <Button variant="outline" size="sm" onClick={() => outstandingData && downloadCSV(outstandingData.data, 'outstanding')}>
                     <Download className="mr-2" size={16} />CSV
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 sm:px-6">
                 {!outstandingData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="p-4 border rounded bg-red-50">
-                        <p className="text-sm text-muted-foreground">Total Outstanding</p>
-                        <p className="text-2xl font-bold text-red-600">₹{outstandingData.summary.totalOutstanding.toLocaleString('en-IN')}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                      <div className="p-3 sm:p-4 border rounded bg-red-50 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-red-100"><AlertCircle size={16} className="text-red-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Outstanding</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-red-600 whitespace-nowrap">₹{outstandingData.summary.totalOutstanding.toLocaleString('en-IN')}</p>
                       </div>
-                      <div className="p-4 border rounded bg-blue-50">
-                        <p className="text-sm text-muted-foreground">Overpaid</p>
-                        <p className="text-2xl font-bold text-blue-600">₹{outstandingData.summary.totalOverpaid.toLocaleString('en-IN')}</p>
+                      <div className="p-3 sm:p-4 border rounded bg-blue-50 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-blue-100"><TrendingUp size={16} className="text-blue-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Overpaid</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-blue-600 whitespace-nowrap">₹{outstandingData.summary.totalOverpaid.toLocaleString('en-IN')}</p>
                       </div>
-                      <div className="p-4 border rounded bg-green-50">
-                        <p className="text-sm text-muted-foreground">Total Retailers</p>
-                        <p className="text-2xl font-bold text-green-600">{outstandingData.summary.totalRetailers}</p>
+                      <div className="p-3 sm:p-4 border rounded bg-green-50 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-green-100"><Users size={16} className="text-green-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Retailers</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-green-600 whitespace-nowrap">{outstandingData.summary.totalRetailers}</p>
                       </div>
                     </div>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Retailer</TableHead>
-                          <TableHead className="text-right">Total Sales</TableHead>
-                          <TableHead className="text-right">Received</TableHead>
-                          <TableHead className="text-right font-bold">Outstanding</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {outstandingData.data.slice(0, 20).map((r: any, i: number) => (
-                          <TableRow key={i}>
-                            <TableCell className="font-medium">{r.name}</TableCell>
-                            <TableCell className="text-right">₹{r.totalSales.toLocaleString('en-IN')}</TableCell>
-                            <TableCell className="text-right text-green-600">₹{r.totalReceived.toLocaleString('en-IN')}</TableCell>
-                            <TableCell className="text-right font-bold text-red-600">₹{r.outstanding.toLocaleString('en-IN')}</TableCell>
+                    <div className="overflow-x-auto">
+                      <Table className="min-w-[500px]">
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Retailer</TableHead>
+                            <TableHead className="text-right">Total Sales</TableHead>
+                            <TableHead className="text-right">Received</TableHead>
+                            <TableHead className="text-right font-bold">Outstanding</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {outstandingData.data.slice(0, 20).map((r: any, i: number) => (
+                            <TableRow key={i}>
+                              <TableCell className="font-medium">{r.name}</TableCell>
+                              <TableCell className="text-right">₹{r.totalSales.toLocaleString('en-IN')}</TableCell>
+                              <TableCell className="text-right text-green-600">₹{r.totalReceived.toLocaleString('en-IN')}</TableCell>
+                              <TableCell className="text-right font-bold text-red-600">₹{r.outstanding.toLocaleString('en-IN')}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                     {outstandingData.total > 20 && (
                       <p className="text-center text-sm text-muted-foreground py-2 border-t">
                         Showing top 20 retailers. View full report in Billing {'>'} Reports {'>'} Outstanding.
                       </p>
+                    )}
+                    {viewMode === 'chart' && outstandingBarData.length > 0 && (
+                      <div className="w-full min-w-0 overflow-hidden">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={outstandingBarData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                          <YAxis />
+                          <Tooltip formatter={(value: number) => [`₹${value.toLocaleString('en-IN')}`, 'Outstanding']} />
+                          <Bar dataKey="value" fill="#ef4444" name="Outstanding" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    )}
+                    {viewMode === 'pie' && outstandingPieData.length > 0 && (
+                      <div className="w-full min-w-0 overflow-hidden">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie data={outstandingPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                            {outstandingPieData.map((_: any, index: number) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
+                          </Pie>
+                          <Tooltip formatter={(value: number) => `₹${value.toLocaleString('en-IN')}`} />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
                     )}
                   </div>
                 )}

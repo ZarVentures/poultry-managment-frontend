@@ -11,15 +11,15 @@ export default function LedgerHomePage() {
     <DashboardLayout>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Ledger Reports</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Ledger Reports</h1>
           <p className="text-gray-600 mt-2">
             Separate pages for company ledger, farm ledger, and retailer ledger.
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Link href="/billing/ledger/company-report">
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow border border-gray-200">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow border border-gray-200 rounded-2xl min-w-0">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Company Ledger</CardTitle>
               </CardHeader>
@@ -38,7 +38,7 @@ export default function LedgerHomePage() {
           </Link>
 
           <Link href="/billing/ledger/farms">
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow border border-gray-200">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow border border-gray-200 rounded-2xl min-w-0">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Farm Ledger</CardTitle>
               </CardHeader>
@@ -57,7 +57,7 @@ export default function LedgerHomePage() {
           </Link>
 
           <Link href="/billing/ledger/retailers">
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow border border-gray-200">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow border border-gray-200 rounded-2xl min-w-0">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Retailer Ledger</CardTitle>
               </CardHeader>

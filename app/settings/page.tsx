@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,11 +35,15 @@ const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType; descript
 
 export default function SettingsPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const [userRole, setUserRole] = useState<string>("")
   const [mounted, setMounted] = useState(false)
-  const [activeSection, setActiveSection] = useState<Section>("general")
   const [loading, setLoading] = useState(false)
   const dispatch = useDispatch()
+
+  const VALID_SECTIONS: Section[] = ["general", "communication", "display", "notifications", "security", "permissions", "categories", "developer"]
+  const pathSegment = pathname.split("/").filter(Boolean).pop() || ""
+  const activeSection: Section = (VALID_SECTIONS.includes(pathSegment as Section) ? pathSegment : "general") as Section
 
   const [formData, setFormData] = useState({
     farmName: "Poultry Sathi",
@@ -117,6 +121,13 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setMounted(true)
+
+    // Redirect bare /settings to /settings/general
+    if (pathname === "/settings" || pathname === "/settings/") {
+      router.replace("/settings/general")
+      return
+    }
+
     const userData = localStorage.getItem("user")
     let role = ""
     if (userData) {
@@ -381,132 +392,100 @@ export default function SettingsPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex h-[calc(100vh-80px)] overflow-hidden rounded-xl border bg-background shadow-sm">
-
-        {/* Left Sidebar */}
-        <div className="w-64 border-r bg-muted/30 flex flex-col">
-          <div className="p-5 border-b">
-            <h1 className="text-lg font-semibold">Settings</h1>
-          </div>
-          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-            {NAV_ITEMS.filter(item => {
-              const role = userRole.toLowerCase()
-              if (item.id === 'permissions' && role !== 'admin') return false
-              if (role === 'staff') {
-                return item.id !== 'notifications' && item.id !== 'security' && item.id !== 'communication'
-              }
-              if (role === 'manager') {
-                return item.id !== 'notifications' && item.id !== 'security' && item.id !== 'developer'
-              }
-              return true
-            }).map(item => {
-              const Icon = item.icon
-              const active = activeSection === item.id
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveSection(item.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${active
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-muted text-foreground"
-                    }`}
-                >
-                  <Icon size={18} className={active ? "text-primary-foreground" : "text-muted-foreground"} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium leading-none">{item.label}</p>
-                    <p className={`text-xs mt-0.5 truncate ${active ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                      {item.description}
-                    </p>
-                  </div>
-                  {active && <ChevronRight size={14} className="text-primary-foreground/70" />}
-                </button>
-              )
-            })}
-          </nav>
-        </div>
-
-        {/* Right Content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-8 max-w-2xl">
+      <div className="space-y-6 max-w-4xl">
             <div className="mb-6">
-              <h2 className="text-2xl font-semibold">{activeItem.label}</h2>
-              <p className="text-muted-foreground text-sm mt-1">{activeItem.description}</p>
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <activeItem.icon size={22} />
+                </div>
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">{activeItem.label}</h2>
+                  <p className="text-muted-foreground text-sm sm:text-base">{activeItem.description}</p>
+                </div>
+              </div>
             </div>
 
             {/* General */}
             {activeSection === "general" && (
-              <div className="space-y-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label>Farm Name</Label>
-                    <Input value={formData.farmName} onChange={e => setFormData(f => ({ ...f, farmName: e.target.value }))} disabled={loading} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Location</Label>
-                    <Input value={formData.farmLocation} onChange={e => setFormData(f => ({ ...f, farmLocation: e.target.value }))} disabled={loading} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label>Email</Label>
-                    <Input type="email" value={formData.farmEmail} onChange={e => setFormData(f => ({ ...f, farmEmail: e.target.value }))} disabled={loading} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Phone</Label>
-                    <Input value={formData.farmPhone} onChange={e => setFormData(f => ({ ...f, farmPhone: e.target.value }))} disabled={loading} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5 max-w-xs">
-                    <Label>Currency</Label>
-                    <Select value={formData.currency} onValueChange={v => setFormData(f => ({ ...f, currency: v }))} disabled={loading}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="INR">INR (₹)</SelectItem>
-                        <SelectItem value="USD">USD ($)</SelectItem>
-                        <SelectItem value="EUR">EUR (€)</SelectItem>
-                        <SelectItem value="GBP">GBP (£)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5 max-w-xs">
-                    <Label>Country Code (Phone)</Label>
-                    <Select value={formData.countryCode} onValueChange={v => setFormData(f => ({ ...f, countryCode: v }))} disabled={loading}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent className="max-h-60 overflow-y-auto">
-                        <SelectItem value="+91">🇮🇳 +91 India</SelectItem>
-                        <SelectItem value="+1">🇺🇸 +1 USA / Canada</SelectItem>
-                        <SelectItem value="+44">🇬🇧 +44 UK</SelectItem>
-                        <SelectItem value="+971">🇦🇪 +971 UAE</SelectItem>
-                        <SelectItem value="+966">🇸🇦 +966 Saudi Arabia</SelectItem>
-                        <SelectItem value="+92">🇵🇰 +92 Pakistan</SelectItem>
-                        <SelectItem value="+880">🇧🇩 +880 Bangladesh</SelectItem>
-                        <SelectItem value="+94">🇱🇰 +94 Sri Lanka</SelectItem>
-                        <SelectItem value="+977">🇳🇵 +977 Nepal</SelectItem>
-                        <SelectItem value="+60">🇲🇾 +60 Malaysia</SelectItem>
-                        <SelectItem value="+65">🇸🇬 +65 Singapore</SelectItem>
-                        <SelectItem value="+61">🇦🇺 +61 Australia</SelectItem>
-                        <SelectItem value="+49">🇩🇪 +49 Germany</SelectItem>
-                        <SelectItem value="+33">🇫🇷 +33 France</SelectItem>
-                        <SelectItem value="+86">🇨🇳 +86 China</SelectItem>
-                        <SelectItem value="+81">🇯🇵 +81 Japan</SelectItem>
-                        <SelectItem value="+234">🇳🇬 +234 Nigeria</SelectItem>
-                        <SelectItem value="+27">🇿🇦 +27 South Africa</SelectItem>
-                        <SelectItem value="+55">🇧🇷 +55 Brazil</SelectItem>
-                        <SelectItem value="+7">🇷🇺 +7 Russia</SelectItem>
-                      </SelectContent>
-                    </Select>
+              <div className="space-y-6">
+                <div className="rounded-2xl border bg-card p-6 space-y-4">
+                  <h3 className="text-base font-semibold text-foreground">Farm Information</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Farm Name</Label>
+                      <Input value={formData.farmName} onChange={e => setFormData(f => ({ ...f, farmName: e.target.value }))} disabled={loading} className="h-10" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Location</Label>
+                      <Input value={formData.farmLocation} onChange={e => setFormData(f => ({ ...f, farmLocation: e.target.value }))} disabled={loading} className="h-10" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Email</Label>
+                      <Input type="email" value={formData.farmEmail} onChange={e => setFormData(f => ({ ...f, farmEmail: e.target.value }))} disabled={loading} className="h-10" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Phone</Label>
+                      <Input value={formData.farmPhone} onChange={e => setFormData(f => ({ ...f, farmPhone: e.target.value }))} disabled={loading} className="h-10" />
+                    </div>
                   </div>
                 </div>
 
-                {/* Bearable Loss Settings */}
-                <div className="border-t pt-4 space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-800">Cage Weight Loss Controls</h3>
-                  <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-2xl border bg-card p-6 space-y-4">
+                  <h3 className="text-base font-semibold text-foreground">Regional</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label>Max Bearable Loss Type</Label>
+                      <Label className="text-sm">Currency</Label>
+                      <Select value={formData.currency} onValueChange={v => setFormData(f => ({ ...f, currency: v }))} disabled={loading}>
+                        <SelectTrigger className="!h-10"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="INR">INR (₹)</SelectItem>
+                          <SelectItem value="USD">USD ($)</SelectItem>
+                          <SelectItem value="EUR">EUR (€)</SelectItem>
+                          <SelectItem value="GBP">GBP (£)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Country Code (Phone)</Label>
+                      <Select value={formData.countryCode} onValueChange={v => setFormData(f => ({ ...f, countryCode: v }))} disabled={loading}>
+                        <SelectTrigger className="!h-10"><SelectValue /></SelectTrigger>
+                        <SelectContent className="max-h-60 overflow-y-auto">
+                          <SelectItem value="+91">🇮🇳 +91 India</SelectItem>
+                          <SelectItem value="+1">🇺🇸 +1 USA / Canada</SelectItem>
+                          <SelectItem value="+44">🇬🇧 +44 UK</SelectItem>
+                          <SelectItem value="+971">🇦🇪 +971 UAE</SelectItem>
+                          <SelectItem value="+966">🇸🇦 +966 Saudi Arabia</SelectItem>
+                          <SelectItem value="+92">🇵🇰 +92 Pakistan</SelectItem>
+                          <SelectItem value="+880">🇧🇩 +880 Bangladesh</SelectItem>
+                          <SelectItem value="+94">🇱🇰 +94 Sri Lanka</SelectItem>
+                          <SelectItem value="+977">🇳🇵 +977 Nepal</SelectItem>
+                          <SelectItem value="+60">🇲🇾 +60 Malaysia</SelectItem>
+                          <SelectItem value="+65">🇸🇬 +65 Singapore</SelectItem>
+                          <SelectItem value="+61">🇦🇺 +61 Australia</SelectItem>
+                          <SelectItem value="+49">🇩🇪 +49 Germany</SelectItem>
+                          <SelectItem value="+33">🇫🇷 +33 France</SelectItem>
+                          <SelectItem value="+86">🇨🇳 +86 China</SelectItem>
+                          <SelectItem value="+81">🇯🇵 +81 Japan</SelectItem>
+                          <SelectItem value="+234">🇳🇬 +234 Nigeria</SelectItem>
+                          <SelectItem value="+27">🇿🇦 +27 South Africa</SelectItem>
+                          <SelectItem value="+55">🇧🇷 +55 Brazil</SelectItem>
+                          <SelectItem value="+7">🇷🇺 +7 Russia</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border bg-card p-6 space-y-4">
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground">Cage Weight Loss Controls</h3>
+                    <p className="text-sm text-muted-foreground mt-0.5">Configure limits for acceptable weight loss per cage.</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Max Bearable Loss Type</Label>
                       <Select value={formData.bearableLossType} onValueChange={v => setFormData(f => ({ ...f, bearableLossType: v as any }))} disabled={loading}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="!h-10"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="percentage">Percentage (%) of expected weight</SelectItem>
                           <SelectItem value="weight">Fixed Weight (kg) per cage</SelectItem>
@@ -514,8 +493,8 @@ export default function SettingsPage() {
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Max Bearable Loss Value</Label>
-                      <Input type="number" step="0.01" value={formData.bearableLossValue} onChange={e => setFormData(f => ({ ...f, bearableLossValue: e.target.value }))} placeholder={formData.bearableLossType === 'percentage' ? "e.g. 2.0%" : "e.g. 1.0 kg"} disabled={loading} onWheel={(e) => e.currentTarget.blur()} />
+                      <Label className="text-sm">Max Bearable Loss Value</Label>
+                      <Input type="number" step="0.01" value={formData.bearableLossValue} onChange={e => setFormData(f => ({ ...f, bearableLossValue: e.target.value }))} placeholder={formData.bearableLossType === 'percentage' ? "e.g. 2.0%" : "e.g. 1.0 kg"} disabled={loading} onWheel={(e) => e.currentTarget.blur()} className="h-10" />
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -523,113 +502,142 @@ export default function SettingsPage() {
                   </p>
                 </div>
 
-                <Button onClick={handleSave} disabled={loading} className="mt-2">
-                  <Save size={16} className="mr-2" />{loading ? "Saving..." : "Save Changes"}
-                </Button>
+                <div className="flex justify-end">
+                  <Button onClick={handleSave} disabled={loading} className="rounded-full h-10 px-6">
+                    <Save size={16} className="mr-2" />{loading ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
               </div>
             )}
 
             {/* Appearance */}
             {activeSection === "display" && (
-              <div className="space-y-5">
-                <div className="space-y-1.5 max-w-xs">
-                  <Label>Theme</Label>
+              <div className="space-y-6">
+                <div className="rounded-2xl border bg-card p-6 space-y-4">
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground">Theme</h3>
+                    <p className="text-sm text-muted-foreground mt-0.5">Choose your preferred color scheme.</p>
+                  </div>
                   <Select value={formData.theme} onValueChange={(v: "light" | "dark") => setFormData(f => ({ ...f, theme: v }))} disabled={loading}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="!h-10 max-w-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="light">☀️ Light</SelectItem>
                       <SelectItem value="dark">🌙 Dark</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">Applied on next session</p>
+                  <p className="text-sm text-muted-foreground">Applied on next session.</p>
                 </div>
-                <Button onClick={handleSave} disabled={loading}>
-                  <Save size={16} className="mr-2" />{loading ? "Saving..." : "Save Changes"}
-                </Button>
+                <div className="flex justify-end">
+                  <Button onClick={handleSave} disabled={loading} className="rounded-full h-10 px-6">
+                    <Save size={16} className="mr-2" />{loading ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
               </div>
             )}
 
             {/* Notifications */}
             {activeSection === "notifications" && (
-              <div className="space-y-4">
-                {[
-                  { key: "notifications" as const, label: "In-App Notifications", desc: "Receive notifications within the application" },
-                  { key: "emailAlerts" as const, label: "Email Alerts", desc: "Receive email notifications for important events" },
-                ].map(item => (
-                  <label key={item.key} className="flex items-center justify-between p-4 border rounded-xl cursor-pointer hover:bg-muted/50 transition-colors">
-                    <div>
-                      <p className="font-medium text-sm">{item.label}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
-                    </div>
-                    <div className={`relative w-11 h-6 rounded-full transition-colors ${formData[item.key] ? 'bg-primary' : 'bg-muted-foreground/30'}`}
-                      onClick={() => setFormData(f => ({ ...f, [item.key]: !f[item.key] }))}>
-                      <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData[item.key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                    </div>
-                  </label>
-                ))}
-                <Button onClick={handleSave} disabled={loading} className="mt-2">
-                  <Save size={16} className="mr-2" />{loading ? "Saving..." : "Save Preferences"}
-                </Button>
+              <div className="space-y-6">
+                <div className="rounded-2xl border bg-card divide-y">
+                  {[
+                    { key: "notifications" as const, label: "In-App Notifications", desc: "Receive notifications within the application", icon: Bell },
+                    { key: "emailAlerts" as const, label: "Email Alerts", desc: "Receive email notifications for important events", icon: Mail },
+                  ].map(item => (
+                    <label key={item.key} className="flex items-center justify-between p-5 cursor-pointer hover:bg-muted/30 transition-colors first:rounded-t-2xl last:rounded-b-2xl">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                          <item.icon size={16} />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm sm:text-base">{item.label}</p>
+                          <p className="text-sm text-muted-foreground">{item.desc}</p>
+                        </div>
+                      </div>
+                      <div
+                        className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${formData[item.key] ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                        onClick={() => setFormData(f => ({ ...f, [item.key]: !f[item.key] }))}
+                      >
+                        <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData[item.key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={handleSave} disabled={loading} className="rounded-full h-10 px-6">
+                    <Save size={16} className="mr-2" />{loading ? "Saving..." : "Save Preferences"}
+                  </Button>
+                </div>
               </div>
             )}
 
             {/* Security */}
             {activeSection === "security" && (
-              <div className="space-y-4">
-                <div className="border rounded-xl p-5">
+              <div className="space-y-6">
+                <div className="rounded-2xl border bg-card p-5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      {is2FAEnabled ? <ShieldCheck size={24} className="text-green-600" /> : <Shield size={24} className="text-muted-foreground" />}
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${is2FAEnabled ? 'bg-green-100 text-green-600' : 'bg-muted text-muted-foreground'}`}>
+                        {is2FAEnabled ? <ShieldCheck size={20} /> : <Shield size={20} />}
+                      </div>
                       <div>
-                        <p className="font-medium">Two-Factor Authentication</p>
+                        <p className="font-medium text-sm sm:text-base">Two-Factor Authentication</p>
                         <p className="text-sm text-muted-foreground">
                           {is2FAEnabled ? "Protected with authenticator app" : "Use Google or Microsoft Authenticator"}
                         </p>
                       </div>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${is2FAEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${is2FAEnabled ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
                       {is2FAEnabled ? "On" : "Off"}
                     </span>
                   </div>
                   <div className="mt-4">
                     {is2FAEnabled ? (
-                      <Button variant="destructive" size="sm" onClick={() => { setDisableCode(""); setShowDisableModal(true) }} disabled={twoFALoading}>
+                      <Button variant="destructive" size="sm" className="rounded-full" onClick={() => { setDisableCode(""); setShowDisableModal(true) }} disabled={twoFALoading}>
                         <ShieldOff size={14} className="mr-1" /> Disable 2FA
                       </Button>
                     ) : (
-                      <Button size="sm" onClick={handle2FAEnable} disabled={twoFALoading}>
+                      <Button size="sm" className="rounded-full" onClick={handle2FAEnable} disabled={twoFALoading}>
                         <ShieldCheck size={14} className="mr-1" /> Enable 2FA
                       </Button>
                     )}
                   </div>
                 </div>
 
-                <div className="border rounded-xl p-5 space-y-3">
-                  <p className="font-medium text-sm">Data Management</p>
-                  <Button variant="outline" size="sm" className="w-full justify-start">Export All Data</Button>
-                  <Button variant="outline" size="sm" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50">Clear All Data</Button>
+                <div className="rounded-2xl border bg-card p-5 space-y-3">
+                  <h3 className="text-base font-semibold text-foreground">Data Management</h3>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button variant="outline" size="sm" className="rounded-full flex-1 justify-start">Export All Data</Button>
+                    <Button variant="outline" size="sm" className="rounded-full flex-1 justify-start text-red-600 hover:text-red-700 hover:bg-red-50">Clear All Data</Button>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Developer */}
             {activeSection === "developer" && (
-              <div className="space-y-4">
-                <div className="border rounded-xl p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Terminal size={18} className="text-purple-600" />
-                    <p className="font-medium">Developer Mode</p>
-                    {isDevMode && <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full">ACTIVE</span>}
+              <div className="space-y-6">
+                <div className="rounded-2xl border bg-card p-6 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-600">
+                      <Terminal size={20} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-sm sm:text-base">Developer Mode</p>
+                        {isDevMode && <span className="text-[10px] bg-purple-600 text-white px-2 py-0.5 rounded-full font-bold">ACTIVE</span>}
+                      </div>
+                      <p className="text-sm text-muted-foreground">Enable API request logging with curl commands.</p>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-4">Enable API request logging with curl commands.</p>
                   {!isDevMode ? (
-                    <div className="flex gap-2 max-w-sm">
+                    <div className="flex flex-col sm:flex-row gap-2 max-w-md">
                       <div className="relative flex-1">
                         <Input
                           type={showDevPassword ? "text" : "password"}
                           value={devPassword}
                           onChange={e => { setDevPassword(e.target.value); setDevError("") }}
                           placeholder="Developer password"
+                          className="h-10"
                           onKeyDown={e => {
                             if (e.key === "Enter") {
                               const ok = enableDevMode(devPassword)
@@ -646,14 +654,14 @@ export default function SettingsPage() {
                         const ok = enableDevMode(devPassword)
                         if (!ok) setDevError("Wrong password")
                         else { setDevPassword(""); toast.success("Dev mode enabled") }
-                      }} className="bg-purple-600 hover:bg-purple-700">Enable</Button>
+                      }} className="rounded-full bg-purple-600 hover:bg-purple-700">Enable</Button>
                     </div>
                   ) : (
-                    <Button variant="outline" onClick={() => { disableDevMode(); toast.success("Dev mode disabled") }} className="border-red-300 text-red-600 hover:bg-red-50">
+                    <Button variant="outline" className="rounded-full border-red-300 text-red-600 hover:bg-red-50" onClick={() => { disableDevMode(); toast.success("Dev mode disabled") }}>
                       Disable Dev Mode
                     </Button>
                   )}
-                  {devError && <p className="text-xs text-red-500 mt-2">{devError}</p>}
+                  {devError && <p className="text-sm text-red-500">{devError}</p>}
                 </div>
               </div>
             )}
@@ -661,11 +669,11 @@ export default function SettingsPage() {
             {/* Communication Hub */}
             {activeSection === "communication" && (
               <div className="space-y-6">
-                <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border border-purple-200 p-4 rounded-xl flex items-start gap-3">
+                <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border border-purple-200 p-5 rounded-2xl flex items-start gap-3">
                   <MessageSquare className="text-purple-600 shrink-0 mt-0.5" size={20} />
                   <div>
-                    <p className="text-sm font-semibold text-purple-900">Communication & Alert Orchestration Hub</p>
-                    <p className="text-xs text-purple-700 mt-0.5">
+                    <p className="text-sm sm:text-base font-semibold text-purple-900">Communication & Alert Orchestration Hub</p>
+                    <p className="text-sm text-purple-700 mt-0.5">
                       Configure alert targets and distribution channels. AWS integration is securely handled on the backend for maximum safety.
                     </p>
                   </div>
@@ -675,7 +683,7 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="border border-blue-100 bg-blue-50/30 rounded-xl p-4 flex items-center justify-between shadow-sm">
                     <div className="space-y-1">
-                      <p className="text-xs font-medium text-blue-600 uppercase tracking-wider">Emails Transmitted</p>
+                      <p className="text-xs sm:text-sm font-medium text-blue-600 uppercase tracking-wider">Emails Transmitted</p>
                       <p className="text-2xl font-bold text-blue-900">{commCounts.emailCount}</p>
                     </div>
                     <div className="bg-blue-100 p-2.5 rounded-lg text-blue-600">
@@ -685,7 +693,7 @@ export default function SettingsPage() {
 
                   <div className="border border-green-100 bg-green-50/30 rounded-xl p-4 flex items-center justify-between shadow-sm">
                     <div className="space-y-1">
-                      <p className="text-xs font-medium text-green-600 uppercase tracking-wider">SMS Messages Dispatched</p>
+                      <p className="text-xs sm:text-sm font-medium text-green-600 uppercase tracking-wider">SMS Messages Dispatched</p>
                       <p className="text-2xl font-bold text-green-900">{commCounts.smsCount}</p>
                     </div>
                     <div className="bg-green-100 p-2.5 rounded-lg text-green-600">
@@ -695,8 +703,8 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Routing & Alert Pathways Form */}
-                <div className="border rounded-xl p-5 space-y-5 bg-background shadow-sm">
-                  <h3 className="font-semibold text-sm text-gray-800 border-b pb-2 flex items-center gap-2">
+                <div className="border rounded-2xl p-6 space-y-5 bg-background shadow-sm">
+                  <h3 className="font-semibold text-base text-gray-800 border-b pb-3 flex items-center gap-2">
                     <Bell size={16} className="text-purple-500" /> Alert Pathways & Channels
                   </h3>
                   
@@ -734,8 +742,8 @@ export default function SettingsPage() {
                       <div key={workflow.title} className="p-4 border border-slate-100 rounded-xl bg-slate-50/50 space-y-4">
                         <div className="flex items-start justify-between">
                           <div>
-                            <h4 className="text-xs font-semibold text-gray-800">{workflow.title}</h4>
-                            <p className="text-[10px] text-muted-foreground">{workflow.desc}</p>
+                            <h4 className="text-sm font-semibold text-gray-800">{workflow.title}</h4>
+                            <p className="text-xs text-muted-foreground">{workflow.desc}</p>
                           </div>
                           
                           {/* Channel Select Pills */}
@@ -796,11 +804,11 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Connection Test Controls */}
-                <div className="border border-purple-100 rounded-xl p-5 space-y-4 bg-purple-50/10 shadow-sm">
-                  <h3 className="font-semibold text-sm text-purple-950 flex items-center gap-1.5">
+                <div className="border border-purple-100 rounded-2xl p-6 space-y-4 bg-purple-50/10 shadow-sm">
+                  <h3 className="font-semibold text-base text-purple-950 flex items-center gap-1.5">
                     <ShieldCheck size={16} className="text-purple-600" /> Pipeline Verification Tests
                   </h3>
-                  <p className="text-xs text-purple-800">
+                  <p className="text-sm text-purple-800">
                     Verify connection pathways instantly by triggering secure dispatches directly from the backend services.
                   </p>
                   
@@ -858,9 +866,9 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Sent Communication Logs Table */}
-                <div className="border border-slate-200 rounded-xl p-5 space-y-4 bg-background shadow-sm">
-                  <div className="flex items-center justify-between border-b pb-2">
-                    <h3 className="font-semibold text-sm text-gray-800 flex items-center gap-2">
+                <div className="border border-slate-200 rounded-2xl p-6 space-y-4 bg-background shadow-sm">
+                  <div className="flex items-center justify-between border-b pb-3">
+                    <h3 className="font-semibold text-base text-gray-800 flex items-center gap-2">
                       <Terminal size={16} className="text-slate-500" /> Recent Dispatch Audit Logs
                     </h3>
                     <Button 
@@ -940,7 +948,7 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="flex justify-end pt-2">
-                  <Button onClick={handleSave} disabled={loading} className="px-6">
+                  <Button onClick={handleSave} disabled={loading} className="rounded-full h-10 px-6">
                     <Save size={16} className="mr-2" />{loading ? "Saving..." : "Save Communication Settings"}
                   </Button>
                 </div>
@@ -950,35 +958,33 @@ export default function SettingsPage() {
             {/* Permissions */}
             {activeSection === "permissions" && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-start gap-3 flex-1 mr-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="bg-blue-50 border border-blue-200 p-5 rounded-2xl flex items-start gap-3 flex-1">
                     <ShieldCheck className="text-blue-600 shrink-0 mt-0.5" size={20} />
                     <div>
-                      <p className="text-sm font-medium text-blue-900">Access Control Management</p>
-                      <p className="text-xs text-blue-700 mt-0.5">Control module visibility and action permissions for each user role. Admin roles always have full access.</p>
+                      <p className="text-sm sm:text-base font-medium text-blue-900">Access Control Management</p>
+                      <p className="text-sm text-blue-700 mt-0.5">Control module visibility and action permissions for each user role. Admin roles always have full access.</p>
                     </div>
                   </div>
-                  <div className="flex gap-2 shrink-0">
-                    <Button variant="outline" size="sm" onClick={() => setShowAddRoleModal(true)}>+ Add Role</Button>
-                  </div>
+                  <Button variant="outline" size="sm" className="rounded-full shrink-0" onClick={() => setShowAddRoleModal(true)}>+ Add Role</Button>
                 </div>
 
                 {permissionsLoading ? (
-                  <div className="flex justify-center p-8 text-muted-foreground animate-pulse text-sm">Loading permissions matrix...</div>
+                  <div className="flex justify-center p-12 text-muted-foreground animate-pulse text-sm">Loading permissions matrix...</div>
                 ) : (
-                  <div className="space-y-8 pb-10">
+                  <div className="space-y-6 pb-4">
                     {Array.from(new Set(['admin', 'manager', 'staff', ...allRolePermissions.map(p => p.role)])).sort((a, b) => a === 'admin' ? -1 : 1).map(role => {
                       const rolePermissions = allRolePermissions.filter(p => p.role === role)
                       const resources = ALL_RESOURCES
 
                       return (
-                        <div key={role} className="border rounded-xl overflow-hidden bg-background shadow-sm">
+                        <div key={role} className="rounded-2xl border overflow-hidden bg-card shadow-sm">
                           <div className={`p-4 border-b flex items-center justify-between ${role === 'admin' ? 'bg-indigo-900 text-white' :
                             role === 'manager' ? 'bg-blue-800 text-white' :
                               'bg-slate-700 text-white'
                             }`}>
                             <div className="flex items-center gap-3">
-                              <h3 className="font-bold uppercase tracking-wider">{role.replace('-', ' ')}</h3>
+                              <h3 className="font-bold uppercase tracking-wider text-sm">{role.replace('-', ' ')}</h3>
                               {role !== 'admin' && role !== 'manager' && role !== 'staff' && (
                                 <button
                                   onClick={() => handleDeleteRole(role)}
@@ -991,73 +997,75 @@ export default function SettingsPage() {
                             </div>
                             <span className="text-[10px] font-medium opacity-70">ROLE ACCESS LEVELS</span>
                           </div>
-                          <table className="w-full text-sm">
-                            <thead className="bg-muted/50 border-b">
-                              <tr className="text-xs uppercase text-muted-foreground">
-                                <th className="text-left p-3 font-semibold w-1/3">Resource / Module</th>
-                                <th className="p-3 font-semibold text-center group">
-                                  <div className="flex flex-col items-center">
-                                    <span>View</span>
-                                    <span className="text-[9px] opacity-50 font-normal mt-0.5">(Read)</span>
-                                  </div>
-                                </th>
-                                <th className="p-3 font-semibold text-center">
-                                  <div className="flex flex-col items-center">
-                                    <span>Create</span>
-                                    <span className="text-[9px] opacity-50 font-normal mt-0.5">(Add New)</span>
-                                  </div>
-                                </th>
-                                <th className="p-3 font-semibold text-center">
-                                  <div className="flex flex-col items-center">
-                                    <span>Edit</span>
-                                    <span className="text-[9px] opacity-50 font-normal mt-0.5">(Update)</span>
-                                  </div>
-                                </th>
-                                <th className="p-3 font-semibold text-center">
-                                  <div className="flex flex-col items-center">
-                                    <span>Delete</span>
-                                    <span className="text-[9px] opacity-50 font-normal mt-0.5">(Remove)</span>
-                                  </div>
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                              {resources.map(resource => {
-                                const perm = rolePermissions.find(p => p.resource === resource)
-                                const isFull = role === 'admin'
-                                return (
-                                  <tr key={`${role}-${resource}`} className="hover:bg-muted/30 transition-colors group">
-                                    <td className="p-3 font-medium capitalize flex items-center gap-2">
-                                      <ChevronRight size={12} className="text-muted-foreground group-hover:text-primary" />
-                                      {resource.replace('-', ' ')}
-                                    </td>
-                                    {['canRead', 'canCreate', 'canUpdate', 'canDelete'].map(field => {
-                                      const checked = isFull || (perm ? perm[field] : false)
-                                      return (
-                                        <td key={field} className={`p-3 text-center transition-colors ${checked ? 'bg-green-50/30' : 'bg-red-50/30'
-                                          }`}>
-                                          <div className="flex justify-center items-center">
-                                            {isFull ? (
-                                              <div title="Admin always has access">
-                                                <ShieldCheck size={16} className="text-green-600 opacity-50" />
-                                              </div>
-                                            ) : (
-                                              <input
-                                                type="checkbox"
-                                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer hover:scale-110 transition-transform"
-                                                checked={checked}
-                                                onChange={(e) => handleUpdatePermission(role, resource, field, e.target.checked)}
-                                              />
-                                            )}
-                                          </div>
-                                        </td>
-                                      )
-                                    })}
-                                  </tr>
-                                )
-                              })}
-                            </tbody>
-                          </table>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm min-w-[500px]">
+                              <thead className="bg-muted/50 border-b">
+                                <tr className="text-xs uppercase text-muted-foreground">
+                                  <th className="text-left p-3 font-semibold w-1/3">Resource / Module</th>
+                                  <th className="p-3 font-semibold text-center">
+                                    <div className="flex flex-col items-center">
+                                      <span>View</span>
+                                      <span className="text-[9px] opacity-50 font-normal mt-0.5">(Read)</span>
+                                    </div>
+                                  </th>
+                                  <th className="p-3 font-semibold text-center">
+                                    <div className="flex flex-col items-center">
+                                      <span>Create</span>
+                                      <span className="text-[9px] opacity-50 font-normal mt-0.5">(Add New)</span>
+                                    </div>
+                                  </th>
+                                  <th className="p-3 font-semibold text-center">
+                                    <div className="flex flex-col items-center">
+                                      <span>Edit</span>
+                                      <span className="text-[9px] opacity-50 font-normal mt-0.5">(Update)</span>
+                                    </div>
+                                  </th>
+                                  <th className="p-3 font-semibold text-center">
+                                    <div className="flex flex-col items-center">
+                                      <span>Delete</span>
+                                      <span className="text-[9px] opacity-50 font-normal mt-0.5">(Remove)</span>
+                                    </div>
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {resources.map(resource => {
+                                  const perm = rolePermissions.find(p => p.resource === resource)
+                                  const isFull = role === 'admin'
+                                  return (
+                                    <tr key={`${role}-${resource}`} className="hover:bg-muted/30 transition-colors group">
+                                      <td className="p-3 font-medium capitalize flex items-center gap-2">
+                                        <ChevronRight size={12} className="text-muted-foreground group-hover:text-primary" />
+                                        {resource.replace('-', ' ')}
+                                      </td>
+                                      {['canRead', 'canCreate', 'canUpdate', 'canDelete'].map(field => {
+                                        const checked = isFull || (perm ? perm[field] : false)
+                                        return (
+                                          <td key={field} className={`p-3 text-center transition-colors ${checked ? 'bg-green-50/30' : 'bg-red-50/30'
+                                            }`}>
+                                            <div className="flex justify-center items-center">
+                                              {isFull ? (
+                                                <div title="Admin always has access">
+                                                  <ShieldCheck size={16} className="text-green-600 opacity-50" />
+                                                </div>
+                                              ) : (
+                                                <input
+                                                  type="checkbox"
+                                                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer hover:scale-110 transition-transform"
+                                                  checked={checked}
+                                                  onChange={(e) => handleUpdatePermission(role, resource, field, e.target.checked)}
+                                                />
+                                              )}
+                                            </div>
+                                          </td>
+                                        )
+                                      })}
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       )
                     })}
@@ -1069,15 +1077,15 @@ export default function SettingsPage() {
             {/* Categories */}
             {activeSection === "categories" && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-start gap-3 flex-1 mr-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl flex items-start gap-3 flex-1">
                     <CheckCircle2 className="text-emerald-600 shrink-0 mt-0.5" size={20} />
                     <div>
-                      <p className="text-sm font-medium text-emerald-900">Expense Category Management</p>
-                      <p className="text-xs text-emerald-700 mt-0.5">Manage categories and icons for expense tracking. System categories are pre-defined.</p>
+                      <p className="text-sm sm:text-base font-medium text-emerald-900">Expense Category Management</p>
+                      <p className="text-sm text-emerald-700 mt-0.5">Manage categories and icons for expense tracking. System categories are pre-defined.</p>
                     </div>
                   </div>
-                  <Button size="sm" onClick={() => {
+                  <Button size="sm" className="rounded-full shrink-0" onClick={() => {
                     setEditingCategory(null)
                     setCategoryFormData({ name: "", description: "", icon: "tag", appliesTo: "both", isActive: true })
                     setShowCategoryModal(true)
@@ -1085,86 +1093,86 @@ export default function SettingsPage() {
                 </div>
 
                 {categoriesLoading ? (
-                  <div className="flex justify-center p-8 text-muted-foreground animate-pulse text-sm">Loading categories...</div>
+                  <div className="flex justify-center p-12 text-muted-foreground animate-pulse text-sm">Loading categories...</div>
                 ) : (
-                  <div className="border rounded-xl overflow-hidden bg-background shadow-sm">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/50 border-b">
-                        <tr className="text-xs uppercase text-muted-foreground">
-                          <th className="text-left p-4 font-semibold">Category</th>
-                          <th className="text-left p-4 font-semibold">Description</th>
-                          <th className="text-center p-4 font-semibold">Applies To</th>
-                          <th className="text-center p-4 font-semibold">Status</th>
-                          <th className="text-right p-4 font-semibold">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {categories.map(cat => (
-                          <tr key={cat.id} className="hover:bg-muted/30 transition-colors">
-                            <td className="p-4">
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 bg-muted rounded-lg text-muted-foreground">
-                                  <Tag size={16} />
+                  <div className="rounded-2xl border overflow-hidden bg-card shadow-sm">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm min-w-[500px]">
+                        <thead className="bg-muted/50 border-b">
+                          <tr className="text-xs uppercase text-muted-foreground">
+                            <th className="text-left p-4 font-semibold">Category</th>
+                            <th className="text-left p-4 font-semibold">Description</th>
+                            <th className="text-center p-4 font-semibold">Applies To</th>
+                            <th className="text-center p-4 font-semibold">Status</th>
+                            <th className="text-right p-4 font-semibold">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {categories.map(cat => (
+                            <tr key={cat.id} className="hover:bg-muted/30 transition-colors">
+                              <td className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="p-2 bg-muted rounded-lg text-muted-foreground">
+                                    <Tag size={16} />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium">{cat.name}</p>
+                                    {cat.isDefault && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold uppercase">Default</span>}
+                                  </div>
                                 </div>
-                                <div>
-                                  <p className="font-medium">{cat.name}</p>
-                                  {cat.isDefault && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold uppercase">Default</span>}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="p-4 text-muted-foreground text-xs leading-relaxed max-w-xs">{cat.description || "-"}</td>
-                            <td className="p-4 text-center">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                                (cat.appliesTo || 'both') === 'main' ? 'bg-blue-100 text-blue-700' :
-                                (cat.appliesTo || 'both') === 'godown' ? 'bg-orange-100 text-orange-700' :
-                                'bg-purple-100 text-purple-700'
-                              }`}>
-                                {(cat.appliesTo || 'both') === 'both' ? 'Both' : (cat.appliesTo || 'both') === 'main' ? 'Main' : 'Godown'}
-                              </span>
-                            </td>
-                            <td className="p-4 text-center">
-                              <button
-                                onClick={() => handleToggleCategory(cat.id)}
-                                className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${cat.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
-                              >
-                                {cat.isActive ? 'ACTIVE' : 'INACTIVE'}
-                              </button>
-                            </td>
-                            <td className="p-4 text-right">
-                              <div className="flex justify-end gap-2">
+                              </td>
+                              <td className="p-4 text-muted-foreground text-xs leading-relaxed max-w-xs">{cat.description || "-"}</td>
+                              <td className="p-4 text-center">
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                                  (cat.appliesTo || 'both') === 'main' ? 'bg-blue-100 text-blue-700' :
+                                  (cat.appliesTo || 'both') === 'godown' ? 'bg-orange-100 text-orange-700' :
+                                  'bg-purple-100 text-purple-700'
+                                }`}>
+                                  {(cat.appliesTo || 'both') === 'both' ? 'Both' : (cat.appliesTo || 'both') === 'main' ? 'Main' : 'Godown'}
+                                </span>
+                              </td>
+                              <td className="p-4 text-center">
                                 <button
-                                  onClick={() => {
-                                    setEditingCategory(cat)
-                                    setCategoryFormData({ name: cat.name, description: cat.description || "", icon: "tag", appliesTo: cat.appliesTo || "both", isActive: cat.isActive })
-                                    setShowCategoryModal(true)
-                                  }}
-                                  className="p-2 text-muted-foreground hover:text-primary transition-colors"
-                                  title="Edit"
+                                  onClick={() => handleToggleCategory(cat.id)}
+                                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${cat.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
                                 >
-                                  <Edit2 size={14} />
+                                  {cat.isActive ? 'ACTIVE' : 'INACTIVE'}
                                 </button>
-                                {!cat.isDefault && (
+                              </td>
+                              <td className="p-4 text-right">
+                                <div className="flex justify-end gap-2">
                                   <button
-                                    onClick={() => handleDeleteCategory(cat.id, cat.isDefault)}
-                                    className="p-2 text-muted-foreground hover:text-red-500 transition-colors"
-                                    title="Delete"
+                                    onClick={() => {
+                                      setEditingCategory(cat)
+                                      setCategoryFormData({ name: cat.name, description: cat.description || "", icon: "tag", appliesTo: cat.appliesTo || "both", isActive: cat.isActive })
+                                      setShowCategoryModal(true)
+                                    }}
+                                    className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-lg hover:bg-muted"
+                                    title="Edit"
                                   >
-                                    <Trash2 size={14} />
+                                    <Edit2 size={14} />
                                   </button>
-                                )}
+                                  {!cat.isDefault && (
+                                    <button
+                                      onClick={() => handleDeleteCategory(cat.id, cat.isDefault)}
+                                      className="p-2 text-muted-foreground hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
+                                      title="Delete"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  )}
                               </div>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
+                    </div>
                   </div>
                 )}
               </div>
             )}
           </div>
-        </div>
-      </div>
 
       {/* Role & Resource Modals */}
       <Dialog open={showAddRoleModal} onOpenChange={setShowAddRoleModal}>
@@ -1178,10 +1186,11 @@ export default function SettingsPage() {
                 value={newRoleName}
                 onChange={e => setNewRoleName(e.target.value)}
                 autoFocus
+                className="h-10"
               />
               <p className="text-[10px] text-muted-foreground italic">* Role names are case-insensitive</p>
             </div>
-            <Button className="w-full" onClick={handleAddRole} disabled={!newRoleName}>Create Role</Button>
+            <Button className="w-full rounded-full" onClick={handleAddRole} disabled={!newRoleName}>Create Role</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1192,13 +1201,13 @@ export default function SettingsPage() {
           <DialogHeader><DialogTitle>Set Up Two-Factor Authentication</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Scan with <strong>Google Authenticator</strong> or <strong>Microsoft Authenticator</strong>.</p>
-            {qrCodeDataUrl && <div className="flex justify-center"><img src={qrCodeDataUrl} alt="QR" className="w-48 h-48 border rounded" /></div>}
-            <div className="bg-gray-50 rounded p-3 text-xs font-mono text-center break-all text-muted-foreground">Manual key: {twoFASecret}</div>
+            {qrCodeDataUrl && <div className="flex justify-center"><img src={qrCodeDataUrl} alt="QR" className="w-48 h-48 border rounded-xl" /></div>}
+            <div className="bg-muted rounded-xl p-3 text-xs font-mono text-center break-all text-muted-foreground">Manual key: {twoFASecret}</div>
             <div className="space-y-2">
               <Label>Enter the 6-digit code to confirm</Label>
-              <Input type="text" inputMode="numeric" maxLength={6} placeholder="000000" value={setupCode} onChange={e => setSetupCode(e.target.value.replace(/\D/g, ''))} className="text-center text-xl tracking-widest" autoFocus />
+              <Input type="text" inputMode="numeric" maxLength={6} placeholder="000000" value={setupCode} onChange={e => setSetupCode(e.target.value.replace(/\D/g, ''))} className="text-center text-xl tracking-widest h-12" autoFocus />
             </div>
-            <Button className="w-full" onClick={handle2FAConfirm} disabled={twoFALoading || setupCode.length !== 6}>
+            <Button className="w-full rounded-full" onClick={handle2FAConfirm} disabled={twoFALoading || setupCode.length !== 6}>
               {twoFALoading ? "Verifying..." : "Confirm & Enable 2FA"}
             </Button>
           </div>
@@ -1210,8 +1219,8 @@ export default function SettingsPage() {
           <DialogHeader><DialogTitle>Disable 2FA</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Enter your 6-digit authenticator code.</p>
-            <Input type="text" inputMode="numeric" maxLength={6} placeholder="000000" value={disableCode} onChange={e => setDisableCode(e.target.value.replace(/\D/g, ''))} className="text-center text-xl tracking-widest" autoFocus />
-            <Button variant="destructive" className="w-full" onClick={handle2FADisable} disabled={twoFALoading || disableCode.length !== 6}>
+            <Input type="text" inputMode="numeric" maxLength={6} placeholder="000000" value={disableCode} onChange={e => setDisableCode(e.target.value.replace(/\D/g, ''))} className="text-center text-xl tracking-widest h-12" autoFocus />
+            <Button variant="destructive" className="w-full rounded-full" onClick={handle2FADisable} disabled={twoFALoading || disableCode.length !== 6}>
               {twoFALoading ? "Disabling..." : "Disable 2FA"}
             </Button>
           </div>
@@ -1220,20 +1229,22 @@ export default function SettingsPage() {
 
       <Dialog open={showBackupCodesModal} onOpenChange={() => { }}>
         <DialogContent className="max-w-md" onInteractOutside={e => e.preventDefault()}>
-          <DialogHeader><DialogTitle>🔐 Save Your Recovery Codes</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Save Your Recovery Codes</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-sm text-yellow-800">
               <strong>Save these now.</strong> They will never be shown again. Each code can only be used once.
             </div>
             <div className="grid grid-cols-2 gap-2">
               {backupCodes.map((code, i) => (
-                <div key={i} className="font-mono text-sm bg-gray-100 rounded px-3 py-2 text-center tracking-wider">{code}</div>
+                <div key={i} className="font-mono text-sm bg-muted rounded-lg px-3 py-2 text-center tracking-wider">{code}</div>
               ))}
             </div>
-            <Button variant="outline" className="w-full" onClick={() => { navigator.clipboard?.writeText(backupCodes.join('\n')); toast.success("Copied!") }}>Copy All Codes</Button>
-            <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => { setShowBackupCodesModal(false); toast.success("2FA enabled!") }}>
-              I've saved my codes — Done
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button variant="outline" className="w-full rounded-full" onClick={() => { navigator.clipboard?.writeText(backupCodes.join('\n')); toast.success("Copied!") }}>Copy All Codes</Button>
+              <Button className="w-full rounded-full bg-green-600 hover:bg-green-700" onClick={() => { setShowBackupCodesModal(false); toast.success("2FA enabled!") }}>
+                I've saved my codes — Done
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -1261,24 +1272,18 @@ export default function SettingsPage() {
             </div>
             <div className="space-y-2">
               <Label>Applies To *</Label>
-              <select
-                className="w-full border rounded p-2 text-sm bg-background text-foreground"
+              <Select
                 value={categoryFormData.appliesTo}
-                onChange={e => setCategoryFormData({ ...categoryFormData, appliesTo: e.target.value as any })}
+                onValueChange={v => setCategoryFormData({ ...categoryFormData, appliesTo: v as any })}
               >
-                <option value="both">Both (Main & Godown)</option>
-                <option value="main">Main Expenses Only</option>
-                <option value="godown">Godown Expenses Only</option>
-              </select>
+                <SelectTrigger className="!h-10"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="both">Both (Main & Godown)</SelectItem>
+                  <SelectItem value="main">Main Expenses Only</SelectItem>
+                  <SelectItem value="godown">Godown Expenses Only</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            {/* <div className="space-y-2">
-              <Label>Icon Name (Lucide)</Label>
-              <Input
-                placeholder="e.g. zap, fuel, dollar-sign"
-                value={categoryFormData.icon}
-                onChange={e => setCategoryFormData({ ...categoryFormData, icon: e.target.value })}
-              />
-            </div> */}
             <div className="flex items-center gap-2 pt-2">
               <input
                 type="checkbox"
@@ -1289,7 +1294,7 @@ export default function SettingsPage() {
               />
               <Label htmlFor="cat-active">Mark as Active</Label>
             </div>
-            <Button className="w-full" onClick={handleSaveCategory} disabled={loading || !categoryFormData.name}>
+            <Button className="w-full rounded-full" onClick={handleSaveCategory} disabled={loading || !categoryFormData.name}>
               {loading ? "Saving..." : editingCategory ? "Update Category" : "Create Category"}
             </Button>
           </div>

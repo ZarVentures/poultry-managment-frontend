@@ -17,7 +17,7 @@
 
 const STAGING_API_BASE =
   process.env.NEXT_PUBLIC_STAGING_API_BASE?.trim() ||
-  "https://13.234.140.190.nip.io/staging/api/v1";
+  "https://13.234.140.190.nip.io/api/v1";
 
 const PROD_API_BASE =
   process.env.NEXT_PUBLIC_PROD_API_BASE?.trim() ||

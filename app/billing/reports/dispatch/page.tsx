@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Download, Printer, Calendar, ChevronLeft, ChevronRight } from "lucide-react"
+import { Download, Printer, Calendar, ChevronLeft, ChevronRight, Truck, Hash, CircleDollarSign, Banknote } from "lucide-react"
 import { salesApi, godownApi } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -120,29 +120,61 @@ export default function DailyDispatchReportPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center no-print">
-          <div><h1 className="text-3xl font-bold">Daily Dispatch Report</h1><p className="text-muted-foreground">Dispatches for {new Date(dateFilter).toLocaleDateString()}</p></div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 no-print">
+          <div><h1 className="text-2xl sm:text-3xl font-bold">Daily Dispatch Report</h1><p className="text-muted-foreground">Dispatches for {new Date(dateFilter).toLocaleDateString()}</p></div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={downloadCSV}><Download className="mr-2" size={16} />Export</Button>
-            <Button variant="outline" onClick={handlePrint}><Printer className="mr-2" size={16} />Print</Button>
+            <Button variant="outline" onClick={downloadCSV} className="rounded-full h-10"><Download className="mr-2" size={16} />Export</Button>
+            <Button variant="outline" onClick={handlePrint} className="rounded-full h-10"><Printer className="mr-2" size={16} />Print</Button>
           </div>
         </div>
 
-        <Card className="p-4 no-print">
+        <Card className="rounded-2xl p-4 no-print">
           <div className="max-w-xs">
-            <label className="text-sm font-medium mb-1 block">Select Date</label>
-            <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateFilter} onChange={e => { setDateFilter(e.target.value); setCurrentPage(1) }} className="pl-10" /></div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Select Date</label>
+            <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateFilter} onChange={e => { setDateFilter(e.target.value); setCurrentPage(1) }} className="h-10 rounded-full pl-10 w-full sm:w-[160px]" /></div>
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 no-print">
-          <Card className="p-4 bg-blue-50"><p className="text-sm text-gray-600">Total Dispatches</p><p className="text-2xl font-bold">{totalItems}</p></Card>
-          <Card className="p-4 bg-green-50"><p className="text-sm text-gray-600">Total Birds / Qty</p><p className="text-2xl font-bold">{summary.quantity.toLocaleString()}</p></Card>
-          <Card className="p-4 bg-amber-50"><p className="text-sm text-gray-600">Net Amount</p><p className="text-2xl font-bold">₹{summary.net.toLocaleString()}</p></Card>
-          <Card className="p-4 bg-purple-50"><p className="text-sm text-gray-600">Received</p><p className="text-2xl font-bold text-green-600">₹{summary.received.toLocaleString()}</p></Card>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 no-print">
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Total Dispatches</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600"><Truck size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-blue-600 min-w-0 truncate">{totalItems}</div>
+            </CardContent>
+          </Card>
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Total Birds / Qty</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600"><Hash size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 min-w-0 truncate">{summary.quantity.toLocaleString()}</div>
+            </CardContent>
+          </Card>
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Net Amount</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600"><CircleDollarSign size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-yellow-600 min-w-0 truncate">₹{summary.net.toLocaleString()}</div>
+            </CardContent>
+          </Card>
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Received</CardTitle>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600"><Banknote size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 min-w-0 truncate">₹{summary.received.toLocaleString()}</div>
+            </CardContent>
+          </Card>
         </div>
 
-        <Card>
+        <Card className="rounded-2xl border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,8 +19,7 @@ import {
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Edit2, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download, Printer, ChevronLeft, ChevronRight } from "lucide-react"
-import { DateRangeFilter } from "@/components/date-range-filter"
+import { Plus, Edit2, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search, X, Download, Printer, ChevronLeft, ChevronRight, Users, UserCheck, Calendar } from "lucide-react"
 import { farmersApi, type Farmer as ApiFarmer } from "@/lib/api"
 import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
@@ -71,7 +70,6 @@ export default function FarmersPage() {
     setMounted(true)
   }, [])
 
-  // Fetch farmers from API
   const fetchFarmers = async () => {
     try {
       setLoading(true)
@@ -97,7 +95,6 @@ export default function FarmersPage() {
     if (mounted) fetchFarmers()
   }, [mounted, currentPage, searchQuery])
 
-  // Reset to first page whenever search text changes so matches aren't missed on later pages
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery])
@@ -204,7 +201,6 @@ export default function FarmersPage() {
     else setSortOrder(null)
   }
 
-  // Frontend sorting of current page data
   const filteredFarmers = useMemo(() => {
     if (!sortOrder) return farmers
     return [...farmers].sort((a, b) => {
@@ -282,26 +278,26 @@ export default function FarmersPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Farmers Management</h1>
-            <p className="text-muted-foreground">Manage all farmers and their information</p>
+            <h1 className="text-2xl sm:text-3xl font-bold">Farmers Management</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">Manage all farmers and their information</p>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}>
-                <Plus className="mr-0" size={20} />
+              <Button onClick={resetForm} className="w-fit h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm md:h-10 md:px-4 md:text-sm">
+                <Plus className="mr-1 sm:mr-0" size={16} />
                 Add New Farmer
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Edit Farmer" : "Add New Farmer"}</DialogTitle>
                 <DialogDescription>Enter farmer details</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Farmer Name *</Label>
                     <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Farmer name" disabled={loading} />
@@ -332,56 +328,119 @@ export default function FarmersPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2 md:col-span-2">
+                  <div className="space-y-2 sm:col-span-2">
                     <Label>Address</Label>
                     <Input value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="Farm address" disabled={loading} />
                   </div>
-                  <div className="space-y-2 md:col-span-2">
+                  <div className="space-y-2 sm:col-span-2">
                     <Label>Note</Label>
                     <Textarea value={formData.note} onChange={(e) => setFormData({ ...formData, note: e.target.value })} placeholder="Additional notes about the farmer" rows={3} disabled={loading} />
                   </div>
                 </div>
-                <Button onClick={handleSave} className="w-full" disabled={loading}>{loading ? "Saving..." : editingId ? "Update" : "Add"} Farmer</Button>
+                <div className="flex flex-col-reverse sm:flex-row gap-2">
+                  <Button onClick={handleSave} className="flex-1" disabled={loading}>{loading ? "Saving..." : editingId ? "Update" : "Add"} Farmer</Button>
+                  <Button variant="outline" onClick={() => setShowDialog(false)} disabled={loading}>Cancel</Button>
+                </div>
               </div>
             </DialogContent>
           </Dialog>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Farmers</CardTitle></CardHeader>
-            <CardContent><div className="text-3xl font-bold">{totalItems}</div></CardContent>
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <CardTitle className="flex items-center gap-2 text-xs sm:text-sm font-medium text-muted-foreground">
+                <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-100">
+                  <Users size={14} className="text-emerald-600" />
+                </span>
+                Total Farmers
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl sm:text-2xl font-bold whitespace-nowrap">{totalItems}</div>
+            </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">On Current Page</CardTitle></CardHeader>
-            <CardContent><div className="text-3xl font-bold">{farmers.length}</div></CardContent>
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <CardTitle className="flex items-center gap-2 text-xs sm:text-sm font-medium text-muted-foreground">
+                <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-100">
+                  <UserCheck size={14} className="text-blue-600" />
+                </span>
+                On Current Page
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl sm:text-2xl font-bold whitespace-nowrap">{farmers.length}</div>
+            </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Page</CardTitle></CardHeader>
-            <CardContent><div className="text-3xl font-bold">{currentPage}</div></CardContent>
+          <Card className="min-w-0">
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <CardTitle className="flex items-center gap-2 text-xs sm:text-sm font-medium text-muted-foreground">
+                <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100">
+                  <Calendar size={14} className="text-amber-600" />
+                </span>
+                Page
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-xl sm:text-2xl font-bold whitespace-nowrap">{currentPage}</div>
+            </CardContent>
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-start">
-              <div className="flex items-center gap-2 flex-wrap">
-                <DateRangeFilter startDate={dateRangeStart} endDate={dateRangeEnd} onDateRangeChange={handleDateRangeChange} />
-                <div className="flex items-center gap-2">
-                  <Input placeholder="Search by name, farmhouse or phone..." value={searchQuery} onChange={(e) => handleSearchChange(e.target.value)} className="w-[240px]" />
-                  {searchQuery && <Button variant="ghost" size="icon" onClick={() => setSearchQuery("")} className="h-10 w-10"><X size={16} /></Button>}
-                </div>
-                <Button variant="outline" size="sm" onClick={handlePrintReport}><Printer className="mr-2" size={16} /> Print Report</Button>
-              </div>
+        <Card className="rounded-2xl p-4 print:hidden">
+          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+            <div className="relative md:w-[320px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+              <Input
+                placeholder="Search by name, farmhouse or phone..."
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="h-10 rounded-full pl-9"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                >
+                  <X size={14} />
+                </Button>
+              )}
             </div>
-          </CardHeader>
-          <CardContent>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Calendar size={12} /> From
+              </label>
+              <Input type="date" className="w-full sm:w-[160px] h-10 rounded-full" value={dateRangeStart ? `${dateRangeStart.getFullYear()}-${String(dateRangeStart.getMonth() + 1).padStart(2, "0")}-${String(dateRangeStart.getDate()).padStart(2, "0")}` : ""} onChange={(e) => { const v = e.target.value; if (v) { const [y, m, d] = v.split("-").map(Number); handleDateRangeChange(new Date(y, m - 1, d), dateRangeEnd) } else { handleDateRangeChange(undefined, dateRangeEnd) } }} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Calendar size={12} /> To
+              </label>
+              <Input type="date" className="w-full sm:w-[160px] h-10 rounded-full" value={dateRangeEnd ? `${dateRangeEnd.getFullYear()}-${String(dateRangeEnd.getMonth() + 1).padStart(2, "0")}-${String(dateRangeEnd.getDate()).padStart(2, "0")}` : ""} onChange={(e) => { const v = e.target.value; if (v) { const [y, m, d] = v.split("-").map(Number); handleDateRangeChange(dateRangeStart, new Date(y, m - 1, d)) } else { handleDateRangeChange(dateRangeStart, undefined) } }} />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrintReport}
+              className="rounded-full h-10"
+            >
+              <Printer className="mr-1" size={16} />
+              Print Report
+            </Button>
+          </div>
+        </Card>
+
+        <Card>
+          <CardContent className="px-3 sm:px-6 pt-6">
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-[700px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Farm House Name</TableHead>
-                    <TableHead>
+                    <TableHead className="whitespace-nowrap">Farm House Name</TableHead>
+                    <TableHead className="whitespace-nowrap">
                       <Button variant="ghost" size="sm" onClick={handleSort}>
                         Farmer Name
                         {sortOrder === null && <ArrowUpDown className="ml-2 h-4 w-4" />}
@@ -389,11 +448,11 @@ export default function FarmersPage() {
                         {sortOrder === "desc" && <ArrowDown className="ml-2 h-4 w-4" />}
                       </Button>
                     </TableHead>
-                    <TableHead className="font-bold">Phone</TableHead>
-                    <TableHead className="font-bold">Address</TableHead>
-                    <TableHead className="font-bold">Join Date</TableHead>
-                    <TableHead className="font-bold">Status</TableHead>
-                    <TableHead className="font-bold text-right">Actions</TableHead>
+                    <TableHead className="whitespace-nowrap font-bold">Phone</TableHead>
+                    <TableHead className="whitespace-nowrap font-bold">Address</TableHead>
+                    <TableHead className="whitespace-nowrap font-bold">Join Date</TableHead>
+                    <TableHead className="whitespace-nowrap font-bold">Status</TableHead>
+                    <TableHead className="whitespace-nowrap font-bold text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -402,19 +461,19 @@ export default function FarmersPage() {
                   ) : (
                     filteredFarmers.map((farmer) => (
                       <TableRow key={farmer.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleView(farmer)}>
-                        <TableCell className="text-sm text-muted-foreground">{farmer.farmhouseName || "N/A"}</TableCell>
-                        <TableCell className="font-medium">{farmer.name}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{farmer.phone}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{farmer.address || "N/A"}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{farmer.joinDate}</TableCell>
-                        <TableCell>
+                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{farmer.farmhouseName || "N/A"}</TableCell>
+                        <TableCell className="font-medium whitespace-nowrap">{farmer.name}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{farmer.phone}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{farmer.address || "N/A"}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{farmer.joinDate}</TableCell>
+                        <TableCell className="whitespace-nowrap">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${(farmer.status || "active") === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
                             {(farmer.status || "active") === "active" ? "Active" : "Inactive"}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           {(canUpdate('farmers') || canDelete('farmers')) && (
-                            <div className="inline-flex gap-2">
+                            <div className="inline-flex gap-1 sm:gap-2">
                               {canUpdate('farmers') && (
                                 <Button variant="outline" size="icon" onClick={() => handleEdit(farmer)}><Edit2 size={16} /></Button>
                               )}
@@ -432,8 +491,8 @@ export default function FarmersPage() {
             </div>
           </CardContent>
           {totalItems > pageSize && (
-            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-200">
-              <div className="text-sm text-gray-500">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 sm:px-6 py-4 bg-gray-50 border-t border-gray-200">
+              <div className="text-xs sm:text-sm text-gray-500 text-center sm:text-left">
                 Showing <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-medium">{Math.min(currentPage * pageSize, totalItems)}</span> of <span className="font-medium">{totalItems}</span> farmers
               </div>
               <div className="flex gap-2">
@@ -448,20 +507,19 @@ export default function FarmersPage() {
           )}
         </Card>
 
-        {/* View Dialog */}
         <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Farmer Details</DialogTitle>
               <DialogDescription>View complete farmer information</DialogDescription>
             </DialogHeader>
             {viewingFarmer && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2"><Label className="text-muted-foreground">Farmer Name</Label><div className="text-sm font-medium">{viewingFarmer.name}</div></div>
                   <div className="space-y-2"><Label className="text-muted-foreground">Farm House Name</Label><div className="text-sm font-medium">{viewingFarmer.farmhouseName || "N/A"}</div></div>
                   <div className="space-y-2"><Label className="text-muted-foreground">Phone</Label><div className="text-sm font-medium">{viewingFarmer.phone}</div></div>
-                  <div className="space-y-2 md:col-span-2"><Label className="text-muted-foreground">Address</Label><div className="text-sm font-medium">{viewingFarmer.address || "N/A"}</div></div>
+                  <div className="space-y-2 sm:col-span-2"><Label className="text-muted-foreground">Address</Label><div className="text-sm font-medium">{viewingFarmer.address || "N/A"}</div></div>
                   <div className="space-y-2"><Label className="text-muted-foreground">Join Date</Label><div className="text-sm font-medium">{viewingFarmer.joinDate}</div></div>
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Status</Label>
@@ -472,7 +530,7 @@ export default function FarmersPage() {
                     </div>
                   </div>
                   {(viewingFarmer.note || viewingFarmer.notes) && (
-                    <div className="space-y-2 md:col-span-2"><Label className="text-muted-foreground">Note</Label><div className="text-sm font-medium whitespace-pre-wrap">{viewingFarmer.note || viewingFarmer.notes}</div></div>
+                    <div className="space-y-2 sm:col-span-2"><Label className="text-muted-foreground">Note</Label><div className="text-sm font-medium whitespace-pre-wrap">{viewingFarmer.note || viewingFarmer.notes}</div></div>
                   )}
                 </div>
               </div>

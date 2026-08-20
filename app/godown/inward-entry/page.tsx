@@ -10,10 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X, Printer, Eye, PackagePlus, Bird, Scale, IndianRupee } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Printer, Eye, PackagePlus, Bird, Scale, IndianRupee, Calendar, Search } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { DateRangeFilter } from "@/components/date-range-filter"
 import { godownApi, vehiclesApi, farmersApi, purchasesApi, type GodownInward, type GodownCage, type Vehicle } from "@/lib/api"
 import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
@@ -1051,30 +1050,38 @@ export default function GodownInwardPage() {
           </div>
         </div>
 
-        <Card className="rounded-2xl">
-          <CardHeader>
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <CardTitle>Inward Entries</CardTitle>
-              <div className="flex flex-wrap items-center gap-2">
-                <DateRangeFilter
-                  startDate={dateRangeStart}
-                  endDate={dateRangeEnd}
-                  onDateRangeChange={(s, e) => { setDateRangeStart(s); setDateRangeEnd(e) }}
-                />
+        
+
+        <Card className="rounded-2xl p-4 print:hidden">
+          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+            <div className="md:w-[320px]">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Search</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
                 <Input
                   placeholder="Search by bill no or supplier..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full sm:w-[220px]"
+                  className="h-10 rounded-full w-full pl-9 sm:w-[280px] md:w-[320px]"
                 />
-                {(searchQuery || dateRangeStart) && (
-                  <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(''); setDateRangeStart(undefined); setDateRangeEnd(undefined) }}>
-                    <X size={14} className="mr-1" /> Clear
-                  </Button>
-                )}
               </div>
             </div>
-          </CardHeader>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+                <Calendar size={12} /> From
+              </label>
+              <Input type="date" className="w-full sm:w-[160px] h-10 rounded-full" value={dateRangeStart ? `${dateRangeStart.getFullYear()}-${String(dateRangeStart.getMonth() + 1).padStart(2, "0")}-${String(dateRangeStart.getDate()).padStart(2, "0")}` : ""} onChange={(e) => { const v = e.target.value; if (v) { const [y, m, d] = v.split("-").map(Number); setDateRangeStart(new Date(y, m - 1, d)) } else { setDateRangeStart(undefined) } }} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+                <Calendar size={12} /> To
+              </label>
+              <Input type="date" className="w-full sm:w-[160px] h-10 rounded-full" value={dateRangeEnd ? `${dateRangeEnd.getFullYear()}-${String(dateRangeEnd.getMonth() + 1).padStart(2, "0")}-${String(dateRangeEnd.getDate()).padStart(2, "0")}` : ""} onChange={(e) => { const v = e.target.value; if (v) { const [y, m, d] = v.split("-").map(Number); setDateRangeEnd(new Date(y, m - 1, d)) } else { setDateRangeEnd(undefined) } }} />
+            </div>
+          </div>
+        </Card>
+
+        <Card>
           <CardContent>
             {loading && entries.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">Loading...</p>

@@ -8,15 +8,19 @@ import { Button } from '@/components/ui/button'
 import { Users, ShoppingCart, TrendingUp, BookOpen, BarChart3, CreditCard } from 'lucide-react'
 import { salesApi, retailersApi, purchasesApi } from '@/lib/api'
 
-function StatCard({ title, value, icon: Icon }: { title: string; value: string | number; icon: React.ElementType }) {
+function StatCard({ title, value, icon: Icon, color = "text-foreground", chipClass = "bg-primary/10 text-primary" }: {
+  title: string; value: string | number; icon: React.ElementType; color?: string; chipClass?: string;
+}) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
+    <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
+      <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
+        <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">{title}</CardTitle>
+        <span className={`flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl ${chipClass}`}>
+          <Icon size={16} className="lg:h-[18px] lg:w-[18px]" />
+        </span>
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+      <CardContent className="min-w-0">
+        <div className={`text-lg lg:text-2xl font-bold tracking-tight ${color} min-w-0 truncate`}>{value}</div>
       </CardContent>
     </Card>
   )
@@ -48,40 +52,40 @@ export default function BillingDashboard() {
     <DashboardLayout>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Billing Dashboard</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Billing Dashboard</h1>
           <p className="text-muted-foreground mt-2">Live Bird Retailer Ledger System</p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-4">
-          <StatCard title="Total Retailers" value={loading ? '...' : stats.totalParties} icon={Users} />
-          <StatCard title="Total Sales" value={loading ? '...' : `₹${(stats.totalSales / 1000).toFixed(0)}K`} icon={ShoppingCart} />
-          <StatCard title="Outstanding" value={loading ? '...' : `₹${(stats.outstanding / 1000).toFixed(0)}K`} icon={TrendingUp} />
-          <StatCard title="Pending Purchases" value={loading ? '...' : `₹${(stats.totalPurchases / 1000).toFixed(0)}K`} icon={BookOpen} />
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <StatCard title="Total Retailers" value={loading ? '...' : stats.totalParties} icon={Users} color="text-blue-600" chipClass="bg-blue-100 text-blue-600" />
+          <StatCard title="Total Sales" value={loading ? '...' : `₹${(stats.totalSales / 1000).toFixed(0)}K`} icon={ShoppingCart} color="text-green-600" chipClass="bg-emerald-100 text-emerald-600" />
+          <StatCard title="Outstanding" value={loading ? '...' : `₹${(stats.outstanding / 1000).toFixed(0)}K`} icon={TrendingUp} color="text-red-600" chipClass="bg-red-100 text-red-600" />
+          <StatCard title="Pending Purchases" value={loading ? '...' : `₹${(stats.totalPurchases / 1000).toFixed(0)}K`} icon={BookOpen} color="text-yellow-600" chipClass="bg-amber-100 text-amber-600" />
         </div>
 
         <div>
           <h2 className="text-lg font-semibold mb-4">Reports</h2>
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4">
             <Link href="/billing/reports/outstanding">
-              <Card className="cursor-pointer hover:shadow-md transition-shadow h-full">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow h-full rounded-2xl">
                 <CardHeader><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4" />Outstanding Report</CardTitle></CardHeader>
                 <CardContent><p className="text-sm text-muted-foreground mb-4">Pending balance per retailer</p><Button variant="outline" size="sm">View</Button></CardContent>
               </Card>
             </Link>
             <Link href="/billing/reports/dispatch">
-              <Card className="cursor-pointer hover:shadow-md transition-shadow h-full">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow h-full rounded-2xl">
                 <CardHeader><CardTitle className="text-base flex items-center gap-2"><BarChart3 className="h-4 w-4" />Daily Dispatch</CardTitle></CardHeader>
                 <CardContent><p className="text-sm text-muted-foreground mb-4">Sales summary by date</p><Button variant="outline" size="sm">View</Button></CardContent>
               </Card>
             </Link>
             <Link href="/billing/reports/collection">
-              <Card className="cursor-pointer hover:shadow-md transition-shadow h-full">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow h-full rounded-2xl">
                 <CardHeader><CardTitle className="text-base flex items-center gap-2"><CreditCard className="h-4 w-4" />Collection Report</CardTitle></CardHeader>
                 <CardContent><p className="text-sm text-muted-foreground mb-4">Payment received analysis</p><Button variant="outline" size="sm">View</Button></CardContent>
               </Card>
             </Link>
             <Link href="/billing/reports/pending-purchases">
-              <Card className="cursor-pointer hover:shadow-md transition-shadow h-full">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow h-full rounded-2xl">
                 <CardHeader><CardTitle className="text-base flex items-center gap-2"><ShoppingCart className="h-4 w-4" />Pending Purchases</CardTitle></CardHeader>
                 <CardContent><p className="text-sm text-muted-foreground mb-4">Purchases with outstanding payments</p><Button variant="outline" size="sm">View</Button></CardContent>
               </Card>
@@ -91,15 +95,15 @@ export default function BillingDashboard() {
 
         <div>
           <h2 className="text-lg font-semibold mb-4">Ledgers</h2>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Link href="/billing/ledger/retailers">
-              <Card className="cursor-pointer hover:shadow-md transition-shadow h-full">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow h-full rounded-2xl">
                 <CardHeader><CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4" />Retailer Ledger</CardTitle></CardHeader>
                 <CardContent><p className="text-sm text-muted-foreground mb-4">Sales & payment ledger per retailer</p><Button variant="outline" size="sm">View</Button></CardContent>
               </Card>
             </Link>
             <Link href="/billing/ledger/company-report">
-              <Card className="cursor-pointer hover:shadow-md transition-shadow h-full">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow h-full rounded-2xl">
                 <CardHeader><CardTitle className="text-base flex items-center gap-2"><BookOpen className="h-4 w-4" />Company Ledger</CardTitle></CardHeader>
                 <CardContent><p className="text-sm text-muted-foreground mb-4">All transactions across all parties</p><Button variant="outline" size="sm">View</Button></CardContent>
               </Card>

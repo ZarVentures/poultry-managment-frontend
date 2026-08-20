@@ -3,6 +3,7 @@
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,7 @@ import {
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Copy, Check, Plus, Pencil, Trash2, XCircle, CheckCircle } from "lucide-react";
+import { Copy, Check, Plus, Pencil, Trash2, XCircle, CheckCircle, Calendar } from "lucide-react";
 
 function todayISO(): string {
   const d = new Date();
@@ -280,31 +281,37 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col gap-3 bg-white p-4 rounded-xl border sm:flex-row sm:flex-wrap sm:items-end">
-          <div className="w-full sm:w-auto">
-            <label className="text-xs font-medium text-gray-500 mb-1 block">From</label>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-              className="w-full sm:w-[160px] border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+        <Card className="rounded-2xl p-4 print:hidden">
+          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+                <Calendar size={12} /> From
+              </label>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                className="w-full sm:w-[160px] h-10 rounded-full border border-gray-300 px-3 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+                <Calendar size={12} /> To
+              </label>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+                className="w-full sm:w-[160px] h-10 rounded-full border border-gray-300 px-3 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full sm:w-[160px] h-10 rounded-full border border-gray-300 px-3 text-sm bg-white">
+                <option value="">All</option>
+                <option value="paid">Paid</option>
+                <option value="pending">Pending</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchVouchers} className="rounded-full px-5 h-10 w-full sm:w-auto">
+              Refresh
+            </Button>
           </div>
-          <div className="w-full sm:w-auto">
-            <label className="text-xs font-medium text-gray-500 mb-1 block">To</label>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
-              className="w-full sm:w-[160px] border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-          </div>
-          <div className="w-full sm:w-auto">
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Status</label>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full sm:w-[160px] border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
-              <option value="">All</option>
-              <option value="paid">Paid</option>
-              <option value="pending">Pending</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </div>
-          <Button variant="outline" size="sm" onClick={fetchVouchers} className="w-full sm:w-auto">
-            Refresh
-          </Button>
-        </div>
+        </Card>
 
         {/* Table */}
         <div className="bg-white rounded-xl border overflow-x-auto">
