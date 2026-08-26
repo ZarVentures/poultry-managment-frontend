@@ -139,6 +139,25 @@ export interface Vehicle {
   updatedAt?: string;
 }
 
+// Godown Master Interface
+export interface GodownMaster {
+  id: string;
+  name: string;
+  code: string;
+  location?: string;
+  address?: string;
+  capacityBirds?: number;
+  managerName?: string;
+  phone?: string;
+  status: 'active' | 'inactive';
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type CreateGodownDto = Omit<GodownMaster, 'id' | 'createdAt' | 'updatedAt'>;
+export type UpdateGodownDto = Partial<CreateGodownDto>;
+
 // User Interface
 export interface User {
   id: string;
@@ -394,6 +413,8 @@ export interface Setting {
 // Godown Interfaces
 export interface GodownInward {
   id: string;
+  godownId?: string;
+  godownName?: string;
   entryDate: string;
   inwardNo?: string;
   purchaseInvoiceNo?: string;
@@ -412,6 +433,8 @@ export interface GodownInward {
 
 export interface GodownSale {
   id: string;
+  godownId?: string;
+  godownName?: string;
   saleDate: string;
   invoiceNumber?: string;
   customerName: string;
@@ -432,6 +455,7 @@ export interface GodownSale {
 
 export interface GodownCage {
   id?: string;
+  godownId?: string;
   cageId?: string;
   birdType?: string;
   numberOfBirds?: number;
@@ -445,6 +469,8 @@ export interface GodownCage {
 
 export interface GodownMortality {
   id: string;
+  godownId?: string;
+  godownName?: string;
   mortalityDate: string;
   numberOfBirdsDied: number;
   reason?: string;
@@ -455,6 +481,8 @@ export interface GodownMortality {
 
 export interface GodownExpense {
   id: string;
+  godownId?: string;
+  godownName?: string;
   expenseDate: string;
   category: string;
   description: string;
@@ -466,6 +494,8 @@ export interface GodownExpense {
 }
 
 export interface GodownSummary {
+  godownId?: string | null;
+  godownName?: string | null;
   totalInward: number;
   totalSales: number;
   totalMortality: number;
@@ -482,6 +512,8 @@ export interface GodownSummary {
 
 export interface StockLedgerEntry {
   date: string;
+  godownId?: string | null;
+  godownName?: string | null;
   movementType: 'INWARD' | 'SALE' | 'MORTALITY' | 'RETURN';
   referenceType: string;
   referenceId: string;
@@ -501,6 +533,8 @@ export interface StockLedgerEntry {
 }
 
 export interface StockLedgerResponse {
+  godownId?: string | null;
+  godownName?: string | null;
   startDate: string | null;
   endDate: string | null;
   opening: { birds: number; weight: number };
@@ -671,6 +705,42 @@ export const vehiclesApi = {
 
   delete: (id: string) =>
     apiRequest<void>(`/vehicles/${id}`, {
+      method: 'DELETE',
+    }),
+};
+
+// ============================================
+// GODOWNS MASTER API
+// ============================================
+export const godownsApi = {
+  getAll: (page?: number, limit?: number, search?: string, status?: string) => {
+    const params = new URLSearchParams();
+    if (page) params.append('page', String(page));
+    if (limit) params.append('limit', String(limit));
+    if (search) params.append('search', search);
+    if (status && status !== 'all') params.append('status', status);
+    const s = params.toString();
+    return apiRequest<any>(`/godowns${s ? `?${s}` : ''}`);
+  },
+
+  getActive: () => apiRequest<GodownMaster[]>('/godowns/active/list'),
+
+  getOne: (id: string) => apiRequest<GodownMaster>(`/godowns/${id}`),
+
+  create: (data: CreateGodownDto) =>
+    apiRequest<GodownMaster>('/godowns', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: UpdateGodownDto) =>
+    apiRequest<GodownMaster>(`/godowns/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    apiRequest<void>(`/godowns/${id}`, {
       method: 'DELETE',
     }),
 };
@@ -1399,11 +1469,12 @@ export const notificationsApi = {
 export const godownApi = {
   // Inward Entries
   inward: {
-    getAll: (page?: number, limit?: number, search?: string) => {
+    getAll: (page?: number, limit?: number, search?: string, godownId?: string) => {
       const q = new URLSearchParams();
       if (page) q.set('page', String(page));
       if (limit) q.set('limit', String(limit));
       if (search) q.set('search', search);
+      if (godownId && godownId !== 'all') q.set('godownId', godownId);
       const s = q.toString();
       return apiRequest<any>(`/godown/inward${s ? `?${s}` : ''}`);
     },
@@ -1428,11 +1499,12 @@ export const godownApi = {
 
   // Sales
   sales: {
-    getAll: (page?: number, limit?: number, search?: string) => {
+    getAll: (page?: number, limit?: number, search?: string, godownId?: string) => {
       const q = new URLSearchParams();
       if (page) q.set('page', String(page));
       if (limit) q.set('limit', String(limit));
       if (search) q.set('search', search);
+      if (godownId && godownId !== 'all') q.set('godownId', godownId);
       const s = q.toString();
       return apiRequest<any>(`/godown/sales${s ? `?${s}` : ''}`);
     },
@@ -1455,11 +1527,12 @@ export const godownApi = {
 
   // Mortality
   mortality: {
-    getAll: (page?: number, limit?: number, search?: string) => {
+    getAll: (page?: number, limit?: number, search?: string, godownId?: string) => {
       const q = new URLSearchParams();
       if (page) q.set('page', String(page));
       if (limit) q.set('limit', String(limit));
       if (search) q.set('search', search);
+      if (godownId && godownId !== 'all') q.set('godownId', godownId);
       const s = q.toString();
       return apiRequest<any>(`/godown/mortality${s ? `?${s}` : ''}`);
     },
@@ -1482,13 +1555,14 @@ export const godownApi = {
 
   // Expenses
   expenses: {
-    getAll: (page?: number, limit?: number, search?: string, startDate?: string, endDate?: string) => {
+    getAll: (page?: number, limit?: number, search?: string, startDate?: string, endDate?: string, godownId?: string) => {
       const q = new URLSearchParams();
       if (page) q.set('page', String(page));
       if (limit) q.set('limit', String(limit));
       if (search) q.set('search', search);
       if (startDate) q.set('startDate', startDate);
       if (endDate) q.set('endDate', endDate);
+      if (godownId && godownId !== 'all') q.set('godownId', godownId);
       const s = q.toString();
       return apiRequest<any>(`/godown/expenses${s ? `?${s}` : ''}`);
     },
@@ -1510,18 +1584,25 @@ export const godownApi = {
   },
 
   // Summary
-  getSummary: () => apiRequest<GodownSummary>('/godown/summary'),
+  getSummary: (godownId?: string) => {
+    const q = new URLSearchParams();
+    if (godownId && godownId !== 'all') q.set('godownId', godownId);
+    const s = q.toString();
+    return apiRequest<GodownSummary>(`/godown/summary${s ? `?${s}` : ''}`);
+  },
 
   // Stock Ledger
   getStockLedger: (filters?: {
     startDate?: string
     endDate?: string
+    godownId?: string
     type?: string
     search?: string
   }) => {
     const q = new URLSearchParams()
     if (filters?.startDate) q.set('startDate', filters.startDate)
     if (filters?.endDate) q.set('endDate', filters.endDate)
+    if (filters?.godownId && filters.godownId !== 'all') q.set('godownId', filters.godownId)
     if (filters?.type && filters.type !== 'all') q.set('type', filters.type)
     if (filters?.search) q.set('search', filters.search)
     const s = q.toString()

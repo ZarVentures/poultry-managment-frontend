@@ -142,6 +142,42 @@ const API_GROUPS: Group[] = [
     ]
   },
   {
+    name: "Godowns",
+    description: "Manage godown master entries for multi-godown stock.",
+    endpoints: [
+      {
+        method: "GET", path: "/godowns", auth: true,
+        description: "Get all godowns with pagination, search, and status filter.",
+        params: "page, limit, search, status",
+        response: { data: [{ id: "1", name: "Main Godown", code: "GD-001", capacityBirds: 10000, status: "active" }], total: 1 }
+      },
+      {
+        method: "GET", path: "/godowns/active/list", auth: true,
+        description: "Get active godowns for transaction dropdowns.",
+        response: [{ id: "1", name: "Main Godown", code: "GD-001" }]
+      },
+      {
+        method: "POST", path: "/godowns", auth: true,
+        description: "Create a new godown.",
+        body: { name: "Main Godown", code: "GD-001", location: "Market Road", capacityBirds: 10000, managerName: "Manager", phone: "9876543210", status: "active" },
+        response: { id: "1", name: "Main Godown", code: "GD-001", status: "active" }
+      },
+      {
+        method: "PATCH", path: "/godowns/:id", auth: true,
+        description: "Update a godown.",
+        params: "id = godown ID",
+        body: { capacityBirds: 12000, status: "active" },
+        response: { id: "1", capacityBirds: 12000 }
+      },
+      {
+        method: "DELETE", path: "/godowns/:id", auth: true,
+        description: "Delete or deactivate a godown. Backend should reject hard delete when stock movements exist.",
+        params: "id = godown ID",
+        response: {}
+      },
+    ]
+  },
+  {
     name: "Purchases",
     description: "Manage purchase orders (bird buying from farmers).",
     endpoints: [

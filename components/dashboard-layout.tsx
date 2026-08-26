@@ -17,7 +17,7 @@ import {
   Calculator, Truck, AlertCircle, Terminal, Copy, Trash2,
   ChartNoAxesCombined, Tractor, User, PackageOpen, PackagePlus,
   PackageCheck, CreditCard, BookOpen,
-  TrendingDown, Building2, MessageSquare, Palette, Bell, Lock, ShieldCheck, Tag,
+  TrendingDown, Building2, MessageSquare, Palette, Bell, Lock, ShieldCheck, Tag, Warehouse,
 } from "lucide-react"
 
 const IS_STAGING = process.env.NEXT_PUBLIC_IS_STAGING === 'true'
@@ -41,6 +41,7 @@ function resourceForPath(pathname: string): string | null {
   if (pathname.startsWith("/farmers")) return "farmers"
   if (pathname.startsWith("/retailers")) return "retailers"
   if (pathname.startsWith("/vehicles")) return "vehicles"
+  if (pathname.startsWith("/godowns")) return "godowns"
   if (pathname.startsWith("/users")) return "users"
   if (pathname.startsWith("/settings")) return "settings"
   return null
@@ -133,7 +134,8 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
   const showFarmers = canRead("farmers")
   const showRetailers = canRead("retailers")
   const showVehicles = canRead("vehicles")
-  const showMaster = showFarmers || showRetailers || showVehicles
+  const showGodownsMaster = canRead("godowns")
+  const showMaster = showFarmers || showRetailers || showVehicles || showGodownsMaster
   const showReports = canRead("reports")
   const showBilling = canRead("billing")
   const showUsers = canRead("users")
@@ -142,7 +144,7 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
   const isGodownActive = pathname.startsWith("/godown") || pathname.startsWith("/inventory") || pathname.startsWith("/bird-returns");
   const isPurchasesActive = pathname.startsWith("/purchases");
   const isSalesActive = pathname.startsWith("/sales");
-  const isMasterActive = pathname.startsWith("/farmers") || pathname.startsWith("/retailers") || pathname.startsWith("/vehicles");
+  const isMasterActive = pathname.startsWith("/farmers") || pathname.startsWith("/retailers") || pathname.startsWith("/vehicles") || pathname.startsWith("/godowns");
   const isBillingActive = pathname.startsWith("/billing");
   const isSettingsActive = pathname.startsWith("/settings");
 
@@ -260,6 +262,7 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
                   {showFarmers && <SidebarLink href="/farmers" icon={Tractor} label="Farmers" open={true} isSubItem={true} />}
                   {showRetailers && <SidebarLink href="/retailers" icon={Users} label="Retailers" open={true} isSubItem={true} />}
                   {showVehicles && <SidebarLink href="/vehicles" icon={Truck} label="Vehicles" open={true} isSubItem={true} />}
+                  {showGodownsMaster && <SidebarLink href="/godowns" icon={Warehouse} label="Godowns" open={true} isSubItem={true} />}
                 </div>
               )}
             </div>

@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Edit2, Trash2, X, Printer, ShoppingCart, Bird, Scale, IndianRupee, BadgeCheck, Clock, Calendar, Search } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { godownApi, retailersApi, purchasesApi, type GodownSale, type Retailer } from "@/lib/api"
+import { godownApi, godownsApi, retailersApi, purchasesApi, type GodownMaster, type GodownSale, type Retailer } from "@/lib/api"
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
 
@@ -24,6 +24,8 @@ const emptyPayment = (): PaymentRow => ({ mode: "cash", amount: "" })
 
 export default function GodownSalePage() {
   const [sales, setSales] = useState<GodownSale[]>([])
+  const [godowns, setGodowns] = useState<GodownMaster[]>([])
+  const [godownFilter, setGodownFilter] = useState("all")
   const [retailers, setRetailers] = useState<Retailer[]>([])
 
   const [loading, setLoading] = useState(false)
@@ -35,6 +37,7 @@ export default function GodownSalePage() {
   const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [allowEditBillNo, setAllowEditBillNo] = useState(false)
   const [formData, setFormData] = useState({
+    godownId: "",
     saleDate: new Date().toISOString().split("T")[0],
     purchaseBillNo: "",
     invoiceNumber: "",
@@ -53,18 +56,35 @@ export default function GodownSalePage() {
   useEffect(() => {
     setMounted(true)
     fetchSales()
+    fetchGodowns()
     fetchRetailers()
   }, [])
+
+  useEffect(() => {
+    if (mounted) fetchSales()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [godownFilter])
+
   const fetchSales = async () => {
     try {
       setLoading(true)
-      const data = await godownApi.sales.getAll()
+      const data = await godownApi.sales.getAll(undefined, undefined, undefined, godownFilter)
       setSales(data)
     } catch (error: any) {
       console.error("Failed to fetch sales:", error)
       toast.error("Failed to load sales")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchGodowns = async () => {
+    try {
+      const data = await godownsApi.getActive()
+      setGodowns(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error("Failed to fetch godowns:", error)
+      setGodowns([])
     }
   }
 
@@ -108,6 +128,7 @@ export default function GodownSalePage() {
   const resetForm = async () => {
     const nextNumber = editingId ? "" : await fetchNextSaleNumber()
     setFormData({
+      godownId: "",
       saleDate: new Date().toISOString().split("T")[0],
       purchaseBillNo: "",
       invoiceNumber: nextNumber,
@@ -127,6 +148,7 @@ export default function GodownSalePage() {
 
   const handleEdit = async (sale: GodownSale) => {
     setFormData({
+      godownId: sale.godownId || "",
       saleDate: sale.saleDate,
       purchaseBillNo: (sale as any).purchaseBillNo || "",
       invoiceNumber: (sale as any).invoiceNumber || "",
@@ -168,7 +190,7 @@ export default function GodownSalePage() {
   const balanceAmount = Math.max(0, parseFloat(formData.totalAmount || calculateTotal()) - totalPaymentMade)
 
   const handleSave = async () => {
-    if (!formData.customerName || !formData.numberOfBirds || !formData.paymentStatus) {
+    if (!formData.godownId || !formData.customerName || !formData.numberOfBirds || !formData.paymentStatus) {
       toast.error("Please fill all required fields")
       return
     }
@@ -197,6 +219,7 @@ export default function GodownSalePage() {
       }
 
       const saleData = {
+        godownId: formData.godownId,
         retailerId: formData.retailerId || undefined,
         saleDate: formData.saleDate,
         invoiceNumber: formData.invoiceNumber || undefined,
@@ -626,6 +649,21 @@ export default function GodownSalePage() {
               <div className="flex-1 space-y-5 overflow-y-auto pr-1 pb-2">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
+                    <Label>Godown *</Label>
+                    <Select value={formData.godownId} onValueChange={(value) => setFormData({ ...formData, godownId: value })} disabled={loading}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select godown" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60 overflow-y-auto">
+                        {godowns.map((godown) => (
+                          <SelectItem key={godown.id} value={godown.id}>
+                            {godown.name} ({godown.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
                     <Label>Sale Date *</Label>
                     <DatePicker
                       value={formData.saleDate}
@@ -952,6 +990,22 @@ export default function GodownSalePage() {
               </div>
             </div>
             <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Godown</label>
+              <Select value={godownFilter} onValueChange={setGodownFilter}>
+                <SelectTrigger className="h-10 rounded-full w-full sm:w-[200px]">
+                  <SelectValue placeholder="All godowns" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Godowns</SelectItem>
+                  {godowns.map((godown) => (
+                    <SelectItem key={godown.id} value={godown.id}>
+                      {godown.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
                 <Calendar size={12} /> From
               </label>
@@ -991,6 +1045,7 @@ export default function GodownSalePage() {
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">GDS No</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Godown</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Customer</TableHead>
                     <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Birds</TableHead>
                     <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rate</TableHead>
@@ -1011,6 +1066,7 @@ export default function GodownSalePage() {
                       <TableRow key={sale.id}>
                         <TableCell>{sale.invoiceNumber || "-"}</TableCell>
                         <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
+                        <TableCell>{sale.godownName || godowns.find(g => g.id === sale.godownId)?.name || "-"}</TableCell>
                         <TableCell>{sale.customerName}</TableCell>
                         <TableCell className="text-right">{sale.numberOfBirds} birds</TableCell>
                         <TableCell className="text-right">₹{Number(sale.ratePerKg || 0).toFixed(2)}/kg</TableCell>

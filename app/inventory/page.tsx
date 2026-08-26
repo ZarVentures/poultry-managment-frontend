@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Bird, FileText, ChevronLeft, ChevronRight, Warehouse, Gauge, PackagePlus, PackageCheck, Calendar } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { godownApi, settingsApi } from "@/lib/api"
+import { godownApi, godownsApi, settingsApi, type GodownMaster } from "@/lib/api"
 import { toast } from "sonner"
 
 const DEFAULT_CAPACITY = 10000
@@ -18,6 +19,8 @@ export default function InventoryPage() {
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [inwardEntries, setInwardEntries] = useState<any[]>([])
+  const [godowns, setGodowns] = useState<GodownMaster[]>([])
+  const [godownFilter, setGodownFilter] = useState("all")
   const [summary, setSummary] = useState<any>(null)
   const [capacity, setCapacity] = useState(DEFAULT_CAPACITY)
   const [capacityInput, setCapacityInput] = useState("")
@@ -31,12 +34,27 @@ export default function InventoryPage() {
 
   useEffect(() => {
     setMounted(true)
+    fetchGodowns()
     fetchOverviewData()
   }, [])
 
   useEffect(() => {
     if (mounted) fetchInwardData()
-  }, [mounted, currentPage])
+  }, [mounted, currentPage, godownFilter])
+
+  useEffect(() => {
+    if (mounted) fetchOverviewData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [godownFilter])
+
+  const fetchGodowns = async () => {
+    try {
+      const data = await godownsApi.getActive()
+      setGodowns(Array.isArray(data) ? data : [])
+    } catch {
+      setGodowns([])
+    }
+  }
 
   const filteredInwardEntries = useMemo(() => {
     if (!dateRangeStart && !dateRangeEnd) return inwardEntries
@@ -54,7 +72,7 @@ export default function InventoryPage() {
 
   const fetchOverviewData = async () => {
     try {
-      const summaryData = await godownApi.getSummary()
+      const summaryData = await godownApi.getSummary(godownFilter)
       setSummary(summaryData)
 
       const capacitySetting = await settingsApi.getOne(CAPACITY_SETTING_KEY)
@@ -69,7 +87,7 @@ export default function InventoryPage() {
   const fetchInwardData = async () => {
     try {
       setLoading(true)
-      const res = await godownApi.inward.getAll(currentPage, pageSize)
+      const res = await godownApi.inward.getAll(currentPage, pageSize, undefined, godownFilter)
       if (res && res.data) {
         setInwardEntries(res.data)
         setTotalInwardItems(res.total)
@@ -112,6 +130,25 @@ export default function InventoryPage() {
             <Link href="/godown/stock-ledger">View Stock Ledger</Link>
           </Button>
         </div>
+
+        <Card className="rounded-2xl p-4">
+          <div className="flex flex-col gap-2 sm:max-w-xs">
+            <label className="text-xs font-medium text-muted-foreground">Godown</label>
+            <Select value={godownFilter} onValueChange={(value) => { setGodownFilter(value); setCurrentPage(1) }}>
+              <SelectTrigger className="h-10 rounded-full">
+                <SelectValue placeholder="All godowns" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Godowns</SelectItem>
+                {godowns.map((godown) => (
+                  <SelectItem key={godown.id} value={godown.id}>
+                    {godown.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </Card>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 [&>*]:break-words">
           <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
@@ -210,6 +247,10 @@ export default function InventoryPage() {
             </TableHead>
 
             <TableHead className="whitespace-nowrap px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Godown
+            </TableHead>
+
+            <TableHead className="whitespace-nowrap px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Date
             </TableHead>
 
@@ -231,7 +272,7 @@ export default function InventoryPage() {
           {filteredInwardEntries.length === 0 ? (
             <TableRow className="hover:bg-transparent">
               <TableCell
-                colSpan={5}
+                colSpan={6}
                 className="h-28 px-4 text-center text-sm text-muted-foreground sm:px-6"
               >
                 No invoice data found
@@ -245,6 +286,10 @@ export default function InventoryPage() {
               >
                 <TableCell className="px-4 py-3.5 font-semibold text-foreground sm:px-6">
                   {e.purchaseInvoiceNo}
+                </TableCell>
+
+                <TableCell className="whitespace-nowrap px-4 py-3.5 text-sm text-muted-foreground">
+                  {e.godownName || godowns.find(g => g.id === e.godownId)?.name || "-"}
                 </TableCell>
 
                 <TableCell className="whitespace-nowrap px-4 py-3.5 text-sm text-muted-foreground">

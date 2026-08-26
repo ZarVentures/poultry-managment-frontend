@@ -12,7 +12,7 @@ import {
   ArrowLeft, Calendar, Download, FileText, Printer, Search,
   Bird, PackagePlus, PackageMinus, AlertCircle, Scale, Undo2,
 } from "lucide-react"
-import { godownApi, settingsApi, type StockLedgerEntry, type StockLedgerResponse } from "@/lib/api"
+import { godownApi, godownsApi, settingsApi, type GodownMaster, type StockLedgerEntry, type StockLedgerResponse } from "@/lib/api"
 import { toast } from "sonner"
 
 function fmtNum(n: number, digits = 0) {
@@ -43,6 +43,8 @@ export default function StockLedgerPage() {
 
   const [dateFrom, setDateFrom] = useState(yearStart)
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split("T")[0])
+  const [godowns, setGodowns] = useState<GodownMaster[]>([])
+  const [godownFilter, setGodownFilter] = useState("all")
   const [type, setType] = useState("all")
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
@@ -51,6 +53,10 @@ export default function StockLedgerPage() {
   const [orgInfo, setOrgInfo] = useState({ name: "", location: "", phone: "" })
 
   useEffect(() => {
+    godownsApi.getActive()
+      .then((res) => setGodowns(Array.isArray(res) ? res : []))
+      .catch(() => setGodowns([]))
+
     settingsApi.getAll()
       .then((res: any) => {
         const list = Array.isArray(res) ? res : []
@@ -70,6 +76,7 @@ export default function StockLedgerPage() {
       const data = await godownApi.getStockLedger({
         startDate: dateFrom,
         endDate: dateTo,
+        godownId: godownFilter,
         type,
         search: search || undefined,
       })
@@ -86,9 +93,12 @@ export default function StockLedgerPage() {
   useEffect(() => {
     fetchLedger()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateFrom, dateTo, type, search])
+  }, [dateFrom, dateTo, godownFilter, type, search])
 
   const entries = ledger?.entries || []
+  const selectedGodownName = godownFilter === "all"
+    ? "All Godowns"
+    : godowns.find((godown) => godown.id === godownFilter)?.name || ledger?.godownName || "Selected Godown"
   const opening = ledger?.opening || { birds: 0, weight: 0 }
   const period = ledger?.period || {
     birdsIn: 0, birdsOut: 0, weightIn: 0, weightOut: 0, amountIn: 0, amountOut: 0,
@@ -108,16 +118,17 @@ export default function StockLedgerPage() {
       return
     }
     const headers = [
-      "Date", "Type", "Reference", "Party", "Purchase Invoice",
+      "Date", "Godown", "Type", "Reference", "Party", "Purchase Invoice",
       "Birds In", "Birds Out", "Weight In (kg)", "Weight Out (kg)",
       "Rate/kg", "Amount", "Balance Birds", "Balance Weight (kg)", "Notes",
     ].join(",")
     const openingRow = [
-      dateFrom, "OPENING", "-", "Opening Balance", "",
+      dateFrom, selectedGodownName, "OPENING", "-", "Opening Balance", "",
       "", "", "", "", "", "", opening.birds, opening.weight.toFixed(2), "",
     ].join(",")
     const rows = entries.map((e) => [
       e.date,
+      e.godownName || selectedGodownName,
       e.movementType,
       `"${e.referenceNo || ""}"`,
       `"${(e.party || "").replace(/"/g, '""')}"`,
@@ -133,7 +144,7 @@ export default function StockLedgerPage() {
       `"${(e.notes || "").replace(/"/g, '""')}"`,
     ].join(","))
     const closingRow = [
-      dateTo, "CLOSING", "-", "Closing Balance", "",
+      dateTo, selectedGodownName, "CLOSING", "-", "Closing Balance", "",
       period.birdsIn, period.birdsOut, period.weightIn, period.weightOut,
       "", "", closing.birds, closing.weight.toFixed(2), "",
     ].join(",")
@@ -173,7 +184,7 @@ export default function StockLedgerPage() {
     doc.setFontSize(9)
     doc.setFont("helvetica", "normal")
     doc.text(
-      `Period: ${fmtDate(dateFrom)} - ${fmtDate(dateTo)}`,
+      `Godown: ${selectedGodownName} | Period: ${fmtDate(dateFrom)} - ${fmtDate(dateTo)}`,
       pageW / 2,
       titleY + 6,
       { align: "center" },
@@ -181,13 +192,14 @@ export default function StockLedgerPage() {
 
     const body: any[] = [
       [
-        { content: "Opening Balance", colSpan: 8, styles: { fontStyle: "bold" as const, halign: "right" as const } },
+        { content: "Opening Balance", colSpan: 9, styles: { fontStyle: "bold" as const, halign: "right" as const } },
         String(opening.birds),
         `${opening.weight.toFixed(2)} kg`,
         "",
       ],
       ...entries.map((e) => [
         fmtDate(e.date),
+        e.godownName || selectedGodownName,
         e.movementType,
         e.referenceNo,
         e.party || "-",
@@ -200,7 +212,7 @@ export default function StockLedgerPage() {
         e.amount != null ? `₹${fmtNum(e.amount, 2)}` : "-",
       ]),
       [
-        { content: "Closing Balance", colSpan: 8, styles: { fontStyle: "bold" as const, halign: "right" as const } },
+        { content: "Closing Balance", colSpan: 9, styles: { fontStyle: "bold" as const, halign: "right" as const } },
         String(closing.birds),
         `${closing.weight.toFixed(2)} kg`,
         "",
@@ -209,7 +221,7 @@ export default function StockLedgerPage() {
 
     autoTable(doc, {
       startY: titleY + 10,
-      head: [["Date", "Type", "Ref", "Party", "In", "Out", "Wt In", "Wt Out", "Bal Birds", "Bal Wt", "Amount"]],
+      head: [["Date", "Godown", "Type", "Ref", "Party", "In", "Out", "Wt In", "Wt Out", "Bal Birds", "Bal Wt", "Amount"]],
       body,
       styles: { fontSize: 7, cellPadding: 1.5 },
       headStyles: { fillColor: [30, 64, 175], fontSize: 7 },
@@ -256,6 +268,7 @@ export default function StockLedgerPage() {
         <div className="hidden print:block text-center mb-4">
           {orgInfo.name && <h2 className="text-xl font-bold">{orgInfo.name}</h2>}
           <h1 className="text-lg font-semibold">Godown Stock Ledger</h1>
+          <p className="text-sm">{selectedGodownName}</p>
           <p className="text-sm">{fmtDate(dateFrom)} — {fmtDate(dateTo)}</p>
         </div>
 
@@ -331,6 +344,22 @@ export default function StockLedgerPage() {
               </div>
             </div>
             <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Godown</label>
+              <Select value={godownFilter} onValueChange={setGodownFilter}>
+                <SelectTrigger className="rounded-full">
+                  <SelectValue placeholder="All godowns" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Godowns</SelectItem>
+                  {godowns.map((godown) => (
+                    <SelectItem key={godown.id} value={godown.id}>
+                      {godown.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1 ">
                 <Calendar size={12} /> From
               </label>
@@ -369,6 +398,7 @@ export default function StockLedgerPage() {
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
                   <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Godown</TableHead>
                   <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Type</TableHead>
                   <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reference</TableHead>
                   <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Party / Detail</TableHead>
@@ -384,8 +414,8 @@ export default function StockLedgerPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow className="bg-blue-50/80 font-medium dark:bg-blue-900/15">
-                  <TableCell colSpan={5} className="text-right text-blue-800 dark:text-blue-300">
+                <TableRow className="bg-blue-50/80 font-medium">
+                  <TableCell colSpan={6} className="text-right text-blue-800">
                     Opening Balance ({fmtDate(dateFrom)})
                   </TableCell>
                   <TableCell className="text-right">—</TableCell>
@@ -400,13 +430,13 @@ export default function StockLedgerPage() {
 
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="text-center py-10 text-muted-foreground animate-pulse">
+                    <TableCell colSpan={14} className="text-center py-10 text-muted-foreground animate-pulse">
                       Loading stock movements...
                     </TableCell>
                   </TableRow>
                 ) : entries.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={14} className="text-center py-10 text-muted-foreground">
                       No stock movements in this period
                     </TableCell>
                   </TableRow>
@@ -414,6 +444,9 @@ export default function StockLedgerPage() {
                   entries.map((e) => (
                     <TableRow key={`${e.movementType}-${e.referenceId}`} className="hover:bg-muted/30">
                       <TableCell className="whitespace-nowrap text-sm">{fmtDate(e.date)}</TableCell>
+                      <TableCell className="max-w-[140px] truncate text-sm" title={e.godownName || selectedGodownName}>
+                        {e.godownName || selectedGodownName}
+                      </TableCell>
                       <TableCell>
                         <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wide ${typeBadge(e.movementType)}`}>
                           {e.movementType}
@@ -446,8 +479,8 @@ export default function StockLedgerPage() {
                   ))
                 )}
 
-                <TableRow className="bg-slate-100 font-medium border-t-2 dark:bg-slate-800/50">
-                  <TableCell colSpan={5} className="text-right dark:text-slate-200">Period Totals</TableCell>
+                <TableRow className="bg-slate-100 font-medium border-t-2">
+                  <TableCell colSpan={6} className="text-right">Period Totals</TableCell>
                   <TableCell className="text-right text-emerald-700">+{fmtNum(period.birdsIn)}</TableCell>
                   <TableCell className="text-right text-orange-700">−{fmtNum(period.birdsOut)}</TableCell>
                   <TableCell className="text-right">{fmtNum(period.weightIn, 2)}</TableCell>
@@ -461,8 +494,8 @@ export default function StockLedgerPage() {
                   <TableCell />
                 </TableRow>
 
-                <TableRow className="bg-indigo-50 font-bold dark:bg-indigo-900/15">
-                  <TableCell colSpan={5} className="text-right text-indigo-900 dark:text-indigo-300">
+                <TableRow className="bg-indigo-50 font-bold">
+                  <TableCell colSpan={6} className="text-right text-indigo-900">
                     Closing Balance ({fmtDate(dateTo)})
                   </TableCell>
                   <TableCell className="text-right">—</TableCell>

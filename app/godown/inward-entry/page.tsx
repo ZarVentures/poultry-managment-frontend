@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Edit2, Trash2, X, Printer, Eye, PackagePlus, Bird, Scale, IndianRupee, Calendar, Search } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { godownApi, vehiclesApi, farmersApi, purchasesApi, type GodownInward, type GodownCage, type Vehicle } from "@/lib/api"
+import { godownApi, godownsApi, vehiclesApi, farmersApi, purchasesApi, type GodownInward, type GodownCage, type GodownMaster, type Vehicle } from "@/lib/api"
 import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 
@@ -25,6 +25,8 @@ export default function GodownInwardPage() {
   const router = useRouter()
   const { canUpdate, canDelete } = usePermissions()
   const [entries, setEntries] = useState<GodownInward[]>([])
+  const [godowns, setGodowns] = useState<GodownMaster[]>([])
+  const [godownFilter, setGodownFilter] = useState("all")
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [farmers, setFarmers] = useState<ActiveFarmer[]>([])
   const [searchQuery, setSearchQuery] = useState("")
@@ -38,6 +40,7 @@ export default function GodownInwardPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [allowEditInwardNo, setAllowEditInwardNo] = useState(false)
   const [formData, setFormData] = useState({
+    godownId: "",
     entryDate: new Date().toISOString().split("T")[0],
     inwardNo: "",
     purchaseInvoiceNo: "",
@@ -72,21 +75,37 @@ export default function GodownInwardPage() {
   useEffect(() => {
     setMounted(true)
     fetchEntries()
+    fetchGodowns()
     fetchVehicles()
     fetchFarmers()
     fetchPurchaseBills()
   }, [])
 
+  useEffect(() => {
+    if (mounted) fetchEntries()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [godownFilter])
+
   const fetchEntries = async () => {
     try {
       setLoading(true)
-      const data = await godownApi.inward.getAll()
+      const data = await godownApi.inward.getAll(undefined, undefined, undefined, godownFilter)
       setEntries(data)
     } catch (error: any) {
       console.error("Failed to fetch entries:", error)
       toast.error("Failed to load inward entries")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchGodowns = async () => {
+    try {
+      const data = await godownsApi.getActive()
+      setGodowns(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error("Failed to fetch godowns:", error)
+      setGodowns([])
     }
   }
 
@@ -217,6 +236,7 @@ export default function GodownInwardPage() {
   const resetForm = async () => {
     const nextNumber = editingId ? "" : await fetchNextInwardNumber()
     setFormData({
+      godownId: "",
       entryDate: new Date().toISOString().split("T")[0],
       inwardNo: nextNumber,
       purchaseInvoiceNo: "",
@@ -258,6 +278,7 @@ export default function GodownInwardPage() {
       const sourceEntry = fullEntry || entry
 
       setFormData({
+        godownId: sourceEntry.godownId || "",
         entryDate: sourceEntry.entryDate,
         inwardNo: sourceEntry.inwardNo || "",
         purchaseInvoiceNo: sourceEntry.purchaseInvoiceNo || "",
@@ -323,7 +344,7 @@ export default function GodownInwardPage() {
   }
 
   const handleSave = async () => {
-    if (!formData.supplierName || !formData.numberOfBirds || !formData.ratePerKg) {
+    if (!formData.godownId || !formData.supplierName || !formData.numberOfBirds || !formData.ratePerKg) {
       toast.error("Please fill all required fields")
       return
     }
@@ -337,6 +358,7 @@ export default function GodownInwardPage() {
       const totalAmount = totalWeight * ratePerKg
 
       const entryData = {
+        godownId: formData.godownId,
         entryDate: formData.entryDate,
         inwardNo: formData.inwardNo || undefined,
         purchaseInvoiceNo: formData.purchaseInvoiceNo || undefined,
@@ -703,6 +725,21 @@ export default function GodownInwardPage() {
               <div className="flex-1 space-y-5 overflow-y-auto pr-1 pb-2">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
+                    <Label>Godown *</Label>
+                    <Select value={formData.godownId} onValueChange={(value) => setFormData({ ...formData, godownId: value })} disabled={loading}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select godown" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60 overflow-y-auto">
+                        {godowns.map((godown) => (
+                          <SelectItem key={godown.id} value={godown.id}>
+                            {godown.name} ({godown.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
                     <Label>Entry Date *</Label>
                     <DatePicker
                       value={formData.entryDate}
@@ -1067,6 +1104,22 @@ export default function GodownInwardPage() {
               </div>
             </div>
             <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Godown</label>
+              <Select value={godownFilter} onValueChange={setGodownFilter}>
+                <SelectTrigger className="h-10 rounded-full w-full sm:w-[200px]">
+                  <SelectValue placeholder="All godowns" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Godowns</SelectItem>
+                  {godowns.map((godown) => (
+                    <SelectItem key={godown.id} value={godown.id}>
+                      {godown.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
                 <Calendar size={12} /> From
               </label>
@@ -1095,6 +1148,7 @@ export default function GodownInwardPage() {
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Entry Date</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Inward No</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Godown</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reference No</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Source</TableHead>
                     <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Birds</TableHead>
@@ -1127,6 +1181,7 @@ export default function GodownInwardPage() {
                             )}
                           </div>
                         </TableCell>
+                        <TableCell>{entry.godownName || godowns.find(g => g.id === entry.godownId)?.name || "-"}</TableCell>
                         <TableCell>{entry.purchaseInvoiceNo || "-"}</TableCell>
                         <TableCell>{entry.supplierName}</TableCell>
                         <TableCell className="text-right">{entry.numberOfBirds}</TableCell>
@@ -1180,6 +1235,10 @@ export default function GodownInwardPage() {
                   <div className="space-y-1">
                     <Label className="text-muted-foreground">Inward No</Label>
                     <div className="text-sm font-medium">{viewingEntry.inwardNo || "N/A"}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Godown</Label>
+                    <div className="text-sm font-medium">{viewingEntry.godownName || godowns.find(g => g.id === viewingEntry.godownId)?.name || "N/A"}</div>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-muted-foreground">Purchase / Reference No</Label>

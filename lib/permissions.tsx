@@ -27,6 +27,7 @@ export const PERMISSION_RESOURCES = [
   "farmers",
   "retailers",
   "vehicles",
+  "godowns",
   "users",
   "settings",
 ] as const
