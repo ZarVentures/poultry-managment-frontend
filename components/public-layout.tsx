@@ -18,11 +18,14 @@ import {
 } from "@/components/public/site-config"
 
 export function PublicLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/business-setup"
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <PublicHeader />
+      {!isAuthPage && <PublicHeader />}
       <main className="flex-1">{children}</main>
-      <PublicFooter />
+      {!isAuthPage && <PublicFooter />}
     </div>
   )
 }

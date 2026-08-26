@@ -92,11 +92,11 @@ const CollectionReportPage = () => {
 
   const getModeColor = (mode: string) => {
     const m = mode.toLowerCase()
-    if (m === 'cash') return 'bg-green-100 text-green-800'
-    if (m === 'bank' || m === 'bank_transfer') return 'bg-blue-100 text-blue-800'
-    if (m === 'upi') return 'bg-purple-100 text-purple-800'
-    if (m === 'cheque') return 'bg-amber-100 text-amber-800'
-    return 'bg-gray-100 text-gray-800'
+    if (m === 'cash') return 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300'
+    if (m === 'bank' || m === 'bank_transfer') return 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300'
+    if (m === 'upi') return 'bg-purple-100 text-purple-800 dark:bg-purple-500/15 dark:text-purple-300'
+    if (m === 'cheque') return 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300'
+    return 'bg-gray-100 text-gray-800 dark:bg-slate-500/15 dark:text-slate-300'
   }
 
   return (
@@ -117,11 +117,11 @@ const CollectionReportPage = () => {
           <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">From Date</label>
-              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-10 rounded-full pl-10 w-full sm:w-[160px]" /></div>
+              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400 dark:text-slate-400" /><Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-10 rounded-full pl-10 w-full sm:w-[160px]" /></div>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">To Date</label>
-              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-10 rounded-full pl-10 w-full sm:w-[160px]" /></div>
+              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400 dark:text-slate-400" /><Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-10 rounded-full pl-10 w-full sm:w-[160px]" /></div>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Payment Mode</label>
@@ -143,17 +143,17 @@ const CollectionReportPage = () => {
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Total Collected</CardTitle>
-              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600"><CircleDollarSign size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"><CircleDollarSign size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
-              <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 min-w-0 truncate">₹{totalCollected.toLocaleString('en-IN')}</div>
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 dark:text-green-400 min-w-0 truncate">₹{totalCollected.toLocaleString('en-IN')}</div>
               <p className="text-xs text-muted-foreground mt-1.5 truncate">{filtered.length} transactions</p>
             </CardContent>
           </Card>
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Cash</CardTitle>
-              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600"><Banknote size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"><Banknote size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
               <div className="text-lg lg:text-2xl font-bold tracking-tight min-w-0 truncate">₹{modeBreakdown('cash').toLocaleString('en-IN')}</div>
@@ -162,28 +162,28 @@ const CollectionReportPage = () => {
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Bank / UPI</CardTitle>
-              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600"><CreditCard size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><CreditCard size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
-              <div className="text-lg lg:text-2xl font-bold tracking-tight text-blue-600 min-w-0 truncate">₹{(modeBreakdown('bank') + modeBreakdown('upi') + modeBreakdown('bank_transfer')).toLocaleString('en-IN')}</div>
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-blue-600 dark:text-blue-400 min-w-0 truncate">₹{(modeBreakdown('bank') + modeBreakdown('upi') + modeBreakdown('bank_transfer')).toLocaleString('en-IN')}</div>
             </CardContent>
           </Card>
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Cheque</CardTitle>
-              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600"><CheckCircle size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"><CheckCircle size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
-              <div className="text-lg lg:text-2xl font-bold tracking-tight text-yellow-600 min-w-0 truncate">₹{modeBreakdown('cheque').toLocaleString('en-IN')}</div>
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-yellow-600 dark:text-yellow-400 min-w-0 truncate">₹{modeBreakdown('cheque').toLocaleString('en-IN')}</div>
             </CardContent>
           </Card>
         </div>
 
-        <Card className="border border-gray-200 overflow-hidden">
+        <Card className="border border-gray-200 dark:border-slate-700 overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50">
+                <TableRow className="bg-gray-50 dark:bg-slate-800">
                   <TableHead className="font-semibold">Date</TableHead>
                   <TableHead className="font-semibold">Bill No</TableHead>
                   <TableHead className="font-semibold">Customer</TableHead>
@@ -194,11 +194,11 @@ const CollectionReportPage = () => {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500 dark:text-slate-400">Loading...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500">No collections found for the selected period</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500 dark:text-slate-400">No collections found for the selected period</TableCell></TableRow>
                 ) : filtered.map(e => (
-                  <TableRow key={e.id} className="border-b border-gray-200">
+                  <TableRow key={e.id} className="border-b border-gray-200 dark:border-slate-700">
                     <TableCell className="font-medium">{getRowDate(e)}</TableCell>
                     <TableCell className="font-mono text-sm">{e.invoiceNumber || '-'}</TableCell>
                     <TableCell className="font-semibold">{e.customerName || '-'}</TableCell>
@@ -207,7 +207,7 @@ const CollectionReportPage = () => {
                     </TableCell>
                     <TableCell className="text-right font-bold">₹{Number(e.amount || 0).toLocaleString('en-IN')}</TableCell>
                     <TableCell className="text-center">
-                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${getRowStatus(e) === 'Completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{getRowStatus(e)}</span>
+                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${getRowStatus(e) === 'Completed' ? 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-300'}`}>{getRowStatus(e)}</span>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -216,8 +216,8 @@ const CollectionReportPage = () => {
           </div>
 
           {totalItems > pageSize && (
-            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-200">
-              <div className="text-sm text-gray-500">
+            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700">
+              <div className="text-sm text-gray-500 dark:text-slate-400">
                 Showing <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-medium">{Math.min(currentPage * pageSize, totalItems)}</span> of <span className="font-medium">{totalItems}</span> transactions
               </div>
               <div className="flex gap-2">

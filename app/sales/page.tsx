@@ -1627,7 +1627,7 @@ export default function SalesPage() {
                         <TableCell>{(s as any).purchaseBillNo || '-'}</TableCell>
                         <TableCell>{formatDate(s.saleDate)}</TableCell>
                         <TableCell>{s.customerName}</TableCell>
-                        <TableCell><span className="text-xs px-2 py-0.5 rounded bg-gray-100">{s.saleMode === 'from_vehicle' ? 'Vehicle' : 'Godown'}</span></TableCell>
+                        <TableCell><span className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-slate-700 dark:text-slate-200">{s.saleMode === 'from_vehicle' ? 'Vehicle' : 'Godown'}</span></TableCell>
                         <TableCell className="font-medium">
                           {(() => {
                             if ((s as any).numberOfBirds && Number((s as any).numberOfBirds) > 0) {

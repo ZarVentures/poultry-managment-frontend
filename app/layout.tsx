@@ -32,6 +32,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('poultry-sathi-theme');if(t==='dark')document.documentElement.classList.add('dark')}catch(e){}})()`,
+          }}
+        />
         <link rel="icon" href="/icon.svg" />
         <link rel="shortcut icon" href="/icon.svg" />
         <link rel="apple-touch-icon" href="/apple-icon.png" />
@@ -43,8 +48,8 @@ export default function RootLayout({
               {children}
             </DateFilterProvider>
           </DevModeProvider>
+          <Toaster />
         </Providers>
-        <Toaster />
       </body>
     </html>
   )

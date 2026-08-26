@@ -311,11 +311,16 @@ export default function SettingsPage() {
   const handleSave = async () => {
     try {
       setLoading(true)
-      await Promise.all(Object.entries(formData).map(([key, value]) =>
+      const results = await Promise.allSettled(Object.entries(formData).map(([key, value]) =>
         settingsApi.createOrUpdate({ key, value: String(value), category: "general" })
       ))
+      const allFailed = results.every(r => r.status === 'rejected')
       if (formData.theme) dispatch(setTheme(formData.theme))
-      toast.success("Settings saved!")
+      if (allFailed) {
+        toast.error("Failed to save settings")
+      } else {
+        toast.success("Settings saved!")
+      }
     } catch { toast.error("Failed to save settings") }
     finally { setLoading(false) }
   }
@@ -392,15 +397,13 @@ export default function SettingsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-4xl">
+      <div className="space-y-6">
             <div className="mb-6">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <activeItem.icon size={22} />
-                </div>
+                
                 <div>
                   <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">{activeItem.label}</h2>
-                  <p className="text-muted-foreground text-sm sm:text-base">{activeItem.description}</p>
+                  <p className="text-muted-foreground text-sm sm:text-base mt-1">{activeItem.description}</p>
                 </div>
               </div>
             </div>
@@ -409,7 +412,7 @@ export default function SettingsPage() {
             {activeSection === "general" && (
               <div className="space-y-6">
                 <div className="rounded-2xl border bg-card p-6 space-y-4">
-                  <h3 className="text-base font-semibold text-foreground">Farm Information</h3>
+                  <h3 className="text-lg font-semibold text-foreground">Farm Information</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-sm">Farm Name</Label>
@@ -431,7 +434,7 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="rounded-2xl border bg-card p-6 space-y-4">
-                  <h3 className="text-base font-semibold text-foreground">Regional</h3>
+                  <h3 className="text-lg font-semibold text-foreground">Regional</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-sm">Currency</Label>
@@ -478,7 +481,7 @@ export default function SettingsPage() {
 
                 <div className="rounded-2xl border bg-card p-6 space-y-4">
                   <div>
-                    <h3 className="text-base font-semibold text-foreground">Cage Weight Loss Controls</h3>
+                    <h3 className="text-lg font-semibold text-foreground">Cage Weight Loss Controls</h3>
                     <p className="text-sm text-muted-foreground mt-0.5">Configure limits for acceptable weight loss per cage.</p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -515,7 +518,7 @@ export default function SettingsPage() {
               <div className="space-y-6">
                 <div className="rounded-2xl border bg-card p-6 space-y-4">
                   <div>
-                    <h3 className="text-base font-semibold text-foreground">Theme</h3>
+                    <h3 className="text-lg font-semibold text-foreground">Theme</h3>
                     <p className="text-sm text-muted-foreground mt-0.5">Choose your preferred color scheme.</p>
                   </div>
                   <Select value={formData.theme} onValueChange={(v: "light" | "dark") => setFormData(f => ({ ...f, theme: v }))} disabled={loading}>
@@ -538,7 +541,7 @@ export default function SettingsPage() {
             {/* Notifications */}
             {activeSection === "notifications" && (
               <div className="space-y-6">
-                <div className="rounded-2xl border bg-card divide-y">
+                <div className="rounded-2xl border bg-card divide-y dark:divide-slate-700">
                   {[
                     { key: "notifications" as const, label: "In-App Notifications", desc: "Receive notifications within the application", icon: Bell },
                     { key: "emailAlerts" as const, label: "Email Alerts", desc: "Receive email notifications for important events", icon: Mail },
@@ -574,9 +577,9 @@ export default function SettingsPage() {
             {activeSection === "security" && (
               <div className="space-y-6">
                 <div className="rounded-2xl border bg-card p-5">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${is2FAEnabled ? 'bg-green-100 text-green-600' : 'bg-muted text-muted-foreground'}`}>
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${is2FAEnabled ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
                         {is2FAEnabled ? <ShieldCheck size={20} /> : <Shield size={20} />}
                       </div>
                       <div>
@@ -586,7 +589,7 @@ export default function SettingsPage() {
                         </p>
                       </div>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${is2FAEnabled ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${is2FAEnabled ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-muted text-muted-foreground'}`}>
                       {is2FAEnabled ? "On" : "Off"}
                     </span>
                   </div>
@@ -604,10 +607,10 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="rounded-2xl border bg-card p-5 space-y-3">
-                  <h3 className="text-base font-semibold text-foreground">Data Management</h3>
+                  <h3 className="text-lg font-semibold text-foreground">Data Management</h3>
                   <div className="flex flex-col sm:flex-row gap-3">
                     <Button variant="outline" size="sm" className="rounded-full flex-1 justify-start">Export All Data</Button>
-                    <Button variant="outline" size="sm" className="rounded-full flex-1 justify-start text-red-600 hover:text-red-700 hover:bg-red-50">Clear All Data</Button>
+                    <Button variant="outline" size="sm" className="rounded-full flex-1 justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/30 dark:border-red-800/50">Clear All Data</Button>
                   </div>
                 </div>
               </div>
@@ -618,13 +621,13 @@ export default function SettingsPage() {
               <div className="space-y-6">
                 <div className="rounded-2xl border bg-card p-6 space-y-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-600">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
                       <Terminal size={20} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-medium text-sm sm:text-base">Developer Mode</p>
-                        {isDevMode && <span className="text-[10px] bg-purple-600 text-white px-2 py-0.5 rounded-full font-bold">ACTIVE</span>}
+                        {isDevMode && <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-bold">ACTIVE</span>}
                       </div>
                       <p className="text-sm text-muted-foreground">Enable API request logging with curl commands.</p>
                     </div>
@@ -646,7 +649,7 @@ export default function SettingsPage() {
                             }
                           }}
                         />
-                        <button type="button" onClick={() => setShowDevPassword(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+                        <button type="button" onClick={() => setShowDevPassword(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500">
                           {showDevPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                         </button>
                       </div>
@@ -657,7 +660,7 @@ export default function SettingsPage() {
                       }} className="rounded-full bg-purple-600 hover:bg-purple-700">Enable</Button>
                     </div>
                   ) : (
-                    <Button variant="outline" className="rounded-full border-red-300 text-red-600 hover:bg-red-50" onClick={() => { disableDevMode(); toast.success("Dev mode disabled") }}>
+                    <Button variant="outline" className="rounded-full border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800/50 dark:text-red-400 dark:hover:bg-red-950/30" onClick={() => { disableDevMode(); toast.success("Dev mode disabled") }}>
                       Disable Dev Mode
                     </Button>
                   )}
@@ -669,11 +672,11 @@ export default function SettingsPage() {
             {/* Communication Hub */}
             {activeSection === "communication" && (
               <div className="space-y-6">
-                <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border border-purple-200 p-5 rounded-2xl flex items-start gap-3">
-                  <MessageSquare className="text-purple-600 shrink-0 mt-0.5" size={20} />
+                <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950/40 dark:via-purple-950/40 dark:to-pink-950/40 border border-purple-200 dark:border-purple-800/50 p-5 rounded-2xl flex items-start gap-3">
+                  <MessageSquare className="text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" size={20} />
                   <div>
-                    <p className="text-sm sm:text-base font-semibold text-purple-900">Communication & Alert Orchestration Hub</p>
-                    <p className="text-sm text-purple-700 mt-0.5">
+                    <p className="text-sm sm:text-base font-semibold text-purple-900 dark:text-purple-200">Communication & Alert Orchestration Hub</p>
+                    <p className="text-sm sm:text-base text-purple-700 dark:text-purple-300/80 mt-0.5">
                       Configure alert targets and distribution channels. AWS integration is securely handled on the backend for maximum safety.
                     </p>
                   </div>
@@ -681,31 +684,31 @@ export default function SettingsPage() {
 
                 {/* Sent Communication Analytics Overview */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="border border-blue-100 bg-blue-50/30 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                  <div className="border border-blue-100 dark:border-blue-800/50 bg-blue-50/30 dark:bg-blue-900/20 rounded-xl p-4 flex items-center justify-between shadow-sm">
                     <div className="space-y-1">
-                      <p className="text-xs sm:text-sm font-medium text-blue-600 uppercase tracking-wider">Emails Transmitted</p>
-                      <p className="text-2xl font-bold text-blue-900">{commCounts.emailCount}</p>
+                      <p className="text-xs sm:text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">Emails Transmitted</p>
+                      <p className="text-2xl font-bold text-blue-900 dark:text-blue-200">{commCounts.emailCount}</p>
                     </div>
-                    <div className="bg-blue-100 p-2.5 rounded-lg text-blue-600">
+                    <div className="bg-blue-100 dark:bg-blue-800/40 p-2.5 rounded-lg text-blue-600 dark:text-blue-400">
                       <Mail size={22} />
                     </div>
                   </div>
 
-                  <div className="border border-green-100 bg-green-50/30 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                  <div className="border border-green-100 dark:border-green-800/50 bg-green-50/30 dark:bg-green-900/20 rounded-xl p-4 flex items-center justify-between shadow-sm">
                     <div className="space-y-1">
-                      <p className="text-xs sm:text-sm font-medium text-green-600 uppercase tracking-wider">SMS Messages Dispatched</p>
-                      <p className="text-2xl font-bold text-green-900">{commCounts.smsCount}</p>
+                      <p className="text-xs sm:text-sm font-medium text-green-600 dark:text-green-400 uppercase tracking-wider">SMS Messages Dispatched</p>
+                      <p className="text-2xl font-bold text-green-900 dark:text-green-200">{commCounts.smsCount}</p>
                     </div>
-                    <div className="bg-green-100 p-2.5 rounded-lg text-green-600">
+                    <div className="bg-green-100 dark:bg-green-800/40 p-2.5 rounded-lg text-green-600 dark:text-green-400">
                       <Phone size={22} />
                     </div>
                   </div>
                 </div>
 
                 {/* Routing & Alert Pathways Form */}
-                <div className="border rounded-2xl p-6 space-y-5 bg-background shadow-sm">
-                  <h3 className="font-semibold text-base text-gray-800 border-b pb-3 flex items-center gap-2">
-                    <Bell size={16} className="text-purple-500" /> Alert Pathways & Channels
+                <div className="border dark:border-slate-700 rounded-2xl p-6 space-y-5 bg-background shadow-sm">
+                  <h3 className="font-semibold text-base text-gray-800 dark:text-slate-200 border-b dark:border-slate-700 pb-3 flex items-center gap-2">
+                    <Bell size={16} className="text-purple-500 dark:text-purple-400" /> Alert Pathways & Channels
                   </h3>
                   
                   <div className="space-y-6">
@@ -739,15 +742,15 @@ export default function SettingsPage() {
                         channelKey: "mortalityChannel" as const,
                       }
                     ].map(workflow => (
-                      <div key={workflow.title} className="p-4 border border-slate-100 rounded-xl bg-slate-50/50 space-y-4">
-                        <div className="flex items-start justify-between">
+                      <div key={workflow.title} className="p-4 border border-slate-100 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/50 space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                           <div>
-                            <h4 className="text-sm font-semibold text-gray-800">{workflow.title}</h4>
+                            <h4 className="text-sm font-semibold text-gray-800 dark:text-slate-200">{workflow.title}</h4>
                             <p className="text-xs text-muted-foreground">{workflow.desc}</p>
                           </div>
                           
                           {/* Channel Select Pills */}
-                          <div className="flex items-center gap-1 bg-slate-200/60 p-0.5 rounded-lg text-[10px]">
+                          <div className="flex items-center gap-1 bg-slate-200/60 dark:bg-slate-700/60 p-0.5 rounded-lg text-xs">
                             {([
                               { value: "both", label: "Both" },
                               { value: "email", label: "Email" },
@@ -760,8 +763,8 @@ export default function SettingsPage() {
                                 onClick={() => setFormData(f => ({ ...f, [workflow.channelKey]: opt.value }))}
                                 className={`px-2.5 py-1 rounded-md font-medium transition-all ${
                                   formData[workflow.channelKey] === opt.value
-                                    ? "bg-white text-gray-800 shadow-sm"
-                                    : "text-muted-foreground hover:text-gray-700"
+                                    ? "bg-white dark:bg-slate-600 text-gray-800 dark:text-slate-100 shadow-sm"
+                                    : "text-muted-foreground hover:text-gray-700 dark:hover:text-slate-300"
                                 }`}
                               >
                                 {opt.label}
@@ -771,28 +774,28 @@ export default function SettingsPage() {
                         </div>
 
                         {formData[workflow.channelKey] !== "none" && (
-                          <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 pt-2">
                             {(formData[workflow.channelKey] === "email" || formData[workflow.channelKey] === "both") && (
                               <div className="space-y-1">
-                                <Label className="text-[10px]">Target Email Address</Label>
+                                <Label className="text-xs">Target Email Address</Label>
                                 <Input
                                   type="email"
                                   placeholder="recipient@example.com"
                                   value={formData[workflow.emailKey]}
                                   onChange={e => setFormData(f => ({ ...f, [workflow.emailKey]: e.target.value }))}
-                                  className="text-xs h-8.5"
+                                  className="text-sm h-10"
                                 />
                               </div>
                             )}
                             {(formData[workflow.channelKey] === "sms" || formData[workflow.channelKey] === "both") && (
                               <div className="space-y-1">
-                                <Label className="text-[10px]">Target Phone Number</Label>
+                                <Label className="text-xs">Target Phone Number</Label>
                                 <Input
                                   type="text"
                                   placeholder="+919876543210"
                                   value={formData[workflow.phoneKey]}
                                   onChange={e => setFormData(f => ({ ...f, [workflow.phoneKey]: e.target.value }))}
-                                  className="text-xs h-8.5"
+                                  className="text-sm h-10"
                                 />
                               </div>
                             )}
@@ -804,34 +807,34 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Connection Test Controls */}
-                <div className="border border-purple-100 rounded-2xl p-6 space-y-4 bg-purple-50/10 shadow-sm">
-                  <h3 className="font-semibold text-base text-purple-950 flex items-center gap-1.5">
-                    <ShieldCheck size={16} className="text-purple-600" /> Pipeline Verification Tests
+                <div className="border border-purple-100 dark:border-purple-800/50 rounded-2xl p-6 space-y-4 bg-purple-50/10 dark:bg-purple-950/20 shadow-sm">
+                  <h3 className="font-semibold text-lg text-purple-950 dark:text-purple-200 flex items-center gap-1.5">
+                    <ShieldCheck size={16} className="text-purple-600 dark:text-purple-400" /> Pipeline Verification Tests
                   </h3>
-                  <p className="text-sm text-purple-800">
+                  <p className="text-sm sm:text-base text-purple-800 dark:text-purple-300/80">
                     Verify connection pathways instantly by triggering secure dispatches directly from the backend services.
                   </p>
                   
-                  <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 pt-2">
                     {/* Test Email */}
-                    <div className="border rounded-lg p-3 space-y-3 bg-background shadow-xs">
+                    <div className="border dark:border-slate-700 rounded-lg p-3 space-y-3 bg-background shadow-xs">
                       <div className="flex items-center gap-2">
-                        <Mail className="text-blue-600" size={15} />
-                        <span className="text-xs font-semibold">Test SES Email Gateway</span>
+                        <Mail className="text-blue-600 dark:text-blue-400" size={15} />
+                        <span className="text-sm font-semibold dark:text-slate-200">Test SES Email Gateway</span>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <Input 
                           type="email"
                           placeholder="test@example.com"
                           value={testEmailTarget}
                           onChange={e => setTestEmailTarget(e.target.value)}
-                          className="text-xs h-8"
+                          className="text-sm h-10"
                         />
                         <Button 
                           size="sm" 
                           onClick={handleTestEmail}
                           disabled={testingEmail || !testEmailTarget}
-                          className="text-xs h-8 whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white"
+                          className="text-sm h-10 whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white"
                         >
                           {testingEmail ? "Sending..." : "Test Email"}
                         </Button>
@@ -839,24 +842,24 @@ export default function SettingsPage() {
                     </div>
 
                     {/* Test SMS */}
-                    <div className="border rounded-lg p-3 space-y-3 bg-background shadow-xs">
+                    <div className="border dark:border-slate-700 rounded-lg p-3 space-y-3 bg-background shadow-xs">
                       <div className="flex items-center gap-2">
-                        <Phone className="text-green-600" size={15} />
-                        <span className="text-xs font-semibold">Test SNS SMS Gateway</span>
+                        <Phone className="text-green-600 dark:text-green-400" size={15} />
+                        <span className="text-sm font-semibold dark:text-slate-200">Test SNS SMS Gateway</span>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <Input 
                           type="text"
                           placeholder="+919876543210"
                           value={testPhoneTarget}
                           onChange={e => setTestPhoneTarget(e.target.value)}
-                          className="text-xs h-8"
+                          className="text-sm h-10"
                         />
                         <Button 
                           size="sm" 
                           onClick={handleTestSMS}
                           disabled={testingSMS || !testPhoneTarget}
-                          className="text-xs h-8 whitespace-nowrap bg-green-600 hover:bg-green-700 text-white"
+                          className="text-sm h-10 whitespace-nowrap bg-green-600 hover:bg-green-700 text-white"
                         >
                           {testingSMS ? "Sending..." : "Test SMS"}
                         </Button>
@@ -866,26 +869,26 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Sent Communication Logs Table */}
-                <div className="border border-slate-200 rounded-2xl p-6 space-y-4 bg-background shadow-sm">
-                  <div className="flex items-center justify-between border-b pb-3">
-                    <h3 className="font-semibold text-base text-gray-800 flex items-center gap-2">
-                      <Terminal size={16} className="text-slate-500" /> Recent Dispatch Audit Logs
+                <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-6 space-y-4 bg-background shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b dark:border-slate-700 pb-3">
+                    <h3 className="font-semibold text-base text-gray-800 dark:text-slate-200 flex items-center gap-2">
+                      <Terminal size={16} className="text-slate-500 dark:text-slate-400" /> Recent Dispatch Audit Logs
                     </h3>
                     <Button 
                       variant="outline" 
                       size="sm" 
                       onClick={fetchCommLogs}
                       disabled={logsLoading}
-                      className="text-xs h-7 px-2.5"
+                      className="text-sm h-9 px-3"
                     >
                       {logsLoading ? "Refreshing..." : "Refresh Logs"}
                     </Button>
                   </div>
 
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left border-collapse">
+                    <table className="w-full text-sm text-left border-collapse">
                       <thead>
-                        <tr className="border-b border-slate-100 bg-slate-50 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                        <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                           <th className="py-2.5 px-3">Recipient</th>
                           <th className="py-2.5 px-3 text-center">Channel</th>
                           <th className="py-2.5 px-3">Message Type</th>
@@ -896,43 +899,43 @@ export default function SettingsPage() {
                       <tbody>
                         {commLogs.length === 0 ? (
                           <tr>
-                            <td colSpan={5} className="py-8 text-center text-muted-foreground text-xs">
+                            <td colSpan={5} className="py-8 text-center text-muted-foreground text-sm">
                               No recent dispatches registered in database audits.
                             </td>
                           </tr>
                         ) : (
                           commLogs.map(log => (
-                            <tr key={log.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
-                              <td className="py-3 px-3 font-medium text-gray-800 max-w-[180px] truncate" title={log.recipient}>
+                            <tr key={log.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                              <td className="py-3 px-3 font-medium text-gray-800 dark:text-slate-200 max-w-[180px] truncate" title={log.recipient}>
                                 {log.recipient}
                               </td>
                               <td className="py-3 px-3">
                                 <div className="flex justify-center">
                                   {log.channel === "email" ? (
-                                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800/50">
                                       <Mail size={10} /> Email
                                     </span>
                                   ) : (
-                                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-50 text-green-700 border border-green-100">
+                                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-100 dark:border-green-800/50">
                                       <Phone size={10} /> SMS
                                     </span>
                                   )}
                                 </div>
                               </td>
-                              <td className="py-3 px-3 font-medium capitalize text-gray-700">
+                              <td className="py-3 px-3 font-medium capitalize text-gray-700 dark:text-slate-300">
                                 {log.messageType.replace("_", " ")}
                               </td>
-                              <td className="py-3 px-3 text-muted-foreground text-[11px]">
+                              <td className="py-3 px-3 text-muted-foreground text-xs">
                                 {new Date(log.sentAt).toLocaleString()}
                               </td>
                               <td className="py-3 px-3 text-right">
                                 {log.status === "sent" ? (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800">
+                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
                                     Dispatched
                                   </span>
                                 ) : (
                                   <span 
-                                    className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-800 cursor-help"
+                                    className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 cursor-help"
                                     title={log.errorMessage || "Unknown transmission failure"}
                                   >
                                     Failed ⚠️
@@ -959,14 +962,14 @@ export default function SettingsPage() {
             {activeSection === "permissions" && (
               <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="bg-blue-50 border border-blue-200 p-5 rounded-2xl flex items-start gap-3 flex-1">
-                    <ShieldCheck className="text-blue-600 shrink-0 mt-0.5" size={20} />
+                  <div className="bg-blue-50 border border-blue-200 p-5 rounded-2xl flex items-start gap-3 flex-1 dark:bg-blue-950/20 dark:border-blue-800/50">
+                    <ShieldCheck className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" size={20} />
                     <div>
-                      <p className="text-sm sm:text-base font-medium text-blue-900">Access Control Management</p>
-                      <p className="text-sm text-blue-700 mt-0.5">Control module visibility and action permissions for each user role. Admin roles always have full access.</p>
+                      <p className="text-sm sm:text-base font-medium text-blue-900 dark:text-blue-100">Access Control Management</p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-0.5">Control module visibility and action permissions for each user role. Admin roles always have full access.</p>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" className="rounded-full shrink-0" onClick={() => setShowAddRoleModal(true)}>+ Add Role</Button>
+                  <Button size="default" className="rounded-full shrink-0" onClick={() => setShowAddRoleModal(true)}>+ Add Role</Button>
                 </div>
 
                 {permissionsLoading ? (
@@ -995,40 +998,40 @@ export default function SettingsPage() {
                                 </button>
                               )}
                             </div>
-                            <span className="text-[10px] font-medium opacity-70">ROLE ACCESS LEVELS</span>
+                            <span className="text-xs font-medium opacity-70">ROLE ACCESS LEVELS</span>
                           </div>
                           <div className="overflow-x-auto">
                             <table className="w-full text-sm min-w-[500px]">
-                              <thead className="bg-muted/50 border-b">
+                              <thead className="bg-muted/50 dark:bg-slate-800 border-b dark:border-slate-700">
                                 <tr className="text-xs uppercase text-muted-foreground">
                                   <th className="text-left p-3 font-semibold w-1/3">Resource / Module</th>
                                   <th className="p-3 font-semibold text-center">
                                     <div className="flex flex-col items-center">
                                       <span>View</span>
-                                      <span className="text-[9px] opacity-50 font-normal mt-0.5">(Read)</span>
+                                      <span className="text-xs opacity-50 font-normal mt-0.5">(Read)</span>
                                     </div>
                                   </th>
                                   <th className="p-3 font-semibold text-center">
                                     <div className="flex flex-col items-center">
                                       <span>Create</span>
-                                      <span className="text-[9px] opacity-50 font-normal mt-0.5">(Add New)</span>
+                                      <span className="text-xs opacity-50 font-normal mt-0.5">(Add New)</span>
                                     </div>
                                   </th>
                                   <th className="p-3 font-semibold text-center">
                                     <div className="flex flex-col items-center">
                                       <span>Edit</span>
-                                      <span className="text-[9px] opacity-50 font-normal mt-0.5">(Update)</span>
+                                      <span className="text-xs opacity-50 font-normal mt-0.5">(Update)</span>
                                     </div>
                                   </th>
                                   <th className="p-3 font-semibold text-center">
                                     <div className="flex flex-col items-center">
                                       <span>Delete</span>
-                                      <span className="text-[9px] opacity-50 font-normal mt-0.5">(Remove)</span>
+                                      <span className="text-xs opacity-50 font-normal mt-0.5">(Remove)</span>
                                     </div>
                                   </th>
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-gray-100">
+                              <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                 {resources.map(resource => {
                                   const perm = rolePermissions.find(p => p.resource === resource)
                                   const isFull = role === 'admin'
@@ -1041,17 +1044,17 @@ export default function SettingsPage() {
                                       {['canRead', 'canCreate', 'canUpdate', 'canDelete'].map(field => {
                                         const checked = isFull || (perm ? perm[field] : false)
                                         return (
-                                          <td key={field} className={`p-3 text-center transition-colors ${checked ? 'bg-green-50/30' : 'bg-red-50/30'
+                                          <td key={field} className={`p-3 text-center transition-colors ${checked ? 'bg-green-50/30 dark:bg-green-900/20' : 'bg-red-50/30 dark:bg-red-900/20'
                                             }`}>
                                             <div className="flex justify-center items-center">
                                               {isFull ? (
                                                 <div title="Admin always has access">
-                                                  <ShieldCheck size={16} className="text-green-600 opacity-50" />
+                                                  <ShieldCheck size={16} className="text-green-600 dark:text-green-400 opacity-50" />
                                                 </div>
                                               ) : (
                                                 <input
                                                   type="checkbox"
-                                                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer hover:scale-110 transition-transform"
+                                                  className="h-4 w-4 rounded border-gray-300 dark:border-slate-600 text-primary focus:ring-primary cursor-pointer hover:scale-110 transition-transform"
                                                   checked={checked}
                                                   onChange={(e) => handleUpdatePermission(role, resource, field, e.target.checked)}
                                                 />
@@ -1078,14 +1081,14 @@ export default function SettingsPage() {
             {activeSection === "categories" && (
               <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl flex items-start gap-3 flex-1">
-                    <CheckCircle2 className="text-emerald-600 shrink-0 mt-0.5" size={20} />
+                  <div className="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl flex items-start gap-3 flex-1 dark:bg-emerald-950/20 dark:border-emerald-800/50">
+                    <CheckCircle2 className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" size={20} />
                     <div>
-                      <p className="text-sm sm:text-base font-medium text-emerald-900">Expense Category Management</p>
-                      <p className="text-sm text-emerald-700 mt-0.5">Manage categories and icons for expense tracking. System categories are pre-defined.</p>
+                      <p className="text-sm sm:text-base font-medium text-emerald-900 dark:text-emerald-100">Expense Category Management</p>
+                      <p className="text-sm text-emerald-700 dark:text-emerald-300 mt-0.5">Manage categories and icons for expense tracking. System categories are pre-defined.</p>
                     </div>
                   </div>
-                  <Button size="sm" className="rounded-full shrink-0" onClick={() => {
+                  <Button size="default" className="rounded-full shrink-0" onClick={() => {
                     setEditingCategory(null)
                     setCategoryFormData({ name: "", description: "", icon: "tag", appliesTo: "both", isActive: true })
                     setShowCategoryModal(true)
@@ -1098,7 +1101,7 @@ export default function SettingsPage() {
                   <div className="rounded-2xl border overflow-hidden bg-card shadow-sm">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm min-w-[500px]">
-                        <thead className="bg-muted/50 border-b">
+                        <thead className="bg-muted/50 dark:bg-slate-800 border-b dark:border-slate-700">
                           <tr className="text-xs uppercase text-muted-foreground">
                             <th className="text-left p-4 font-semibold">Category</th>
                             <th className="text-left p-4 font-semibold">Description</th>
@@ -1107,7 +1110,7 @@ export default function SettingsPage() {
                             <th className="text-right p-4 font-semibold">Actions</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                           {categories.map(cat => (
                             <tr key={cat.id} className="hover:bg-muted/30 transition-colors">
                               <td className="p-4">
@@ -1117,16 +1120,16 @@ export default function SettingsPage() {
                                   </div>
                                   <div>
                                     <p className="font-medium">{cat.name}</p>
-                                    {cat.isDefault && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold uppercase">Default</span>}
+                                    {cat.isDefault &&                     <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300 px-1.5 py-0.5 rounded font-bold uppercase">Default</span>}
                                   </div>
                                 </div>
                               </td>
-                              <td className="p-4 text-muted-foreground text-xs leading-relaxed max-w-xs">{cat.description || "-"}</td>
+                              <td className="p-4 text-muted-foreground text-sm leading-relaxed max-w-xs">{cat.description || "-"}</td>
                               <td className="p-4 text-center">
-                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                                  (cat.appliesTo || 'both') === 'main' ? 'bg-blue-100 text-blue-700' :
-                                  (cat.appliesTo || 'both') === 'godown' ? 'bg-orange-100 text-orange-700' :
-                                  'bg-purple-100 text-purple-700'
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${
+                                  (cat.appliesTo || 'both') === 'main' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300' :
+                                  (cat.appliesTo || 'both') === 'godown' ? 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300' :
+                                  'bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300'
                                 }`}>
                                   {(cat.appliesTo || 'both') === 'both' ? 'Both' : (cat.appliesTo || 'both') === 'main' ? 'Main' : 'Godown'}
                                 </span>
@@ -1134,7 +1137,7 @@ export default function SettingsPage() {
                               <td className="p-4 text-center">
                                 <button
                                   onClick={() => handleToggleCategory(cat.id)}
-                                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${cat.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
+                                  className={`px-2.5 py-1 rounded-full text-xs font-bold ${cat.isActive ? 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300'}`}
                                 >
                                   {cat.isActive ? 'ACTIVE' : 'INACTIVE'}
                                 </button>
@@ -1155,7 +1158,7 @@ export default function SettingsPage() {
                                   {!cat.isDefault && (
                                     <button
                                       onClick={() => handleDeleteCategory(cat.id, cat.isDefault)}
-                                      className="p-2 text-muted-foreground hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
+                                      className="p-2 text-muted-foreground hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30"
                                       title="Delete"
                                     >
                                       <Trash2 size={14} />
@@ -1176,7 +1179,7 @@ export default function SettingsPage() {
 
       {/* Role & Resource Modals */}
       <Dialog open={showAddRoleModal} onOpenChange={setShowAddRoleModal}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm mx-4 sm:mx-0">
           <DialogHeader><DialogTitle>Add New User Role</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="space-y-2">
@@ -1188,7 +1191,7 @@ export default function SettingsPage() {
                 autoFocus
                 className="h-10"
               />
-              <p className="text-[10px] text-muted-foreground italic">* Role names are case-insensitive</p>
+              <p className="text-xs text-muted-foreground italic">* Role names are case-insensitive</p>
             </div>
             <Button className="w-full rounded-full" onClick={handleAddRole} disabled={!newRoleName}>Create Role</Button>
           </div>
@@ -1197,7 +1200,7 @@ export default function SettingsPage() {
 
       {/* 2FA Modals */}
       <Dialog open={showSetupModal} onOpenChange={setShowSetupModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md mx-4 sm:mx-0">
           <DialogHeader><DialogTitle>Set Up Two-Factor Authentication</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Scan with <strong>Google Authenticator</strong> or <strong>Microsoft Authenticator</strong>.</p>
@@ -1215,7 +1218,7 @@ export default function SettingsPage() {
       </Dialog>
 
       <Dialog open={showDisableModal} onOpenChange={setShowDisableModal}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm mx-4 sm:mx-0">
           <DialogHeader><DialogTitle>Disable 2FA</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Enter your 6-digit authenticator code.</p>
@@ -1228,10 +1231,10 @@ export default function SettingsPage() {
       </Dialog>
 
       <Dialog open={showBackupCodesModal} onOpenChange={() => { }}>
-        <DialogContent className="max-w-md" onInteractOutside={e => e.preventDefault()}>
+        <DialogContent className="max-w-md mx-4 sm:mx-0" onInteractOutside={e => e.preventDefault()}>
           <DialogHeader><DialogTitle>Save Your Recovery Codes</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-sm text-yellow-800">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-sm text-yellow-800 dark:bg-yellow-950/20 dark:border-yellow-800/50 dark:text-yellow-300">
               <strong>Save these now.</strong> They will never be shown again. Each code can only be used once.
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -1250,7 +1253,7 @@ export default function SettingsPage() {
       </Dialog>
       {/* Category Modal */}
       <Dialog open={showCategoryModal} onOpenChange={setShowCategoryModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="!w-[min(28rem,calc(100vw-2rem))] sm:!w-full">
           <DialogHeader><DialogTitle>{editingCategory ? "Edit Expense Category" : "Add New Expense Category"}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="space-y-2">

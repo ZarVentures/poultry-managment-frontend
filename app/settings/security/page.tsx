@@ -89,11 +89,9 @@ export default function SecurityPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-2xl">
+      <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <ShieldCheck size={22} />
-          </div>
+          
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Security</h1>
             <p className="text-sm sm:text-base text-muted-foreground">Manage your account security settings</p>
@@ -103,7 +101,7 @@ export default function SecurityPage() {
         <div className="rounded-2xl border bg-card p-5">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${is2FAEnabled ? 'bg-green-100 text-green-600' : 'bg-muted text-muted-foreground'}`}>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100 text-green-600">
                 {is2FAEnabled ? <ShieldCheck size={20} /> : <Shield size={20} />}
               </div>
               <div>
@@ -134,7 +132,7 @@ export default function SecurityPage() {
 
         {/* Setup Modal */}
         <Dialog open={showSetupModal} onOpenChange={setShowSetupModal}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md mx-4 sm:mx-0">
             <DialogHeader>
               <DialogTitle>Set Up Two-Factor Authentication</DialogTitle>
             </DialogHeader>
@@ -172,7 +170,7 @@ export default function SecurityPage() {
 
         {/* Disable Modal */}
         <Dialog open={showDisableModal} onOpenChange={setShowDisableModal}>
-          <DialogContent className="max-w-sm">
+          <DialogContent className="max-w-sm mx-4 sm:mx-0">
             <DialogHeader>
               <DialogTitle>Disable Two-Factor Authentication</DialogTitle>
             </DialogHeader>

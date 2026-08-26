@@ -262,52 +262,52 @@ export default function StockLedgerPage() {
         
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7 [&>*]:break-words">
-          <Card className="rounded-2xl border-blue-200 bg-blue-50/50 p-4">
-            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-blue-700">
+          <Card className="rounded-2xl border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-800/50 dark:bg-blue-900/20">
+            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-blue-700 dark:text-blue-300">
               <Bird size={20} /> Opening
             </div>
-            <div className="text-xl font-bold tracking-tight text-blue-900 sm:text-2xl">{fmtNum(opening.birds)}</div>
-            <div className="mt-0.5 text-xs text-blue-600">{fmtNum(opening.weight, 2)} kg</div>
+            <div className="text-xl font-bold tracking-tight text-blue-900 dark:text-blue-100 sm:text-2xl">{fmtNum(opening.birds)}</div>
+            <div className="mt-0.5 text-xs text-blue-600 dark:text-blue-400">{fmtNum(opening.weight, 2)} kg</div>
           </Card>
-          <Card className="rounded-2xl border-emerald-200 bg-emerald-50/50 p-4">
-            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-emerald-700">
+          <Card className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-800/50 dark:bg-emerald-900/20">
+            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-300">
               <PackagePlus size={20} /> Inward
             </div>
-            <div className="text-xl font-bold tracking-tight text-emerald-900 sm:text-2xl">+{fmtNum(period.birdsIn - returnBirds)}</div>
-            <div className="mt-0.5 text-xs text-emerald-600">{fmtNum(Math.max(0, period.weightIn - returnWeight), 2)} kg</div>
+            <div className="text-xl font-bold tracking-tight text-emerald-900 dark:text-emerald-100 sm:text-2xl">+{fmtNum(period.birdsIn - returnBirds)}</div>
+            <div className="mt-0.5 text-xs text-emerald-600 dark:text-emerald-400">{fmtNum(Math.max(0, period.weightIn - returnWeight), 2)} kg</div>
           </Card>
-          <Card className="rounded-2xl border-violet-200 bg-violet-50/50 p-4">
-            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-violet-700">
+          <Card className="rounded-2xl border border-violet-200 bg-violet-50/50 p-4 dark:border-violet-800/50 dark:bg-violet-900/20">
+            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-violet-700 dark:text-violet-300">
               <Undo2 size={20} /> Returns
             </div>
-            <div className="text-xl font-bold tracking-tight text-violet-900 sm:text-2xl">+{fmtNum(returnBirds)}</div>
-            <div className="mt-0.5 text-xs text-violet-600">{fmtNum(returnWeight, 2)} kg</div>
+            <div className="text-xl font-bold tracking-tight text-violet-900 dark:text-violet-100 sm:text-2xl">+{fmtNum(returnBirds)}</div>
+            <div className="mt-0.5 text-xs text-violet-600 dark:text-violet-400">{fmtNum(returnWeight, 2)} kg</div>
           </Card>
-          <Card className="rounded-2xl border-orange-200 bg-orange-50/50 p-4">
-            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-orange-700">
+          <Card className="rounded-2xl border border-orange-200 bg-orange-50/50 p-4 dark:border-orange-800/50 dark:bg-orange-900/20">
+            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-orange-700 dark:text-orange-300">
               <PackageMinus size={20} /> Sold
             </div>
-            <div className="text-xl font-bold tracking-tight text-orange-900 sm:text-2xl">−{fmtNum(soldBirds)}</div>
-            <div className="mt-0.5 text-xs text-orange-600">{fmtNum(soldWeight, 2)} kg</div>
+            <div className="text-xl font-bold tracking-tight text-orange-900 dark:text-orange-100 sm:text-2xl">−{fmtNum(soldBirds)}</div>
+            <div className="mt-0.5 text-xs text-orange-600 dark:text-orange-400">{fmtNum(soldWeight, 2)} kg</div>
           </Card>
-          <Card className="rounded-2xl border-red-200 bg-red-50/50 p-4">
-            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-red-700">
+          <Card className="rounded-2xl border border-red-200 bg-red-50/50 p-4 dark:border-red-800/50 dark:bg-red-900/20">
+            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-red-700 dark:text-red-300">
               <AlertCircle size={20} /> Mortality
             </div>
-            <div className="text-xl font-bold tracking-tight text-red-900 sm:text-2xl">−{fmtNum(mortalityBirds)}</div>
-            <div className="mt-0.5 text-xs text-red-600">{fmtNum(mortalityWeight, 2)} kg</div>
+            <div className="text-xl font-bold tracking-tight text-red-900 dark:text-red-100 sm:text-2xl">−{fmtNum(mortalityBirds)}</div>
+            <div className="mt-0.5 text-xs text-red-600 dark:text-red-400">{fmtNum(mortalityWeight, 2)} kg</div>
           </Card>
-          <Card className="rounded-2xl border-indigo-200 bg-indigo-50/50 p-4">
-            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-indigo-700">
+          <Card className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-800/50 dark:bg-indigo-900/20">
+            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-indigo-700 dark:text-indigo-300">
               <Scale size={20} /> Closing
             </div>
-            <div className="text-xl font-bold tracking-tight text-indigo-900 sm:text-2xl">{fmtNum(closing.birds)}</div>
-            <div className="mt-0.5 text-xs text-indigo-600">{fmtNum(closing.weight, 2)} kg</div>
+            <div className="text-xl font-bold tracking-tight text-indigo-900 dark:text-indigo-100 sm:text-2xl">{fmtNum(closing.birds)}</div>
+            <div className="mt-0.5 text-xs text-indigo-600 dark:text-indigo-400">{fmtNum(closing.weight, 2)} kg</div>
           </Card>
-          <Card className="rounded-2xl border-slate-200 bg-slate-50/50 p-4">
-            <div className="mb-1 text-xs font-medium text-slate-600">Period Value</div>
-            <div className="text-sm font-semibold text-slate-800">In ₹{fmtNum(period.amountIn, 2)}</div>
-            <div className="text-sm font-semibold text-slate-800">Out ₹{fmtNum(period.amountOut, 2)}</div>
+          <Card className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-700 dark:bg-slate-800/40">
+            <div className="mb-1 text-xs font-medium text-slate-600 dark:text-slate-300">Period Value</div>
+            <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">In ₹{fmtNum(period.amountIn, 2)}</div>
+            <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">Out ₹{fmtNum(period.amountOut, 2)}</div>
           </Card>
         </div>
 <Card className="rounded-2xl p-4 print:hidden">
@@ -384,8 +384,8 @@ export default function StockLedgerPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow className="bg-blue-50/80 font-medium">
-                  <TableCell colSpan={5} className="text-right text-blue-800">
+                <TableRow className="bg-blue-50/80 font-medium dark:bg-blue-900/15">
+                  <TableCell colSpan={5} className="text-right text-blue-800 dark:text-blue-300">
                     Opening Balance ({fmtDate(dateFrom)})
                   </TableCell>
                   <TableCell className="text-right">—</TableCell>
@@ -394,8 +394,8 @@ export default function StockLedgerPage() {
                   <TableCell className="text-right">—</TableCell>
                   <TableCell className="text-right">—</TableCell>
                   <TableCell className="text-right">—</TableCell>
-                  <TableCell className="text-right text-blue-900 font-bold">{fmtNum(opening.birds)}</TableCell>
-                  <TableCell className="text-right text-blue-900 font-bold">{fmtNum(opening.weight, 2)} kg</TableCell>
+                  <TableCell className="text-right font-bold text-blue-900 dark:text-blue-200">{fmtNum(opening.birds)}</TableCell>
+                  <TableCell className="text-right font-bold text-blue-900 dark:text-blue-200">{fmtNum(opening.weight, 2)} kg</TableCell>
                 </TableRow>
 
                 {loading ? (
@@ -446,8 +446,8 @@ export default function StockLedgerPage() {
                   ))
                 )}
 
-                <TableRow className="bg-slate-100 font-medium border-t-2">
-                  <TableCell colSpan={5} className="text-right">Period Totals</TableCell>
+                <TableRow className="bg-slate-100 font-medium border-t-2 dark:bg-slate-800/50">
+                  <TableCell colSpan={5} className="text-right dark:text-slate-200">Period Totals</TableCell>
                   <TableCell className="text-right text-emerald-700">+{fmtNum(period.birdsIn)}</TableCell>
                   <TableCell className="text-right text-orange-700">−{fmtNum(period.birdsOut)}</TableCell>
                   <TableCell className="text-right">{fmtNum(period.weightIn, 2)}</TableCell>
@@ -461,8 +461,8 @@ export default function StockLedgerPage() {
                   <TableCell />
                 </TableRow>
 
-                <TableRow className="bg-indigo-50 font-bold">
-                  <TableCell colSpan={5} className="text-right text-indigo-900">
+                <TableRow className="bg-indigo-50 font-bold dark:bg-indigo-900/15">
+                  <TableCell colSpan={5} className="text-right text-indigo-900 dark:text-indigo-300">
                     Closing Balance ({fmtDate(dateTo)})
                   </TableCell>
                   <TableCell className="text-right">—</TableCell>
@@ -471,8 +471,8 @@ export default function StockLedgerPage() {
                   <TableCell className="text-right">—</TableCell>
                   <TableCell className="text-right">—</TableCell>
                   <TableCell className="text-right">—</TableCell>
-                  <TableCell className="text-right text-indigo-900 text-lg">{fmtNum(closing.birds)}</TableCell>
-                  <TableCell className="text-right text-indigo-900">{fmtNum(closing.weight, 2)} kg</TableCell>
+                  <TableCell className="text-right text-lg text-indigo-900 dark:text-indigo-200">{fmtNum(closing.birds)}</TableCell>
+                  <TableCell className="text-right text-indigo-900 dark:text-indigo-200">{fmtNum(closing.weight, 2)} kg</TableCell>
                 </TableRow>
               </TableBody>
             </Table>

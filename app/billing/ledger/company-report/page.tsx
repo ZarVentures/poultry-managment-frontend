@@ -96,7 +96,7 @@ const CompanyLedgerReportPage = () => {
   
   {/* Left Content */}
   <div>
-    <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-black">
+    <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-black dark:text-slate-100">
       Performance Overview
     </h1>
 
@@ -108,11 +108,11 @@ const CompanyLedgerReportPage = () => {
   {/* Right Toggle */}
   <div className="bg-gray-100 p-2 rounded-2xl flex items-center gap-2 w-fit">
     
-    <button className="bg-white shadow-sm px-6 py-3 rounded-xl text-lg font-semibold text-black">
+    <button className="bg-white shadow-sm px-6 py-3 rounded-xl text-lg font-semibold text-black dark:bg-slate-700 dark:text-slate-100">
       YTD 2024
     </button>
 
-    <button className="px-6 py-3 rounded-xl text-lg font-semibold text-gray-500 hover:bg-white transition">
+    <button className="px-6 py-3 rounded-xl text-lg font-semibold text-gray-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 transition">
       Q1 2024
     </button>
   </div>
@@ -123,40 +123,40 @@ const CompanyLedgerReportPage = () => {
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">TOTAL REVENUE</CardTitle>
-              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600"><TrendingUp size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"><TrendingUp size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
-              <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 min-w-0 truncate">₹{(summary.totalRevenue || 0).toLocaleString('en-IN')}</div>
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 dark:text-green-400 min-w-0 truncate">₹{(summary.totalRevenue || 0).toLocaleString('en-IN')}</div>
               <p className="text-xs text-muted-foreground mt-1.5 truncate">↑ 12.5% Increase</p>
             </CardContent>
           </Card>
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">GROSS PROFIT</CardTitle>
-              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600"><ArrowUpRight size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><ArrowUpRight size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
-              <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 min-w-0 truncate">₹{(summary.grossProfit || 0).toLocaleString('en-IN')}</div>
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 dark:text-green-400 min-w-0 truncate">₹{(summary.grossProfit || 0).toLocaleString('en-IN')}</div>
               <p className="text-xs text-muted-foreground mt-1.5 truncate">63.3% Gross Margin</p>
             </CardContent>
           </Card>
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">OP. EXPENSES</CardTitle>
-              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600"><TrendingDown size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"><TrendingDown size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
-              <div className="text-lg lg:text-2xl font-bold tracking-tight text-yellow-600 min-w-0 truncate">₹{(summary.operatingExpenses || 0).toLocaleString('en-IN')}</div>
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-yellow-600 dark:text-yellow-400 min-w-0 truncate">₹{(summary.operatingExpenses || 0).toLocaleString('en-IN')}</div>
               <p className="text-xs text-muted-foreground mt-1.5 truncate">Managed Efficiently</p>
             </CardContent>
           </Card>
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">NET PROFIT (YTD)</CardTitle>
-              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600"><DollarSign size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"><DollarSign size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
-              <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 min-w-0 truncate">₹{(summary.netProfit || 0).toLocaleString('en-IN')}</div>
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 dark:text-green-400 min-w-0 truncate">₹{(summary.netProfit || 0).toLocaleString('en-IN')}</div>
               <p className="text-xs text-muted-foreground mt-1.5 truncate">+ TARGET ACHIEVED</p>
             </CardContent>
           </Card>
@@ -166,15 +166,15 @@ const CompanyLedgerReportPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Detailed Statement Table */}
           <div className="col-span-2">
-            <Card className="rounded-2xl border border-gray-200 p-0 shadow-sm">
+            <Card className="rounded-2xl border border-gray-200 dark:border-slate-700 p-0 shadow-sm">
               <div className="flex items-center justify-between px-6 pt-6 pb-2">
-                <h3 className="text-lg font-semibold text-gray-900">Detailed Statement</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Detailed Statement</h3>
                 <Button variant="ghost" size="sm"><FileText className="w-4 h-4 mr-2" />Export PDF</Button>
               </div>
               <div className="overflow-x-auto px-6 pb-6">
                 <table className="min-w-full text-sm">
                   <thead>
-                    <tr className="text-gray-500 border-b">
+                    <tr className="text-gray-500 dark:text-slate-400 border-b dark:border-slate-700">
                       <th className="py-2 text-left font-medium">PARTICULARS</th>
                       <th className="py-2 text-right font-medium">AMOUNT (₹)</th>
                     </tr>
@@ -183,12 +183,12 @@ const CompanyLedgerReportPage = () => {
                     {detailedStatement.map((section, idx) => (
                       <React.Fragment key={idx}>
                         {section.section && (
-                          <tr className="bg-gray-50">
-                            <td colSpan={2} className="py-2 font-semibold text-gray-700 uppercase tracking-wider">{section.section}</td>
+                          <tr className="bg-gray-50 dark:bg-slate-800">
+                            <td colSpan={2} className="py-2 font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider">{section.section}</td>
                           </tr>
                         )}
                         {section.items.map((item, j) => (
-                          <tr key={j} className={item.highlight ? (item.positive ? 'bg-green-50' : item.dark ? 'bg-gray-900 text-white' : 'bg-gray-100') : ''}>
+                          <tr key={j} className={item.highlight ? (item.positive ? 'bg-green-50 dark:bg-emerald-500/10' : item.dark ? 'bg-gray-900 dark:bg-emerald-500/15 text-white dark:text-emerald-300' : 'bg-gray-100 dark:bg-slate-800') : ''}>
                             <td className={
                               'py-1 px-2 ' +
                               (item.bold ? 'font-bold ' : '') +
@@ -198,8 +198,8 @@ const CompanyLedgerReportPage = () => {
                               'py-1 px-2 text-right ' +
                               (item.bold ? 'font-bold ' : '') +
                               (item.negative ? 'text-red-500 ' : '') +
-                              (item.positive ? 'text-green-600 ' : '') +
-                              (item.dark ? 'text-white ' : '')
+                              (item.positive ? 'text-green-600 dark:text-green-400 ' : '') +
+                              (item.dark ? 'text-white dark:text-emerald-300 ' : '')
                             }>
                               ₹{Math.abs(item.amount || 0).toLocaleString('en-IN')}
                             </td>
@@ -243,7 +243,7 @@ const CompanyLedgerReportPage = () => {
                       'w-2 h-2 rounded-full ' +
                       (log.status === 'success' ? 'bg-green-500' : log.status === 'warning' ? 'bg-orange-400' : 'bg-blue-400')
                     }></span>
-                    <span className="font-medium text-gray-900">{log.label}</span>
+                    <span className="font-medium text-gray-900 dark:text-slate-100">{log.label}</span>
                     <span className="text-gray-400 ml-auto">{log.user} • {log.time}</span>
                   </div>
                 ))}
