@@ -74,9 +74,9 @@ const PendingPurchasesPage = () => {
 
   const getStatusColor = (status?: string) => {
     switch (status) {
-      case 'pending': return 'bg-red-100 text-red-800'
-      case 'partial': return 'bg-yellow-100 text-yellow-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'pending': return 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300'
+      case 'partial': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-300'
+      default: return 'bg-gray-100 text-gray-800 dark:bg-slate-500/15 dark:text-slate-300'
     }
   }
 
@@ -161,9 +161,9 @@ const PendingPurchasesPage = () => {
             <div className="md:w-[320px]">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Search</label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400 w-4 h-4" />
                 <Input
-                  placeholder="Search by order number, supplier, or mobile..."
+                  placeholder="Search by order number or mobile..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-10 rounded-full pl-9"
@@ -191,60 +191,60 @@ const PendingPurchasesPage = () => {
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Total Pending</CardTitle>
-              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600"><AlertCircle size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400"><AlertCircle size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
-              <div className="text-lg lg:text-2xl font-bold tracking-tight text-red-600 min-w-0 truncate">{stats.totalPendingPurchases}</div>
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-red-600 dark:text-red-400 min-w-0 truncate">{stats.totalPendingPurchases}</div>
             </CardContent>
           </Card>
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Outstanding Amount</CardTitle>
-              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600"><CircleDollarSign size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400"><CircleDollarSign size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
-              <div className="text-lg lg:text-2xl font-bold tracking-tight text-orange-600 min-w-0 truncate">₹{stats.totalOutstandingAmount.toLocaleString('en-IN')}</div>
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-orange-600 dark:text-orange-400 min-w-0 truncate">₹{stats.totalOutstandingAmount.toLocaleString('en-IN')}</div>
             </CardContent>
           </Card>
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Amount Paid</CardTitle>
-              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600"><CheckCircle size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><CheckCircle size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
-              <div className="text-lg lg:text-2xl font-bold tracking-tight text-blue-600 min-w-0 truncate">₹{stats.totalAdvancePaid.toLocaleString('en-IN')}</div>
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-blue-600 dark:text-blue-400 min-w-0 truncate">₹{stats.totalAdvancePaid.toLocaleString('en-IN')}</div>
             </CardContent>
           </Card>
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Total Weight</CardTitle>
-              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-purple-600"><Scale size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400"><Scale size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
-              <div className="text-lg lg:text-2xl font-bold tracking-tight text-purple-600 min-w-0 truncate">{stats.totalWeight.toLocaleString('en-IN')} kg</div>
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-purple-600 dark:text-purple-400 min-w-0 truncate">{stats.totalWeight.toLocaleString('en-IN')} kg</div>
             </CardContent>
           </Card>
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Total Volume</CardTitle>
-              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600"><Package size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"><Package size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
-              <div className="text-lg lg:text-2xl font-bold tracking-tight text-yellow-600 min-w-0 truncate">₹{summaryStats?.totalAmount?.toLocaleString('en-IN') || 0}</div>
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-yellow-600 dark:text-yellow-400 min-w-0 truncate">₹{summaryStats?.totalAmount?.toLocaleString('en-IN') || 0}</div>
             </CardContent>
           </Card>
         </div>
 
         {/* Table */}
-        <Card className="rounded-2xl border border-gray-200 overflow-hidden">
+        <Card className="rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
           <CardHeader>
             <CardTitle>Pending Purchase Orders</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="text-center py-8 text-gray-500">Loading...</div>
+              <div className="text-center py-8 text-gray-500 dark:text-slate-400">Loading...</div>
             ) : filteredPurchases.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">No pending purchases found</div>
+              <div className="text-center py-8 text-gray-500 dark:text-slate-400">No pending purchases found</div>
             ) : (
               <Table>
                 <TableHeader>
@@ -268,7 +268,7 @@ const PendingPurchasesPage = () => {
                       <TableCell>{purchase.dueDate ? new Date(purchase.dueDate).toLocaleDateString('en-GB') : '—'}</TableCell>
                       <TableCell className="text-right">₹{Number(purchase.totalAmount).toLocaleString('en-IN')}</TableCell>
                       <TableCell className="text-right">₹{Number(purchase.totalPaymentMade || 0).toLocaleString('en-IN')}</TableCell>
-                      <TableCell className="text-right font-semibold text-red-600">
+                      <TableCell className="text-right font-semibold text-red-600 dark:text-red-400">
                         ₹{Number(purchase.balanceAmount || 0).toLocaleString('en-IN')}
                       </TableCell>
                       <TableCell>
@@ -284,8 +284,8 @@ const PendingPurchasesPage = () => {
           </CardContent>
 
           {totalItems > pageSize && (
-            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-200">
-              <div className="text-sm text-gray-500">
+            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700">
+              <div className="text-sm text-gray-500 dark:text-slate-400">
                 Showing <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-medium">{Math.min(currentPage * pageSize, totalItems)}</span> of <span className="font-medium">{totalItems}</span> orders
               </div>
               <div className="flex gap-2">

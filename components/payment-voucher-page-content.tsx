@@ -43,9 +43,9 @@ const METHODS: { key: PaymentMethodVoucher; label: string }[] = [
 ];
 
 const STATUS_BADGE: Record<string, string> = {
-  paid: "bg-green-100 text-green-700",
-  pending: "bg-yellow-100 text-yellow-700",
-  cancelled: "bg-red-100 text-red-700",
+  paid: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  pending: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+  cancelled: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
 const initialFormState = {
@@ -288,19 +288,19 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
                 <Calendar size={12} /> From
               </label>
               <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                className="w-full sm:w-[160px] h-10 rounded-full border border-gray-300 px-3 text-sm" />
+                className="w-full sm:w-[160px] h-10 rounded-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 px-3 text-sm" />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
                 <Calendar size={12} /> To
               </label>
               <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
-                className="w-full sm:w-[160px] h-10 rounded-full border border-gray-300 px-3 text-sm" />
+                className="w-full sm:w-[160px] h-10 rounded-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 px-3 text-sm" />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
               <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full sm:w-[160px] h-10 rounded-full border border-gray-300 px-3 text-sm bg-white">
+                className="w-full sm:w-[160px] h-10 rounded-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 px-3 text-sm">
                 <option value="">All</option>
                 <option value="paid">Paid</option>
                 <option value="pending">Pending</option>
@@ -314,57 +314,57 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
         </Card>
 
         {/* Table */}
-        <div className="bg-white rounded-xl border overflow-x-auto">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border dark:border-slate-700 overflow-x-auto">
           <table className="w-full text-sm min-w-[760px]">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-gray-50 dark:bg-slate-800 border-b dark:border-slate-700">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Voucher #</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Payee</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">Amount</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Method</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Purpose</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                <th className="text-center px-4 py-3 font-medium text-gray-600">Actions</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-300">Voucher #</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-300">Date</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-300">Payee</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600 dark:text-slate-300">Amount</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-300">Method</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-300">Purpose</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-slate-300">Status</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600 dark:text-slate-300">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loadingList ? (
-                <tr><td colSpan={8} className="text-center py-8 text-gray-500">Loading...</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-gray-500 dark:text-slate-400">Loading...</td></tr>
               ) : vouchers.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-8 text-gray-500">No vouchers found</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-gray-500 dark:text-slate-400">No vouchers found</td></tr>
               ) : (
                 vouchers.map((v) => (
-                  <tr key={v.id} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono text-xs">{v.voucherNumber}</td>
-                    <td className="px-4 py-3">{v.voucherDate}</td>
-                    <td className="px-4 py-3">{v.payeeName}</td>
-                    <td className="px-4 py-3 text-right font-medium tabular-nums">
+                  <tr key={v.id} className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                    <td className="px-4 py-3 font-mono text-xs dark:text-slate-200">{v.voucherNumber}</td>
+                    <td className="px-4 py-3 dark:text-slate-200">{v.voucherDate}</td>
+                    <td className="px-4 py-3 dark:text-slate-200">{v.payeeName}</td>
+                    <td className="px-4 py-3 text-right font-medium tabular-nums dark:text-slate-200">
                       ₹{Number(v.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
-                    <td className="px-4 py-3 capitalize">{v.paymentMethod.replace(/_/g, " ")}</td>
-                    <td className="px-4 py-3 max-w-[150px] truncate">{v.purpose}</td>
+                    <td className="px-4 py-3 capitalize dark:text-slate-200">{v.paymentMethod.replace(/_/g, " ")}</td>
+                    <td className="px-4 py-3 max-w-[150px] truncate dark:text-slate-200">{v.purpose}</td>
                     <td className="px-4 py-3">
-                      <span className={cn("inline-block px-2 py-0.5 rounded-full text-xs font-medium", STATUS_BADGE[v.status] || "bg-gray-100 text-gray-600")}>
+                      <span className={cn("inline-block px-2 py-0.5 rounded-full text-xs font-medium", STATUS_BADGE[v.status] || "bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300")}>
                         {v.status}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1">
-                        <button onClick={() => openEdit(v)} className="p-1.5 rounded hover:bg-gray-100 text-blue-600" title="Edit">
+                        <button onClick={() => openEdit(v)} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-700 text-blue-600" title="Edit">
                           <Pencil className="size-4" />
                         </button>
                         {v.status !== "cancelled" && (
-                          <button onClick={() => handleCancel(v.id)} className="p-1.5 rounded hover:bg-gray-100 text-red-600" title="Cancel">
+                          <button onClick={() => handleCancel(v.id)} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-700 text-red-600" title="Cancel">
                             <XCircle className="size-4" />
                           </button>
                         )}
                         {v.status === "pending" && (
-                          <button onClick={() => handleApprove(v.id)} className="p-1.5 rounded hover:bg-gray-100 text-green-600" title="Approve">
+                          <button onClick={() => handleApprove(v.id)} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-700 text-green-600" title="Approve">
                             <CheckCircle className="size-4" />
                           </button>
                         )}
-                        <button onClick={() => confirmDelete(v)} className="p-1.5 rounded hover:bg-gray-100 text-red-600" title="Delete">
+                        <button onClick={() => confirmDelete(v)} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-700 text-red-600" title="Delete">
                           <Trash2 className="size-4" />
                         </button>
                       </div>
@@ -385,11 +385,11 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
           </DialogHeader>
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
-              <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700">
+              <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700 dark:text-slate-300">
                 {config.payeeLabel}
               </label>
               {loadingParties ? (
-                <div className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-500 bg-gray-50">
+                <div className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-4 py-3 text-sm text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-800">
                   Loading payee list...
                 </div>
               ) : (
@@ -401,7 +401,7 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
                     const party = parties.find((p) => String(p.id) === idVal);
                     if (party) setForm((prev) => ({ ...prev, payeeName: party.name }));
                   }}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black"
+                  className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-4 py-3 text-sm bg-white dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-emerald-500"
                   required
                 >
                   <option value="">Select Payee...</option>
@@ -416,19 +416,19 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700">
+                <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700 dark:text-slate-300">
                   VOUCHER / PAYMENT DATE *
                 </label>
                 <input
                   type="date"
                   value={form.voucherDate}
                   onChange={(e) => setForm((prev) => ({ ...prev, voucherDate: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                  className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-4 py-3 text-sm dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-emerald-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700">
+                <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700 dark:text-slate-300">
                   RECEIPT / REFERENCE NUMBER
                 </label>
                 <input
@@ -436,13 +436,13 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
                   value={form.transactionReference}
                   onChange={(e) => setForm((prev) => ({ ...prev, transactionReference: e.target.value }))}
                   placeholder="Bank ref, receipt no..."
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                  className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-4 py-3 text-sm dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-emerald-500"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700">
+              <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700 dark:text-slate-300">
                 PAYMENT TYPE *
               </label>
               <div className="flex flex-wrap gap-3">
@@ -454,8 +454,8 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
                     className={cn(
                       "px-5 py-2 rounded-lg text-sm font-medium transition",
                       form.paymentMethod === key
-                        ? "bg-black text-white"
-                        : "border border-gray-300 hover:bg-gray-100"
+                        ? "bg-black text-white dark:bg-emerald-600 dark:text-white"
+                        : "border border-gray-300 dark:border-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700"
                     )}
                   >
                     {label}
@@ -468,51 +468,51 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {form.paymentMethod === "cheque" && (
                   <div>
-                    <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700">
+                    <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700 dark:text-slate-300">
                       CHEQUE NUMBER *
                     </label>
                     <input
                       type="text"
                       value={form.chequeNumber}
                       onChange={(e) => setForm((prev) => ({ ...prev, chequeNumber: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                      className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-4 py-3 text-sm dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-emerald-500"
                       required={form.paymentMethod === "cheque"}
                     />
                   </div>
                 )}
                 <div className={form.paymentMethod === "cheque" ? "" : "md:col-span-2"}>
-                  <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700">
+                  <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700 dark:text-slate-300">
                     BANK NAME
                   </label>
                   <input
                     type="text"
                     value={form.bankName}
                     onChange={(e) => setForm((prev) => ({ ...prev, bankName: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                    className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-4 py-3 text-sm dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-emerald-500"
                   />
                 </div>
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700">
+              <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700 dark:text-slate-300">
                 PURPOSE (SHORT) *
               </label>
               <input
                 type="text"
                 value={form.purpose}
                 onChange={(e) => setForm((prev) => ({ ...prev, purpose: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-4 py-3 text-sm dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-emerald-500"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700">
+              <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700 dark:text-slate-300">
                 {config.amountLabel}
               </label>
-              <div className="flex items-center border border-gray-300 rounded-lg px-4 py-3">
-                <span className="text-gray-500 text-lg mr-2">₹</span>
+              <div className="flex items-center border border-gray-300 dark:border-slate-600 rounded-lg px-4 py-3 dark:bg-slate-800">
+                <span className="text-gray-500 dark:text-slate-400 text-lg mr-2">₹</span>
                 <input
                   type="number"
                   min="0"
@@ -520,14 +520,14 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
                   value={form.amount}
                   onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
                   placeholder="0.00"
-                  className="flex-1 outline-none text-lg font-semibold"
+                  className="flex-1 outline-none text-lg font-semibold dark:text-slate-200 dark:bg-transparent"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700">
+              <label className="block text-xs font-semibold tracking-wide mb-2 text-gray-700 dark:text-slate-300">
                 DESCRIPTION / NOTES
               </label>
               <textarea
@@ -535,14 +535,14 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
                 value={form.description}
                 onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
                 placeholder="Additional details..."
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-black"
+                className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-4 py-3 text-sm resize-none dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-emerald-500"
               />
             </div>
 
             <Button
               type="submit"
               disabled={submitting}
-              className="w-full py-6 rounded-xl font-semibold text-base bg-black hover:bg-gray-900"
+              className="w-full py-6 rounded-xl font-semibold text-base bg-black hover:bg-gray-900 dark:bg-emerald-600 dark:hover:bg-emerald-700"
             >
               {submitting ? "Saving..." : editingId ? "UPDATE VOUCHER" : "SAVE VOUCHER"}
             </Button>

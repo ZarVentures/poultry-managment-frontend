@@ -57,10 +57,10 @@ export default function BillingDashboard() {
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          <StatCard title="Total Retailers" value={loading ? '...' : stats.totalParties} icon={Users} color="text-blue-600" chipClass="bg-blue-100 text-blue-600" />
-          <StatCard title="Total Sales" value={loading ? '...' : `₹${(stats.totalSales / 1000).toFixed(0)}K`} icon={ShoppingCart} color="text-green-600" chipClass="bg-emerald-100 text-emerald-600" />
-          <StatCard title="Outstanding" value={loading ? '...' : `₹${(stats.outstanding / 1000).toFixed(0)}K`} icon={TrendingUp} color="text-red-600" chipClass="bg-red-100 text-red-600" />
-          <StatCard title="Pending Purchases" value={loading ? '...' : `₹${(stats.totalPurchases / 1000).toFixed(0)}K`} icon={BookOpen} color="text-yellow-600" chipClass="bg-amber-100 text-amber-600" />
+          <StatCard title="Total Retailers" value={loading ? '...' : stats.totalParties} icon={Users} color="text-blue-600 dark:text-blue-400" chipClass="bg-blue-100 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400" />
+          <StatCard title="Total Sales" value={loading ? '...' : `₹${(stats.totalSales / 1000).toFixed(0)}K`} icon={ShoppingCart} color="text-green-600 dark:text-green-400" chipClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" />
+          <StatCard title="Outstanding" value={loading ? '...' : `₹${(stats.outstanding / 1000).toFixed(0)}K`} icon={TrendingUp} color="text-red-600 dark:text-red-400" chipClass="bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400" />
+          <StatCard title="Pending Purchases" value={loading ? '...' : `₹${(stats.totalPurchases / 1000).toFixed(0)}K`} icon={BookOpen} color="text-yellow-600 dark:text-yellow-400" chipClass="bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400" />
         </div>
 
         <div>

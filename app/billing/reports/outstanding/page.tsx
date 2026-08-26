@@ -136,7 +136,7 @@ const OutstandingReportPage = () => {
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Total Retailers</CardTitle>
-              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600"><Users size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"><Users size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
               <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 min-w-0 truncate">{totalRetailersCount}</div>
@@ -202,11 +202,11 @@ const OutstandingReportPage = () => {
           </div>
         </Card>
 
-        <Card className="rounded-2xl border border-gray-200 overflow-hidden">
+        <Card className="rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50">
+                <TableRow className="bg-gray-50 dark:bg-slate-800">
                   <TableHead className="font-semibold">Retailer Name</TableHead>
                   <TableHead className="font-semibold">Phone</TableHead>
                   <TableHead className="text-right font-semibold">Total Sales</TableHead>
@@ -217,18 +217,18 @@ const OutstandingReportPage = () => {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500 dark:text-slate-400">Loading...</TableCell></TableRow>
                 ) : sorted.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500">No retailers found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500 dark:text-slate-400">No retailers found</TableCell></TableRow>
                 ) : sorted.map(r => (
-                  <TableRow key={r.id} className="border-b border-gray-200">
+                  <TableRow key={r.id} className="border-b border-gray-200 dark:border-slate-700">
                     <TableCell className="font-semibold">
-                      <Link href={`/billing/ledger/retailers?retailerId=${r.id}`} className="text-blue-600 hover:underline">{r.name}</Link>
+                      <Link href={`/billing/ledger/retailers?retailerId=${r.id}`} className="text-blue-600 dark:text-blue-400 hover:underline">{r.name}</Link>
                     </TableCell>
                     <TableCell>{r.phone}</TableCell>
                     <TableCell className="text-right">₹{r.totalSales.toLocaleString('en-IN')}</TableCell>
-                    <TableCell className="text-right text-green-600">₹{r.totalReceived.toLocaleString('en-IN')}</TableCell>
-                    <TableCell className="text-right font-bold text-red-600">₹{r.outstanding.toLocaleString('en-IN')}</TableCell>
+                    <TableCell className="text-right text-green-600 dark:text-green-400">₹{r.totalReceived.toLocaleString('en-IN')}</TableCell>
+                    <TableCell className="text-right font-bold text-red-600 dark:text-red-400">₹{r.outstanding.toLocaleString('en-IN')}</TableCell>
                     <TableCell className="text-center">
                       <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(r.outstanding)}`}>
                         {getStatusText(r.outstanding)}
@@ -237,11 +237,11 @@ const OutstandingReportPage = () => {
                   </TableRow>
                 ))}
                 {!loading && sorted.length > 0 && (
-                  <TableRow className="bg-gray-100 font-bold border-t-2 border-gray-300">
+                  <TableRow className="bg-gray-100 dark:bg-slate-800 font-bold border-t-2 border-gray-300 dark:border-slate-600">
                     <TableCell colSpan={2}>TOTAL</TableCell>
                     <TableCell className="text-right">₹{data.reduce((s, r) => s + r.totalSales, 0).toLocaleString('en-IN')}</TableCell>
-                    <TableCell className="text-right text-green-600">₹{data.reduce((s, r) => s + r.totalReceived, 0).toLocaleString('en-IN')}</TableCell>
-                    <TableCell className="text-right text-red-600">₹{totalOutstanding.toLocaleString('en-IN')}</TableCell>
+                    <TableCell className="text-right text-green-600 dark:text-green-400">₹{data.reduce((s, r) => s + r.totalReceived, 0).toLocaleString('en-IN')}</TableCell>
+                    <TableCell className="text-right text-red-600 dark:text-red-400">₹{totalOutstanding.toLocaleString('en-IN')}</TableCell>
                     <TableCell />
                   </TableRow>
                 )}
@@ -250,8 +250,8 @@ const OutstandingReportPage = () => {
           </div>
 
           {totalItems > pageSize && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200">
-              <div className="text-xs sm:text-sm text-gray-500 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 bg-gray-50 dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700">
+              <div className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 text-center sm:text-left">
                 Showing <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span>–<span className="font-medium">{Math.min(currentPage * pageSize, totalItems)}</span> of <span className="font-medium">{totalItems}</span> retailers
               </div>
               <div className="flex gap-2">

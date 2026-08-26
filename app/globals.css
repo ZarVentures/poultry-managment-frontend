@@ -45,40 +45,51 @@
 }
 
 .dark {
-  --background: 0 0% 3.9%;
-  --foreground: 0 0% 98%;
-  --card: 0 0% 3.9%;
-  --card-foreground: 0 0% 98%;
-  --popover: 0 0% 3.9%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 142 76% 36%;
-  --primary-foreground: 0 0% 98%;
-  --secondary: 0 0% 14.9%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 0 0% 14.9%;
-  --muted-foreground: 0 0% 63.9%;
-  --accent: 0 0% 14.9%;
-  --accent-foreground: 0 0% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 14.9%;
-  --input: 0 0% 14.9%;
-  --ring: 0 0% 83.1%;
-  --chart-1: 220 70% 50%;
-  --chart-2: 160 60% 45%;
-  --chart-3: 30 80% 55%;
-  --chart-4: 280 65% 60%;
-  --chart-5: 340 75% 55%;
+  /* Deep Navy + Dark Slate palette */
+  --background: 215 56% 5%;
+  --foreground: 210 40% 98%;
+
+  --card: 215 41% 8%;
+  --card-foreground: 210 40% 98%;
+
+  --popover: 215 41% 8%;
+  --popover-foreground: 210 40% 98%;
+
+  /* Primary: Emerald */
+  --primary: 160 84% 39%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 218 44% 10%;
+  --secondary-foreground: 210 40% 98%;
+
+  --muted: 218 44% 10%;
+  --muted-foreground: 215 16% 47%;
+
+  --accent: 218 44% 10%;
+  --accent-foreground: 210 40% 98%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 217 33% 17%;
+  --input: 217 33% 17%;
+  --ring: 160 84% 39%;
+
+  --chart-1: 160 84% 39%;
+  --chart-2: 170 76% 40%;
+  --chart-3: 160 60% 25%;
+  --chart-4: 38 92% 50%;
+  --chart-5: 0 84% 60%;
 
   /* Sidebar */
-  --sidebar: 233 23% 30%;
-  --sidebar-foreground: 0 0% 100%;
-  --sidebar-primary: 0 0% 100%;
-  --sidebar-primary-foreground: 233 23% 30%;
-  --sidebar-accent: 233 20% 32%;
-  --sidebar-accent-foreground: 0 0% 100%;
-  --sidebar-border: 233 18% 34%;
-  --sidebar-ring: 217.2 91.2% 59.8%;
+  --sidebar: 220 42% 5%;
+  --sidebar-foreground: 210 40% 98%;
+  --sidebar-primary: 210 40% 98%;
+  --sidebar-primary-foreground: 220 42% 5%;
+  --sidebar-accent: 218 33% 8%;
+  --sidebar-accent-foreground: 210 40% 98%;
+  --sidebar-border: 217 25% 12%;
+  --sidebar-ring: 160 84% 39%;
 }
 
 @layer base {
@@ -123,33 +134,33 @@
 }
 
 .dark [data-sonner-toast] {
-  background: hsl(var(--card)) !important;
-  border-color: hsl(var(--border)) !important;
-  color: hsl(var(--foreground)) !important;
+  background: hsl(215 41% 8%) !important;
+  border-color: hsl(217 33% 17%) !important;
+  color: hsl(210 40% 98%) !important;
 }
 
 .dark [data-sonner-toast][data-type="success"] {
-  background: hsl(142 76% 20%) !important;
-  border-color: hsl(142 76% 36%) !important;
-  color: hsl(142 76% 92%) !important;
+  background: hsl(160 84% 15%) !important;
+  border-color: hsl(160 84% 39%) !important;
+  color: hsl(142 71% 80%) !important;
 }
 
 .dark [data-sonner-toast][data-type="error"] {
-  background: hsl(0 84% 25%) !important;
+  background: hsl(0 84% 18%) !important;
   border-color: hsl(0 84% 60%) !important;
-  color: hsl(0 84% 92%) !important;
+  color: hsl(0 84% 90%) !important;
 }
 
 .dark [data-sonner-toast][data-type="warning"] {
-  background: hsl(43 96% 25%) !important;
-  border-color: hsl(43 96% 50%) !important;
-  color: hsl(43 96% 92%) !important;
+  background: hsl(38 92% 15%) !important;
+  border-color: hsl(38 92% 50%) !important;
+  color: hsl(38 92% 90%) !important;
 }
 
 .dark [data-sonner-toast][data-type="info"] {
-  background: hsl(210 100% 25%) !important;
-  border-color: hsl(210 100% 50%) !important;
-  color: hsl(210 100% 92%) !important;
+  background: hsl(215 56% 10%) !important;
+  border-color: hsl(160 84% 39%) !important;
+  color: hsl(210 40% 90%) !important;
 }
 
 

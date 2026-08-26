@@ -153,26 +153,35 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative overflow-hidden px-4 pb-16 pt-10 sm:pt-14">
+    <div className="relative grid min-h-screen place-items-center px-4 py-12 sm:px-6 lg:px-8">
+      {/* Subtle radial glow */}
       <div
         className="pointer-events-none absolute inset-0 -z-10"
-        style={{ background: "radial-gradient(600px circle at 50% 0%, hsla(142, 76%, 36%, 0.12), transparent 55%)" }}
+        style={{ background: "radial-gradient(700px circle at 50% 30%, hsla(142, 76%, 36%, 0.08), transparent 60%)" }}
       />
-      <div className="mx-auto w-full max-w-md">
-        <div className="mb-6 flex items-center justify-end">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary">
+
+      <div className="w-full max-w-sm">
+        {/* Back link */}
+        <div className="mb-8 flex justify-start">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
             <ArrowLeft className="h-4 w-4" /> Back to Home
           </Link>
         </div>
 
-        <Card className="w-full">
-          <CardHeader className="space-y-2">
+        {/* Card */}
+        <Card className="w-full border-border/60 shadow-lg shadow-black/[0.03]">
+          <CardHeader className="space-y-1 pb-2">
             <div className="text-center">
-              <div className="text-4xl font-bold mb-2">🐔</div>
-              <CardTitle className="text-2xl">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-3xl">
+                🐔
+              </div>
+              <CardTitle className="text-xl font-bold tracking-tight sm:text-2xl">
                 {twoFactorPending ? "Two-Factor Authentication" : "Sign in"}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="mt-1.5 text-sm leading-relaxed">
                 {twoFactorPending
                   ? "Enter the 6-digit code from your authenticator app"
                   : authStep === "phone"
@@ -183,84 +192,131 @@ export default function LoginPage() {
 
             {/* DEV OTP Banner */}
             {devOtp && !twoFactorPending && authStep === "otp" && (
-              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 rounded-md text-center">
-                <p className="text-xs font-medium uppercase tracking-wide mb-0.5">Dev Mode — OTP</p>
-                <p className="text-2xl font-mono font-bold tracking-[0.4em]">{devOtp}</p>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-center dark:border-amber-800 dark:bg-amber-950/40">
+                <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  Dev Mode — OTP
+                </p>
+                <p className="font-mono text-2xl font-bold tracking-[0.4em] text-amber-700 dark:text-amber-300">
+                  {devOtp}
+                </p>
               </div>
             )}
           </CardHeader>
 
-          <CardContent>
+          <CardContent className="pt-2">
             {twoFactorPending ? (
-              <form onSubmit={handle2FAVerify} className="space-y-4">
-                {error && <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-600">{error}</div>}
+              <form onSubmit={handle2FAVerify} className="space-y-5">
+                {error && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400">
+                    {error}
+                  </div>
+                )}
                 <div className="space-y-2">
-                  <Label htmlFor="code">Authenticator Code</Label>
+                  <Label htmlFor="code" className="text-sm font-medium">
+                    Authenticator Code
+                  </Label>
                   <Input
                     id="code" type="text" inputMode="numeric" maxLength={6} placeholder="000000"
                     value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ""))}
-                    className="text-center text-2xl tracking-widest" autoFocus required
+                    className="h-12 text-center text-2xl tracking-widest" autoFocus required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading || twoFactorCode.length !== 6}>
+                <Button
+                  type="submit"
+                  className="h-11 w-full rounded-xl text-sm font-semibold"
+                  disabled={isLoading || twoFactorCode.length !== 6}
+                >
                   {isLoading ? "Verifying…" : "Verify"}
                 </Button>
-                <Button type="button" variant="ghost" className="w-full text-sm"
-                  onClick={() => { setTwoFactorPending(false); setTwoFactorCode(""); setError("") }}>
+                <Button
+                  type="button" variant="ghost" className="w-full text-sm text-muted-foreground"
+                  onClick={() => { setTwoFactorPending(false); setTwoFactorCode(""); setError("") }}
+                >
                   ← Back
                 </Button>
               </form>
             ) : authStep === "phone" ? (
-              <form onSubmit={handleSendOtp} className="space-y-4">
-                {error && <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-sm text-red-600 dark:text-red-400">{error}</div>}
+              <form onSubmit={handleSendOtp} className="space-y-5">
+                {error && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400">
+                    {error}
+                  </div>
+                )}
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <div className="flex">
-                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground text-sm">+91</span>
+                  <Label htmlFor="phone" className="text-sm font-medium">
+                    Phone Number
+                  </Label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                      +91
+                    </span>
                     <Input
                       id="phone" type="tel" inputMode="numeric" placeholder="98765 43210"
                       value={phoneRaw} onChange={(e) => setPhoneRaw(e.target.value)}
-                      className="rounded-l-none" maxLength={14} required autoFocus
+                      className="h-11 rounded-xl pl-14" maxLength={14} required autoFocus
                     />
                   </div>
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button
+                  type="submit"
+                  className="h-11 w-full rounded-xl text-sm font-semibold"
+                  disabled={isLoading}
+                >
                   {isLoading ? "Sending OTP…" : "Send OTP"}
                 </Button>
                 <p className="text-center text-sm text-muted-foreground">
                   Don&apos;t have an account?{" "}
-                  <Link href="/signup" className="font-semibold text-primary hover:underline">Sign up</Link>
+                  <Link href="/signup" className="font-semibold text-primary hover:underline">
+                    Sign up
+                  </Link>
                 </p>
               </form>
             ) : (
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
-                {error && <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-sm text-red-600 dark:text-red-400">{error}</div>}
+              <form onSubmit={handleVerifyOtp} className="space-y-5">
+                {error && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400">
+                    {error}
+                  </div>
+                )}
                 <div className="space-y-2">
-                  <Label htmlFor="otp">Enter 6-digit OTP</Label>
+                  <Label htmlFor="otp" className="text-sm font-medium">
+                    Enter 6-digit OTP
+                  </Label>
                   <Input
                     id="otp" type="text" inputMode="numeric" placeholder="● ● ● ● ● ●"
                     value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    className="text-center text-2xl tracking-[0.5em]" maxLength={6} autoFocus required
+                    className="h-12 text-center text-2xl tracking-[0.5em]" maxLength={6} autoFocus required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading || otp.length !== 6}>
+                <Button
+                  type="submit"
+                  className="h-11 w-full rounded-xl text-sm font-semibold"
+                  disabled={isLoading || otp.length !== 6}
+                >
                   {isLoading ? "Verifying…" : "Verify & Sign In"}
                 </Button>
 
                 {/* Resend OTP */}
                 <div className="text-center text-sm">
                   {cooldown > 0 ? (
-                    <p className="text-muted-foreground">Resend OTP in <span className="font-semibold text-foreground">{cooldown}s</span></p>
+                    <p className="text-muted-foreground">
+                      Resend OTP in{" "}
+                      <span className="font-semibold text-foreground">{cooldown}s</span>
+                    </p>
                   ) : (
-                    <button type="button" onClick={handleResendOtp} disabled={isLoading}
-                      className="text-primary hover:underline font-semibold disabled:opacity-50">
+                    <button
+                      type="button" onClick={handleResendOtp} disabled={isLoading}
+                      className="font-semibold text-primary hover:underline disabled:opacity-50"
+                    >
                       Resend OTP
                     </button>
                   )}
                 </div>
 
-                <Button type="button" variant="ghost" className="w-full text-sm"
-                  onClick={() => { setAuthStep("phone"); setOtp(""); setError(""); setDevOtp("") }}>
+                <Button
+                  type="button" variant="ghost" className="w-full text-sm text-muted-foreground"
+                  onClick={() => { setAuthStep("phone"); setOtp(""); setError(""); setDevOtp("") }}
+                >
                   ← Change phone number
                 </Button>
               </form>

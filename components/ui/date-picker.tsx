@@ -40,7 +40,7 @@ export function DatePicker({
     <div className="relative w-full">
       
       {/* Icon */}
-      <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+      <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400" size={16} />
 
       <AntDatePicker
         value={parsed ? dayjs(parsed, "YYYY-MM-DD") : null}
@@ -63,6 +63,7 @@ export function DatePicker({
           focus-within:border-green-600 
           transition-all duration-200
           [&_input]:font-normal [&_input]:text-sm
+          dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:hover:border-emerald-400 dark:focus-within:border-emerald-500 dark:[&_input]:text-slate-200 dark:[&_input]:placeholder:text-slate-400
           ${className}
         `}
       />

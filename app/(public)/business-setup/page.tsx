@@ -134,33 +134,37 @@ export default function BusinessSetupPage() {
 
   if (checking) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="grid min-h-screen place-items-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
-    <div className="relative overflow-hidden px-4 pb-16 pt-10 sm:pt-14">
+    <div className="relative grid min-h-screen place-items-center px-4 py-12 sm:px-6 lg:px-8">
       <div
         className="pointer-events-none absolute inset-0 -z-10"
-        style={{ background: "radial-gradient(600px circle at 50% 0%, hsla(142, 76%, 36%, 0.12), transparent 55%)" }}
+        style={{ background: "radial-gradient(700px circle at 50% 30%, hsla(142, 76%, 36%, 0.08), transparent 60%)" }}
       />
-      <div className="mx-auto w-full max-w-md">
-        <div className="mb-6 flex items-center justify-end">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary">
+
+      <div className="w-full max-w-xl">
+        <div className="mb-8 flex justify-start">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
             <ArrowLeft className="h-4 w-4" /> Back to Home
           </Link>
         </div>
 
-        <Card className="w-full">
-          <CardHeader className="space-y-2">
+        <Card className="w-full border-border/60 shadow-lg shadow-black/[0.03]">
+          <CardHeader className="space-y-1 pb-2">
             <div className="text-center">
-              <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <Building2 className="h-7 w-7" />
               </div>
-              <CardTitle className="text-2xl">Create your business</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-xl font-bold tracking-tight sm:text-2xl">Create your business</CardTitle>
+              <CardDescription className="mt-1.5 text-sm leading-relaxed">
                 {submitted
                   ? "Business created successfully!"
                   : "Set up your business profile to get started."}
@@ -168,38 +172,45 @@ export default function BusinessSetupPage() {
             </div>
           </CardHeader>
 
-          <CardContent>
+          <CardContent className="pt-2">
             {submitted ? (
-              <div className="text-center space-y-4 py-4">
-                <CheckCircle2 className="h-16 w-16 text-primary mx-auto" />
+              <div className="space-y-4 py-4 text-center">
+                <CheckCircle2 className="mx-auto h-16 w-16 text-primary" />
                 <p className="text-lg font-semibold">Your business is ready!</p>
-                <p className="text-muted-foreground text-sm">Redirecting to your dashboard…</p>
+                <p className="text-sm text-muted-foreground">Redirecting to your dashboard…</p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-5">
                 {error && (
-                  <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-sm text-red-600 dark:text-red-400">
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400">
                     {error}
                   </div>
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="businessName">Business Name *</Label>
+                  <Label htmlFor="businessName" className="text-sm font-medium">
+                    Business Name *
+                  </Label>
                   <Input
                     id="businessName"
                     placeholder="e.g. Sharma Poultry Traders"
                     value={formData.businessName}
                     onChange={(e) => setFormData((f) => ({ ...f, businessName: e.target.value }))}
                     disabled={isLoading}
+                    className="h-11 rounded-xl"
                     required
                     autoFocus
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="businessType">Business Type *</Label>
+                  <Label htmlFor="businessType" className="text-sm font-medium">
+                    Business Type *
+                  </Label>
                   <Select value={formData.businessType} onValueChange={(v) => setFormData((f) => ({ ...f, businessType: v }))} disabled={isLoading}>
-                    <SelectTrigger id="businessType"><SelectValue placeholder="Select business type" /></SelectTrigger>
+                    <SelectTrigger id="businessType" className="!h-11 !rounded-xl">
+                      <SelectValue placeholder="Select business type" />
+                    </SelectTrigger>
                     <SelectContent>
                       {BUSINESS_TYPES.map((type) => (
                         <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
@@ -209,19 +220,24 @@ export default function BusinessSetupPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="businessLocation">Location</Label>
+                  <Label htmlFor="businessLocation" className="text-sm font-medium">
+                    Location
+                  </Label>
                   <Input
                     id="businessLocation"
                     placeholder="City, State"
                     value={formData.businessLocation}
                     onChange={(e) => setFormData((f) => ({ ...f, businessLocation: e.target.value }))}
                     disabled={isLoading}
+                    className="h-11 rounded-xl"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="businessEmail">Email</Label>
+                    <Label htmlFor="businessEmail" className="text-sm font-medium">
+                      Email
+                    </Label>
                     <Input
                       id="businessEmail"
                       type="email"
@@ -229,10 +245,13 @@ export default function BusinessSetupPage() {
                       value={formData.businessEmail}
                       onChange={(e) => setFormData((f) => ({ ...f, businessEmail: e.target.value }))}
                       disabled={isLoading}
+                      className="h-11 rounded-xl"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="businessPhone">Phone</Label>
+                    <Label htmlFor="businessPhone" className="text-sm font-medium">
+                      Phone
+                    </Label>
                     <Input
                       id="businessPhone"
                       type="tel"
@@ -240,15 +259,20 @@ export default function BusinessSetupPage() {
                       value={formData.businessPhone}
                       onChange={(e) => setFormData((f) => ({ ...f, businessPhone: e.target.value }))}
                       disabled={isLoading}
+                      className="h-11 rounded-xl"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="currency">Currency</Label>
+                    <Label htmlFor="currency" className="text-sm font-medium">
+                      Currency
+                    </Label>
                     <Select value={formData.currency} onValueChange={(v) => setFormData((f) => ({ ...f, currency: v }))} disabled={isLoading}>
-                      <SelectTrigger id="currency"><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="currency" className="!h-11 !rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         {CURRENCIES.map((c) => (
                           <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
@@ -257,9 +281,13 @@ export default function BusinessSetupPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="countryCode">Country Code</Label>
+                    <Label htmlFor="countryCode" className="text-sm font-medium">
+                      Country Code
+                    </Label>
                     <Select value={formData.countryCode} onValueChange={(v) => setFormData((f) => ({ ...f, countryCode: v }))} disabled={isLoading}>
-                      <SelectTrigger id="countryCode"><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="countryCode" className="!h-11 !rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent className="max-h-60 overflow-y-auto">
                         {COUNTRY_CODES.map((c) => (
                           <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
@@ -269,17 +297,21 @@ export default function BusinessSetupPage() {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button
+                  type="submit"
+                  className="h-11 w-full rounded-xl text-sm font-semibold"
+                  disabled={isLoading}
+                >
                   {isLoading ? (
-                    <><Loader2 className="h-4 w-4 animate-spin mr-2" />Creating business…</>
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating business…</>
                   ) : (
-                    <>Create Business <ArrowRight className="h-4 w-4 ml-2" /></>
+                    <>Create Business <ArrowRight className="ml-2 h-4 w-4" /></>
                   )}
                 </Button>
 
                 <div className="space-y-2 pt-2">
-                  {["Business name & profile", "Currency & country settings", "Ready in under a minute"].map((text) => (
-                    <div key={text} className="flex items-center gap-2 text-sm text-muted-foreground">
+                  {[].map((text) => (
+                    <div key={text} className="flex items-center gap-2.5 text-sm text-muted-foreground">
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />{text}
                     </div>
                   ))}

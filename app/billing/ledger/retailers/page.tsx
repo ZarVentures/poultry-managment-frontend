@@ -289,10 +289,10 @@ ${rowsHtml}
       <div className="space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Retailer Ledger</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-slate-100">Retailer Ledger</h1>
             <p className="text-gray-600 mt-2">Complete ledger including sales, payments, and vouchers</p>
           </div>
-          <Link href="/billing" className="inline-flex items-center rounded-full h-10 border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 print:hidden">
+          <Link href="/billing" className="inline-flex items-center rounded-full h-10 border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-slate-300 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700 print:hidden">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Link>
         </div>
@@ -328,7 +328,7 @@ ${rowsHtml}
               <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600"><Wallet size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
-              <div className="text-lg lg:text-2xl font-bold tracking-tight text-gray-900 min-w-0 truncate">₹{openingBalance.toLocaleString('en-IN')}</div>
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-gray-900 dark:text-slate-100 min-w-0 truncate">₹{openingBalance.toLocaleString('en-IN')}</div>
             </CardContent>
           </Card>
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
@@ -343,7 +343,7 @@ ${rowsHtml}
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Total Payment Received</CardTitle>
-              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600"><TrendingUp size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"><TrendingUp size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
               <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 min-w-0 truncate">₹{totalCredit.toLocaleString('en-IN')}</div>
@@ -366,11 +366,11 @@ ${rowsHtml}
           <Button variant="outline" onClick={handlePrint} type="button" className="rounded-full h-10"><Printer className="w-4 h-4 mr-2" />Print</Button>
         </div>
 
-        <Card className="rounded-2xl border border-gray-200 overflow-hidden print:overflow-visible print:border-none print:shadow-none">
+        <Card className="rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden print:overflow-visible print:border-none print:shadow-none">
           <div className="overflow-x-auto print:overflow-visible">
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50">
+                <TableRow className="bg-gray-50 dark:bg-slate-800">
                   <TableHead>Date</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Reference</TableHead>
@@ -385,25 +385,25 @@ ${rowsHtml}
               </TableHeader>
               <TableBody>
                   {loadingLedger ? (
-                  <TableRow><TableCell colSpan={10} className="text-center py-8 text-gray-500">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} className="text-center py-8 text-gray-500 dark:text-slate-400">Loading...</TableCell></TableRow>
                 ) : (
                   <>
-                    <TableRow className="bg-gray-100 font-medium">
+                    <TableRow className="bg-gray-100 dark:bg-slate-800 font-medium">
                       <TableCell colSpan={9} className="text-right">Opening Balance</TableCell>
                       <TableCell className="text-right font-bold">₹{openingBalance.toLocaleString('en-IN')}</TableCell>
                     </TableRow>
                       {filteredEntries.length === 0 ? (
-                      <TableRow><TableCell colSpan={10} className="text-center py-8 text-gray-500">No transactions found in this date range</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={10} className="text-center py-8 text-gray-500 dark:text-slate-400">No transactions found in this date range</TableCell></TableRow>
                     ) : filteredEntries.map((e, idx) => {
                       const typeLabel = e.referenceType || 'Unknown';
                       const typeColor = 
-                        typeLabel === 'Sale' ? 'bg-orange-100 text-orange-800' :
-                        typeLabel === 'Payment' ? 'bg-green-100 text-green-800' :
-                        typeLabel === 'Voucher' ? 'bg-purple-100 text-purple-800' :
-                        'bg-gray-100 text-gray-800';
+                        typeLabel === 'Sale' ? 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300' :
+                        typeLabel === 'Payment' ? 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300' :
+                        typeLabel === 'Voucher' ? 'bg-purple-100 text-purple-800 dark:bg-purple-500/15 dark:text-purple-300' :
+                        'bg-gray-100 text-gray-800 dark:bg-slate-500/15 dark:text-slate-300';
 
                       return (
-                        <TableRow key={idx} className={`border-b border-gray-200 ${typeLabel === 'Payment' ? 'bg-green-50' : typeLabel === 'Voucher' ? 'bg-purple-50' : ''}`}>
+                        <TableRow key={idx} className={`border-b border-gray-200 dark:border-slate-700 ${typeLabel === 'Payment' ? 'bg-green-50 dark:bg-emerald-500/10' : typeLabel === 'Voucher' ? 'bg-purple-50 dark:bg-purple-500/10' : ''}`}>
                           <TableCell>{new Date(e.date + 'T00:00:00').toLocaleDateString('en-GB')}</TableCell>
                           <TableCell>
                             <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${typeColor}`}>{typeLabel}</span>
@@ -412,20 +412,20 @@ ${rowsHtml}
                           <TableCell className="text-right">{(() => { const m = getEntryMeta(e); return m.totalBirds || '-' })()}</TableCell>
                           <TableCell className="text-right">{(() => { const m = getEntryMeta(e); return m.quantity ? `${m.quantity.toFixed(2)}` : '-' })()}</TableCell>
                           <TableCell className="text-right">{(() => { const m = getEntryMeta(e); return m.rate ? `₹${m.rate.toFixed(2)}` : '-' })()}</TableCell>
-                          <TableCell className="text-gray-600 text-sm max-w-[150px] truncate">-</TableCell>
-                          <TableCell className="text-right text-red-600">{Number(e.debit) > 0 ? `₹${Number(e.debit).toLocaleString('en-IN')}` : '–'}</TableCell>
-                          <TableCell className="text-right text-green-600">{Number(e.credit) > 0 ? `₹${Number(e.credit).toLocaleString('en-IN')}` : '–'}</TableCell>
+                          <TableCell className="text-gray-600 dark:text-slate-500 text-sm max-w-[150px] truncate">-</TableCell>
+                          <TableCell className="text-right text-red-600 dark:text-red-400">{Number(e.debit) > 0 ? `₹${Number(e.debit).toLocaleString('en-IN')}` : '–'}</TableCell>
+                          <TableCell className="text-right text-green-600 dark:text-green-400">{Number(e.credit) > 0 ? `₹${Number(e.credit).toLocaleString('en-IN')}` : '–'}</TableCell>
                           <TableCell className="text-right font-bold">₹{Number(e.balance).toLocaleString('en-IN')}</TableCell>
                         </TableRow>
                       );
                     })}
-                    <TableRow className="bg-gray-50 border-t border-gray-300 font-bold">
+                    <TableRow className="bg-gray-50 dark:bg-slate-800 border-t border-gray-300 dark:border-slate-600 font-bold">
                       <TableCell colSpan={7} className="text-right">TOTAL FOR PERIOD</TableCell>
-                      <TableCell className="text-right text-red-600">₹{totalDebit.toLocaleString('en-IN')}</TableCell>
-                      <TableCell className="text-right text-green-600">₹{totalCredit.toLocaleString('en-IN')}</TableCell>
+                      <TableCell className="text-right text-red-600 dark:text-red-400">₹{totalDebit.toLocaleString('en-IN')}</TableCell>
+                      <TableCell className="text-right text-green-600 dark:text-green-400">₹{totalCredit.toLocaleString('en-IN')}</TableCell>
                       <TableCell className="text-right"></TableCell>
                     </TableRow>
-                    <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-bold text-blue-900">
+                    <TableRow className="bg-blue-50 dark:bg-blue-500/10 border-t-2 border-blue-200 dark:border-blue-500/30 font-bold text-blue-900 dark:text-blue-300">
                       <TableCell colSpan={9} className="text-right">Closing Balance</TableCell>
                       <TableCell className="text-right">₹{closingBalance.toLocaleString('en-IN')}</TableCell>
                     </TableRow>

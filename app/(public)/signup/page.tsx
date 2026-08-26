@@ -116,24 +116,30 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="relative overflow-hidden px-4 pb-16 pt-10 sm:pt-14">
+    <div className="relative grid min-h-screen place-items-center px-4 py-12 sm:px-6 lg:px-8">
       <div
         className="pointer-events-none absolute inset-0 -z-10"
-        style={{ background: "radial-gradient(600px circle at 50% 0%, hsla(142, 76%, 36%, 0.12), transparent 55%)" }}
+        style={{ background: "radial-gradient(700px circle at 50% 30%, hsla(142, 76%, 36%, 0.08), transparent 60%)" }}
       />
-      <div className="mx-auto w-full max-w-md">
-        <div className="mb-6 flex items-center justify-end">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary">
+
+      <div className="w-full max-w-md">
+        <div className="mb-8 flex justify-start">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
             <ArrowLeft className="h-4 w-4" /> Back to Home
           </Link>
         </div>
 
-        <Card className="w-full">
-          <CardHeader className="space-y-2">
+        <Card className="w-full border-border/60 shadow-lg shadow-black/[0.03]">
+          <CardHeader className="space-y-1 pb-2">
             <div className="text-center">
-              <div className="text-4xl font-bold mb-2">🐔</div>
-              <CardTitle className="text-2xl">Create your account</CardTitle>
-              <CardDescription>
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-3xl">
+                🐔
+              </div>
+              <CardTitle className="text-xl font-bold tracking-tight sm:text-2xl">Create your account</CardTitle>
+              <CardDescription className="mt-1.5 text-sm leading-relaxed">
                 {step === "details" && "Enter your name and phone number to get started."}
                 {step === "otp" && `OTP sent to +91 ****${phoneRaw.replace(/\D/g, "").slice(-4)}`}
                 {step === "done" && "Account created successfully!"}
@@ -144,9 +150,15 @@ export default function SignupPage() {
             <div className="flex items-center justify-center gap-2 pt-1">
               {["details", "otp"].map((s, i) => (
                 <div key={s} className="flex items-center gap-2">
-                  <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors
-                    ${step === s ? "bg-primary text-primary-foreground"
-                    : (step === "otp" && i === 0) || step === "done" ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
+                  <div
+                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors
+                      ${step === s
+                        ? "bg-primary text-primary-foreground"
+                        : (step === "otp" && i === 0) || step === "done"
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground"
+                      }`}
+                  >
                     {(step === "otp" && i === 0) || step === "done" ? "✓" : i + 1}
                   </div>
                   {i === 0 && <div className="h-px w-8 bg-border" />}
@@ -156,84 +168,136 @@ export default function SignupPage() {
 
             {/* DEV OTP Banner */}
             {devOtp && step === "otp" && (
-              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 rounded-md text-center">
-                <p className="text-xs font-medium uppercase tracking-wide mb-0.5">Dev Mode — OTP</p>
-                <p className="text-2xl font-mono font-bold tracking-[0.4em]">{devOtp}</p>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-center dark:border-amber-800 dark:bg-amber-950/40">
+                <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  Dev Mode — OTP
+                </p>
+                <p className="font-mono text-2xl font-bold tracking-[0.4em] text-amber-700 dark:text-amber-300">
+                  {devOtp}
+                </p>
               </div>
             )}
           </CardHeader>
 
-          <CardContent>
+          <CardContent className="pt-2">
             {step === "details" && (
-              <form onSubmit={handleSendOtp} className="space-y-4">
-                {error && <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-sm text-red-600 dark:text-red-400">{error}</div>}
+              <form onSubmit={handleSendOtp} className="space-y-5">
+                {error && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400">
+                    {error}
+                  </div>
+                )}
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" placeholder="Your full name" value={name} onChange={e => setName(e.target.value)} required autoFocus />
+                  <Label htmlFor="name" className="text-sm font-medium">
+                    Full Name
+                  </Label>
+                  <Input
+                    id="name" placeholder="Your full name"
+                    value={name} onChange={e => setName(e.target.value)}
+                    className="h-11 rounded-xl" required autoFocus
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <div className="flex">
-                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground text-sm">+91</span>
-                    <Input id="phone" type="tel" inputMode="numeric" placeholder="98765 43210"
-                      value={phoneRaw} onChange={e => setPhoneRaw(e.target.value)} className="rounded-l-none" maxLength={14} required />
+                  <Label htmlFor="phone" className="text-sm font-medium">
+                    Phone Number
+                  </Label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                      +91
+                    </span>
+                    <Input
+                      id="phone" type="tel" inputMode="numeric" placeholder="98765 43210"
+                      value={phoneRaw} onChange={e => setPhoneRaw(e.target.value)}
+                      className="h-11 rounded-xl pl-14" maxLength={14} required
+                    />
                   </div>
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Sending OTP…</> : <>Send OTP <ArrowRight className="h-4 w-4 ml-2" /></>}
+                <Button
+                  type="submit"
+                  className="h-11 w-full rounded-xl text-sm font-semibold"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending OTP…</>
+                  ) : (
+                    <>Send OTP <ArrowRight className="ml-2 h-4 w-4" /></>
+                  )}
                 </Button>
                 <p className="text-center text-sm text-muted-foreground">
                   Already have an account?{" "}
-                  <Link href="/login" className="font-semibold text-primary hover:underline">Sign in</Link>
+                  <Link href="/login" className="font-semibold text-primary hover:underline">
+                    Sign in
+                  </Link>
                 </p>
               </form>
             )}
 
             {step === "otp" && (
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
-                {error && <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-sm text-red-600 dark:text-red-400">{error}</div>}
+              <form onSubmit={handleVerifyOtp} className="space-y-5">
+                {error && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400">
+                    {error}
+                  </div>
+                )}
                 <div className="space-y-2">
-                  <Label htmlFor="otp">Enter 6-digit OTP</Label>
+                  <Label htmlFor="otp" className="text-sm font-medium">
+                    Enter 6-digit OTP
+                  </Label>
                   <Input
                     id="otp" type="text" inputMode="numeric" placeholder="● ● ● ● ● ●"
                     value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    className="text-center text-2xl tracking-[0.5em]" maxLength={6} autoFocus required
+                    className="h-12 text-center text-2xl tracking-[0.5em]" maxLength={6} autoFocus required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading || otp.length !== 6}>
-                  {isLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Creating account…</> : "Verify & Create Account"}
+                <Button
+                  type="submit"
+                  className="h-11 w-full rounded-xl text-sm font-semibold"
+                  disabled={isLoading || otp.length !== 6}
+                >
+                  {isLoading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating account…</>
+                  ) : (
+                    "Verify & Create Account"
+                  )}
                 </Button>
 
                 <div className="text-center text-sm">
                   {cooldown > 0 ? (
-                    <p className="text-muted-foreground">Resend OTP in <span className="font-semibold text-foreground">{cooldown}s</span></p>
+                    <p className="text-muted-foreground">
+                      Resend OTP in{" "}
+                      <span className="font-semibold text-foreground">{cooldown}s</span>
+                    </p>
                   ) : (
-                    <button type="button" onClick={handleResendOtp} disabled={isLoading}
-                      className="text-primary hover:underline font-semibold disabled:opacity-50">
+                    <button
+                      type="button" onClick={handleResendOtp} disabled={isLoading}
+                      className="font-semibold text-primary hover:underline disabled:opacity-50"
+                    >
                       Resend OTP
                     </button>
                   )}
                 </div>
 
-                <Button type="button" variant="ghost" className="w-full text-sm"
-                  onClick={() => { setStep("details"); setOtp(""); setError(""); setDevOtp("") }}>
+                <Button
+                  type="button" variant="ghost" className="w-full text-sm text-muted-foreground"
+                  onClick={() => { setStep("details"); setOtp(""); setError(""); setDevOtp("") }}
+                >
                   ← Change details
                 </Button>
               </form>
             )}
 
             {step === "done" && (
-              <div className="text-center space-y-4 py-4">
-                <CheckCircle2 className="h-16 w-16 text-primary mx-auto" />
+              <div className="space-y-4 py-4 text-center">
+                <CheckCircle2 className="mx-auto h-16 w-16 text-primary" />
                 <p className="text-lg font-semibold">Welcome aboard!</p>
-                <p className="text-muted-foreground text-sm">Setting up your business…</p>
+                <p className="text-sm text-muted-foreground">Setting up your business…</p>
               </div>
             )}
 
             {step === "details" && (
-              <div className="mt-6 space-y-2">
-                {["No password required — OTP only", "Secure 6-digit verification", "Free to get started"].map(text => (
-                  <div key={text} className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="mt-6 space-y-2.5">
+                {[].map(text => (
+                  <div key={text} className="flex items-center gap-2.5 text-sm text-muted-foreground">
                     <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />{text}
                   </div>
                 ))}

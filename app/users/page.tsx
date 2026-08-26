@@ -227,6 +227,8 @@ export default function UsersPage() {
     }
   }, [users])
 
+  const isInactive = (status: string) => status === "inactive"
+
   const filteredUsers = useMemo(() => {
     if (!Array.isArray(users)) return []
 
@@ -253,10 +255,10 @@ export default function UsersPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
-            <h1 className="text-3xl font-bold">User Management</h1>
-            <p className="text-muted-foreground">Manage staff accounts and permissions</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">User Management</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">Manage staff accounts and permissions</p>
           </div>
           {canCreate('users') && (
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
@@ -266,7 +268,7 @@ export default function UsersPage() {
                   Add New User
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-lg max-h-[90vh] flex flex-col overflow-hidden" aria-describedby="dialog-description">
+              <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-lg max-h-[90vh] flex flex-col overflow-hidden" aria-describedby="dialog-description">
                 <DialogHeader className="pb-2 border-b">
                   <DialogTitle className="text-xl font-bold">{editingId ? "Edit User" : "Add New User"}</DialogTitle>
                   <p id="dialog-description" className="sr-only">
@@ -396,120 +398,125 @@ export default function UsersPage() {
           )}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Users</CardTitle>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Users size={18} />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalUsers}</div>
-              <button className="text-xs text-blue-600 hover:underline mt-1">View details</button>
+              <div className="text-xl sm:text-2xl font-bold tracking-tight">{stats.totalUsers}</div>
+              <p className="text-xs text-muted-foreground mt-1.5">All registered accounts</p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-              <UserCheck className="h-4 w-4 text-muted-foreground" />
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Active Users</CardTitle>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-500/10 text-green-600">
+                <UserCheck size={18} />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.activeUsers}</div>
-              <button className="text-xs text-blue-600 hover:underline mt-1">View details</button>
+              <div className="text-xl sm:text-2xl font-bold tracking-tight text-green-600">{stats.activeUsers}</div>
+              <p className="text-xs text-muted-foreground mt-1.5">Currently active</p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Administrators</CardTitle>
-              <Shield className="h-4 w-4 text-muted-foreground" />
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 lg:overflow-hidden">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Administrators</CardTitle>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600">
+                <Shield size={18} />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.administrators}</div>
-              <button className="text-xs text-blue-600 hover:underline mt-1">View details</button>
+              <div className="text-xl sm:text-2xl font-bold tracking-tight text-indigo-600">{stats.administrators}</div>
+              <p className="text-xs text-muted-foreground mt-1.5">Full access</p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Operators</CardTitle>
-              <Briefcase className="h-4 w-4 text-muted-foreground" />
+          <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5">
+            <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Operators</CardTitle>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600">
+                <Briefcase size={18} />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.managers + stats.staff}</div>
-              <button className="text-xs text-blue-600 hover:underline mt-1">View details</button>
+              <div className="text-xl sm:text-2xl font-bold tracking-tight text-blue-600">{stats.managers + stats.staff}</div>
+              <p className="text-xs text-muted-foreground mt-1.5">Managers + staff</p>
             </CardContent>
           </Card>
         </div>
 
-        <Card>
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+          <div className="relative flex-1 md:w-[320px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+            <Input
+              placeholder="Search by name, email, or phone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-10 rounded-full pl-9"
+            />
+          </div>
+          <Button variant="outline" className="!h-10 rounded-full gap-2">
+            <Filter size={16} />
+            Filter
+          </Button>
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger className="!h-10 w-full sm:w-[180px] rounded-full">
+              <SelectValue placeholder="All Roles" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Roles</SelectItem>
+              {dynamicRoles.map(role => (
+                <SelectItem key={role} value={role}>
+                  {role.charAt(0).toUpperCase() + role.slice(1).replace('-', ' ')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="!h-10 w-full sm:w-[180px] rounded-full">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle>User Accounts List</CardTitle>
             <p className="text-sm text-muted-foreground">Manage all user accounts and permissions</p>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex gap-4 items-center">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by name, email, or phone..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <Button variant="outline" className="gap-2">
-                  <Filter size={16} />
-                  Filter
-                </Button>
-              </div>
-
-              <div className="flex gap-4">
-                <Select value={roleFilter} onValueChange={setRoleFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Roles</SelectItem>
-                    {dynamicRoles.map(role => (
-                      <SelectItem key={role} value={role}>
-                        {role.charAt(0).toUpperCase() + role.slice(1).replace('-', ' ')}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {loading && users.length === 0 ? (
-                <p className="text-center py-8 text-muted-foreground">Loading...</p>
-              ) : filteredUsers.length === 0 ? (
-                <p className="text-center py-8 text-muted-foreground">
-                  {searchQuery || roleFilter !== "all" || statusFilter !== "all"
-                    ? "No users match your filters"
-                    : "No users found"}
-                </p>
-              ) : (
+            {loading && users.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">Loading...</p>
+            ) : filteredUsers.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">
+                {searchQuery || roleFilter !== "all" || statusFilter !== "all"
+                  ? "No users match your filters"
+                  : "No users found"}
+              </p>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl border">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
-                      <TableHead>Phone</TableHead>
+                      <TableHead className="hidden md:hidden lg:table-cell">Phone</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Join Date</TableHead>
-                      <TableHead>Last Login</TableHead>
+                      <TableHead className="hidden md:hidden lg:table-cell">Join Date</TableHead>
+                      <TableHead className="hidden md:hidden lg:table-cell">Last Login</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -518,7 +525,7 @@ export default function UsersPage() {
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">{user.name}</TableCell>
                         <TableCell>{user.email}</TableCell>
-                        <TableCell>{user.phone || "-"}</TableCell>
+                        <TableCell className="hidden md:hidden lg:table-cell">{user.phone || "-"}</TableCell>
                         <TableCell>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === 'admin' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
                               user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
@@ -528,20 +535,20 @@ export default function UsersPage() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          <div className="flex items-center gap-2 flex-nowrap">
+                            <span className={`inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium ${user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                               }`}>
                               {user.status === 'active' ? 'Active' : 'Inactive'}
                             </span>
-                            {user.status === 'inactive' && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            {isInactive(user.status) && (
+                              <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                                 Locked
                               </span>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>{new Date(user.joinDate).toLocaleDateString()}</TableCell>
-                        <TableCell>{user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}</TableCell>
+                        <TableCell className="hidden md:hidden lg:table-cell">{new Date(user.joinDate).toLocaleDateString()}</TableCell>
+                        <TableCell className="hidden md:hidden lg:table-cell">{user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}</TableCell>
                         <TableCell>
                           {(canUpdate('users') || canDelete('users')) && (
                             <div className="flex gap-2">
@@ -577,8 +584,8 @@ export default function UsersPage() {
                     ))}
                   </TableBody>
                 </Table>
-              )}
-            </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -1111,26 +1111,26 @@ export default function ReportsPage() {
                 {!stockData ? <p className="text-center py-8 text-muted-foreground">Generate stock report</p> : (
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                      <div className="p-3 sm:p-4 border rounded bg-blue-50 min-w-0">
+                      <div className="p-3 sm:p-4 border rounded bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800/50 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <div className="p-1.5 rounded-md bg-blue-100"><Package size={16} className="text-blue-600" /></div>
+                          <div className="p-1.5 rounded-md bg-blue-100 dark:bg-blue-800/40"><Package size={16} className="text-blue-600 dark:text-blue-300" /></div>
                           <p className="text-xs sm:text-sm text-muted-foreground">Birds in Godown</p>
                         </div>
-                        <p className="text-lg sm:text-2xl font-bold text-blue-600 whitespace-nowrap">{stockData.godown?.currentStock ?? 0}</p>
+                        <p className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-300 whitespace-nowrap">{stockData.godown?.currentStock ?? 0}</p>
                       </div>
-                      <div className="p-3 sm:p-4 border rounded bg-indigo-50 min-w-0">
+                      <div className="p-3 sm:p-4 border rounded bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-800/50 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <div className="p-1.5 rounded-md bg-indigo-100"><Weight size={16} className="text-indigo-600" /></div>
+                          <div className="p-1.5 rounded-md bg-indigo-100 dark:bg-indigo-800/40"><Weight size={16} className="text-indigo-600 dark:text-indigo-300" /></div>
                           <p className="text-xs sm:text-sm text-muted-foreground">Bird Weight</p>
                         </div>
-                        <p className="text-lg sm:text-2xl font-bold text-indigo-600 whitespace-nowrap">{(stockData.godown?.currentWeight ?? 0).toFixed(2)} kg</p>
+                        <p className="text-lg sm:text-2xl font-bold text-indigo-600 dark:text-indigo-300 whitespace-nowrap">{(stockData.godown?.currentWeight ?? 0).toFixed(2)} kg</p>
                       </div>
-                      <div className="p-3 sm:p-4 border rounded bg-teal-50 min-w-0">
+                      <div className="p-3 sm:p-4 border rounded bg-teal-50 dark:bg-teal-900/20 dark:border-teal-800/50 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <div className="p-1.5 rounded-md bg-teal-100"><IndianRupee size={16} className="text-teal-600" /></div>
+                          <div className="p-1.5 rounded-md bg-teal-100 dark:bg-teal-800/40"><IndianRupee size={16} className="text-teal-600 dark:text-teal-300" /></div>
                           <p className="text-xs sm:text-sm text-muted-foreground">Bird Value</p>
                         </div>
-                        <p className="text-lg sm:text-2xl font-bold text-teal-600 whitespace-nowrap">₹{(stockData.godown?.currentValue ?? 0).toFixed(2)}</p>
+                        <p className="text-lg sm:text-2xl font-bold text-teal-600 dark:text-teal-300 whitespace-nowrap">₹{(stockData.godown?.currentValue ?? 0).toFixed(2)}</p>
                       </div>
                     </div>
 

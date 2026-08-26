@@ -148,7 +148,7 @@ export default function DailyDispatchReportPage() {
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Total Birds / Qty</CardTitle>
-              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600"><Hash size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"><Hash size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
               <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 min-w-0 truncate">{summary.quantity.toLocaleString()}</div>
@@ -166,7 +166,7 @@ export default function DailyDispatchReportPage() {
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">Received</CardTitle>
-              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600"><Banknote size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
+              <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"><Banknote size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
               <div className="text-lg lg:text-2xl font-bold tracking-tight text-green-600 min-w-0 truncate">₹{summary.received.toLocaleString()}</div>
@@ -174,7 +174,7 @@ export default function DailyDispatchReportPage() {
           </Card>
         </div>
 
-        <Card className="rounded-2xl border border-gray-200 overflow-hidden">
+        <Card className="rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -191,7 +191,7 @@ export default function DailyDispatchReportPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? <TableRow><TableCell colSpan={9} className="text-center py-8">Loading...</TableCell></TableRow> : sales.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center py-8">No dispatches found</TableCell></TableRow> : sales.map(s => (
+                {loading ? <TableRow><TableCell colSpan={9} className="text-center py-8 dark:text-slate-400">Loading...</TableCell></TableRow> : sales.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center py-8 dark:text-slate-400">No dispatches found</TableCell></TableRow> : sales.map(s => (
                   <TableRow key={`${s.saleMode || "vehicle"}-${s.id}`}>
                     <TableCell className="font-mono">{s.invoiceNumber}</TableCell>
                     <TableCell className="font-semibold">{s.customerName}</TableCell>
@@ -200,9 +200,9 @@ export default function DailyDispatchReportPage() {
                     <TableCell>{Number(s.quantity || 0).toFixed(2)}</TableCell>
                     <TableCell>₹{Number(s.unitPrice || s.ratePerKg || 0).toFixed(2)}</TableCell>
                     <TableCell className="font-bold">₹{Number(s.netAmount || s.totalAmount || 0).toFixed(2)}</TableCell>
-                    <TableCell className="text-green-600 font-semibold">₹{Number(s.amountReceived || 0).toFixed(2)}</TableCell>
+                    <TableCell className="text-green-600 dark:text-green-400 font-semibold">₹{Number(s.amountReceived || 0).toFixed(2)}</TableCell>
                     <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${s.paymentStatus === "paid" ? "bg-green-100 text-green-800" : s.paymentStatus === "partial" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${s.paymentStatus === "paid" ? "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300" : s.paymentStatus === "partial" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-300" : "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300"}`}>
                         {s.paymentStatus}
                       </span>
                     </TableCell>
@@ -212,8 +212,8 @@ export default function DailyDispatchReportPage() {
             </Table>
           </div>
           {totalItems > pageSize && (
-            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t no-print">
-              <div className="text-sm text-gray-500">Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalItems)} of {totalItems}</div>
+            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 dark:bg-slate-800 border-t dark:border-slate-700 no-print">
+              <div className="text-sm text-gray-500 dark:text-slate-400">Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalItems)} of {totalItems}</div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1 || loading}><ChevronLeft size={16} /></Button>
                 <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage * pageSize >= totalItems || loading}><ChevronRight size={16} /></Button>
