@@ -16,6 +16,15 @@ import { usersApi, permissionsApi, type User as ApiUser } from "@/lib/api"
 import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 
+function normalizePhone(raw: string): string {
+  let digits = raw.replace(/\D/g, "")
+  if (digits.startsWith("91") && digits.length >= 12) digits = digits.slice(-10)
+  else if (digits.startsWith("0") && digits.length === 11) digits = digits.slice(1)
+  else if (digits.length > 10) digits = digits.slice(-10)
+  if (digits.length === 10) return `+91${digits}`
+  return raw.trim()
+}
+
 export default function UsersPage() {
   const router = useRouter()
   const { canCreate, canUpdate, canDelete, isAdmin } = usePermissions()
@@ -41,8 +50,8 @@ export default function UsersPage() {
 
   useEffect(() => {
     setMounted(true)
-    fetchUsers()
-  }, [])
+    if (isAdmin) fetchUsers()
+  }, [isAdmin])
 
   useEffect(() => {
     if (isAdmin) {
@@ -104,13 +113,24 @@ export default function UsersPage() {
   }
 
   const handleSave = async () => {
-    if (!formData.name || !formData.email) {
-      toast.error("Please fill all required fields (Name and Email)")
+    if (!formData.name || !formData.email || !formData.phone.trim()) {
+      toast.error("Please fill name, email, and phone")
+      return
+    }
+
+    const phone = normalizePhone(formData.phone)
+    if (!/^\+91[6-9]\d{9}$/.test(phone)) {
+      toast.error("Enter a valid 10-digit Indian mobile number")
       return
     }
 
     if (!editingId && !formData.password) {
       toast.error("Password is required for new users")
+      return
+    }
+
+    if (!editingId && formData.password.length < 6) {
+      toast.error("Password must be at least 6 characters")
       return
     }
 
@@ -121,12 +141,13 @@ export default function UsersPage() {
 
     try {
       setLoading(true)
+      let created: ApiUser | null = null
 
       if (editingId) {
         await usersApi.update(editingId, {
           name: formData.name,
           email: formData.email,
-          phone: formData.phone || undefined,
+          phone,
           role: formData.role,
           status: formData.status,
           notes: formData.notes || undefined,
@@ -134,10 +155,10 @@ export default function UsersPage() {
         })
         toast.success("User updated successfully")
       } else {
-        await usersApi.create({
+        created = await usersApi.create({
           name: formData.name,
           email: formData.email,
-          phone: formData.phone || undefined,
+          phone,
           password: formData.password,
           role: formData.role,
           status: formData.status,
@@ -146,7 +167,19 @@ export default function UsersPage() {
         toast.success("User created successfully")
       }
 
-      await fetchUsers()
+      try {
+        const data = await usersApi.getAll()
+        const list = Array.isArray(data) ? data : []
+        if (created?.id && !list.some((u) => String(u.id) === String(created!.id))) {
+          setUsers([created, ...list])
+        } else {
+          setUsers(list)
+        }
+      } catch {
+        if (created?.id) {
+          setUsers((prev) => [created!, ...prev.filter((u) => String(u.id) !== String(created!.id))])
+        }
+      }
       resetForm()
       setShowDialog(false)
     } catch (error: any) {
@@ -258,7 +291,9 @@ export default function UsersPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">User Management</h1>
-            <p className="text-muted-foreground text-sm sm:text-base">Manage staff accounts and permissions</p>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              Invite people into this organization as admin, manager, or staff. They sign in with email + password or OTP.
+            </p>
           </div>
           {canCreate('users') && (
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
@@ -303,9 +338,12 @@ export default function UsersPage() {
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="Phone number"
+                      placeholder="98765 43210"
                       disabled={loading}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Unique mobile — do not reuse the owner&apos;s number. Staff and managers sign in with email + password or email OTP, not this admin mobile login.
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label>Join Date</Label>
@@ -547,7 +585,9 @@ export default function UsersPage() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="hidden md:hidden lg:table-cell">{new Date(user.joinDate).toLocaleDateString()}</TableCell>
+                        <TableCell className="hidden md:hidden lg:table-cell">
+                          {user.joinDate ? new Date(user.joinDate).toLocaleDateString() : "—"}
+                        </TableCell>
                         <TableCell className="hidden md:hidden lg:table-cell">{user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}</TableCell>
                         <TableCell>
                           {(canUpdate('users') || canDelete('users')) && (

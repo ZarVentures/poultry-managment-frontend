@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { authApi } from "@/lib/api"
+import { finishAuth } from "@/lib/auth-session"
 import { toast } from "sonner"
 
 function normalizePhone(raw: string): string {
@@ -102,12 +103,14 @@ export default function SignupPage() {
 
     try {
       const response = await authApi.registerVerifyOtp(name.trim(), phoneNumber, otp)
-      const res = response as any
-      localStorage.setItem("token", res.accessToken)
-      localStorage.setItem("user", JSON.stringify(res.user))
+      const result = finishAuth(response.accessToken, response.user)
+      if (!result.ok) {
+        setError(result.message)
+        return
+      }
       setStep("done")
-      toast.success("Account created! Welcome to Aziz Poultry!")
-      setTimeout(() => { window.location.href = "/business-setup" }, 1500)
+      toast.success("Account created!")
+      setTimeout(() => { window.location.href = result.href }, 1500)
     } catch (err: any) {
       setError(err.message || "Invalid OTP")
     } finally {
@@ -140,7 +143,7 @@ export default function SignupPage() {
               </div>
               <CardTitle className="text-xl font-bold tracking-tight sm:text-2xl">Create your account</CardTitle>
               <CardDescription className="mt-1.5 text-sm leading-relaxed">
-                {step === "details" && "Enter your name and phone number to get started."}
+                {step === "details" && "Owner signup with mobile OTP. Staff and managers should sign in with email."}
                 {step === "otp" && `OTP sent to +91 ****${phoneRaw.replace(/\D/g, "").slice(-4)}`}
                 {step === "done" && "Account created successfully!"}
               </CardDescription>
@@ -227,6 +230,10 @@ export default function SignupPage() {
                   Already have an account?{" "}
                   <Link href="/login" className="font-semibold text-primary hover:underline">
                     Sign in
+                  </Link>
+                  {" · "}
+                  <Link href="/login?channel=email" className="font-semibold text-primary hover:underline">
+                    Staff email login
                   </Link>
                 </p>
               </form>

@@ -28,6 +28,28 @@ interface User {
   name?: string
 }
 
+function firstAllowedPath(canRead: (resource: string) => boolean): string {
+  const routes: Array<[string, string]> = [
+    ["dashboard", "/dashboard"],
+    ["godown", "/inventory"],
+    ["purchases", "/purchases"],
+    ["sales", "/sales"],
+    ["mortality", "/mortality"],
+    ["expenses", "/expenses"],
+    ["farmers", "/farmers"],
+    ["retailers", "/retailers"],
+    ["vehicles", "/vehicles"],
+    ["reports", "/reports"],
+    ["billing", "/billing"],
+    ["users", "/users"],
+    ["settings", "/settings/general"],
+  ]
+  for (const [resource, href] of routes) {
+    if (canRead(resource)) return href
+  }
+  return "/dashboard"
+}
+
 /** Map current path → Settings permission resource key */
 function resourceForPath(pathname: string): string | null {
   if (pathname.startsWith("/dashboard")) return "dashboard"
@@ -109,14 +131,15 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
     else setSidebarOpen((open) => !open)
   }
 
-  // Block direct URL access when Settings matrix denies View
+  // Wait until the permission matrix has loaded. Each page remounts this
+  // layout, so denying before /permissions/my-permissions returned used to
+  // bounce staff to /settings/general.
   useEffect(() => {
     if (permissionsLoading) return
     const resource = resourceForPath(pathname)
     if (!resource) return
-    if (!canRead(resource)) {
-      router.replace(canRead("dashboard") ? "/dashboard" : "/settings")
-    }
+    if (canRead(resource)) return
+    router.replace(firstAllowedPath(canRead))
   }, [pathname, permissionsLoading, canRead, router])
 
   const handleLogout = () => {

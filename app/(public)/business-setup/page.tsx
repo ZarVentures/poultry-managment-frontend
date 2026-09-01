@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { tenantsApi } from "@/lib/api"
+import { getOrganizationId, persistSession } from "@/lib/auth-session"
 import { toast } from "sonner"
 
 const BUSINESS_TYPES = [
@@ -76,18 +77,7 @@ export default function BusinessSetupPage() {
       return
     }
 
-    // Already has a shop (tenant attached) → straight to dashboard
-    const stored = localStorage.getItem("user")
-    let tenantId: string | null = null
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored)
-        tenantId = parsed?.tenantId ?? null
-      } catch {
-        tenantId = null
-      }
-    }
-    if (tenantId) {
+    if (getOrganizationId()) {
       router.replace("/dashboard")
       return
     }
@@ -119,8 +109,7 @@ export default function BusinessSetupPage() {
         currency: formData.currency,
         countryCode: formData.countryCode,
       })
-      localStorage.setItem("token", accessToken)
-      localStorage.setItem("user", JSON.stringify(user))
+      persistSession(accessToken, user)
       localStorage.setItem("business_created", "true")
       setSubmitted(true)
       toast.success("Business created! Welcome to Poultry Sathi!")

@@ -57,7 +57,8 @@ async function apiRequest<T>(
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           const error = await response.json();
-          errorMessage = error.message || errorMessage;
+          const raw = error.message ?? error.error;
+          errorMessage = Array.isArray(raw) ? raw.filter(Boolean).join(', ') : (raw || errorMessage);
         } else {
           const text = await response.text();
           errorMessage = text || errorMessage;
@@ -151,6 +152,7 @@ export interface User {
   lastLogin?: string;
   notes?: string;
   tenantId?: string;
+  organizationId?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -683,7 +685,7 @@ export const usersApi = {
 
   getOne: (id: string) => apiRequest<User>(`/users/${id}`),
 
-  create: (data: { name: string; email: string; password: string; role: string; status: string; phone?: string; notes?: string }) =>
+  create: (data: { name: string; email: string; password: string; role: string; status: string; phone: string; notes?: string }) =>
     apiRequest<User>('/users', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -730,6 +732,18 @@ export const authApi = {
     apiRequest<{ accessToken: string; user: User } | { status: '2FA_REQUIRED'; tempToken: string }>('/auth/login/verify-otp', {
       method: 'POST',
       body: JSON.stringify({ phoneNumber, otp }),
+    }),
+
+  loginSendEmailOtp: (email: string) =>
+    apiRequest<{ message: string; devOtp: string }>('/auth/login/email/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  loginVerifyEmailOtp: (email: string, otp: string) =>
+    apiRequest<{ accessToken: string; user: User } | { status: '2FA_REQUIRED'; tempToken: string }>('/auth/login/email/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp }),
     }),
 
   // ── Phone + OTP: Registration ─────────────────────────────────────────────
