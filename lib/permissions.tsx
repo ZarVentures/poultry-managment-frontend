@@ -41,6 +41,8 @@ const DENY: PermissionCheck = {
   canDelete: false,
 }
 
+const EMPTY_PERMISSIONS: Record<string, PermissionCheck> = {}
+
 const ALLOW_ALL: PermissionCheck = {
   canCreate: true,
   canRead: true,
@@ -102,7 +104,11 @@ function usePermissionsState(
   )
   const normalizedRole = normalizeRole(roleProp) || storedRole
   const isAdmin = normalizedRole === "admin"
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(() => {
+    if (!enabled) return false
+    const role = normalizeRole(roleProp) || readRoleFromStorage()
+    return role !== "admin"
+  })
   const [data, setData] = useState<UserPermissions | null>(null)
 
   useEffect(() => {
@@ -140,7 +146,7 @@ function usePermissionsState(
     refresh()
   }, [refresh])
 
-  const permissions = data?.permissions || {}
+  const permissions = data?.permissions || EMPTY_PERMISSIONS
 
   const can = useCallback(
     (resource: string, action: PermissionAction = "read") => {
