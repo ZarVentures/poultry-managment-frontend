@@ -14,9 +14,9 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import {
   BarChart3, Users, Package, ShoppingCart, TrendingUp,
   LogOut, Menu, X, Home, Settings, ChevronDown, Users2,
-  Calculator, Truck, AlertCircle, Terminal, Copy, Trash2,
+  Truck, AlertCircle, Terminal, Copy, Trash2,
   ChartNoAxesCombined, Tractor, User, PackageOpen, PackagePlus,
-  PackageCheck, CreditCard, BookOpen,
+  PackageCheck, CreditCard, BookOpen, Scale,
   TrendingDown, Building2, MessageSquare, Palette, Bell, Lock, ShieldCheck, Tag,
 } from "lucide-react"
 
@@ -40,7 +40,7 @@ function firstAllowedPath(canRead: (resource: string) => boolean): string {
     ["retailers", "/retailers"],
     ["vehicles", "/vehicles"],
     ["reports", "/reports"],
-    ["billing", "/billing"],
+    ["billing", "/billing/balance-sheet"],
     ["users", "/users"],
     ["settings", "/settings/general"],
   ]
@@ -125,6 +125,10 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
   useEffect(() => {
     if (isMobile) setMobileSidebarOpen(false)
   }, [pathname, isMobile])
+
+  useEffect(() => {
+    if (pathname.startsWith("/billing")) setBillingOpen(true)
+  }, [pathname])
 
   const toggleSidebar = () => {
     if (isMobile) setMobileSidebarOpen((open) => !open)
@@ -291,7 +295,6 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
           {showReports && (
             <>
               <SidebarLink href="/reports" icon={ChartNoAxesCombined} label="Reports" open={sidebarOpen} />
-              <SidebarLink href="/financial-analytics" icon={Calculator} label="Financial Analytics" open={sidebarOpen} />
             </>
           )}
 
@@ -300,23 +303,21 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" className={`w-full justify-start ${isBillingActive ? "bg-[#6EE7B7] text-[#1F2937] hover:bg-[#5BC9A0]" : "text-sidebar-foreground hover:!bg-sidebar-accent hover:!text-sidebar-accent-foreground"}`} onClick={() => setBillingOpen(!billingOpen)}>
-                    <CreditCard size={20} />
-                    {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Billing</span><ChevronDown size={16} className={`transition-transform ${billingOpen ? "rotate-180" : ""}`} /></>)}
+                    <Scale size={20} />
+                    {sidebarOpen && (<><span className="ml-2 flex-1 text-left">Accounting</span><ChevronDown size={16} className={`transition-transform ${billingOpen ? "rotate-180" : ""}`} /></>)}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="bg-foreground text-background">Billing</TooltipContent>
+                <TooltipContent side="right" className="bg-foreground text-background">Accounting</TooltipContent>
               </Tooltip>
               {billingOpen && sidebarOpen && (
                 <div className="ml-4 space-y-1 border-l border-sidebar-border">
-                  <SidebarLink href="/billing" icon={CreditCard} label="Dashboard" open={true} isSubItem={true} />
-                  <SidebarLink href="/billing/ledger" icon={BookOpen} label="Ledger Report" open={true} isSubItem={true} />
+                  <SidebarLink href="/billing/balance-sheet" icon={Scale} label="Balance Sheet" open={true} isSubItem={true} />
                   <SidebarLink href="/billing/ledger/farms" icon={Tractor} label="Ledger Farms" open={true} isSubItem={true} />
                   <SidebarLink href="/billing/ledger/retailers" icon={Users} label="Ledger Retailers" open={true} isSubItem={true} />
                   <SidebarLink href="/billing/ledger/company-report" icon={BookOpen} label="Company Report" open={true} isSubItem={true} />
-                  <SidebarLink href="/billing/reports/outstanding" icon={TrendingDown} label="Outstanding" open={true} isSubItem={true} />
-                  <SidebarLink href="/billing/reports/dispatch" icon={Truck} label="Dispatch Report" open={true} isSubItem={true} />
+                  <SidebarLink href="/billing/reports/outstanding" icon={TrendingDown} label="Receivable" open={true} isSubItem={true} />
                   <SidebarLink href="/billing/reports/collection" icon={CreditCard} label="Collection Report" open={true} isSubItem={true} />
-                  <SidebarLink href="/billing/reports/pending-purchases" icon={ShoppingCart} label="Pending Purchases" open={true} isSubItem={true} />
+                  <SidebarLink href="/billing/reports/pending-purchases" icon={ShoppingCart} label="Payable" open={true} isSubItem={true} />
                 </div>
               )}
             </div>
