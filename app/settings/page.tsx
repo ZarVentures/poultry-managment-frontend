@@ -1039,7 +1039,7 @@ export default function SettingsPage() {
                                     <tr key={`${role}-${resource}`} className="hover:bg-muted/30 transition-colors group">
                                       <td className="p-3 font-medium capitalize flex items-center gap-2">
                                         <ChevronRight size={12} className="text-muted-foreground group-hover:text-primary" />
-                                        {resource.replace('-', ' ')}
+                                        {resource === "billing" ? "Accounting" : resource.replace("-", " ")}
                                       </td>
                                       {['canRead', 'canCreate', 'canUpdate', 'canDelete'].map(field => {
                                         const checked = isFull || (perm ? perm[field] : false)

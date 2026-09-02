@@ -1532,7 +1532,7 @@ export default function ReportsPage() {
                     </div>
                     {outstandingData.total > 20 && (
                       <p className="text-center text-sm text-muted-foreground py-2 border-t">
-                        Showing top 20 retailers. View full report in Billing {'>'} Reports {'>'} Outstanding.
+                        Showing top 20 retailers. View full report in Accounting {'>'} Outstanding.
                       </p>
                     )}
                     {viewMode === 'chart' && outstandingBarData.length > 0 && (

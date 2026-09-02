@@ -292,7 +292,7 @@ ${rowsHtml}
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-slate-100">Retailer Ledger</h1>
             <p className="text-gray-600 mt-2">Complete ledger including sales, payments, and vouchers</p>
           </div>
-          <Link href="/billing" className="inline-flex items-center rounded-full h-10 border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-slate-300 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700 print:hidden">
+          <Link href="/billing/balance-sheet" className="inline-flex items-center rounded-full h-10 border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-slate-300 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700 print:hidden">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Link>
         </div>

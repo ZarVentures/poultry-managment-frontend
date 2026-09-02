@@ -1744,6 +1744,60 @@ export const reportsApi = {
       summary: any;
     }>(`/reports/collection?${params.toString()}`);
   },
+
+  getBalanceSheet: (asOnDate?: string) => {
+    const params = new URLSearchParams();
+    if (asOnDate) params.append('asOnDate', asOnDate);
+    const q = params.toString();
+    return apiRequest<BalanceSheetReport>(`/reports/balance-sheet${q ? `?${q}` : ''}`);
+  },
+};
+
+export type BalanceSheetLine = {
+  key: string;
+  label: string;
+  amount: number;
+  note?: string;
+};
+
+export type BalanceSheetReport = {
+  asOnDate: string;
+  generatedAt: string;
+  assets: { lines: BalanceSheetLine[]; total: number };
+  liabilities: { lines: BalanceSheetLine[]; total: number };
+  equity: { lines: BalanceSheetLine[]; total: number };
+  totals: {
+    assets: number;
+    liabilitiesAndEquity: number;
+    difference: number;
+    isBalanced: boolean;
+  };
+  notes: {
+    basis: string;
+    inventory: {
+      birds: number;
+      weightKg: number;
+      avgRatePerKg: number;
+      godown?: { birds: number; weightKg: number; value: number };
+      vehicle?: { birds: number; weightKg: number; value: number };
+    };
+    profitAndLoss: {
+      revenue: number;
+      costOfGoodsSold: number;
+      grossProfit: number;
+      operatingExpenses: number;
+      netProfit: number;
+    };
+    cashMovements: {
+      vehicleCollections: number;
+      godownCollections: number;
+      voucherIn: number;
+      purchasePayments: number;
+      expenses: number;
+      voucherOut: number;
+      netCash: number;
+    };
+  };
 };
 
 

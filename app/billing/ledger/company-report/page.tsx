@@ -92,10 +92,7 @@ const CompanyLedgerReportPage = () => {
       <div className="space-y-8">
         {/* Header */}
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
-  
-  {/* Left Content */}
-  <div>
+        <div className="mb-8">
     <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-black dark:text-slate-100">
       Performance Overview
     </h1>
@@ -103,19 +100,6 @@ const CompanyLedgerReportPage = () => {
     <p className="text-gray-500 text-sm sm:text-md mt-3">
       Consolidated Profit & Loss statement for the current fiscal year.
     </p>
-  </div>
-
-  {/* Right Toggle */}
-  <div className="bg-gray-100 p-2 rounded-2xl flex items-center gap-2 w-fit">
-    
-    <button className="bg-white shadow-sm px-6 py-3 rounded-xl text-lg font-semibold text-black dark:bg-slate-700 dark:text-slate-100">
-      YTD 2024
-    </button>
-
-    <button className="px-6 py-3 rounded-xl text-lg font-semibold text-gray-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 transition">
-      Q1 2024
-    </button>
-  </div>
 </div>
 
         {/* Summary Cards */}
