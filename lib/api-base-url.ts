@@ -40,7 +40,7 @@ function isAmplifyHost(host: string): boolean {
 
 function customDomainBackend(host: string): string | null {
   for (const entry of CUSTOM_DOMAIN_MAP) {
-    if (host === entry.domain || host.endsWith("." + entry.domain)) {
+    if (host === entry.domain || host.endsWith("." + entry.domain)) { 
       return entry.base;
     }
   }

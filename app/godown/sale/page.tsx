@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Edit2, Trash2, X, Printer, ShoppingCart, Bird, Scale, IndianRupee, BadgeCheck, Clock, Calendar, Search } from "lucide-react"
@@ -27,6 +27,7 @@ export default function GodownSalePage() {
   const [retailers, setRetailers] = useState<Retailer[]>([])
 
   const [loading, setLoading] = useState(false)
+  const savingRef = useRef(false)
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -48,12 +49,13 @@ export default function GodownSalePage() {
     notes: "",
   })
   const [payments, setPayments] = useState<PaymentRow[]>([emptyPayment()])
-
+  const [godownStock, setGodownStock] = useState<number | null>(null)
 
   useEffect(() => {
     setMounted(true)
     fetchSales()
     fetchRetailers()
+    fetchGodownStock()
   }, [])
   const fetchSales = async () => {
     try {
@@ -66,6 +68,27 @@ export default function GodownSalePage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchGodownStock = async () => {
+    try {
+      const summary: any = await godownApi.getSummary()
+      const raw = summary?.currentStock ?? summary?.data?.currentStock
+      const stock = Number(raw)
+      const value = Number.isFinite(stock) ? stock : 0
+      setGodownStock(value)
+      return value
+    } catch (error) {
+      console.error("Failed to fetch godown stock:", error)
+      return null
+    }
+  }
+
+  const availableBirdsForSale = (excludeSaleId?: string | null) => {
+    const stock = Number(godownStock) || 0
+    if (!excludeSaleId) return stock
+    const existing = sales.find((s) => s.id === excludeSaleId)
+    return stock + (Number(existing?.numberOfBirds) || 0)
   }
 
   const fetchRetailers = async () => {
@@ -153,6 +176,7 @@ export default function GodownSalePage() {
     
     setEditingId(sale.id)
     setAllowEditBillNo(false)
+    await fetchGodownStock()
     setShowDialog(true)
   }
 
@@ -167,14 +191,51 @@ export default function GodownSalePage() {
   const totalPaymentMade = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
   const balanceAmount = Math.max(0, parseFloat(formData.totalAmount || calculateTotal()) - totalPaymentMade)
 
+  const handleOpenNewSale = async () => {
+    const stock = await fetchGodownStock()
+    const available = stock ?? godownStock
+    if (available !== null && available <= 0) {
+      toast.error("Cannot create sale. Godown has 0 birds.")
+      return
+    }
+    await resetForm()
+    setShowDialog(true)
+  }
+
   const handleSave = async () => {
+    if (savingRef.current) return
+
     if (!formData.customerName || !formData.numberOfBirds || !formData.paymentStatus) {
       toast.error("Please fill all required fields")
       return
     }
 
+    const requestedBirds = parseInt(formData.numberOfBirds, 10) || 0
+    if (requestedBirds <= 0) {
+      toast.error("Number of birds must be greater than 0")
+      return
+    }
+
+    savingRef.current = true
+    setLoading(true)
+
     try {
-      setLoading(true)
+      const latestStock = await fetchGodownStock()
+      if (latestStock !== null) {
+        const existingBirds = editingId
+          ? Number(sales.find((s) => s.id === editingId)?.numberOfBirds || 0)
+          : 0
+        const available = latestStock + existingBirds
+        if (available <= 0) {
+          toast.error("Cannot create sale. Godown has 0 birds.")
+          return
+        }
+        if (requestedBirds > available) {
+          toast.error(`Cannot sell ${requestedBirds} birds. Only ${available} birds available in godown.`)
+          return
+        }
+      }
+
       const validPayments = payments.filter(p => parseFloat(p.amount) > 0).map(p => ({ 
         paymentMode: p.mode, 
         amount: p.amount 
@@ -226,12 +287,14 @@ export default function GodownSalePage() {
       }
 
       await fetchSales()
+      await fetchGodownStock()
       resetForm()
       setShowDialog(false)
     } catch (error: any) {
       console.error("Failed to save sale:", error)
       toast.error(error.message || "Failed to save sale")
     } finally {
+      savingRef.current = false
       setLoading(false)
     }
   }
@@ -244,6 +307,7 @@ export default function GodownSalePage() {
       await godownApi.sales.delete(id)
       toast.success("Sale deleted successfully")
       await fetchSales()
+      await fetchGodownStock()
     } catch (error: any) {
       console.error("Failed to delete sale:", error)
       toast.error("Failed to delete sale")
@@ -610,12 +674,10 @@ export default function GodownSalePage() {
             </div>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
-            <DialogTrigger asChild>
-              <Button onClick={resetForm} className="shrink-0 self-start sm:self-auto">
-                <Plus className="mr-0" size={20} />
-                New Sale
-              </Button>
-            </DialogTrigger>
+            <Button onClick={handleOpenNewSale} className="shrink-0 self-start sm:self-auto">
+              <Plus className="mr-0" size={20} />
+              New Sale
+            </Button>
             <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-xl lg:max-w-2xl max-h-[90vh] flex flex-col rounded-2xl" aria-describedby="dialog-description">
               <DialogHeader className="pb-1">
                 <DialogTitle className="text-xl">{editingId ? "Edit Sale" : "New Sale"}</DialogTitle>
@@ -706,12 +768,17 @@ export default function GodownSalePage() {
                     <Label>Number of Birds *</Label>
                     <Input
                       type="number"
+                      min={1}
+                      max={availableBirdsForSale(editingId)}
                       value={formData.numberOfBirds}
                       onChange={(e) => setFormData({ ...formData, numberOfBirds: e.target.value })}
                       placeholder="0"
                       disabled={loading}
                       onWheel={(e) => e.currentTarget.blur()}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Available in godown: {availableBirdsForSale(editingId)} birds
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label>Rate per Kg (₹)</Label>
@@ -872,7 +939,12 @@ export default function GodownSalePage() {
                 </div>
 
                 <div className="flex gap-2">
-                  <Button onClick={handleSave} className="flex-1" disabled={loading}>
+                  <Button
+                    type="button"
+                    onClick={handleSave}
+                    className="flex-1"
+                    disabled={loading || availableBirdsForSale(editingId) <= 0}
+                  >
                     {loading ? "Saving..." : editingId ? "Update" : "Create"}
                   </Button>
                   <Button variant="outline" size="icon" onClick={() => setShowDialog(false)} disabled={loading} aria-label="Cancel">
