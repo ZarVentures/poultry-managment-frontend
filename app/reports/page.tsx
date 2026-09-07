@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Download, Table as TableIcon, BarChart3, PieChart as PieChartIcon, FileText, IndianRupee, TrendingDown, TrendingUp, Receipt, Wallet, Percent, ShoppingCart, Bird, Weight, CheckCircle, Package, AlertTriangle, Clock, Skull, Calculator, AlertCircle, Users, Home, Tag, MinusCircle } from "lucide-react"
+import { Download, Table as TableIcon, BarChart3, PieChart as PieChartIcon, FileText, IndianRupee, TrendingDown, TrendingUp, Receipt, Wallet, Percent, ShoppingCart, Bird, Weight, CheckCircle, Package, PackagePlus, AlertTriangle, Clock, Skull, Calculator, AlertCircle, Users, Home, Tag, MinusCircle } from "lucide-react"
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
@@ -31,6 +31,7 @@ export default function ReportsPage() {
   const [purchaseData, setPurchaseData] = useState<any>(null)
   const [salesData, setSalesData] = useState<any>(null)
   const [godownSalesData, setGodownSalesData] = useState<any>(null)
+  const [godownInwardData, setGodownInwardData] = useState<any>(null)
   const [mortalityData, setMortalityData] = useState<any>(null)
   const [outstandingData, setOutstandingData] = useState<any>(null)
   const [stockData, setStockData] = useState<any>(null)
@@ -84,7 +85,7 @@ export default function ReportsPage() {
   }
 
   const downloadAllPDF = async () => {
-    if (!profitLossData && !purchaseData && !salesData && !godownSalesData && !mortalityData && !expenseData && !farmWiseData && !customerWiseData && !outstandingData && !stockData) {
+    if (!profitLossData && !purchaseData && !salesData && !godownSalesData && !godownInwardData && !mortalityData && !expenseData && !farmWiseData && !customerWiseData && !outstandingData && !stockData) {
       return toast.error('Generate reports first')
     }
     const { default: jsPDF } = await import('jspdf')
@@ -117,43 +118,85 @@ export default function ReportsPage() {
 
     sections.push({
       title: 'Purchases',
-      headers: ['Order #', 'Date', 'Supplier', 'Birds', 'Weight', 'Amount', 'Status'],
+      headers: ['Order #', 'Date', 'Supplier', 'Birds', 'Weight', 'Rate/KG', 'Amount', 'Paid Amount', 'Balance', 'Status'],
       rows: purchaseData?.purchases?.length
-        ? purchaseData.purchases.map((p: any) => [
-            p.orderNumber || '', new Date(p.orderDate).toLocaleDateString('en-GB'), p.supplierName || '',
-            String(p.numberOfBirds || p.totalBirds || 0),
-            `${(parseFloat(p.totalWeight) || parseFloat(p.quantity) || 0).toFixed(2)} kg`,
-            `Rs. ${parseFloat(p.netAmount || 0).toFixed(2)}`, p.purchasePaymentStatus || '',
-          ])
-        : noData(7),
+        ? purchaseData.purchases.map((p: any) => {
+            const amount = parseFloat(p.netAmount || p.totalAmount || 0)
+            const paid = parseFloat(p.totalPaymentMade || 0)
+            const balance = p.balanceAmount != null && p.balanceAmount !== '' ? parseFloat(p.balanceAmount) : Math.max(0, amount - paid)
+            return [
+              p.orderNumber || '', new Date(p.orderDate).toLocaleDateString('en-GB'), p.supplierName || '',
+              String(p.numberOfBirds || p.totalBirds || 0),
+              `${(parseFloat(p.totalWeight) || parseFloat(p.quantity) || 0).toFixed(2)} kg`,
+              `Rs. ${parseFloat(p.ratePerKg || 0).toFixed(2)}`,
+              `Rs. ${amount.toFixed(2)}`,
+              `Rs. ${paid.toFixed(2)}`,
+              `Rs. ${balance.toFixed(2)}`,
+              p.purchasePaymentStatus || '',
+            ]
+          })
+        : noData(10),
     })
 
     sections.push({
       title: 'Sales',
-      headers: ['Bill No', 'Date', 'Customer', 'Birds', 'Weight', 'Shortage (kg)', 'Deductions', 'Amount', 'Status'],
+      headers: ['Bill No', 'Date', 'Customer', 'Birds', 'Weight', 'Rate/KG', 'Amount', 'Paid Amount', 'Balance', 'Total Amount', 'Status'],
       rows: salesData?.sales?.length
-        ? salesData.sales.map((s: any) => [
-            s.invoiceNumber || '', new Date(s.saleDate).toLocaleDateString('en-GB'), s.customerName || '',
-            String(s.totalBirds || s.numberOfBirds || 0),
-            `${(parseFloat(s.totalWeight) || parseFloat(s.quantity) || 0).toFixed(2)} kg`,
-            `${(() => { const kg = parseFloat(s.weightShortageKg || 0); if (kg > 0) return kg.toFixed(2); const amt = parseFloat(s.weightShortage || 0); const rate = parseFloat(s.unitPrice || 0); return (amt > 0 && rate > 0) ? (amt / rate).toFixed(2) : '0.00'; })()} kg`,
-            `Rs. ${(parseFloat(s.weightShortage || 0) + parseFloat(s.mortalityDeduction || 0) + parseFloat(s.otherDeduction || 0)).toFixed(2)}`,
-            `Rs. ${parseFloat(s.netAmount || 0).toFixed(2)}`, s.paymentStatus || '',
+        ? salesData.sales.map((s: any) => {
+            const amount = parseFloat(s.netAmount || 0)
+            const paid = parseFloat(s.amountReceived || 0)
+            const totalAmount = parseFloat(s.totalAmount || s.grossAmount || amount || 0)
+            return [
+              s.invoiceNumber || '', new Date(s.saleDate).toLocaleDateString('en-GB'), s.customerName || '',
+              String(s.totalBirds || s.numberOfBirds || 0),
+              `${(parseFloat(s.totalWeight) || parseFloat(s.quantity) || 0).toFixed(2)} kg`,
+              `Rs. ${parseFloat(s.unitPrice || 0).toFixed(2)}`,
+              `Rs. ${amount.toFixed(2)}`,
+              `Rs. ${paid.toFixed(2)}`,
+              `Rs. ${Math.max(0, amount - paid).toFixed(2)}`,
+              `Rs. ${totalAmount.toFixed(2)}`,
+              s.paymentStatus || '',
+            ]
+          })
+        : noData(11),
+    })
+
+    sections.push({
+      title: 'Godown Inward',
+      headers: ['Inward No', 'Date', 'Supplier', 'Birds', 'Weight', 'Rate/KG', 'Amount', 'Paid Amount', 'Weight Loss'],
+      rows: godownInwardData?.entries?.length
+        ? godownInwardData.entries.map((e: any) => [
+            e.inwardNo || '', new Date(e.entryDate).toLocaleDateString('en-GB'), e.supplierName || '',
+            String(e.birds || e.numberOfBirds || 0),
+            `${parseFloat(e.weight || e.actualWeight || e.totalWeight || 0).toFixed(2)} kg`,
+            `Rs. ${parseFloat(e.ratePerKg || 0).toFixed(2)}`,
+            `Rs. ${parseFloat(e.amount || e.totalAmount || 0).toFixed(2)}`,
+            `Rs. ${parseFloat(e.paidAmount || 0).toFixed(2)}`,
+            `${parseFloat(e.weightLoss || 0).toFixed(2)} kg`,
           ])
         : noData(9),
     })
 
     sections.push({
       title: 'Godown Sales',
-      headers: ['Bill No', 'Date', 'Customer', 'Birds', 'Weight', 'Wt Shortage', 'Amount', 'Status'],
+      headers: ['Bill No', 'Date', 'Customer', 'Birds', 'Weight', 'Rate/KG', 'Amount', 'Paid Amount', 'Balance', 'Total Amount', 'Status'],
       rows: godownSalesData?.sales?.length
-        ? godownSalesData.sales.map((s: any) => [
-            s.invoiceNumber || s.saleNo || '', new Date(s.saleDate).toLocaleDateString('en-GB'), s.customerName || '',
-            String(s.numberOfBirds || 0), `${parseFloat(s.totalWeight || 0).toFixed(2)} kg`,
-            `${parseFloat(s.weightLoss || 0).toFixed(2)} kg`, `Rs. ${parseFloat(s.totalAmount || 0).toFixed(2)}`,
-            s.paymentStatus || '',
-          ])
-        : noData(8),
+        ? godownSalesData.sales.map((s: any) => {
+            const totalAmount = parseFloat(s.totalAmount || 0)
+            const paid = parseFloat(s.amountReceived || 0)
+            return [
+              s.invoiceNumber || s.saleNo || '', new Date(s.saleDate).toLocaleDateString('en-GB'), s.customerName || '',
+              String(s.numberOfBirds || 0),
+              `${parseFloat(s.totalWeight || 0).toFixed(2)} kg`,
+              `Rs. ${parseFloat(s.ratePerKg || 0).toFixed(2)}`,
+              `Rs. ${totalAmount.toFixed(2)}`,
+              `Rs. ${paid.toFixed(2)}`,
+              `Rs. ${Math.max(0, totalAmount - paid).toFixed(2)}`,
+              `Rs. ${totalAmount.toFixed(2)}`,
+              s.paymentStatus || '',
+            ]
+          })
+        : noData(11),
     })
 
     const mortalityRowsForExport = filterMortalityRows(Array.isArray(mortalityData) ? mortalityData : mortalityData?.records || [])
@@ -196,13 +239,29 @@ export default function ReportsPage() {
     }
 
     sections.push({
-      title: 'Expenses',
+      title: 'Expenses by Category',
       headers: ['Category', 'Amount', 'Percentage', 'Count'],
       rows: expenseData?.breakdown?.length
         ? expenseData.breakdown.map((e: any) => [
             e.category || '', `Rs. ${(e.amount || 0).toFixed(2)}`, `${(e.percentage || 0).toFixed(1)}%`, String(e.count || 0),
           ])
         : noData(4),
+    })
+
+    sections.push({
+      title: 'Expense Details',
+      headers: ['Date', 'Owner', 'Category', 'Description', 'Amount', 'Payment', 'Notes'],
+      rows: expenseData?.expenses?.length
+        ? expenseData.expenses.map((e: any) => [
+            e.expenseDate ? new Date(e.expenseDate).toLocaleDateString('en-GB') : '',
+            e.expenseOwner || '',
+            e.category || '',
+            e.description || '',
+            `Rs. ${parseFloat(e.amount || 0).toFixed(2)}`,
+            String(e.paymentMethod || '').replace(/_/g, ' '),
+            e.notes || '',
+          ])
+        : noData(7),
     })
 
     sections.push({
@@ -277,6 +336,7 @@ export default function ReportsPage() {
     fetchReport('purchases', setPurchaseData)
     fetchReport('sales', setSalesData)
     fetchReport('godown-sales', setGodownSalesData)
+    fetchReport('godown-inward', setGodownInwardData)
     fetchMortalityReport()
     fetchReport('outstanding', setOutstandingData)
     fetchStockReport()
@@ -363,6 +423,15 @@ export default function ReportsPage() {
     totalSales: n(godownSalesData?.summary?.totalSales) > 0 ? n(godownSalesData?.summary?.totalSales) : godownSalesRows.length,
     totalAmount: n(godownSalesData?.summary?.totalAmount) > 0 ? n(godownSalesData?.summary?.totalAmount) : godownSalesRows.reduce((sum: number, s: any) => sum + n(s.totalAmount || s.amount || s.netAmount), 0),
     totalBirds: n(godownSalesData?.summary?.totalBirds || godownSalesData?.summary?.numberOfBirds) > 0 ? n(godownSalesData?.summary?.totalBirds || godownSalesData?.summary?.numberOfBirds) : godownSalesRows.reduce((sum: number, s: any) => sum + n(s.numberOfBirds || s.totalBirds || s.birds || s.quantity), 0),
+  }
+
+  const godownInwardRows = godownInwardData?.entries || []
+  const godownInwardSummary = {
+    totalEntries: n(godownInwardData?.summary?.totalEntries) > 0 ? n(godownInwardData?.summary?.totalEntries) : godownInwardRows.length,
+    totalBirds: n(godownInwardData?.summary?.totalBirds) > 0 ? n(godownInwardData?.summary?.totalBirds) : godownInwardRows.reduce((sum: number, e: any) => sum + n(e.birds || e.numberOfBirds), 0),
+    totalWeight: n(godownInwardData?.summary?.totalWeight) > 0 ? n(godownInwardData?.summary?.totalWeight) : godownInwardRows.reduce((sum: number, e: any) => sum + n(e.weight || e.actualWeight || e.totalWeight), 0),
+    totalAmount: n(godownInwardData?.summary?.totalAmount) > 0 ? n(godownInwardData?.summary?.totalAmount) : godownInwardRows.reduce((sum: number, e: any) => sum + n(e.amount || e.totalAmount), 0),
+    totalWeightLoss: n(godownInwardData?.summary?.totalWeightLoss) > 0 ? n(godownInwardData?.summary?.totalWeightLoss) : godownInwardRows.reduce((sum: number, e: any) => sum + n(e.weightLoss), 0),
   }
 
   const mortalityRows = filterMortalityRows(Array.isArray(mortalityData) ? mortalityData : mortalityData?.records || [])
@@ -491,7 +560,7 @@ export default function ReportsPage() {
           <TabsList className="grid grid-cols-5 w-full gap-1 h-auto p-1 2xl:flex 2xl:flex-nowrap 2xl:overflow-x-auto">
             <TabsTrigger value="profitloss" className="truncate text-xs sm:text-sm 2xl:shrink-0">P&L</TabsTrigger>
             <TabsTrigger value="purchases" className="truncate text-xs sm:text-sm 2xl:shrink-0">Purchases</TabsTrigger>
-            
+            <TabsTrigger value="godowninward" className="truncate text-xs sm:text-sm 2xl:shrink-0">Godown Inward</TabsTrigger>
             <TabsTrigger value="godownsales" className="truncate text-xs sm:text-sm 2xl:shrink-0">Godown Sales</TabsTrigger>
             <TabsTrigger value="mortality" className="truncate text-xs sm:text-sm 2xl:shrink-0">Mortality</TabsTrigger>
             
@@ -658,7 +727,7 @@ export default function ReportsPage() {
                     </div>
                     {viewMode === 'table' && (
                       <div className="overflow-x-auto">
-                        <Table className="min-w-[700px]">
+                        <Table className="min-w-[980px]">
                           <TableHeader>
                             <TableRow>
                               <TableHead>Order #</TableHead>
@@ -666,19 +735,31 @@ export default function ReportsPage() {
                               <TableHead>Supplier</TableHead>
                               <TableHead className="text-right">Birds</TableHead>
                               <TableHead className="text-right">Weight</TableHead>
+                              <TableHead className="text-right">Rate/KG</TableHead>
                               <TableHead className="text-right">Amount</TableHead>
+                              <TableHead className="text-right">Paid Amount</TableHead>
+                              <TableHead className="text-right">Balance</TableHead>
                               <TableHead>Status</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {purchaseData.purchases.map((purchase: any) => (
+                            {purchaseData.purchases.map((purchase: any) => {
+                              const amount = parseFloat(purchase.netAmount || purchase.totalAmount || 0)
+                              const paid = parseFloat(purchase.totalPaymentMade || 0)
+                              const balance = purchase.balanceAmount != null && purchase.balanceAmount !== ''
+                                ? parseFloat(purchase.balanceAmount)
+                                : Math.max(0, amount - paid)
+                              return (
                               <TableRow key={purchase.id}>
                                 <TableCell>{purchase.orderNumber}</TableCell>
                                 <TableCell>{new Date(purchase.orderDate).toLocaleDateString()}</TableCell>
                                 <TableCell>{purchase.supplierName}</TableCell>
                                 <TableCell className="text-right">{purchase.numberOfBirds || purchase.totalBirds || 0}</TableCell>
                                 <TableCell className="text-right">{((parseFloat(purchase.totalWeight) || parseFloat(purchase.quantity) || 0)).toFixed(2)} kg</TableCell>
-                                <TableCell className="text-right">₹{parseFloat(purchase.netAmount || purchase.totalAmount || 0).toFixed(2)}</TableCell>
+                                <TableCell className="text-right">₹{parseFloat(purchase.ratePerKg || 0).toFixed(2)}</TableCell>
+                                <TableCell className="text-right">₹{amount.toFixed(2)}</TableCell>
+                                <TableCell className="text-right text-green-700">₹{paid.toFixed(2)}</TableCell>
+                                <TableCell className="text-right text-red-600">₹{balance.toFixed(2)}</TableCell>
                                 <TableCell>
                                   <span className={`px-2 py-1 rounded text-xs ${purchase.purchasePaymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
                                       purchase.purchasePaymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
@@ -688,7 +769,8 @@ export default function ReportsPage() {
                                   </span>
                                 </TableCell>
                               </TableRow>
-                            ))}
+                              )
+                            })}
                           </TableBody>
                         </Table>
                       </div>
@@ -807,7 +889,7 @@ export default function ReportsPage() {
                     </div>
                     {viewMode === 'table' && (
                       <div className="overflow-x-auto">
-                        <Table className="min-w-[800px]">
+                        <Table className="min-w-[1100px]">
                           <TableHeader>
                             <TableRow>
                               <TableHead>Bill No</TableHead>
@@ -815,21 +897,31 @@ export default function ReportsPage() {
                               <TableHead>Customer</TableHead>
                               <TableHead className="text-right">Birds</TableHead>
                               <TableHead className="text-right">Weight</TableHead>
-                              <TableHead>Wt Shortage</TableHead>
+                              <TableHead className="text-right">Rate/KG</TableHead>
                               <TableHead className="text-right">Amount</TableHead>
+                              <TableHead className="text-right">Paid Amount</TableHead>
+                              <TableHead className="text-right">Balance</TableHead>
+                              <TableHead className="text-right">Total Amount</TableHead>
                               <TableHead>Status</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {salesData.sales.map((sale: any) => (
+                            {salesData.sales.map((sale: any) => {
+                              const amount = parseFloat(sale.netAmount || 0)
+                              const paid = parseFloat(sale.amountReceived || 0)
+                              const totalAmount = parseFloat(sale.totalAmount || sale.grossAmount || amount || 0)
+                              return (
                               <TableRow key={sale.id}>
                                 <TableCell>{sale.invoiceNumber}</TableCell>
                                 <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
                                 <TableCell>{sale.customerName}</TableCell>
                                 <TableCell className="text-right">{sale.totalBirds || sale.numberOfBirds || 0}</TableCell>
                                 <TableCell className="text-right">{((parseFloat(sale.totalWeight) || parseFloat(sale.quantity) || 0)).toFixed(2)} kg</TableCell>
-                                <TableCell className="text-orange-600">{(() => { const kg = parseFloat(sale.weightShortageKg || 0); if (kg > 0) return kg.toFixed(2); const amt = parseFloat(sale.weightShortage || 0); const rate = parseFloat(sale.unitPrice || 0); return (amt > 0 && rate > 0) ? (amt / rate).toFixed(2) : '0.00'; })()} kg</TableCell>
-                                <TableCell className="text-right">₹{parseFloat(sale.netAmount).toFixed(2)}</TableCell>
+                                <TableCell className="text-right">₹{parseFloat(sale.unitPrice || 0).toFixed(2)}</TableCell>
+                                <TableCell className="text-right">₹{amount.toFixed(2)}</TableCell>
+                                <TableCell className="text-right text-green-700">₹{paid.toFixed(2)}</TableCell>
+                                <TableCell className="text-right text-red-600">₹{Math.max(0, amount - paid).toFixed(2)}</TableCell>
+                                <TableCell className="text-right font-medium">₹{totalAmount.toFixed(2)}</TableCell>
                                 <TableCell>
                                   <span className={`px-2 py-1 rounded text-xs ${sale.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
                                       sale.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
@@ -839,7 +931,8 @@ export default function ReportsPage() {
                                   </span>
                                 </TableCell>
                               </TableRow>
-                            ))}
+                              )
+                            })}
                           </TableBody>
                         </Table>
                       </div>
@@ -871,6 +964,128 @@ export default function ReportsPage() {
                             { name: 'Pending', value: salesData.summary.totalPending },
                           ]} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
                             {[0, 1, 2].map((_, index) => <Cell key={index} fill={COLORS[index]} />)}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Godown Inward Report */}
+          <TabsContent value="godowninward">
+            <Card className="overflow-hidden min-w-0">
+              <CardHeader className="px-3 sm:px-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg">Godown Inward Report</CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => godownInwardData && downloadCSV(godownInwardData.entries, 'godown-inward')}>
+                    <Download className="mr-2" size={16} />CSV
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="px-3 sm:px-6">
+                {!godownInwardData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-blue-50"><PackagePlus size={16} className="text-blue-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Entries</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{godownInwardSummary.totalEntries}</p>
+                      </div>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-cyan-50"><Bird size={16} className="text-cyan-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Birds</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{godownInwardSummary.totalBirds}</p>
+                      </div>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-indigo-50"><Weight size={16} className="text-indigo-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Weight</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{godownInwardSummary.totalWeight.toFixed(2)} kg</p>
+                      </div>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-orange-50"><IndianRupee size={16} className="text-orange-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Amount</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">₹{godownInwardSummary.totalAmount.toFixed(2)}</p>
+                      </div>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-red-50"><TrendingDown size={16} className="text-red-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Weight Loss</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-red-600 whitespace-nowrap">{godownInwardSummary.totalWeightLoss.toFixed(2)} kg</p>
+                      </div>
+                    </div>
+                    {viewMode === 'table' && (
+                      <div className="overflow-x-auto">
+                        <Table className="min-w-[980px]">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Inward No</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Supplier</TableHead>
+                              <TableHead className="text-right">Birds</TableHead>
+                              <TableHead className="text-right">Weight</TableHead>
+                              <TableHead className="text-right">Rate/KG</TableHead>
+                              <TableHead className="text-right">Amount</TableHead>
+                              <TableHead className="text-right">Paid Amount</TableHead>
+                              <TableHead className="text-right">Weight Loss</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {godownInwardRows.map((entry: any) => (
+                              <TableRow key={entry.id}>
+                                <TableCell className="font-mono">{entry.inwardNo || '-'}</TableCell>
+                                <TableCell>{entry.entryDate ? new Date(entry.entryDate).toLocaleDateString() : '-'}</TableCell>
+                                <TableCell>{entry.supplierName || '-'}</TableCell>
+                                <TableCell className="text-right">{entry.birds || entry.numberOfBirds || 0}</TableCell>
+                                <TableCell className="text-right">{n(entry.weight || entry.actualWeight || entry.totalWeight).toFixed(2)} kg</TableCell>
+                                <TableCell className="text-right">₹{n(entry.ratePerKg).toFixed(2)}</TableCell>
+                                <TableCell className="text-right">₹{n(entry.amount || entry.totalAmount).toFixed(2)}</TableCell>
+                                <TableCell className="text-right text-green-700">₹{n(entry.paidAmount).toFixed(2)}</TableCell>
+                                <TableCell className="text-right text-orange-600">{n(entry.weightLoss).toFixed(2)} kg</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                    {viewMode === 'chart' && (
+                      <div className="w-full min-w-0 overflow-hidden">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={godownInwardRows.slice(0, 10).map((e: any) => ({ name: e.inwardNo || 'Inward', weight: n(e.weight || e.actualWeight || e.totalWeight), loss: n(e.weightLoss) }))}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="weight" fill="#8884d8" name="Weight (kg)" />
+                          <Bar dataKey="loss" fill="#FF8042" name="Weight Loss (kg)" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    )}
+                    {viewMode === 'pie' && godownInwardRows.length > 0 && (
+                      <div className="w-full min-w-0 overflow-hidden">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie data={[
+                            { name: 'Net Weight', value: Math.max(0, godownInwardSummary.totalWeight - godownInwardSummary.totalWeightLoss) },
+                            { name: 'Weight Loss', value: godownInwardSummary.totalWeightLoss },
+                          ].filter(d => d.value > 0)} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                            {[0, 1].map((_, index) => <Cell key={index} fill={COLORS[index]} />)}
                           </Pie>
                           <Tooltip />
                           <Legend />
@@ -923,32 +1138,42 @@ export default function ReportsPage() {
                     </div>
                     {viewMode === 'table' && (
                       <div className="overflow-x-auto">
-                        <Table className="min-w-[700px]">
+                        <Table className="min-w-[1100px]">
                           <TableHeader>
                             <TableRow>
                               <TableHead>Bill No</TableHead>
                               <TableHead>Date</TableHead>
                               <TableHead>Customer</TableHead>
-                              <TableHead>Birds</TableHead>
-                              <TableHead>Weight</TableHead>
-                              <TableHead>Wt Shortage</TableHead>
-                              <TableHead>Amount</TableHead>
+                              <TableHead className="text-right">Birds</TableHead>
+                              <TableHead className="text-right">Weight</TableHead>
+                              <TableHead className="text-right">Rate/KG</TableHead>
+                              <TableHead className="text-right">Amount</TableHead>
+                              <TableHead className="text-right">Paid Amount</TableHead>
+                              <TableHead className="text-right">Balance</TableHead>
+                              <TableHead className="text-right">Total Amount</TableHead>
                               <TableHead>Status</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {godownSalesData.sales.map((sale: any) => (
+                            {godownSalesData.sales.map((sale: any) => {
+                              const totalAmount = parseFloat(sale.totalAmount || 0)
+                              const paid = parseFloat(sale.amountReceived || 0)
+                              return (
                               <TableRow key={sale.id}>
                                 <TableCell className="font-mono">{sale.invoiceNumber || sale.saleNo || '-'}</TableCell>
                                 <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
                                 <TableCell>{sale.customerName || '-'}</TableCell>
                                 <TableCell className="text-right">{sale.numberOfBirds || 0}</TableCell>
                                 <TableCell className="text-right">{parseFloat(sale.totalWeight || 0).toFixed(2)} kg</TableCell>
-                                <TableCell className="text-right text-orange-600">{parseFloat(sale.weightLoss || 0).toFixed(2)} kg</TableCell>
-                                <TableCell className="text-right">₹{parseFloat(sale.totalAmount || 0).toFixed(2)}</TableCell>
+                                <TableCell className="text-right">₹{parseFloat(sale.ratePerKg || 0).toFixed(2)}</TableCell>
+                                <TableCell className="text-right">₹{totalAmount.toFixed(2)}</TableCell>
+                                <TableCell className="text-right text-green-700">₹{paid.toFixed(2)}</TableCell>
+                                <TableCell className="text-right text-red-600">₹{Math.max(0, totalAmount - paid).toFixed(2)}</TableCell>
+                                <TableCell className="text-right font-medium">₹{totalAmount.toFixed(2)}</TableCell>
                                 <TableCell><span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${sale.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' : sale.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>{sale.paymentStatus || '-'}</span></TableCell>
                               </TableRow>
-                            ))}
+                              )
+                            })}
                           </TableBody>
                         </Table>
                       </div>
@@ -1204,8 +1429,8 @@ export default function ReportsPage() {
             <Card className="overflow-hidden min-w-0">
               <CardHeader className="px-3 sm:px-6">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                  <CardTitle className="text-base sm:text-lg">Expense Breakdown</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => expenseData && downloadCSV(expenseData.breakdown, 'expenses')}>
+                  <CardTitle className="text-base sm:text-lg">Expense Report</CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => expenseData && downloadCSV(expenseData.expenses || expenseData.breakdown, 'expenses')}>
                     <Download className="mr-2" size={16} />CSV
                   </Button>
                 </div>
@@ -1213,7 +1438,7 @@ export default function ReportsPage() {
               <CardContent className="px-3 sm:px-6">
                 {!expenseData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                       <div className="p-3 sm:p-4 border rounded min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <div className="p-1.5 rounded-md bg-orange-50"><Receipt size={16} className="text-orange-600" /></div>
@@ -1228,29 +1453,68 @@ export default function ReportsPage() {
                         </div>
                         <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{expenseData.summary.categoryCount}</p>
                       </div>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-green-50"><FileText size={16} className="text-green-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Entries</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{expenseData.summary.totalCount || expenseData.expenses?.length || 0}</p>
+                      </div>
                     </div>
                     {viewMode === 'table' && (
-                      <div className="overflow-x-auto">
-                        <Table className="min-w-[500px]">
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Category</TableHead>
-                              <TableHead>Amount</TableHead>
-                              <TableHead>Percentage</TableHead>
-                              <TableHead>Count</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {expenseData.breakdown.map((item: any, i: number) => (
-                              <TableRow key={i}>
-                                <TableCell>{item.category}</TableCell>
-                                <TableCell>₹{item.amount.toFixed(2)}</TableCell>
-                                <TableCell>{item.percentage.toFixed(1)}%</TableCell>
-                                <TableCell>{item.count}</TableCell>
+                      <div className="space-y-6">
+                        <div className="overflow-x-auto">
+                          <p className="text-sm font-medium mb-2">Expense Details</p>
+                          <Table className="min-w-[900px]">
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Owner</TableHead>
+                                <TableHead>Category</TableHead>
+                                <TableHead>Description</TableHead>
+                                <TableHead className="text-right">Amount</TableHead>
+                                <TableHead>Payment</TableHead>
+                                <TableHead>Notes</TableHead>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                            </TableHeader>
+                            <TableBody>
+                              {(expenseData.expenses || []).map((item: any) => (
+                                <TableRow key={item.id}>
+                                  <TableCell>{item.expenseDate ? new Date(item.expenseDate).toLocaleDateString() : '-'}</TableCell>
+                                  <TableCell>{item.expenseOwner || '-'}</TableCell>
+                                  <TableCell>{item.category}</TableCell>
+                                  <TableCell className="max-w-[240px] truncate">{item.description || '-'}</TableCell>
+                                  <TableCell className="text-right">₹{n(item.amount).toFixed(2)}</TableCell>
+                                  <TableCell className="capitalize">{String(item.paymentMethod || '-').replace(/_/g, ' ')}</TableCell>
+                                  <TableCell className="max-w-[180px] truncate">{item.notes || '-'}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <p className="text-sm font-medium mb-2">Category Summary</p>
+                          <Table className="min-w-[500px]">
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Category</TableHead>
+                                <TableHead>Amount</TableHead>
+                                <TableHead>Percentage</TableHead>
+                                <TableHead>Count</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {expenseData.breakdown.map((item: any, i: number) => (
+                                <TableRow key={i}>
+                                  <TableCell>{item.category}</TableCell>
+                                  <TableCell>₹{item.amount.toFixed(2)}</TableCell>
+                                  <TableCell>{item.percentage.toFixed(1)}%</TableCell>
+                                  <TableCell>{item.count}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
                       </div>
                     )}
                     {viewMode === 'chart' && (
