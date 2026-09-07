@@ -673,6 +673,8 @@ export default function SalesPage() {
       if (editingId) {
         resetForm()
         setShowDialog(false)
+      } else if (formData.purchaseBillNo) {
+        await handlePurchaseBillChange(formData.purchaseBillNo)
       }
     } catch (e: any) { toast.error(e.message || "Failed to save sale") }
     finally { setLoading(false) }
