@@ -35,7 +35,7 @@ export default function VehicleBirdReturnsPage() {
     retailerId: "",
     numberOfBirdsReturned: 0,
     weightReturned: "",
-    returnReason: "dead",
+    returnReason: "sick",
     reasonDescription: "",
     refundAmount: "",
     adjustmentAmount: "",
@@ -105,7 +105,7 @@ export default function VehicleBirdReturnsPage() {
       retailerId: "",
       numberOfBirdsReturned: 0,
       weightReturned: "",
-      returnReason: "dead",
+      returnReason: "sick",
       reasonDescription: "",
       refundAmount: "",
       adjustmentAmount: "",
@@ -424,7 +424,9 @@ export default function VehicleBirdReturnsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="dead">Dead</SelectItem>
+                      {formData.returnReason === "dead" ? (
+                        <SelectItem value="dead">Dead</SelectItem>
+                      ) : null}
                       <SelectItem value="sick">Sick</SelectItem>
                       <SelectItem value="underweight">Underweight</SelectItem>
                       <SelectItem value="quality_issue">Quality Issue</SelectItem>
