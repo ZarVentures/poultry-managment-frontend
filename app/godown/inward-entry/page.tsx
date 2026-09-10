@@ -335,6 +335,23 @@ export default function GodownInwardPage() {
       const totalWeight = parseFloat(formData.totalWeight) || 0
       const ratePerKg = parseFloat(formData.ratePerKg)
       const totalAmount = totalWeight * ratePerKg
+      const payloadCages = (selectedCageIds.size > 0
+        ? purchaseCages.filter((c) => selectedCageIds.has(c.id))
+        : cages
+      )
+        .filter((c: any) => Number(c.numberOfBirds ?? 0) > 0 || Number(c.godownWeight ?? c.cageWeight ?? 0) > 0 || c.id)
+        .map((c: any) => ({
+          id: c.id || undefined,
+          cageId: c.cageId || undefined,
+          birdType: c.birdType || undefined,
+          numberOfBirds: Number(c.numberOfBirds ?? 0) || 0,
+          cageWeight: Number(c.godownWeight ?? c.cageWeight ?? 0) || 0,
+          godownInwardWeight: Number(c.godownWeight ?? c.cageWeight ?? 0) || 0,
+          purchaseWeight: Number(c.purchaseWeight ?? 0) || 0,
+        }))
+      const actualWeight = payloadCages.reduce((s, c) => s + (Number(c.godownInwardWeight) || 0), 0)
+      const purchaseWt = payloadCages.reduce((s, c) => s + (Number(c.purchaseWeight) || 0), 0)
+      const weightLoss = Math.max(0, purchaseWt - actualWeight)
 
       const entryData = {
         entryDate: formData.entryDate,
@@ -345,23 +362,13 @@ export default function GodownInwardPage() {
         numberOfBirds,
         averageWeight: averageWeight || undefined,
         totalWeight: totalWeight || undefined,
+        actualWeight: actualWeight || undefined,
+        weightLoss,
         ratePerKg,
         totalAmount,
         notes: formData.notes || undefined,
         cageIds: Array.from(selectedCageIds),
-        cages: (selectedCageIds.size > 0
-          ? purchaseCages.filter((c) => selectedCageIds.has(c.id))
-          : cages
-        )
-          .filter((c: any) => Number(c.numberOfBirds ?? 0) > 0 || Number(c.godownWeight ?? c.cageWeight ?? 0) > 0 || c.id)
-          .map((c: any) => ({
-            id: c.id || undefined,
-            cageId: c.cageId || undefined,
-            birdType: c.birdType || undefined,
-            numberOfBirds: Number(c.numberOfBirds ?? 0) || 0,
-            cageWeight: Number(c.godownWeight ?? c.cageWeight ?? 0) || 0,
-            godownInwardWeight: Number(c.godownWeight ?? c.cageWeight ?? 0) || 0,
-          })),
+        cages: payloadCages,
       }
 
       let savedId = editingId

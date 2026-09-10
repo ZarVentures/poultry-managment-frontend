@@ -403,6 +403,8 @@ export interface GodownInward {
   vehicleId?: string;
   numberOfBirds: number;
   averageWeight?: number;
+  actualWeight?: number;
+  weightLoss?: number;
   totalWeight?: number;
   ratePerKg?: number;
   totalAmount?: number;
@@ -469,13 +471,16 @@ export interface GodownExpense {
 
 export interface GodownSummary {
   totalInward: number;
-  totalSales: number;
+  totalSold?: number;
+  totalSales?: number;
   totalMortality: number;
-  totalExpenses: number;
+  totalReturns?: number;
+  totalExpenses?: number;
   currentStock: number;
   totalInwardWeight?: number;
   totalSoldWeight?: number;
   totalMortalityWeight?: number;
+  totalReturnWeight?: number;
   currentWeight?: number;
   totalInwardValue?: number;
   totalSoldValue?: number;
@@ -1750,6 +1755,14 @@ export const reportsApi = {
     if (asOnDate) params.append('asOnDate', asOnDate);
     const q = params.toString();
     return apiRequest<BalanceSheetReport>(`/reports/balance-sheet${q ? `?${q}` : ''}`);
+  },
+
+  getWeightLoss: (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    const q = params.toString();
+    return apiRequest<any>(`/reports/weight-loss${q ? `?${q}` : ''}`);
   },
 };
 

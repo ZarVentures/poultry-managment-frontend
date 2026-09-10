@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Download, Table as TableIcon, BarChart3, PieChart as PieChartIcon, FileText, IndianRupee, TrendingDown, TrendingUp, Receipt, Wallet, Percent, ShoppingCart, Bird, Weight, CheckCircle, Package, PackagePlus, AlertTriangle, Clock, Skull, Calculator, AlertCircle, Users, Home, Tag, MinusCircle } from "lucide-react"
+import { Download, Table as TableIcon, BarChart3, PieChart as PieChartIcon, FileText, IndianRupee, TrendingDown, TrendingUp, Receipt, Wallet, Percent, ShoppingCart, Bird, Weight, CheckCircle, Package, PackagePlus, AlertTriangle, Clock, Skull, Calculator, AlertCircle, Users, Home, Tag, MinusCircle, Scale } from "lucide-react"
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
@@ -32,6 +32,7 @@ export default function ReportsPage() {
   const [salesData, setSalesData] = useState<any>(null)
   const [godownSalesData, setGodownSalesData] = useState<any>(null)
   const [godownInwardData, setGodownInwardData] = useState<any>(null)
+  const [weightLossData, setWeightLossData] = useState<any>(null)
   const [mortalityData, setMortalityData] = useState<any>(null)
   const [outstandingData, setOutstandingData] = useState<any>(null)
   const [stockData, setStockData] = useState<any>(null)
@@ -85,7 +86,7 @@ export default function ReportsPage() {
   }
 
   const downloadAllPDF = async () => {
-    if (!profitLossData && !purchaseData && !salesData && !godownSalesData && !godownInwardData && !mortalityData && !expenseData && !farmWiseData && !customerWiseData && !outstandingData && !stockData) {
+    if (!profitLossData && !purchaseData && !salesData && !godownSalesData && !godownInwardData && !weightLossData && !mortalityData && !expenseData && !farmWiseData && !customerWiseData && !outstandingData && !stockData) {
       return toast.error('Generate reports first')
     }
     const { default: jsPDF } = await import('jspdf')
@@ -176,6 +177,57 @@ export default function ReportsPage() {
           ])
         : noData(9),
     })
+
+    const wlNum = (v: any) => {
+      const x = Number(v)
+      return Number.isFinite(x) ? x : 0
+    }
+
+    sections.push({
+      title: 'Weight Loss (Total & Part-wise)',
+      headers: ['Part', 'Documents', 'Birds', 'From Weight', 'Recorded Weight', 'Weight Loss', 'Loss %'],
+      rows: weightLossData?.byChannel?.length
+        ? [
+            ...weightLossData.byChannel.map((c: any) => [
+              c.label || '',
+              String(c.documents || 0),
+              String(c.birds || 0),
+              `${wlNum(c.purchaseWeight).toFixed(2)} kg`,
+              `${wlNum(c.recordedWeight).toFixed(2)} kg`,
+              `${wlNum(c.weightLoss).toFixed(2)} kg`,
+              `${wlNum(c.lossPercent).toFixed(2)}%`,
+            ]),
+            [
+              'Total',
+              String((weightLossData.byChannel || []).reduce((s: number, c: any) => s + wlNum(c.documents), 0)),
+              String(weightLossData.summary?.totalBirds || 0),
+              `${wlNum(weightLossData.summary?.totalPurchaseWeight).toFixed(2)} kg`,
+              `${wlNum(weightLossData.summary?.totalRecordedWeight).toFixed(2)} kg`,
+              `${wlNum(weightLossData.summary?.totalLoss).toFixed(2)} kg`,
+              `${wlNum(weightLossData.summary?.lossPercent).toFixed(2)}%`,
+            ],
+          ]
+        : noData(7),
+    })
+
+    if (weightLossData?.details?.length) {
+      sections.push({
+        title: 'Weight Loss Details',
+        headers: ['Part', 'Document No', 'Date', 'Party', 'Purchase Bill', 'Birds', 'From Weight', 'Recorded Weight', 'Weight Loss', 'Loss %'],
+        rows: weightLossData.details.map((r: any) => [
+          r.channelLabel || r.channel || '',
+          r.documentNo || '',
+          r.date ? new Date(r.date).toLocaleDateString('en-GB') : '',
+          r.party || '',
+          r.purchaseBillNo || '',
+          String(r.birds || 0),
+          `${wlNum(r.purchaseWeight).toFixed(2)} kg`,
+          `${wlNum(r.recordedWeight).toFixed(2)} kg`,
+          `${wlNum(r.weightLoss).toFixed(2)} kg`,
+          `${wlNum(r.lossPercent).toFixed(2)}%`,
+        ]),
+      })
+    }
 
     sections.push({
       title: 'Godown Sales',
@@ -337,6 +389,7 @@ export default function ReportsPage() {
     fetchReport('sales', setSalesData)
     fetchReport('godown-sales', setGodownSalesData)
     fetchReport('godown-inward', setGodownInwardData)
+    fetchReport('weight-loss', setWeightLossData)
     fetchMortalityReport()
     fetchReport('outstanding', setOutstandingData)
     fetchStockReport()
@@ -433,6 +486,13 @@ export default function ReportsPage() {
     totalAmount: n(godownInwardData?.summary?.totalAmount) > 0 ? n(godownInwardData?.summary?.totalAmount) : godownInwardRows.reduce((sum: number, e: any) => sum + n(e.amount || e.totalAmount), 0),
     totalWeightLoss: n(godownInwardData?.summary?.totalWeightLoss) > 0 ? n(godownInwardData?.summary?.totalWeightLoss) : godownInwardRows.reduce((sum: number, e: any) => sum + n(e.weightLoss), 0),
   }
+
+  const weightLossSummary = weightLossData?.summary || {}
+  const weightLossChannels = weightLossData?.byChannel || []
+  const weightLossDetails = weightLossData?.details || []
+  const weightLossPieData = weightLossChannels
+    .map((c: any) => ({ name: c.label || c.key, value: n(c.weightLoss) }))
+    .filter((d: any) => d.value > 0)
 
   const mortalityRows = filterMortalityRows(Array.isArray(mortalityData) ? mortalityData : mortalityData?.records || [])
   const getMortalityFieldValue = (row: any, keys: string[]) => {
@@ -561,6 +621,7 @@ export default function ReportsPage() {
             <TabsTrigger value="profitloss" className="truncate text-xs sm:text-sm 2xl:shrink-0">P&L</TabsTrigger>
             <TabsTrigger value="purchases" className="truncate text-xs sm:text-sm 2xl:shrink-0">Purchases</TabsTrigger>
             <TabsTrigger value="godowninward" className="truncate text-xs sm:text-sm 2xl:shrink-0">Godown Inward</TabsTrigger>
+            <TabsTrigger value="weightloss" className="truncate text-xs sm:text-sm 2xl:shrink-0">Weight Loss</TabsTrigger>
             <TabsTrigger value="godownsales" className="truncate text-xs sm:text-sm 2xl:shrink-0">Godown Sales</TabsTrigger>
             <TabsTrigger value="mortality" className="truncate text-xs sm:text-sm 2xl:shrink-0">Mortality</TabsTrigger>
             
@@ -1092,6 +1153,166 @@ export default function ReportsPage() {
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Weight Loss Report */}
+          <TabsContent value="weightloss">
+            <Card className="overflow-hidden min-w-0">
+              <CardHeader className="px-3 sm:px-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg">Weight Loss Report — Total & Part-wise</CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => weightLossDetails.length && downloadCSV(weightLossDetails, 'weight-loss')}>
+                    <Download className="mr-2" size={16} />CSV
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="px-3 sm:px-6">
+                {!weightLossData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-red-50"><Scale size={16} className="text-red-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Weight Loss</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-red-600 whitespace-nowrap">{n(weightLossSummary.totalLoss).toFixed(2)} kg</p>
+                        <p className="text-[10px] text-muted-foreground">{n(weightLossSummary.lossPercent).toFixed(2)}% of from-weight</p>
+                      </div>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-orange-50"><ShoppingCart size={16} className="text-orange-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Sales</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-orange-600 whitespace-nowrap">{n(weightLossSummary.vehicleSalesLoss).toFixed(2)} kg</p>
+                      </div>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-amber-50"><PackagePlus size={16} className="text-amber-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Godown Inward</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-amber-600 whitespace-nowrap">{n(weightLossSummary.godownInwardLoss).toFixed(2)} kg</p>
+                      </div>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-yellow-50"><Package size={16} className="text-yellow-700" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Godown Sales</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-yellow-700 whitespace-nowrap">{n(weightLossSummary.godownSalesLoss).toFixed(2)} kg</p>
+                      </div>
+                    </div>
+
+                    {viewMode === 'table' && (
+                      <>
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Part</TableHead>
+                                <TableHead className="text-right">Documents</TableHead>
+                                <TableHead className="text-right">Birds</TableHead>
+                                <TableHead className="text-right">From Weight</TableHead>
+                                <TableHead className="text-right">Recorded Weight</TableHead>
+                                <TableHead className="text-right">Weight Loss</TableHead>
+                                <TableHead className="text-right">Loss %</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {weightLossChannels.map((c: any) => (
+                                <TableRow key={c.key}>
+                                  <TableCell className="font-medium">{c.label}</TableCell>
+                                  <TableCell className="text-right">{c.documents || 0}</TableCell>
+                                  <TableCell className="text-right">{c.birds || 0}</TableCell>
+                                  <TableCell className="text-right">{n(c.purchaseWeight).toFixed(2)} kg</TableCell>
+                                  <TableCell className="text-right">{n(c.recordedWeight).toFixed(2)} kg</TableCell>
+                                  <TableCell className="text-right text-orange-600 font-medium">{n(c.weightLoss).toFixed(2)} kg</TableCell>
+                                  <TableCell className="text-right">{n(c.lossPercent).toFixed(2)}%</TableCell>
+                                </TableRow>
+                              ))}
+                              <TableRow className="font-semibold bg-muted/50">
+                                <TableCell>Total</TableCell>
+                                <TableCell className="text-right">{weightLossChannels.reduce((s: number, c: any) => s + n(c.documents), 0)}</TableCell>
+                                <TableCell className="text-right">{n(weightLossSummary.totalBirds)}</TableCell>
+                                <TableCell className="text-right">{n(weightLossSummary.totalPurchaseWeight).toFixed(2)} kg</TableCell>
+                                <TableCell className="text-right">{n(weightLossSummary.totalRecordedWeight).toFixed(2)} kg</TableCell>
+                                <TableCell className="text-right text-red-600">{n(weightLossSummary.totalLoss).toFixed(2)} kg</TableCell>
+                                <TableCell className="text-right">{n(weightLossSummary.lossPercent).toFixed(2)}%</TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <p className="text-sm font-medium mb-2">Part-wise documents</p>
+                          <Table className="min-w-[1100px]">
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Part</TableHead>
+                                <TableHead>Document No</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Party</TableHead>
+                                <TableHead>Purchase Bill</TableHead>
+                                <TableHead className="text-right">Birds</TableHead>
+                                <TableHead className="text-right">From Weight</TableHead>
+                                <TableHead className="text-right">Recorded Weight</TableHead>
+                                <TableHead className="text-right">Weight Loss</TableHead>
+                                <TableHead className="text-right">Loss %</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {weightLossDetails.length === 0 ? (
+                                <TableRow>
+                                  <TableCell colSpan={10} className="text-center text-muted-foreground">No documents in this date range</TableCell>
+                                </TableRow>
+                              ) : weightLossDetails.map((row: any, idx: number) => (
+                                <TableRow key={`${row.channel}-${row.documentNo}-${idx}`}>
+                                  <TableCell>{row.channelLabel}</TableCell>
+                                  <TableCell className="font-mono">{row.documentNo}</TableCell>
+                                  <TableCell>{row.date ? new Date(row.date).toLocaleDateString() : '-'}</TableCell>
+                                  <TableCell>{row.party || '-'}</TableCell>
+                                  <TableCell>{row.purchaseBillNo || '-'}</TableCell>
+                                  <TableCell className="text-right">{row.birds || 0}</TableCell>
+                                  <TableCell className="text-right">{n(row.purchaseWeight).toFixed(2)} kg</TableCell>
+                                  <TableCell className="text-right">{n(row.recordedWeight).toFixed(2)} kg</TableCell>
+                                  <TableCell className="text-right text-orange-600">{n(row.weightLoss).toFixed(2)} kg</TableCell>
+                                  <TableCell className="text-right">{n(row.lossPercent).toFixed(2)}%</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </>
+                    )}
+
+                    {viewMode === 'chart' && (
+                      <div className="w-full min-w-0 overflow-hidden">
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={weightLossChannels.map((c: any) => ({ name: c.label, loss: n(c.weightLoss) }))}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip />
+                            <Bar dataKey="loss" fill="#FF8042" name="Weight Loss (kg)" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+
+                    {viewMode === 'pie' && (
+                      <div className="w-full min-w-0 overflow-hidden">
+                        <ResponsiveContainer width="100%" height={300}>
+                          <PieChart>
+                            <Pie data={weightLossPieData.length ? weightLossPieData : [{ name: 'No Loss', value: 1 }]} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                              {(weightLossPieData.length ? weightLossPieData : [{ name: 'No Loss' }]).map((_: any, index: number) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
+                            </Pie>
+                            <Tooltip />
+                            <Legend />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
                     )}
                   </div>
                 )}
