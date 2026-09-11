@@ -1203,6 +1203,7 @@ export default function ReportsPage() {
                           <p className="text-xs sm:text-sm text-muted-foreground">Godown Sales</p>
                         </div>
                         <p className="text-lg sm:text-2xl font-bold text-yellow-700 whitespace-nowrap">{n(weightLossSummary.godownSalesLoss).toFixed(2)} kg</p>
+                        <p className="text-[10px] text-muted-foreground">Total Inward − Total Sale</p>
                       </div>
                     </div>
 
