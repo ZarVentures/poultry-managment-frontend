@@ -80,7 +80,7 @@ export default function BirdReturnsPage() {
 
   const fetchSalesList = async () => {
     try {
-      const res = await godownApi.sales.getAll(1, 100)
+      const res = await godownApi.sales.getAll()
       const rawSales = Array.isArray(res) ? res : res.data || []
       const mapped = rawSales.map((s: any) => ({
         id: s.id,

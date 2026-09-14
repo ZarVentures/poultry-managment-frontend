@@ -84,6 +84,14 @@ const FarmLedgerPage = () => {
 
   const selectedFarmer = farmers.find(f => f.id === selectedId)
 
+  const farmPayableDelta = (entry: any) => Number(entry.credit || 0) - Number(entry.debit || 0)
+  const formatMoney = (amount: number, withFraction = false) => {
+    const n = Number(amount) || 0
+    return `₹${n.toLocaleString('en-IN', withFraction
+      ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+      : undefined)}`
+  }
+
   // Filter ledger entries by date range
   const fromDateObj = new Date(dateFrom); fromDateObj.setHours(0,0,0,0);
   const toDateObj = new Date(dateTo); toDateObj.setHours(23,59,59,999);
@@ -94,14 +102,14 @@ const FarmLedgerPage = () => {
     return entryDate >= fromDateObj && entryDate <= toDateObj;
   });
 
-  // Calculate opening balance (all entries before start date)
+  // Period opening = payable carried forward (credit - debit), matching supplier ledger
   const openingBalance = ledgerEntries
     .filter(entry => {
       const entryDate = new Date(entry.date);
       entryDate.setHours(0,0,0,0);
       return entryDate < fromDateObj;
     })
-    .reduce((acc, entry) => acc + Number(entry.debit || 0) - Number(entry.credit || 0), 0);
+    .reduce((acc, entry) => acc + farmPayableDelta(entry), 0);
 
   // Calculate totals for the period
   const totalDebit = filteredEntries.reduce((s, e) => s + Number(e.debit || 0), 0)
@@ -187,7 +195,7 @@ const FarmLedgerPage = () => {
     })
     rows.unshift([
       { content: 'Opening Balance', colSpan: 9, styles: { fontStyle: 'bold', halign: 'right' } },
-      `₹${openingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      formatMoney(openingBalance, true)
     ])
     rows.push([
       { content: 'TOTAL FOR PERIOD', colSpan: 7, styles: { fontStyle: 'bold', halign: 'right' } },
@@ -197,7 +205,7 @@ const FarmLedgerPage = () => {
     ])
     rows.push([
       { content: 'Closing Balance', colSpan: 9, styles: { fontStyle: 'bold', halign: 'right' } },
-      `₹${closingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      formatMoney(closingBalance, true)
     ])
 
     autoTable(doc, {
@@ -231,7 +239,7 @@ const FarmLedgerPage = () => {
 <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:11px;text-align:right">${m.ratePerKg ? '₹' + m.ratePerKg.toFixed(2) : '-'}</td>
 <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:11px;text-align:right">${Number(e.debit) > 0 ? '₹' + Number(e.debit).toLocaleString('en-IN') : '-'}</td>
 <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:11px;text-align:right">${Number(e.credit) > 0 ? '₹' + Number(e.credit).toLocaleString('en-IN') : '-'}</td>
-<td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:11px;text-align:right;font-weight:bold">₹${Number(e.balance).toLocaleString('en-IN')}</td>
+<td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:11px;text-align:right;font-weight:bold">${formatMoney(Number(e.balance))}</td>
 </tr>`
     }).join('')
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Farm Ledger</title>
@@ -252,10 +260,10 @@ ${orgInfo.name ? '<h2>' + orgInfo.name + '</h2>' : ''}
 <table>
 <thead><tr><th style="width:11%">Date</th><th style="width:8%">Type</th><th style="width:10%">Reference</th><th style="width:7%;text-align:right">Birds</th><th style="width:9%;text-align:right">Weight</th><th style="width:8%;text-align:right">Rate (₹/kg)</th><th style="width:15%;text-align:right">Debit (₹)</th><th style="width:15%;text-align:right">Credit (₹)</th><th style="width:16%;text-align:right">Balance (₹)</th></tr></thead>
 <tbody>
-<tr class="opening"><td colspan="8" style="text-align:right">Opening Balance</td><td style="text-align:right;font-weight:bold">₹${openingBalance.toLocaleString('en-IN')}</td></tr>
+<tr class="opening"><td colspan="8" style="text-align:right">Opening Balance</td><td style="text-align:right;font-weight:bold">${formatMoney(openingBalance)}</td></tr>
 ${rowsHtml}
 <tr class="summary-row"><td colspan="6" style="text-align:right">TOTAL FOR PERIOD</td><td style="text-align:right;color:#dc2626">₹${totalDebit.toLocaleString('en-IN')}</td><td style="text-align:right;color:#16a34a">₹${totalCredit.toLocaleString('en-IN')}</td><td></td></tr>
-<tr class="closing"><td colspan="8" style="text-align:right">Closing Balance</td><td style="text-align:right">₹${closingBalance.toLocaleString('en-IN')}</td></tr>
+<tr class="closing"><td colspan="8" style="text-align:right">Closing Balance</td><td style="text-align:right">${formatMoney(closingBalance)}</td></tr>
 </tbody></table>
 <div style="text-align:center;font-size:10px;color:#999;margin-top:8px">Generated on ${new Date().toLocaleString('en-GB')}</div>
 <div class="no-print" style="text-align:center;margin-top:12px"><button onclick="window.print()" style="padding:10px 30px;font-size:14px;cursor:pointer">Print</button></div>
@@ -310,7 +318,7 @@ ${rowsHtml}
               <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600"><Wallet size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
-              <div className="text-lg lg:text-2xl font-bold tracking-tight text-gray-900 dark:text-slate-100 min-w-0 truncate">₹{openingBalance.toLocaleString('en-IN')}</div>
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-gray-900 dark:text-slate-100 min-w-0 truncate">{formatMoney(openingBalance)}</div>
             </CardContent>
           </Card>
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
@@ -337,7 +345,7 @@ ${rowsHtml}
               <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600"><CircleDollarSign size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
-              <div className="text-lg lg:text-2xl font-bold tracking-tight text-blue-700 min-w-0 truncate">₹{closingBalance.toLocaleString('en-IN')}</div>
+              <div className="text-lg lg:text-2xl font-bold tracking-tight text-blue-700 min-w-0 truncate">{formatMoney(closingBalance)}</div>
             </CardContent>
           </Card>
         </div>
@@ -372,7 +380,7 @@ ${rowsHtml}
                   <>
                     <TableRow className="bg-gray-100 dark:bg-slate-800 font-medium">
                       <TableCell colSpan={9} className="text-right">Opening Balance </TableCell>
-                      <TableCell className="text-right font-bold">₹{openingBalance.toLocaleString('en-IN')}</TableCell>
+                      <TableCell className="text-right font-bold">{formatMoney(openingBalance)}</TableCell>
                     </TableRow>
                       {filteredEntries.length === 0 ? (
                       <TableRow><TableCell colSpan={10} className="text-center py-8 text-gray-500 dark:text-slate-400">No transactions found in this date range</TableCell></TableRow>
@@ -398,7 +406,7 @@ ${rowsHtml}
                           <TableCell className="text-gray-600 dark:text-slate-500 text-sm max-w-[150px] truncate">-</TableCell>
                           <TableCell className="text-right text-red-600 dark:text-red-400">{Number(e.debit) > 0 ? `₹${Number(e.debit).toLocaleString('en-IN')}` : '–'}</TableCell>
                           <TableCell className="text-right text-green-600 dark:text-green-400">{Number(e.credit) > 0 ? `₹${Number(e.credit).toLocaleString('en-IN')}` : '–'}</TableCell>
-                          <TableCell className="text-right font-bold">₹{Number(e.balance).toLocaleString('en-IN')}</TableCell>
+                          <TableCell className="text-right font-bold">{formatMoney(Number(e.balance))}</TableCell>
                         </TableRow>
                       );
                     })}
@@ -410,7 +418,7 @@ ${rowsHtml}
                     </TableRow>
                     <TableRow className="bg-blue-50 dark:bg-blue-500/10 border-t-2 border-blue-200 dark:border-blue-500/30 font-bold text-blue-900 dark:text-blue-300">
                       <TableCell colSpan={9} className="text-right">Closing Balance </TableCell>
-                      <TableCell className="text-right">₹{closingBalance.toLocaleString('en-IN')}</TableCell>
+                      <TableCell className="text-right">{formatMoney(closingBalance)}</TableCell>
                     </TableRow>
                   </>
                 )}
