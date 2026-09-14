@@ -56,8 +56,8 @@ const CollectionReportPage = () => {
 
   const downloadCSV = () => {
     if (!filtered.length) { alert('No data to export.'); return }
-    const headers = 'Date,Invoice,Customer,Mode,Amount,Status'
-    const rows = filtered.map(e => `${getRowDate(e)},${e.invoiceNumber || ''},${e.customerName || ''},${getRowMode(e)},${e.amount},${getRowStatus(e)}`).join('\n')
+    const headers = 'Date,Type,Invoice,Customer,Mode,Amount,Status'
+    const rows = filtered.map(e => `${getRowDate(e)},${e.type || ''},${e.invoiceNumber || ''},${e.customerName || ''},${getRowMode(e)},${e.amount},${getRowStatus(e)}`).join('\n')
     const blob = new Blob([`${headers}\n${rows}`], { type: 'text/csv;charset=utf-8;' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -71,6 +71,7 @@ const CollectionReportPage = () => {
     const rows = filtered.map(e => `
       <tr>
         <td>${getRowDate(e)}</td>
+        <td>${e.type || '-'}</td>
         <td>${e.invoiceNumber || '-'}</td>
         <td>${e.customerName || '-'}</td>
         <td>${getRowMode(e)}</td>
@@ -84,7 +85,7 @@ const CollectionReportPage = () => {
       <h2>Collection Report</h2>
       <p style="text-align:center">${new Date(dateFrom).toLocaleDateString('en-GB')} - ${new Date(dateTo).toLocaleDateString('en-GB')}</p>
       <p style="text-align:center;font-weight:bold">Total Collected: ₹${totalCollected.toLocaleString('en-IN')}</p>
-      <table><thead><tr><th>Date</th><th>Bill No</th><th>Customer</th><th>Mode</th><th>Amount</th><th>Status</th></tr></thead>
+      <table><thead><tr><th>Date</th><th>Type</th><th>Bill No</th><th>Customer</th><th>Mode</th><th>Amount</th><th>Status</th></tr></thead>
       <tbody>${rows}</tbody></table></body></html>`
     const w = window.open('', '_blank')
     if (w) { w.document.write(html); w.document.close(); w.onload = () => w.print() }
@@ -105,7 +106,7 @@ const CollectionReportPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 no-print">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Collection Report</h1>
-            <p className="text-muted-foreground mt-2">Payments received from sales</p>
+            <p className="text-muted-foreground mt-2">Payments received from sales and IN vouchers</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={downloadCSV} type="button" className="rounded-full h-10"><Download className="w-4 h-4 mr-2" />Export</Button>
@@ -185,6 +186,7 @@ const CollectionReportPage = () => {
               <TableHeader>
                 <TableRow className="bg-gray-50 dark:bg-slate-800">
                   <TableHead className="font-semibold">Date</TableHead>
+                  <TableHead className="font-semibold">Type</TableHead>
                   <TableHead className="font-semibold">Bill No</TableHead>
                   <TableHead className="font-semibold">Customer</TableHead>
                   <TableHead className="font-semibold">Mode</TableHead>
@@ -194,12 +196,15 @@ const CollectionReportPage = () => {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500 dark:text-slate-400">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500 dark:text-slate-400">Loading...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500 dark:text-slate-400">No collections found for the selected period</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500 dark:text-slate-400">No collections found for the selected period</TableCell></TableRow>
                 ) : filtered.map(e => (
                   <TableRow key={e.id} className="border-b border-gray-200 dark:border-slate-700">
                     <TableCell className="font-medium">{getRowDate(e)}</TableCell>
+                    <TableCell>
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${e.type === 'Voucher' ? 'bg-purple-100 text-purple-800 dark:bg-purple-500/15 dark:text-purple-300' : e.type === 'Godown' ? 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300' : 'bg-gray-100 text-gray-800 dark:bg-slate-500/15 dark:text-slate-300'}`}>{e.type || 'Sale'}</span>
+                    </TableCell>
                     <TableCell className="font-mono text-sm">{e.invoiceNumber || '-'}</TableCell>
                     <TableCell className="font-semibold">{e.customerName || '-'}</TableCell>
                     <TableCell>

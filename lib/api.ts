@@ -102,6 +102,7 @@ export interface Farmer {
   status: 'active' | 'inactive';
   notes?: string;
   openingBalance?: number;
+  joinDate?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -1020,11 +1021,14 @@ export const birdReturnsApi = {
 
   getOne: (id: string) => apiRequest<BirdReturn>(`/bird-returns/${id}`),
 
-  create: (data: CreateBirdReturnDto) =>
-    apiRequest<BirdReturn>('/bird-returns', {
+  create: (data: CreateBirdReturnDto) => {
+    const payload: any = { ...data };
+    if (!payload.retailerId) delete payload.retailerId;
+    return apiRequest<BirdReturn>('/bird-returns', {
       method: 'POST',
-      body: JSON.stringify(data),
-    }),
+      body: JSON.stringify(payload),
+    });
+  },
 
   update: (id: string, data: UpdateBirdReturnDto) =>
     apiRequest<BirdReturn>(`/bird-returns/${id}`, {

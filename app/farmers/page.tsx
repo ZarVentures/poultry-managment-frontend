@@ -120,6 +120,7 @@ export default function FarmersPage() {
           status: formData.status,
           notes: formData.note,
           openingBalance: formData.openingBalance,
+          joinDate: formData.joinDate,
         })
         toast.success("Farmer updated successfully")
       } else {
@@ -131,6 +132,7 @@ export default function FarmersPage() {
           status: formData.status,
           notes: formData.note,
           openingBalance: formData.openingBalance,
+          joinDate: formData.joinDate,
         })
         toast.success("Farmer created successfully")
       }
@@ -165,9 +167,9 @@ export default function FarmersPage() {
       name: farmer.name,
       phone: farmer.phone,
       address: farmer.address || "",
-      joinDate: farmer.joinDate || new Date().toISOString().split("T")[0],
+      joinDate: farmer.joinDate || (farmer as any).createdAt?.slice?.(0, 10) || new Date().toISOString().split("T")[0],
       status: farmer.status || "active",
-      note: farmer.note || "",
+      note: farmer.note || farmer.notes || "",
       farmhouseName: farmer.farmhouseName || "",
       openingBalance: (farmer as any).openingBalance || 0,
     })
@@ -193,6 +195,14 @@ export default function FarmersPage() {
   const handleView = (farmer: Farmer) => {
     setViewingFarmer(farmer)
     setShowViewDialog(true)
+  }
+
+  const formatJoinDate = (farmer: Farmer) => {
+    const raw = farmer.joinDate || (farmer as any).createdAt
+    if (!raw) return "—"
+    const date = new Date(String(raw).includes("T") ? raw : `${raw}T00:00:00`)
+    if (Number.isNaN(date.getTime())) return String(raw)
+    return date.toLocaleDateString("en-GB")
   }
 
   const handleSort = () => {
@@ -257,7 +267,7 @@ export default function FarmersPage() {
                   <td>${farmer.name}</td>
                   <td>${farmer.phone}</td>
                   <td>${farmer.address || "N/A"}</td>
-                  <td>${farmer.joinDate}</td>
+                  <td>${formatJoinDate(farmer)}</td>
                   <td>${(farmer.status || "active") === "active" ? "Active" : "Inactive"}</td>
                 </tr>
               `).join('')}
@@ -465,7 +475,7 @@ export default function FarmersPage() {
                         <TableCell className="font-medium whitespace-nowrap">{farmer.name}</TableCell>
                         <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{farmer.phone}</TableCell>
                         <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{farmer.address || "N/A"}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{farmer.joinDate}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{formatJoinDate(farmer)}</TableCell>
                         <TableCell className="whitespace-nowrap">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${(farmer.status || "active") === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
                             {(farmer.status || "active") === "active" ? "Active" : "Inactive"}
@@ -520,7 +530,7 @@ export default function FarmersPage() {
                   <div className="space-y-2"><Label className="text-muted-foreground">Farm House Name</Label><div className="text-sm font-medium">{viewingFarmer.farmhouseName || "N/A"}</div></div>
                   <div className="space-y-2"><Label className="text-muted-foreground">Phone</Label><div className="text-sm font-medium">{viewingFarmer.phone}</div></div>
                   <div className="space-y-2 sm:col-span-2"><Label className="text-muted-foreground">Address</Label><div className="text-sm font-medium">{viewingFarmer.address || "N/A"}</div></div>
-                  <div className="space-y-2"><Label className="text-muted-foreground">Join Date</Label><div className="text-sm font-medium">{viewingFarmer.joinDate}</div></div>
+                  <div className="space-y-2"><Label className="text-muted-foreground">Join Date</Label><div className="text-sm font-medium">{formatJoinDate(viewingFarmer)}</div></div>
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Status</Label>
                     <div>
