@@ -17,7 +17,7 @@ import {
   Truck, AlertCircle, Terminal, Copy, Trash2,
   ChartNoAxesCombined, Tractor, User, PackageOpen, PackagePlus,
   PackageCheck, CreditCard, BookOpen, Scale,
-  TrendingDown, Building2, MessageSquare, Palette, Bell, Lock, ShieldCheck, Tag,
+  TrendingDown, Building2, MessageSquare, Lock, ShieldCheck, Tag,
 } from "lucide-react"
 
 const IS_STAGING = process.env.NEXT_PUBLIC_IS_STAGING === 'true'
@@ -342,8 +342,6 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
                 <div className="ml-4 space-y-1 border-l border-sidebar-border">
                   <SidebarLink href="/settings/general" icon={Building2} label="General" open={true} isSubItem={true} />
                   <SidebarLink href="/settings/communication" icon={MessageSquare} label="Communication Hub" open={true} isSubItem={true} />
-                  <SidebarLink href="/settings/display" icon={Palette} label="Appearance" open={true} isSubItem={true} />
-                  <SidebarLink href="/settings/notifications" icon={Bell} label="Notifications" open={true} isSubItem={true} />
                   <SidebarLink href="/settings/security" icon={Lock} label="Security" open={true} isSubItem={true} />
                   <SidebarLink href="/settings/permissions" icon={ShieldCheck} label="Permissions" open={true} isSubItem={true} />
                   <SidebarLink href="/settings/categories" icon={Tag} label="Expense Categories" open={true} isSubItem={true} />

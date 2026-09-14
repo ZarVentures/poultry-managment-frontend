@@ -548,6 +548,7 @@ export interface MortalityRecord {
   amount?: number;
   cause: string;
   notes?: string;
+  source?: 'godown' | 'travel_sales';
   mortalityDate?: string;
   createdAt?: string;
   updatedAt?: string;
