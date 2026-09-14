@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
-  Save, Lock, Bell, Palette, Terminal, Eye, EyeOff,
+  Save, Lock, Bell, Terminal, Eye, EyeOff,
   Shield, ShieldCheck, ShieldOff, Building2, User, ChevronRight,
   Tag, Plus, Edit2, Trash2, CheckCircle2, AlertCircle, MessageSquare, Mail, Phone
 } from "lucide-react"
@@ -25,8 +25,6 @@ type Section = "general" | "display" | "notifications" | "security" | "permissio
 const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType; description: string }[] = [
   { id: "general", label: "General", icon: Building2, description: "Farm info & currency" },
   { id: "communication", label: "Communication Hub", icon: MessageSquare, description: "AWS SES/SNS & alerts" },
-  { id: "display", label: "Appearance", icon: Palette, description: "Theme & display" },
-  { id: "notifications", label: "Notifications", icon: Bell, description: "Alerts & preferences" },
   { id: "security", label: "Security", icon: Lock, description: "2FA & account security" },
   { id: "permissions", label: "Permissions", icon: ShieldCheck, description: "Manage role access levels" },
   { id: "categories", label: "Expense Categories", icon: Tag, description: "Manage expense category list" },
@@ -41,7 +39,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(false)
   const dispatch = useDispatch()
 
-  const VALID_SECTIONS: Section[] = ["general", "communication", "display", "notifications", "security", "permissions", "categories", "developer"]
+  const VALID_SECTIONS: Section[] = ["general", "communication", "security", "permissions", "categories", "developer"]
+  const HIDDEN_SECTIONS = ["display", "notifications"]
   const pathSegment = pathname.split("/").filter(Boolean).pop() || ""
   const activeSection: Section = (VALID_SECTIONS.includes(pathSegment as Section) ? pathSegment : "general") as Section
 
@@ -124,6 +123,11 @@ export default function SettingsPage() {
 
     // Redirect bare /settings to /settings/general
     if (pathname === "/settings" || pathname === "/settings/") {
+      router.replace("/settings/general")
+      return
+    }
+    const section = pathname.split("/").filter(Boolean).pop() || ""
+    if (HIDDEN_SECTIONS.includes(section)) {
       router.replace("/settings/general")
       return
     }
@@ -508,66 +512,6 @@ export default function SettingsPage() {
                 <div className="flex justify-end">
                   <Button onClick={handleSave} disabled={loading} className="rounded-full h-10 px-6">
                     <Save size={16} className="mr-2" />{loading ? "Saving..." : "Save Changes"}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Appearance */}
-            {activeSection === "display" && (
-              <div className="space-y-6">
-                <div className="rounded-2xl border bg-card p-6 space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">Theme</h3>
-                    <p className="text-sm text-muted-foreground mt-0.5">Choose your preferred color scheme.</p>
-                  </div>
-                  <Select value={formData.theme} onValueChange={(v: "light" | "dark") => setFormData(f => ({ ...f, theme: v }))} disabled={loading}>
-                    <SelectTrigger className="!h-10 max-w-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="light">☀️ Light</SelectItem>
-                      <SelectItem value="dark">🌙 Dark</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">Applied on next session.</p>
-                </div>
-                <div className="flex justify-end">
-                  <Button onClick={handleSave} disabled={loading} className="rounded-full h-10 px-6">
-                    <Save size={16} className="mr-2" />{loading ? "Saving..." : "Save Changes"}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Notifications */}
-            {activeSection === "notifications" && (
-              <div className="space-y-6">
-                <div className="rounded-2xl border bg-card divide-y dark:divide-slate-700">
-                  {[
-                    { key: "notifications" as const, label: "In-App Notifications", desc: "Receive notifications within the application", icon: Bell },
-                    { key: "emailAlerts" as const, label: "Email Alerts", desc: "Receive email notifications for important events", icon: Mail },
-                  ].map(item => (
-                    <label key={item.key} className="flex items-center justify-between p-5 cursor-pointer hover:bg-muted/30 transition-colors first:rounded-t-2xl last:rounded-b-2xl">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                          <item.icon size={16} />
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm sm:text-base">{item.label}</p>
-                          <p className="text-sm text-muted-foreground">{item.desc}</p>
-                        </div>
-                      </div>
-                      <div
-                        className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${formData[item.key] ? 'bg-primary' : 'bg-muted-foreground/30'}`}
-                        onClick={() => setFormData(f => ({ ...f, [item.key]: !f[item.key] }))}
-                      >
-                        <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData[item.key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                      </div>
-                    </label>
-                  ))}
-                </div>
-                <div className="flex justify-end">
-                  <Button onClick={handleSave} disabled={loading} className="rounded-full h-10 px-6">
-                    <Save size={16} className="mr-2" />{loading ? "Saving..." : "Save Preferences"}
                   </Button>
                 </div>
               </div>

@@ -21,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, Edit2, Trash2, Printer, X, Eye, Bug, FileText, IndianRupee, Calendar, Search } from "lucide-react"
 import { useDateFilter } from "@/contexts/date-filter-context"
-import { mortalityApi, purchasesApi, type PurchaseOrder } from "@/lib/api"
+import { mortalityApi, purchasesApi, godownApi, type PurchaseOrder, type PurchaseOrderCage } from "@/lib/api"
 import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 
@@ -40,6 +40,7 @@ interface Mortality {
   amount?: number
   cause: string
   notes?: string
+  source?: 'godown' | 'travel_sales'
   createdAt?: string
   updatedAt?: string
 }
@@ -58,6 +59,8 @@ export default function MortalityPage() {
   const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
   const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [searchQuery, setSearchQuery] = useState("")
+  const [godownStock, setGodownStock] = useState<number | null>(null)
+  const [travelCages, setTravelCages] = useState<PurchaseOrderCage[]>([])
   const [formData, setFormData] = useState<{
     purchaseInvoiceNo: string
     purchaseDate: string
@@ -71,6 +74,7 @@ export default function MortalityPage() {
     amount: string
     cause: string
     notes: string
+    source: 'godown' | 'travel_sales' | ''
   }>({
     purchaseInvoiceNo: "",
     purchaseDate: new Date().toISOString().split("T")[0],
@@ -84,6 +88,7 @@ export default function MortalityPage() {
     amount: "",
     cause: "",
     notes: "",
+    source: "",
   })
   const { startDate, endDate } = useDateFilter()
 
@@ -92,6 +97,7 @@ export default function MortalityPage() {
     setMounted(true)
     fetchMortalities()
     fetchPurchases()
+    fetchGodownStock()
   }, [])
 
   const fetchMortalities = async () => {
@@ -109,7 +115,7 @@ export default function MortalityPage() {
 
   const fetchPurchases = async () => {
     try {
-      const response = await purchasesApi.getAll()
+      const response = await purchasesApi.getAll({ limit: 1000 })
       const data = (response as any).data || response
       setPurchases(data)
     } catch (error) {
@@ -117,26 +123,64 @@ export default function MortalityPage() {
     }
   }
 
+  const fetchGodownStock = async () => {
+    try {
+      const summary = await godownApi.getSummary()
+      setGodownStock(Number(summary?.currentStock) || 0)
+    } catch (error) {
+      console.error("Error fetching godown stock:", error)
+      setGodownStock(null)
+    }
+  }
+
   const [selectedPurchaseFull, setSelectedPurchaseFull] = useState<PurchaseOrder | null>(null)
 
-  // Selected purchase (for Cage ID dropdown and auto-fill)
-  const selectedPurchase = useMemo(
+  const TRAVEL_CAGE_STATUSES = ["pending", "on_vehicle"] as const
+
+  const travelCageOptions = useMemo(() => {
+    const selectedLabel = (formData.cageIdNumber || "").trim().toLowerCase()
+    return travelCages.filter((cage) => {
+      const label = (cage.cageId || "").trim()
+      if (!label) return false
+      const status = cage.status || "pending"
+      const isTravelStatus = TRAVEL_CAGE_STATUSES.includes(status as (typeof TRAVEL_CAGE_STATUSES)[number])
+      const birds = Number(cage.numberOfBirds) || 0
+      if (label.toLowerCase() === selectedLabel) return true
+      return isTravelStatus && birds > 0
+    })
+  }, [travelCages, formData.cageIdNumber])
+
+  const selectedTravelCage = useMemo(
     () =>
-      purchases.find(
-        (p) => (p.orderNumber || "").toLowerCase() === formData.purchaseInvoiceNo.toLowerCase()
+      travelCages.find(
+        (cage) => (cage.cageId || "").trim().toLowerCase() === (formData.cageIdNumber || "").trim().toLowerCase()
       ),
-    [purchases, formData.purchaseInvoiceNo]
+    [travelCages, formData.cageIdNumber]
   )
 
-  // Cage IDs from selected purchase (use full order with cages)
-  const cageIdOptions = useMemo(() => {
-    const src = selectedPurchaseFull || selectedPurchase
-    if (!src?.cages) return []
-    const ids = src.cages
-      .map((cage) => cage.cageId?.trim())
-      .filter((id): id is string => !!id)
-    return [...new Set(ids)]
-  }, [selectedPurchaseFull, selectedPurchase])
+  const travelCageAvailableBirds = useMemo(() => {
+    const current = Number(selectedTravelCage?.numberOfBirds) || 0
+    const editingRecord = editingId ? mortalities.find((m) => m.id === editingId) : undefined
+    const sameCage =
+      editingRecord &&
+      editingRecord.source !== "godown" &&
+      (editingRecord.purchaseInvoiceNo || "").toLowerCase() === formData.purchaseInvoiceNo.toLowerCase() &&
+      (editingRecord.cageIdNumber || "").trim().toLowerCase() === (formData.cageIdNumber || "").trim().toLowerCase()
+    return current + (sameCage ? Number(editingRecord?.numberOfBirdsDied) || 0 : 0)
+  }, [selectedTravelCage, editingId, mortalities, formData.purchaseInvoiceNo, formData.cageIdNumber])
+
+  const loadTravelCages = async (invoiceNo: string) => {
+    if (!invoiceNo) {
+      setTravelCages([])
+      return
+    }
+    try {
+      const cages = await purchasesApi.getCagesByOrderNumber(invoiceNo)
+      setTravelCages(Array.isArray(cages) ? cages : [])
+    } catch {
+      setTravelCages([])
+    }
+  }
 
   const calcAmount = (weight: string, rate: string) => {
     const w = parseFloat(weight) || 0
@@ -176,6 +220,7 @@ export default function MortalityPage() {
           ratePerKg: rate,
           amount: calcAmount(prev.weightOfDeadBirds, rate),
         }))
+        await loadTravelCages(invoiceNo)
       } catch {
         const totalBirds = calculateTotalBirds(purchase)
         const rate = purchase.ratePerKg != null ? String(purchase.ratePerKg) : ""
@@ -190,6 +235,7 @@ export default function MortalityPage() {
           ratePerKg: rate,
           amount: calcAmount(prev.weightOfDeadBirds, rate),
         }))
+        await loadTravelCages(invoiceNo)
       }
     } else {
       setFormData(prev => ({
@@ -203,13 +249,59 @@ export default function MortalityPage() {
         ratePerKg: "",
         amount: "",
       }))
+      setTravelCages([])
     }
   }
 
   const handleSave = async () => {
+    if (!formData.source) {
+      toast.error("Please select From Godown or From Travel Sales")
+      return
+    }
     if (!formData.purchaseDate || !formData.numberOfBirdsDied) {
       toast.error("Please fill date and number of birds died")
       return
+    }
+
+    const died = Number.parseInt(formData.numberOfBirdsDied, 10) || 0
+    if (died <= 0) {
+      toast.error("Number of birds died must be greater than 0")
+      return
+    }
+
+    if (formData.source === "godown") {
+      const creditBack =
+        editingId && mortalities.find((m) => m.id === editingId)?.source === "godown"
+          ? Number(mortalities.find((m) => m.id === editingId)?.numberOfBirdsDied) || 0
+          : 0
+      const available = Math.max(0, (godownStock ?? 0) + creditBack)
+      if (available <= 0) {
+        toast.error("Cannot record godown mortality. Godown has 0 birds in stock.")
+        return
+      }
+      if (died > available) {
+        toast.error(`Cannot record ${died} birds died. Only ${available} birds available in godown.`)
+        return
+      }
+    }
+
+    if (formData.source === "travel_sales") {
+      if (!formData.purchaseInvoiceNo) {
+        toast.error("Please select Purchase Bill No")
+        return
+      }
+      if (!formData.cageIdNumber) {
+        toast.error("Please select Cage No")
+        return
+      }
+      if (travelCageAvailableBirds <= 0) {
+        toast.error(`Cage ${formData.cageIdNumber} has 0 birds. Cannot record travel sales mortality.`)
+        return
+      }
+      if (died > travelCageAvailableBirds) {
+        toast.error(`Cannot record ${died} birds died. Cage ${formData.cageIdNumber} has only ${travelCageAvailableBirds} birds.`)
+        return
+      }
     }
 
     try {
@@ -217,17 +309,21 @@ export default function MortalityPage() {
       const weight = parseFloat(formData.weightOfDeadBirds) || undefined
       const rate = parseFloat(formData.ratePerKg) || undefined
       const amount = weight && rate ? weight * rate : undefined
+      const isTravel = formData.source === "travel_sales"
       const mortalityData = {
-        purchaseInvoiceNo: formData.purchaseInvoiceNo || "N/A",
+        purchaseInvoiceNo: isTravel ? formData.purchaseInvoiceNo : (formData.purchaseInvoiceNo || "N/A"),
         purchaseDate: formData.purchaseDate,
-        farmerName: "N/A",
-        totalBirdsPurchased: 0,
+        farmerName: isTravel ? (formData.farmerName || "N/A") : "N/A",
+        farmLocation: isTravel ? formData.farmLocation || undefined : undefined,
+        cageIdNumber: isTravel ? formData.cageIdNumber : undefined,
+        totalBirdsPurchased: isTravel ? (Number.parseInt(formData.totalBirdsPurchased, 10) || travelCageAvailableBirds || 0) : 0,
         numberOfBirdsDied: Number.parseInt(formData.numberOfBirdsDied),
         weightOfDeadBirds: weight,
         ratePerKg: rate,
         amount,
         cause: formData.cause || "",
         notes: formData.notes || "",
+        source: formData.source as 'godown' | 'travel_sales',
       }
 
       if (editingId) {
@@ -239,6 +335,7 @@ export default function MortalityPage() {
       }
 
       await fetchMortalities()
+      await fetchGodownStock()
       resetForm()
       setShowDialog(false)
     } catch (error: any) {
@@ -263,8 +360,10 @@ export default function MortalityPage() {
       amount: "",
       cause: "",
       notes: "",
+      source: "",
     })
     setSelectedPurchaseFull(null)
+    setTravelCages([])
     setEditingId(null)
   }
 
@@ -285,8 +384,10 @@ export default function MortalityPage() {
       amount: mortality.amount?.toString() || calcAmount(weight, rate),
       cause: mortality.cause || "",
       notes: mortality.notes || "",
+      source: mortality.source === 'godown' ? 'godown' : 'travel_sales',
     })
     setShowDialog(true)
+    fetchGodownStock()
     // Load purchase cages for cage ID dropdown when editing
     if (mortality.purchaseInvoiceNo) {
       const purchase = purchases.find(
@@ -295,6 +396,9 @@ export default function MortalityPage() {
       if (purchase) {
         purchasesApi.getOne(purchase.id).then(setSelectedPurchaseFull).catch(() => {})
       }
+      loadTravelCages(mortality.purchaseInvoiceNo)
+    } else {
+      setTravelCages([])
     }
   }
 
@@ -306,6 +410,7 @@ export default function MortalityPage() {
       await mortalityApi.delete(id)
       toast.success("Mortality record deleted successfully")
       await fetchMortalities()
+      await fetchGodownStock()
     } catch (error: any) {
       console.error("Error deleting mortality:", error)
       toast.error(error.message || "Failed to delete mortality record")
@@ -398,6 +503,7 @@ export default function MortalityPage() {
             <thead>
               <tr>
                 <th>Purchase Date</th>
+                <th>From</th>
                 <th>Number of Birds Died</th>
                 <th>Cause of Death</th>
               </tr>
@@ -406,6 +512,7 @@ export default function MortalityPage() {
               ${filtered.map(mortality => `
                 <tr>
                   <td>${mortality.purchaseDate || "N/A"}</td>
+                  <td>${mortality.source === 'godown' ? 'From Godown' : 'From Travel Sales'}</td>
                   <td>${(mortality.numberOfBirdsDied || 0).toLocaleString()}</td>
                   <td>${mortality.cause || "N/A"}</td>
                 </tr>
@@ -461,6 +568,7 @@ export default function MortalityPage() {
               <tr>
                 <th>Purchase Bill No.</th>
                 <th>Purchase Date</th>
+                <th>From</th>
                 <th>Farmer Name</th>
                 <th>Farm Location</th>
                 <th>Cage ID Number</th>
@@ -473,6 +581,7 @@ export default function MortalityPage() {
                 <tr>
                   <td>${mortality.purchaseInvoiceNo || "N/A"}</td>
                   <td>${mortality.purchaseDate || "N/A"}</td>
+                  <td>${mortality.source === 'godown' ? 'From Godown' : 'From Travel Sales'}</td>
                   <td>${mortality.farmerName || "N/A"}</td>
                   <td>${mortality.farmLocation || "N/A"}</td>
                   <td>${mortality.cageIdNumber || "N/A"}</td>
@@ -526,7 +635,7 @@ export default function MortalityPage() {
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm} className="shrink-0 self-start sm:self-auto">
+              <Button onClick={() => { resetForm(); fetchGodownStock(); }} className="shrink-0 self-start sm:self-auto">
                 <Plus className="mr-0" size={20} />
                 Add New Mortality
               </Button>
@@ -537,6 +646,101 @@ export default function MortalityPage() {
                 <DialogDescription>Enter mortality details</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>From <span className="text-red-500">*</span></Label>
+                  <Select
+                    value={formData.source || undefined}
+                    onValueChange={(value) => {
+                      const source = value as 'godown' | 'travel_sales'
+                      setFormData({
+                        ...formData,
+                        source,
+                        ...(source === 'godown'
+                          ? { purchaseInvoiceNo: "", cageIdNumber: "", farmerName: "", farmLocation: "", totalBirdsPurchased: "" }
+                          : {}),
+                      })
+                      if (source === 'godown') setTravelCages([])
+                    }}
+                    disabled={loading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="godown">From Godown</SelectItem>
+                      <SelectItem value="travel_sales">From Travel Sales</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {formData.source === "godown" && (
+                    <p className={`text-xs ${(godownStock ?? 0) <= 0 ? "text-red-600" : "text-muted-foreground"}`}>
+                      {(godownStock ?? 0) <= 0
+                        ? "Godown has 0 birds. Mortality from godown cannot be created."
+                        : `Available in godown: ${
+                            (godownStock ?? 0) +
+                            (editingId && mortalities.find((m) => m.id === editingId)?.source === "godown"
+                              ? Number(mortalities.find((m) => m.id === editingId)?.numberOfBirdsDied) || 0
+                              : 0)
+                          } birds`}
+                    </p>
+                  )}
+                </div>
+                {formData.source === "travel_sales" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Purchase Bill No <span className="text-red-500">*</span></Label>
+                      <Select
+                        value={formData.purchaseInvoiceNo || undefined}
+                        onValueChange={(value) => handlePurchaseInvoiceChange(value)}
+                        disabled={loading}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select purchase bill" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {purchases.map((purchase) => (
+                            <SelectItem key={purchase.id} value={purchase.orderNumber}>
+                              {purchase.orderNumber} {purchase.supplierName ? `- ${purchase.supplierName}` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Cage No <span className="text-red-500">*</span></Label>
+                      <Select
+                        value={formData.cageIdNumber || undefined}
+                        onValueChange={(value) => {
+                          const cage = travelCages.find(
+                            (c) => (c.cageId || "").trim().toLowerCase() === value.trim().toLowerCase()
+                          )
+                          setFormData({
+                            ...formData,
+                            cageIdNumber: value,
+                            totalBirdsPurchased: String(Number(cage?.numberOfBirds) || 0),
+                          })
+                        }}
+                        disabled={loading || !formData.purchaseInvoiceNo}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={formData.purchaseInvoiceNo ? "Select cage" : "Select bill first"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {travelCageOptions.map((cage) => (
+                            <SelectItem key={`${cage.id || cage.cageId}`} value={cage.cageId!.trim()}>
+                              {cage.cageId} ({Number(cage.numberOfBirds) || 0} birds
+                              {cage.status ? `, ${cage.status.replace("_", " ")}` : ""})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {formData.cageIdNumber && (
+                        <p className={`text-xs ${travelCageAvailableBirds <= 0 ? "text-red-600" : "text-muted-foreground"}`}>
+                          Available in this cage: {travelCageAvailableBirds} birds
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Date <span className="text-red-500">*</span></Label>
@@ -725,6 +929,7 @@ export default function MortalityPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="font-bold">Purchase Date</TableHead>
+                    <TableHead className="font-bold">From</TableHead>
                     <TableHead className="font-bold">Number of Birds Died</TableHead>
                     <TableHead className="font-bold">Weight (kg)</TableHead>
                     <TableHead className="font-bold">Rate/Kg</TableHead>
@@ -754,6 +959,7 @@ export default function MortalityPage() {
                         onClick={() => handleView(mortality)}
                       >
                         <TableCell>{mortality.purchaseDate || "N/A"}</TableCell>
+                        <TableCell>{mortality.source === 'godown' ? 'From Godown' : 'From Travel Sales'}</TableCell>
                         <TableCell>{mortality.numberOfBirdsDied || 0}</TableCell>
                         <TableCell>{mortality.weightOfDeadBirds != null ? Number(mortality.weightOfDeadBirds).toFixed(2) : "—"}</TableCell>
                         <TableCell>{mortality.ratePerKg != null ? `₹${Number(mortality.ratePerKg).toFixed(2)}` : "—"}</TableCell>
@@ -807,6 +1013,22 @@ export default function MortalityPage() {
                     <Label className="text-muted-foreground">Purchase Date</Label>
                     <div className="text-sm font-medium">{viewingMortality.purchaseDate || "N/A"}</div>
                   </div>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">From</Label>
+                    <div className="text-sm font-medium">{viewingMortality.source === 'godown' ? 'From Godown' : 'From Travel Sales'}</div>
+                  </div>
+                  {viewingMortality.source !== 'godown' && (
+                    <>
+                      <div className="space-y-2">
+                        <Label className="text-muted-foreground">Purchase Bill No</Label>
+                        <div className="text-sm font-medium">{viewingMortality.purchaseInvoiceNo || "N/A"}</div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-muted-foreground">Cage No</Label>
+                        <div className="text-sm font-medium">{viewingMortality.cageIdNumber || "N/A"}</div>
+                      </div>
+                    </>
+                  )}
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Number of Birds Died</Label>
                     <div className="text-sm font-medium">{viewingMortality.numberOfBirdsDied || 0}</div>
