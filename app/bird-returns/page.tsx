@@ -659,7 +659,7 @@ export default function BirdReturnsPage() {
                         <TableCell>{new Date(birdReturn.returnDate).toLocaleDateString()}</TableCell>
                         <TableCell>{birdReturn.sale?.invoiceNumber || '-'}</TableCell>
                         <TableCell>{birdReturn.customerName}</TableCell>
-                        <TableCell className="text-right">{birdReturn.numberOfBirdsReturned}</TableCell>
+                        <TableCell className="text-right">{birdReturn.numberOfBirdsReturned ?? (birdReturn as any).number_of_birds_returned ?? '-'}</TableCell>
                         <TableCell>
                           {birdReturn.returnReason === 'sick' ? (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">

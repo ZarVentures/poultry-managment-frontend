@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { godownApi, retailersApi, purchasesApi, type GodownSale, type Retailer } from "@/lib/api"
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
+import { toDateOnlyString, formatDate, getTodayIST } from "@/lib/date-utils"
 
 const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer", "advance"] as const
 type PaymentMode = typeof PAYMENT_MODES[number]
@@ -36,7 +37,7 @@ export default function GodownSalePage() {
   const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [allowEditBillNo, setAllowEditBillNo] = useState(false)
   const [formData, setFormData] = useState({
-    saleDate: new Date().toISOString().split("T")[0],
+    saleDate: getTodayIST(),
     purchaseBillNo: "",
     invoiceNumber: "",
     retailerId: "",
@@ -131,7 +132,7 @@ export default function GodownSalePage() {
   const resetForm = async () => {
     const nextNumber = editingId ? "" : await fetchNextSaleNumber()
     setFormData({
-      saleDate: new Date().toISOString().split("T")[0],
+      saleDate: getTodayIST(),
       purchaseBillNo: "",
       invoiceNumber: nextNumber,
       retailerId: "",
@@ -150,7 +151,7 @@ export default function GodownSalePage() {
 
   const handleEdit = async (sale: GodownSale) => {
     setFormData({
-      saleDate: sale.saleDate,
+      saleDate: toDateOnlyString(sale.saleDate) || getTodayIST(),
       purchaseBillNo: (sale as any).purchaseBillNo || "",
       invoiceNumber: (sale as any).invoiceNumber || "",
       retailerId: (sale as any).retailerId || "",
@@ -1082,7 +1083,7 @@ export default function GodownSalePage() {
                     return (
                       <TableRow key={sale.id}>
                         <TableCell>{sale.invoiceNumber || "-"}</TableCell>
-                        <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
+                        <TableCell>{formatDate(sale.saleDate)}</TableCell>
                         <TableCell>{sale.customerName}</TableCell>
                         <TableCell className="text-right">{sale.numberOfBirds} birds</TableCell>
                         <TableCell className="text-right">₹{Number(sale.ratePerKg || 0).toFixed(2)}/kg</TableCell>

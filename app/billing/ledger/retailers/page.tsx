@@ -10,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Download, Printer, ArrowLeft, Calendar, FileText, Wallet, TrendingDown, TrendingUp, CircleDollarSign } from 'lucide-react'
-import { salesApi, retailersApi, godownApi, billingApi, settingsApi } from '@/lib/api'
+import { salesApi, retailersApi, godownApi, billingApi, settingsApi, birdReturnsApi, vehicleBirdReturnsApi } from '@/lib/api'
+import { toDateOnlyString, formatDate } from '@/lib/date-utils'
 
 const RetailerLedgerContent = () => {
   const searchParams = useSearchParams()
@@ -20,6 +21,7 @@ const RetailerLedgerContent = () => {
   const [loadingRetailers, setLoadingRetailers] = useState(true)
   const [loadingLedger, setLoadingLedger] = useState(false)
   const [saleLookup, setSaleLookup] = useState<Record<string, { quantity: number; totalBirds: number; rate: number }>>({})
+  const [returnLookup, setReturnLookup] = useState<Record<string, { quantity: number; totalBirds: number; rate: number }>>({})
   const [orgInfo, setOrgInfo] = useState<{ name: string; location: string; phone: string }>({ name: '', location: '', phone: '' })
   const [dateFrom, setDateFrom] = useState(() => { const d = new Date(); d.setMonth(0); d.setDate(1); return d.toISOString().split('T')[0] })
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0])
@@ -80,7 +82,9 @@ const RetailerLedgerContent = () => {
     Promise.all([
       salesApi.getAll().catch(() => ({ data: [] })),
       godownApi.sales.getAll().catch(() => []),
-    ]).then(([salesRes, godownList]: [any, any]) => {
+      birdReturnsApi.getAll().catch(() => []),
+      vehicleBirdReturnsApi.getAll().catch(() => []),
+    ]).then(([salesRes, godownList, godownReturns, vehicleReturns]: [any, any, any, any]) => {
         const list = Array.isArray(salesRes) ? salesRes : salesRes?.data || []
         const godownSales = Array.isArray(godownList) ? godownList : []
         const map: Record<string, { quantity: number; totalBirds: number; rate: number }> = {}
@@ -101,28 +105,40 @@ const RetailerLedgerContent = () => {
           if (s.id) map[String(s.id)] = val
         })
         setSaleLookup(map)
+
+        const returns = [
+          ...(Array.isArray(godownReturns) ? godownReturns : godownReturns?.data || []),
+          ...(Array.isArray(vehicleReturns) ? vehicleReturns : vehicleReturns?.data || []),
+        ]
+        const rmap: Record<string, { quantity: number; totalBirds: number; rate: number }> = {}
+        returns.forEach((r: any) => {
+          const val = {
+            quantity: parseFloat(r.weightReturned) || 0,
+            totalBirds: parseInt(r.numberOfBirdsReturned, 10) || parseInt(r.number_of_birds_returned, 10) || 0,
+            rate: 0,
+          }
+          if (r.returnNumber) rmap[r.returnNumber] = val
+          if (r.return_number) rmap[r.return_number] = val
+          if (r.id) rmap[String(r.id)] = val
+        })
+        setReturnLookup(rmap)
       })
       .catch((err: any) => console.error('Sale lookup fetch error:', err))
   }, [selectedId])
 
   const selectedRetailer = retailers.find(r => r.id === selectedId)
 
-  // Filter ledger entries by date range
-  const fromDateObj = new Date(dateFrom); fromDateObj.setHours(0,0,0,0);
-  const toDateObj = new Date(dateTo); toDateObj.setHours(23,59,59,999);
-
   const filteredEntries = ledgerEntries.filter(entry => {
-    const entryDate = new Date(entry.date);
-    entryDate.setHours(0,0,0,0);
-    return entryDate >= fromDateObj && entryDate <= toDateObj;
+    const ymd = toDateOnlyString(entry.date)
+    if (!ymd) return false
+    return ymd >= dateFrom && ymd <= dateTo
   });
 
   // Calculate opening balance (all entries before start date)
   const openingBalance = ledgerEntries
     .filter(entry => {
-      const entryDate = new Date(entry.date);
-      entryDate.setHours(0,0,0,0);
-      return entryDate < fromDateObj;
+      const ymd = toDateOnlyString(entry.date)
+      return !!ymd && ymd < dateFrom
     })
     .reduce((acc, entry) => acc + Number(entry.debit || 0) - Number(entry.credit || 0), 0);
 
@@ -136,6 +152,12 @@ const RetailerLedgerContent = () => {
     : openingBalance
 
   const getEntryMeta = (e: any) => {
+    if (e.referenceType === 'Return') {
+      const looked = returnLookup[e.referenceId] || returnLookup[String(e.referenceId || '')]
+      const birds = Number(e.totalBirds || e.numberOfBirdsReturned || e.number_of_birds_returned || looked?.totalBirds || 0)
+      const qty = Number(e.totalWeight || e.weightReturned || looked?.quantity || 0)
+      return { quantity: qty, totalBirds: birds, rate: Number(e.ratePerKg || 0) }
+    }
     if (e.referenceType === 'Sale' || e.referenceType === 'Payment' || e.referenceType === 'GodownSale') {
       const invNo = e.referenceId?.replace(/-P$/, '')
       const so = saleLookup[invNo]
@@ -194,7 +216,7 @@ const RetailerLedgerContent = () => {
     const rows = filteredEntries.map(e => {
       const m = getEntryMeta(e)
       return [
-        new Date(e.date + 'T00:00:00').toLocaleDateString('en-GB'),
+        new Date((toDateOnlyString(e.date) || e.date) + 'T00:00:00').toLocaleDateString('en-GB'),
         e.referenceType || '',
         e.referenceId || '-',
         m.totalBirds || '-',
@@ -243,7 +265,7 @@ const RetailerLedgerContent = () => {
     const rowsHtml = filteredEntries.map((e, i) => {
       const m = getEntryMeta(e)
       return `<tr${i % 2 === 0 ? ' style="background:#f9fafb"' : ''}>
-<td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:11px">${new Date(e.date + 'T00:00:00').toLocaleDateString('en-GB')}</td>
+<td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:11px">${new Date((toDateOnlyString(e.date) || e.date) + 'T00:00:00').toLocaleDateString('en-GB')}</td>
 <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:11px">${e.referenceType || ''}</td>
 <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:11px">${e.referenceId || '-'}</td>
 <td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:11px;text-align:right">${m.totalBirds || '-'}</td>
@@ -399,12 +421,13 @@ ${rowsHtml}
                       const typeColor = 
                         typeLabel === 'Sale' ? 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300' :
                         typeLabel === 'Payment' ? 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300' :
+                        typeLabel === 'Return' ? 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300' :
                         typeLabel === 'Voucher' ? 'bg-purple-100 text-purple-800 dark:bg-purple-500/15 dark:text-purple-300' :
                         'bg-gray-100 text-gray-800 dark:bg-slate-500/15 dark:text-slate-300';
 
                       return (
-                        <TableRow key={idx} className={`border-b border-gray-200 dark:border-slate-700 ${typeLabel === 'Payment' ? 'bg-green-50 dark:bg-emerald-500/10' : typeLabel === 'Voucher' ? 'bg-purple-50 dark:bg-purple-500/10' : ''}`}>
-                          <TableCell>{new Date(e.date + 'T00:00:00').toLocaleDateString('en-GB')}</TableCell>
+                        <TableRow key={idx} className={`border-b border-gray-200 dark:border-slate-700 ${typeLabel === 'Payment' ? 'bg-green-50 dark:bg-emerald-500/10' : typeLabel === 'Return' ? 'bg-rose-50 dark:bg-rose-500/10' : typeLabel === 'Voucher' ? 'bg-purple-50 dark:bg-purple-500/10' : ''}`}>
+                          <TableCell>{formatDate(e.date)}</TableCell>
                           <TableCell>
                             <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${typeColor}`}>{typeLabel}</span>
                           </TableCell>
