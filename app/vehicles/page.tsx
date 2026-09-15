@@ -77,9 +77,12 @@ export default function VehiclesPage() {
   const handleEdit = (v: ApiVehicle) => {
     setFormData({
       vehicleNumber: v.vehicleNumber, vehicleType: v.vehicleType, driverName: v.driverName, phone: v.phone,
-      ownerName: v.ownerName || "", address: v.address || "", totalCapacity: v.totalCapacity || "",
-      petrolTankCapacity: v.petrolTankCapacity || "", fuelType: (v as any).fuelType || "diesel",
-      mileage: v.mileage || "", joinDate: v.joinDate, status: v.status, note: v.note || "",
+      ownerName: v.ownerName || "", address: v.address || "",
+      totalCapacity: v.totalCapacity != null && v.totalCapacity !== "" ? String(v.totalCapacity) : "",
+      petrolTankCapacity: v.petrolTankCapacity != null && v.petrolTankCapacity !== "" ? String(v.petrolTankCapacity) : "",
+      fuelType: (v as any).fuelType || "diesel",
+      mileage: v.mileage != null && v.mileage !== "" ? String(v.mileage) : "",
+      joinDate: v.joinDate, status: v.status, note: v.note || "",
     })
     setEditingId(v.id)
     setShowDialog(true)
@@ -92,8 +95,14 @@ export default function VehiclesPage() {
     }
     try {
       setLoading(true)
-      if (editingId) await vehiclesApi.update(editingId, formData)
-      else await vehiclesApi.create(formData)
+      const payload = {
+        ...formData,
+        totalCapacity: formData.totalCapacity === "" ? undefined : String(formData.totalCapacity),
+        petrolTankCapacity: formData.petrolTankCapacity === "" ? undefined : String(formData.petrolTankCapacity),
+        mileage: formData.mileage === "" ? undefined : String(formData.mileage),
+      }
+      if (editingId) await vehiclesApi.update(editingId, payload)
+      else await vehiclesApi.create(payload)
       toast.success("Saved successfully")
       await fetchVehicles()
       resetForm()

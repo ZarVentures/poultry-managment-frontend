@@ -131,7 +131,7 @@ export interface Vehicle {
   phone: string;
   ownerName?: string;
   address?: string;
-  totalCapacity?: string;
+  totalCapacity?: string | number;
   petrolTankCapacity?: string;
   mileage?: string;
   joinDate: string;
@@ -1222,6 +1222,7 @@ export interface CreateExpenseCategoryDto {
   description?: string;
   isActive?: boolean;
   sortOrder?: number;
+  icon?: string;
   appliesTo?: 'main' | 'godown' | 'both';
 }
 
@@ -1230,11 +1231,13 @@ export interface UpdateExpenseCategoryDto {
   description?: string;
   isActive?: boolean;
   sortOrder?: number;
+  icon?: string;
   appliesTo?: 'main' | 'godown' | 'both';
 }
 
 export const expenseCategoriesApi = {
-  getAll: () => apiRequest<ExpenseCategory[]>('/expense-categories'),
+  getAll: (includeInactive = false) =>
+    apiRequest<ExpenseCategory[]>(`/expense-categories${includeInactive ? '?includeInactive=true' : ''}`),
 
   getActive: (type?: 'main' | 'godown') => apiRequest<ExpenseCategory[]>(`/expense-categories/active${type ? `?type=${type}` : ''}`),
 
