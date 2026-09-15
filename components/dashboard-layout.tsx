@@ -268,7 +268,14 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
           )}
 
           {showExpenses && (
-            <SidebarLink href="/expenses" icon={BarChart3} label="Expenses" open={sidebarOpen} />
+            <div className="space-y-1">
+              <SidebarLink href="/expenses" icon={BarChart3} label="Expenses" open={sidebarOpen} />
+              {sidebarOpen && (
+                <div className="ml-4 space-y-1 border-l border-sidebar-border">
+                  <SidebarLink href="/expenses/categories" icon={Tag} label="Expense Categories" open={true} isSubItem={true} />
+                </div>
+              )}
+            </div>
           )}
 
           {showMaster && (
@@ -344,7 +351,6 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
                   <SidebarLink href="/settings/communication" icon={MessageSquare} label="Communication Hub" open={true} isSubItem={true} />
                   <SidebarLink href="/settings/security" icon={Lock} label="Security" open={true} isSubItem={true} />
                   <SidebarLink href="/settings/permissions" icon={ShieldCheck} label="Permissions" open={true} isSubItem={true} />
-                  <SidebarLink href="/settings/categories" icon={Tag} label="Expense Categories" open={true} isSubItem={true} />
                   <SidebarLink href="/settings/developer" icon={Terminal} label="Developer" open={true} isSubItem={true} />
                 </div>
               )}

@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X, Download, Printer, Wallet, TrendingUp, IndianRupee, Calendar, Search } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Download, Printer, Wallet, TrendingUp, IndianRupee, Calendar, Search, Tag } from "lucide-react"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -51,9 +51,9 @@ export default function ExpensesPage() {
 
   const fetchCategories = async () => {
     try {
-      const data = await expenseCategoriesApi.getActive('main') // Only fetch active categories for main
-      setCategories(data)
-      if (data.length > 0 && !editingId) {
+      const data = await expenseCategoriesApi.getActive('main')
+      setCategories(Array.isArray(data) ? data : [])
+      if (Array.isArray(data) && data.length > 0 && !editingId) {
         setFormData(prev => ({ ...prev, categoryId: data[0].id }))
       }
     } catch (e) {
@@ -65,7 +65,7 @@ export default function ExpensesPage() {
     try {
       setLoading(true)
       const data = await expensesApi.getAll()
-      setExpenses(data)
+      setExpenses(Array.isArray(data) ? data : [])
     } catch (error: any) {
       console.error("Failed to fetch expenses:", error)
       toast.error("Failed to load expenses")
@@ -333,7 +333,16 @@ export default function ExpensesPage() {
             <h1 className="text-2xl sm:text-3xl font-bold">Expenses & Financial Tracking</h1>
             <p className="text-muted-foreground text-sm sm:text-base">Track all farm expenses and costs</p>
           </div>
-          <Dialog open={showDialog} onOpenChange={setShowDialog}>
+          <div className="flex w-fit items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => router.push("/expenses/categories")}
+              className="w-fit h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm md:h-10 md:px-4 md:text-sm"
+            >
+              <Tag className="mr-1" size={16} />
+              Categories
+            </Button>
+            <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
               <Button onClick={resetForm} className="w-fit h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm md:h-10 md:px-4 md:text-sm">
                 <Plus className="mr-1 sm:mr-0" size={16} />
@@ -384,6 +393,13 @@ export default function ExpensesPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline text-left"
+                      onClick={() => router.push("/expenses/categories")}
+                    >
+                      Manage categories
+                    </button>
                   </div>
                 </div>
 
@@ -453,6 +469,7 @@ export default function ExpensesPage() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
