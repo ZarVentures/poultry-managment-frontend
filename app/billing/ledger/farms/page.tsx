@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Download, Printer, ArrowLeft, Calendar, FileText, CircleDollarSign, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
-import { purchasesApi, farmersApi, billingApi, settingsApi } from '@/lib/api'
+import { purchasesApi, farmersApi, billingApi } from '@/lib/api'
+import { fetchOrgInfo } from '@/lib/org-info'
 
 const FarmLedgerPage = () => {
   const [farmers, setFarmers] = useState<any[]>([])
@@ -23,17 +24,7 @@ const FarmLedgerPage = () => {
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0])
 
   useEffect(() => {
-    settingsApi.getAll()
-      .then((res: any) => {
-        const list = Array.isArray(res) ? res : []
-        const map = Object.fromEntries(list.map((s: any) => [s.key, s.value]))
-        setOrgInfo({
-          name: map['farmName'] || map['company_name'] || '',
-          location: map['farmLocation'] || map['company_address'] || '',
-          phone: map['farmPhone'] || map['company_phone'] || '',
-        })
-      })
-      .catch(() => {})
+    fetchOrgInfo().then(setOrgInfo).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -146,21 +137,22 @@ const FarmLedgerPage = () => {
 
   const downloadPDF = async () => {
     if (!filteredEntries.length) { alert('No data to export.'); return }
+    const org = await fetchOrgInfo()
     const { default: jsPDF } = await import('jspdf')
     const { default: autoTable } = await import('jspdf-autotable')
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
 
     const pageW = doc.internal.pageSize.getWidth()
     let titleY = 20
-    if (orgInfo.name) {
+    if (org.name) {
       doc.setFontSize(16)
       doc.setFont('helvetica', 'bold')
-      doc.text(orgInfo.name, 14, 16)
+      doc.text(org.name, 14, 16)
       doc.setFontSize(8)
       doc.setFont('helvetica', 'normal')
       let iy = 22
-      if (orgInfo.location) { doc.text(orgInfo.location, 14, iy); iy += 4 }
-      if (orgInfo.phone) { doc.text(`Phone: ${orgInfo.phone}`, 14, iy); iy += 4 }
+      if (org.location) { doc.text(org.location, 14, iy); iy += 4 }
+      if (org.phone) { doc.text(`Phone: ${org.phone}`, 14, iy); iy += 4 }
       titleY = iy + 4
     }
     doc.setFontSize(20)
@@ -226,8 +218,9 @@ const FarmLedgerPage = () => {
     doc.save(`farm_ledger_${selectedFarmer?.name || selectedId}_${new Date().toISOString().split('T')[0]}.pdf`)
   }
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (!filteredEntries.length) { alert('No data to print.'); return }
+    const org = await fetchOrgInfo()
     const rowsHtml = filteredEntries.map((e, i) => {
       const m = getEntryMeta(e)
       return `<tr${i % 2 === 0 ? ' style="background:#f9fafb"' : ''}>
@@ -253,7 +246,7 @@ td{padding:6px 8px;border:1px solid #e5e7eb;font-size:11px;white-space:nowrap}
 .closing td{background:#eff6ff;font-weight:bold;color:#1e40af}
 @media print{body{padding:0}.no-print{display:none}}
 </style></head><body>
-${orgInfo.name ? '<h2>' + orgInfo.name + '</h2>' : ''}
+${org.name ? '<h2>' + org.name + '</h2>' : ''}
 <h3>Farm Ledger Report</h3>
 <h3 style="font-weight:normal;color:#555;margin-bottom:2px">Farmer: ${selectedFarmer?.name || '-'}</h3>
 <div class="period">Period: ${new Date(dateFrom).toLocaleDateString('en-GB')} - ${new Date(dateTo).toLocaleDateString('en-GB')}</div>

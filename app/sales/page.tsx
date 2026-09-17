@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Edit2, Trash2, X, Paperclip, Wallet, TrendingUp, ShoppingCart, Clock, Eye, Layers, Printer, Scale, Calendar, Search } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { salesApi, retailersApi, vehiclesApi, purchasesApi, settingsApi, type Sale as ApiSale } from "@/lib/api"
+import { escapeHtml, fetchOrgInfo, type OrgInfo } from "@/lib/org-info"
 import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
@@ -54,6 +55,7 @@ export default function SalesPage() {
   const [allowEditBillNo, setAllowEditBillNo] = useState(false)
   const [bearableLossType, setBearableLossType] = useState<'percentage' | 'weight'>('percentage')
   const [bearableLossValue, setBearableLossValue] = useState<number>(2.0)
+  const [orgInfo, setOrgInfo] = useState<OrgInfo>({ name: "", location: "", phone: "" })
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
@@ -103,6 +105,7 @@ export default function SalesPage() {
         if (valSetting) setBearableLossValue(parseFloat(valSetting.value) || 2.0)
       }
     }).catch(() => { })
+    fetchOrgInfo().then(setOrgInfo).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -691,7 +694,8 @@ export default function SalesPage() {
     return notes
   }
 
-  const handlePrintSale = (sale: ApiSale) => {
+  const handlePrintSale = async (sale: ApiSale) => {
+    const org = await fetchOrgInfo()
     const invoiceNumber = (sale as any).saleNo || (sale as any).invoiceNumber || "INV-2026-000000"
     const invoiceDate = formatDate(sale.saleDate)
     const dueDate = new Date(sale.saleDate)
@@ -735,7 +739,7 @@ export default function SalesPage() {
     const invoiceHtml = `
       <div class="invoice-shell">
         <div class="form-header">
-          <div class="form-title">Aziz Poultry FARM</div>
+          <div class="form-title">${escapeHtml(org.name || "Business")}</div>
           <div class="form-meta">
             <div class="meta-row"><span>Bill No.</span><strong>${invoiceNumber}</strong></div>
             <div class="meta-row"><span>Date</span><strong>${invoiceDate}</strong></div>

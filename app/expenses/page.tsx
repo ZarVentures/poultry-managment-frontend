@@ -39,7 +39,7 @@ export default function ExpensesPage() {
     categoryId: undefined as number | undefined,
     description: "",
     amount: "",
-    paymentMethod: "cash" as "cash" | "bank_transfer" | "check" | "credit_card",
+    paymentMethod: "cash" as "cash" | "bank_transfer" | "check" | "credit_card" | "upi",
     notes: "",
   })
 

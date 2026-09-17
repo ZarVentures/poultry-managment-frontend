@@ -13,6 +13,7 @@ import { Plus, Edit2, Trash2, X, Printer, ShoppingCart, Bird, Scale, IndianRupee
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { godownApi, retailersApi, purchasesApi, type GodownSale, type Retailer } from "@/lib/api"
+import { escapeHtml, fetchOrgInfo, type OrgInfo } from "@/lib/org-info"
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
 import { toDateOnlyString, formatDate, getTodayIST } from "@/lib/date-utils"
@@ -51,12 +52,14 @@ export default function GodownSalePage() {
   })
   const [payments, setPayments] = useState<PaymentRow[]>([emptyPayment()])
   const [godownStock, setGodownStock] = useState<number | null>(null)
+  const [orgInfo, setOrgInfo] = useState<OrgInfo>({ name: "", location: "", phone: "" })
 
   useEffect(() => {
     setMounted(true)
     fetchSales()
     fetchRetailers()
     fetchGodownStock()
+    fetchOrgInfo().then(setOrgInfo).catch(() => {})
   }, [])
   const fetchSales = async () => {
     try {
@@ -467,7 +470,8 @@ export default function GodownSalePage() {
     window.setTimeout(cleanup, 30000)
   }
 
-  const handlePrintSale = (sale: GodownSale) => {
+  const handlePrintSale = async (sale: GodownSale) => {
+    const org = await fetchOrgInfo()
     const received = Number((sale as any).amountReceived || 0)
     const totalAmount = Number(sale.totalAmount || 0)
     const balance = Math.max(0, totalAmount - received)
@@ -526,7 +530,7 @@ export default function GodownSalePage() {
     const invoiceHtml = `
       <div class="invoice-shell">
         <div class="form-header">
-          <div class="form-title">Aziz Poultry FARM</div>
+          <div class="form-title">${escapeHtml(org.name || "Business")}</div>
           <div class="form-meta">
             <div class="meta-row"><span>Bill No.</span><strong>${invoiceNumber}</strong></div>
             <div class="meta-row"><span>Date</span><strong>${invoiceDate}</strong></div>

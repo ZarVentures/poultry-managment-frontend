@@ -14,6 +14,7 @@ import { Plus, Edit2, Trash2, Download, Printer, Eye, Paperclip, X, ChevronLeft,
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { purchasesApi, farmersApi, vehiclesApi, type PurchaseOrder as ApiPurchaseOrder, type Farmer } from "@/lib/api"
+import { escapeHtml, fetchOrgInfo, orgInitials, type OrgInfo } from "@/lib/org-info"
 import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
@@ -72,12 +73,14 @@ export default function PurchasesPage() {
   })
   const [cages, setCages] = useState([emptyCage()])
   const [payments, setPayments] = useState<PaymentRow[]>([emptyPayment()])
+  const [orgInfo, setOrgInfo] = useState<OrgInfo>({ name: "", location: "", phone: "" })
 
   useEffect(() => {
     setMounted(true)
     fetchInvoiceList()
     fetchFarmers()
     fetchVehicles()
+    fetchOrgInfo().then(setOrgInfo).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -276,7 +279,8 @@ export default function PurchasesPage() {
     } finally { setLoading(false) }
   }
 
-  const handlePrintPurchase = (purchase: ApiPurchaseOrder) => {
+  const handlePrintPurchase = async (purchase: ApiPurchaseOrder) => {
+    const org = await fetchOrgInfo()
     const invoiceNumber = purchase.orderNumber || "PO-2026-000000"
     const invoiceDate = formatDate(purchase.orderDate)
     const dueDate = purchase.dueDate ? formatDate(purchase.dueDate) : "—"
@@ -296,10 +300,10 @@ export default function PurchasesPage() {
       <div class="invoice-shell">
         <div class="header-row">
           <div class="brand-block">
-            <div class="logo-mark">AF</div>
+            <div class="logo-mark">${escapeHtml(orgInitials(org.name))}</div>
             <div>
-              <div class="brand-name">Poultry Sathi</div>
-              <div class="brand-sub">Premium Poultry ERP • Purchase Invoice</div>
+              <div class="brand-name">${escapeHtml(org.name || "Business")}</div>
+              <div class="brand-sub">Purchase Invoice${org.location ? ` • ${escapeHtml(org.location)}` : ""}</div>
             </div>
           </div>
           <div class="invoice-meta">
