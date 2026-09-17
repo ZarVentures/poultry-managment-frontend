@@ -14,6 +14,7 @@ import { Plus, Edit2, Trash2, X, Printer, Eye, PackagePlus, Bird, Scale, IndianR
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { godownApi, vehiclesApi, farmersApi, purchasesApi, type GodownInward, type GodownCage, type Vehicle } from "@/lib/api"
+import { escapeHtml, fetchOrgInfo, orgInitials, type OrgInfo } from "@/lib/org-info"
 import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 
@@ -37,6 +38,7 @@ export default function GodownInwardPage() {
   const [viewingEntry, setViewingEntry] = useState<GodownInward | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [allowEditInwardNo, setAllowEditInwardNo] = useState(false)
+  const [orgInfo, setOrgInfo] = useState<OrgInfo>({ name: "", location: "", phone: "" })
   const [formData, setFormData] = useState({
     entryDate: new Date().toISOString().split("T")[0],
     inwardNo: "",
@@ -75,6 +77,7 @@ export default function GodownInwardPage() {
     fetchVehicles()
     fetchFarmers()
     fetchPurchaseBills()
+    fetchOrgInfo().then(setOrgInfo).catch(() => {})
   }, [])
 
   const fetchEntries = async () => {
@@ -403,7 +406,8 @@ export default function GodownInwardPage() {
     }
   }
 
-  const handlePrintInward = (entry: GodownInward) => {
+  const handlePrintInward = async (entry: GodownInward) => {
+    const org = await fetchOrgInfo()
     const vehicle = vehicles.find(v => v.id === entry.vehicleId)
     const totalAmount = Number(entry.totalAmount || 0)
     const rate = Number(entry.ratePerKg || 0)
@@ -415,10 +419,10 @@ export default function GodownInwardPage() {
       <div class="invoice-shell">
         <div class="header-row">
           <div class="brand-block">
-            <div class="logo-mark">AF</div>
+            <div class="logo-mark">${escapeHtml(orgInitials(org.name))}</div>
             <div>
-              <div class="brand-name">Poultry Sathi</div>
-              <div class="brand-sub">Premium Poultry ERP • Godown Inward Receipt</div>
+              <div class="brand-name">${escapeHtml(org.name || "Business")}</div>
+              <div class="brand-sub">Godown Inward Receipt${org.location ? ` • ${escapeHtml(org.location)}` : ""}</div>
             </div>
           </div>
           <div class="invoice-meta">

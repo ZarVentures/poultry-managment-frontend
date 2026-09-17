@@ -255,7 +255,7 @@ export interface Expense {
   };
   description: string;
   amount: number;
-  paymentMethod: 'cash' | 'bank_transfer' | 'check' | 'credit_card';
+  paymentMethod: 'cash' | 'bank_transfer' | 'check' | 'credit_card' | 'upi';
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -269,7 +269,7 @@ export interface CreateExpenseDto {
   category?: 'feed' | 'labor' | 'medicine' | 'utilities' | 'equipment' | 'maintenance' | 'transportation' | 'other';
   description: string;
   amount: string;
-  paymentMethod: 'cash' | 'bank_transfer' | 'check' | 'credit_card';
+  paymentMethod: 'cash' | 'bank_transfer' | 'check' | 'credit_card' | 'upi';
   notes?: string;
 }
 
@@ -464,7 +464,7 @@ export interface GodownExpense {
   category: string;
   description: string;
   amount: number;
-  paymentMethod: 'cash' | 'bank_transfer' | 'check' | 'credit_card';
+  paymentMethod: 'cash' | 'bank_transfer' | 'check' | 'credit_card' | 'upi';
   notes?: string;
   createdAt?: string;
   updatedAt?: string;

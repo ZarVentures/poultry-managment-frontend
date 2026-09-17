@@ -12,7 +12,8 @@ import {
   ArrowLeft, Calendar, Download, FileText, Printer, Search,
   Bird, PackagePlus, PackageMinus, AlertCircle, Scale, Undo2,
 } from "lucide-react"
-import { godownApi, settingsApi, type StockLedgerEntry, type StockLedgerResponse } from "@/lib/api"
+import { godownApi, type StockLedgerEntry, type StockLedgerResponse } from "@/lib/api"
+import { fetchOrgInfo } from "@/lib/org-info"
 import { toast } from "sonner"
 
 function fmtNum(n: number, digits = 0) {
@@ -51,17 +52,7 @@ export default function StockLedgerPage() {
   const [orgInfo, setOrgInfo] = useState({ name: "", location: "", phone: "" })
 
   useEffect(() => {
-    settingsApi.getAll()
-      .then((res: any) => {
-        const list = Array.isArray(res) ? res : []
-        const map = Object.fromEntries(list.map((s: any) => [s.key, s.value]))
-        setOrgInfo({
-          name: map.farmName || map.company_name || "",
-          location: map.farmLocation || map.company_address || "",
-          phone: map.farmPhone || map.company_phone || "",
-        })
-      })
-      .catch(() => {})
+    fetchOrgInfo().then(setOrgInfo).catch(() => {})
   }, [])
 
   const fetchLedger = async () => {
@@ -149,21 +140,22 @@ export default function StockLedgerPage() {
   }
 
   const downloadPDF = async () => {
+    const org = await fetchOrgInfo()
     const { default: jsPDF } = await import("jspdf")
     const { default: autoTable } = await import("jspdf-autotable")
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
     const pageW = doc.internal.pageSize.getWidth()
 
     let titleY = 16
-    if (orgInfo.name) {
+    if (org.name) {
       doc.setFontSize(14)
       doc.setFont("helvetica", "bold")
-      doc.text(orgInfo.name, 14, 12)
+      doc.text(org.name, 14, 12)
       doc.setFontSize(8)
       doc.setFont("helvetica", "normal")
       let iy = 17
-      if (orgInfo.location) { doc.text(orgInfo.location, 14, iy); iy += 4 }
-      if (orgInfo.phone) { doc.text(`Phone: ${orgInfo.phone}`, 14, iy); iy += 4 }
+      if (org.location) { doc.text(org.location, 14, iy); iy += 4 }
+      if (org.phone) { doc.text(`Phone: ${org.phone}`, 14, iy); iy += 4 }
       titleY = iy + 2
     }
 
@@ -218,8 +210,150 @@ export default function StockLedgerPage() {
     doc.save(`stock_ledger_${dateFrom}_${dateTo}.pdf`)
   }
 
-  const handlePrint = () => {
-    window.print()
+  const handlePrint = async () => {
+    const org = await fetchOrgInfo()
+    const esc = (v: unknown) =>
+      String(v ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+
+    const rows = entries.length
+      ? entries.map((e) => `
+          <tr>
+            <td>${esc(fmtDate(e.date))}</td>
+            <td>${esc(e.movementType)}</td>
+            <td>${esc(e.referenceNo)}</td>
+            <td>${esc(e.party || "-")}</td>
+            <td>${esc(e.purchaseInvoiceNo || "—")}</td>
+            <td class="num">${e.birdsIn ? `+${fmtNum(e.birdsIn)}` : "—"}</td>
+            <td class="num">${e.birdsOut ? `−${fmtNum(e.birdsOut)}` : "—"}</td>
+            <td class="num">${e.weightIn ? fmtNum(e.weightIn, 2) : "—"}</td>
+            <td class="num">${e.weightOut ? fmtNum(e.weightOut, 2) : "—"}</td>
+            <td class="num">${e.ratePerKg != null ? `₹${fmtNum(e.ratePerKg, 2)}` : "—"}</td>
+            <td class="num">${e.amount != null ? `₹${fmtNum(e.amount, 2)}` : "—"}</td>
+            <td class="num">${fmtNum(e.runningBirds)}</td>
+            <td class="num">${fmtNum(e.runningWeight, 2)} kg</td>
+          </tr>`).join("")
+      : `<tr><td colspan="13" style="text-align:center;padding:16px">No stock movements in this period</td></tr>`
+
+    const html = `<!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Stock Ledger ${esc(dateFrom)} to ${esc(dateTo)}</title>
+          <style>
+            @page { size: A4 landscape; margin: 8mm; }
+            body { font-family: Arial, sans-serif; color: #111; margin: 0; padding: 12px; }
+            h1, h2, p { margin: 0; text-align: center; }
+            h2 { font-size: 16px; }
+            h1 { font-size: 20px; margin-top: 4px; }
+            .period { font-size: 12px; margin: 4px 0 12px; }
+            .summary { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+            .summary td { border: 1px solid #111; padding: 6px 8px; font-size: 11px; width: 14.28%; }
+            .summary .label { font-size: 10px; color: #444; }
+            .summary .val { font-size: 13px; font-weight: 700; }
+            table.ledger { width: 100%; border-collapse: collapse; }
+            table.ledger th, table.ledger td { border: 1px solid #111; padding: 4px 5px; font-size: 10px; }
+            table.ledger th { background: #1e3a5f; color: #fff; }
+            .num { text-align: right; white-space: nowrap; }
+            .open { background: #dbeafe; font-weight: 600; }
+            .totals { background: #e2e8f0; font-weight: 600; }
+            .close { background: #e0e7ff; font-weight: 700; }
+            .foot { margin-top: 10px; font-size: 10px; color: #444; }
+          </style>
+        </head>
+        <body>
+          ${org.name ? `<h2>${esc(org.name)}</h2>` : ""}
+          <h1>Godown Stock Ledger</h1>
+          <p class="period">${esc(fmtDate(dateFrom))} — ${esc(fmtDate(dateTo))}</p>
+          <table class="summary">
+            <tr>
+              <td><div class="label">Opening</div><div class="val">${fmtNum(opening.birds)}</div><div>${fmtNum(opening.weight, 2)} kg</div></td>
+              <td><div class="label">Inward</div><div class="val">+${fmtNum(period.birdsIn - returnBirds)}</div><div>${fmtNum(Math.max(0, period.weightIn - returnWeight), 2)} kg</div></td>
+              <td><div class="label">Returns</div><div class="val">+${fmtNum(returnBirds)}</div><div>${fmtNum(returnWeight, 2)} kg</div></td>
+              <td><div class="label">Sold</div><div class="val">−${fmtNum(soldBirds)}</div><div>${fmtNum(soldWeight, 2)} kg</div></td>
+              <td><div class="label">Mortality</div><div class="val">−${fmtNum(mortalityBirds)}</div><div>${fmtNum(mortalityWeight, 2)} kg</div></td>
+              <td><div class="label">Closing</div><div class="val">${fmtNum(closing.birds)}</div><div>${fmtNum(closing.weight, 2)} kg</div></td>
+              <td><div class="label">Period Value</div><div>In ₹${fmtNum(period.amountIn, 2)}</div><div>Out ₹${fmtNum(period.amountOut, 2)}</div></td>
+            </tr>
+          </table>
+          <table class="ledger">
+            <thead>
+              <tr>
+                <th>Date</th><th>Type</th><th>Reference</th><th>Party</th><th>Purchase Inv</th>
+                <th>Birds In</th><th>Birds Out</th><th>Wt In</th><th>Wt Out</th>
+                <th>Rate</th><th>Amount</th><th>Bal. Birds</th><th>Bal. Wt</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="open">
+                <td colspan="5" style="text-align:right">Opening Balance (${esc(fmtDate(dateFrom))})</td>
+                <td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td>
+                <td class="num">—</td><td class="num">—</td>
+                <td class="num">${fmtNum(opening.birds)}</td>
+                <td class="num">${fmtNum(opening.weight, 2)} kg</td>
+              </tr>
+              ${rows}
+              <tr class="totals">
+                <td colspan="5" style="text-align:right">Period Totals</td>
+                <td class="num">+${fmtNum(period.birdsIn)}</td>
+                <td class="num">−${fmtNum(period.birdsOut)}</td>
+                <td class="num">${fmtNum(period.weightIn, 2)}</td>
+                <td class="num">${fmtNum(period.weightOut, 2)}</td>
+                <td></td>
+                <td class="num">In ₹${fmtNum(period.amountIn, 2)}<br/>Out ₹${fmtNum(period.amountOut, 2)}</td>
+                <td></td><td></td>
+              </tr>
+              <tr class="close">
+                <td colspan="5" style="text-align:right">Closing Balance (${esc(fmtDate(dateTo))})</td>
+                <td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td>
+                <td class="num">—</td><td class="num">—</td>
+                <td class="num">${fmtNum(closing.birds)}</td>
+                <td class="num">${fmtNum(closing.weight, 2)} kg</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="foot">Opening + Inward + Returns − Sale − Mortality = Closing</p>
+        </body>
+      </html>`
+
+    const iframe = document.createElement("iframe")
+    iframe.style.position = "fixed"
+    iframe.style.right = "0"
+    iframe.style.bottom = "0"
+    iframe.style.width = "0"
+    iframe.style.height = "0"
+    iframe.style.border = "0"
+    iframe.setAttribute("aria-hidden", "true")
+    document.body.appendChild(iframe)
+
+    const cleanup = () => {
+      window.setTimeout(() => iframe.remove(), 100)
+    }
+
+    iframe.onload = () => {
+      const win = iframe.contentWindow
+      if (!win) return cleanup()
+      win.focus()
+      win.addEventListener("afterprint", cleanup)
+      try {
+        win.print()
+      } catch {
+        cleanup()
+      }
+    }
+
+    const iframeDoc = iframe.contentDocument
+    if (iframeDoc) {
+      iframeDoc.open()
+      iframeDoc.write(html)
+      iframeDoc.close()
+    } else {
+      cleanup()
+      toast.error("Unable to open print preview")
+    }
   }
 
   return (

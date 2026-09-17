@@ -263,10 +263,12 @@ export default function SettingsPage() {
       const results = await Promise.allSettled(Object.entries(formData).map(([key, value]) =>
         settingsApi.createOrUpdate({ key, value: String(value), category: "general" })
       ))
-      const allFailed = results.every(r => r.status === 'rejected')
+      const failed = results.filter(r => r.status === 'rejected')
       if (formData.theme) dispatch(setTheme(formData.theme))
-      if (allFailed) {
+      if (failed.length === results.length) {
         toast.error("Failed to save settings")
+      } else if (failed.length) {
+        toast.error("Some settings did not save. Try again.")
       } else {
         toast.success("Settings saved!")
       }
