@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Edit2, Trash2, X, Download, Printer, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Store, UserCheck, Calendar, Search } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -15,6 +16,22 @@ import { Textarea } from "@/components/ui/textarea"
 import { retailersApi, type Retailer as ApiRetailer } from "@/lib/api"
 import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
+
+function todayYmd() {
+  return new Date().toISOString().split("T")[0]
+}
+
+function retailerJoinYmd(retailer: ApiRetailer) {
+  const raw = retailer.joinDate || retailer.createdAt || ""
+  return raw ? raw.slice(0, 10) : todayYmd()
+}
+
+function formatJoinDate(retailer: ApiRetailer) {
+  const raw = retailer.joinDate || retailer.createdAt
+  if (!raw) return "-"
+  const d = new Date(raw.includes("T") ? raw : `${raw}T00:00:00`)
+  return Number.isNaN(d.getTime()) ? "-" : d.toLocaleDateString("en-GB")
+}
 
 export default function RetailersPage() {
   const router = useRouter()
@@ -41,6 +58,7 @@ export default function RetailersPage() {
     status: "active" as "active" | "inactive",
     notes: "",
     openingBalance: 0,
+    joinDate: todayYmd(),
   })
 
   useEffect(() => {
@@ -79,6 +97,7 @@ export default function RetailersPage() {
       name: "", ownerName: "", phone: "",
       email: "", address: "", status: "active", notes: "",
       openingBalance: 0,
+      joinDate: todayYmd(),
     })
     setEditingId(null)
   }
@@ -93,6 +112,7 @@ export default function RetailersPage() {
       status: retailer.status,
       notes: retailer.notes || "",
       openingBalance: (retailer as any).openingBalance || 0,
+      joinDate: retailerJoinYmd(retailer),
     })
     setEditingId(retailer.id)
     setShowDialog(true)
@@ -112,6 +132,7 @@ export default function RetailersPage() {
           address: formData.address || undefined, status: formData.status,
           notes: formData.notes || undefined,
           openingBalance: formData.openingBalance,
+          joinDate: formData.joinDate,
         })
         toast.success("Retailer updated successfully")
       } else {
@@ -121,6 +142,7 @@ export default function RetailersPage() {
           address: formData.address || undefined, status: formData.status,
           notes: formData.notes || undefined,
           openingBalance: formData.openingBalance,
+          joinDate: formData.joinDate,
         })
         toast.success("Retailer created successfully")
       }
@@ -186,7 +208,7 @@ export default function RetailersPage() {
                 <tr>
                   <td>${r.name}</td><td>${r.ownerName || "-"}</td><td>${r.phone}</td>
                   <td>${r.address || "-"}</td>
-                  <td>${r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB') : "-"}</td>
+                  <td>${formatJoinDate(r)}</td>
                   <td>${r.status}</td>
                 </tr>
               `).join('')}
@@ -225,6 +247,10 @@ export default function RetailersPage() {
                   <div className="space-y-2"><Label>Opening Balance (₹)</Label><Input type="number" step="0.01" value={formData.openingBalance} onChange={e => setFormData({ ...formData, openingBalance: parseFloat(e.target.value) || 0 })} placeholder="0" disabled={loading} /></div>
                   <div className="space-y-2"><Label>Phone *</Label><Input value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} placeholder="Phone number" disabled={loading} /></div>
                   <div className="space-y-2"><Label>Email</Label><Input value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="Email" disabled={loading} /></div>
+                  <div className="space-y-2">
+                    <Label>Join Date *</Label>
+                    <DatePicker value={formData.joinDate} onChange={(date) => setFormData({ ...formData, joinDate: date })} disabled={loading} />
+                  </div>
                 </div>
                 <div className="space-y-2"><Label>Address</Label><Input value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} placeholder="Address" disabled={loading} /></div>
                 <div className="space-y-2">
@@ -345,7 +371,7 @@ export default function RetailersPage() {
                         <TableCell className="whitespace-nowrap">{r.ownerName || "-"}</TableCell>
                         <TableCell className="whitespace-nowrap">{r.phone}</TableCell>
                         <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{r.address || "-"}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "-"}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{formatJoinDate(r)}</TableCell>
                         <TableCell className="whitespace-nowrap">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${r.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{r.status}</span>
                         </TableCell>

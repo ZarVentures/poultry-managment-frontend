@@ -103,17 +103,23 @@ function KpiCard({
 }
 
 export default function BalanceSheetPage() {
-  const [asOnDate, setAsOnDate] = useState(formatDateToYYYYMMDD(new Date()))
+  const yearStart = () => {
+    const d = new Date()
+    d.setMonth(0, 1)
+    return formatDateToYYYYMMDD(d)
+  }
+  const [dateFrom, setDateFrom] = useState(yearStart)
+  const [dateTo, setDateTo] = useState(formatDateToYYYYMMDD(new Date()))
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<BalanceSheetReport | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showWorkings, setShowWorkings] = useState(false)
 
-  const load = useCallback(async (date = asOnDate) => {
+  const load = useCallback(async (from = dateFrom, to = dateTo) => {
     try {
       setLoading(true)
       setError(null)
-      const report = await reportsApi.getBalanceSheet(date)
+      const report = await reportsApi.getBalanceSheet({ fromDate: from || undefined, toDate: to || undefined })
       setData(report)
     } catch (err: any) {
       const message = err?.message || "Failed to load balance sheet"
@@ -122,7 +128,7 @@ export default function BalanceSheetPage() {
     } finally {
       setLoading(false)
     }
-  }, [asOnDate])
+  }, [dateFrom, dateTo])
 
   useEffect(() => {
     load()
@@ -132,7 +138,7 @@ export default function BalanceSheetPage() {
   const downloadCSV = () => {
     if (!data) return toast.error("Generate the statement first")
     const rows: string[][] = [
-      ["Balance Sheet", formatDate(data.asOnDate)],
+      ["Balance Sheet", data.fromDate ? `${formatDate(data.fromDate)} – ${formatDate(data.asOnDate)}` : formatDate(data.asOnDate)],
       [],
       ["Assets", "Amount"],
       ...data.assets.lines.map((l) => [l.label, String(l.amount)]),
@@ -166,7 +172,13 @@ export default function BalanceSheetPage() {
     doc.setFontSize(16)
     doc.text("Balance Sheet", 14, 18)
     doc.setFontSize(10)
-    doc.text(`As on ${formatDate(data.asOnDate)}`, 14, 25)
+    doc.text(
+      data.fromDate
+        ? `Period ${formatDate(data.fromDate)} – ${formatDate(data.asOnDate)}`
+        : `As on ${formatDate(data.asOnDate)}`,
+      14,
+      25,
+    )
     autoTable(doc, {
       startY: 32,
       head: [["Assets", "Amount (INR)"]],
@@ -217,13 +229,17 @@ export default function BalanceSheetPage() {
 
           <div className="flex flex-col sm:flex-row gap-3 sm:items-end print:hidden">
             <div className="w-full sm:w-48">
-              <label className="text-[11px] font-semibold tracking-wide text-slate-500 uppercase mb-1.5 block">As on</label>
-              <DatePicker value={asOnDate} onChange={setAsOnDate} placeholder="As on" />
+              <label className="text-[11px] font-semibold tracking-wide text-slate-500 uppercase mb-1.5 block">From</label>
+              <DatePicker value={dateFrom} onChange={setDateFrom} placeholder="From" />
+            </div>
+            <div className="w-full sm:w-48">
+              <label className="text-[11px] font-semibold tracking-wide text-slate-500 uppercase mb-1.5 block">To</label>
+              <DatePicker value={dateTo} onChange={setDateTo} placeholder="To" />
             </div>
             <div className="flex gap-2">
-              <Button onClick={() => load(asOnDate)} disabled={loading} className="h-10 px-5">
+              <Button onClick={() => load(dateFrom, dateTo)} disabled={loading} className="h-10 px-5">
                 {loading ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Scale size={16} className="mr-2" />}
-                {loading ? "Updating" : "Refresh"}
+                {loading ? "Updating" : "Apply"}
               </Button>
               <Button variant="outline" className="h-10" onClick={downloadCSV} disabled={!data} aria-label="Download CSV">
                 <Download size={16} />
@@ -250,7 +266,7 @@ export default function BalanceSheetPage() {
           <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 px-5 py-8 text-center">
             <AlertCircle className="mx-auto mb-2 text-amber-600" size={22} />
             <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">{error}</p>
-            <Button className="mt-4" variant="outline" onClick={() => load(asOnDate)}>Try again</Button>
+            <Button className="mt-4" variant="outline" onClick={() => load(dateFrom, dateTo)}>Try again</Button>
           </div>
         )}
 
@@ -266,7 +282,10 @@ export default function BalanceSheetPage() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40">
                 <div>
                   <p className="text-sm font-bold text-slate-900 dark:text-white">Statement of financial position</p>
-                  <p className="text-xs text-slate-500 mt-0.5">As on {formatDate(data.asOnDate)}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    As on {formatDate(data.asOnDate)}
+                    {data.fromDate ? ` · Period ${formatDate(data.fromDate)} – ${formatDate(data.toDate || data.asOnDate)}` : ""}
+                  </p>
                 </div>
                 <span
                   className={`inline-flex items-center gap-1.5 self-start rounded-full px-3 py-1 text-xs font-semibold ${
@@ -367,7 +386,7 @@ export default function BalanceSheetPage() {
                     <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
                       <IndianRupee size={15} />
                     </span>
-                    <p className="text-sm font-bold">Implied P&amp;L</p>
+                    <p className="text-sm font-bold">Implied P&amp;L (period)</p>
                   </div>
                   <div className="space-y-2 text-sm">
                     {[
