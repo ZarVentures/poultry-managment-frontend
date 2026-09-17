@@ -118,6 +118,7 @@ export interface Retailer {
   status: 'active' | 'inactive';
   notes?: string;
   openingBalance?: number;
+  joinDate?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -1758,9 +1759,19 @@ export const reportsApi = {
     }>(`/reports/collection?${params.toString()}`);
   },
 
-  getBalanceSheet: (asOnDate?: string) => {
+  getBalanceSheet: (opts?: string | { asOnDate?: string; fromDate?: string; toDate?: string }) => {
     const params = new URLSearchParams();
-    if (asOnDate) params.append('asOnDate', asOnDate);
+    if (typeof opts === 'string') {
+      if (opts) params.append('asOnDate', opts);
+    } else if (opts) {
+      if (opts.fromDate) params.append('fromDate', opts.fromDate);
+      if (opts.toDate) {
+        params.append('toDate', opts.toDate);
+        params.append('asOnDate', opts.toDate);
+      } else if (opts.asOnDate) {
+        params.append('asOnDate', opts.asOnDate);
+      }
+    }
     const q = params.toString();
     return apiRequest<BalanceSheetReport>(`/reports/balance-sheet${q ? `?${q}` : ''}`);
   },
@@ -1783,6 +1794,8 @@ export type BalanceSheetLine = {
 
 export type BalanceSheetReport = {
   asOnDate: string;
+  fromDate?: string;
+  toDate?: string;
   generatedAt: string;
   assets: { lines: BalanceSheetLine[]; total: number };
   liabilities: { lines: BalanceSheetLine[]; total: number };

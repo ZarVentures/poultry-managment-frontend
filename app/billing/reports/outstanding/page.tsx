@@ -8,8 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertTriangle, Download, Printer, ChevronLeft, ChevronRight, Calendar, Search, CircleDollarSign, BadgeDollarSign, Users } from 'lucide-react'
-import { reportsApi, retailersApi } from '@/lib/api'
+import { AlertTriangle, Download, Printer, ChevronLeft, ChevronRight, Search, CircleDollarSign, BadgeDollarSign, Users } from 'lucide-react'
+import { reportsApi } from '@/lib/api'
 import { Input } from '@/components/ui/input'
 
 interface RetailerOutstanding {
@@ -26,20 +26,11 @@ const OutstandingReportPage = () => {
   const [data, setData] = useState<RetailerOutstanding[]>([])
   const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState('outstanding')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
-  const [retailerId, setRetailerId] = useState('all')
-  const [paymentStatus, setPaymentStatus] = useState('all')
   const [search, setSearch] = useState('')
-  const [retailers, setRetailers] = useState<any[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [totalItems, setTotalItems] = useState(0)
   const [summary, setSummary] = useState<any>(null)
-
-  useEffect(() => {
-    retailersApi.getActive().then((res) => setRetailers(Array.isArray(res) ? res : [])).catch(() => {})
-  }, [])
 
   const fetchData = async () => {
     try {
@@ -48,10 +39,6 @@ const OutstandingReportPage = () => {
         page: currentPage,
         limit: pageSize,
         sortBy,
-        startDate: dateFrom || undefined,
-        endDate: dateTo || undefined,
-        retailerId: retailerId !== 'all' ? retailerId : undefined,
-        paymentStatus: paymentStatus !== 'all' ? paymentStatus : undefined,
         search: search || undefined,
       })
       setData(res.data)
@@ -66,7 +53,7 @@ const OutstandingReportPage = () => {
 
   useEffect(() => {
     fetchData()
-  }, [currentPage, sortBy, dateFrom, dateTo, retailerId, paymentStatus, search])
+  }, [currentPage, sortBy, search])
 
   const sorted = data // Already sorted by backend
 
@@ -158,36 +145,6 @@ const OutstandingReportPage = () => {
             <div className="md:w-[320px]">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Search</label>
               <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" /><Input placeholder="Name or phone" value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1) }} className="h-10 rounded-full pl-9" /></div>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">From Date</label>
-              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setCurrentPage(1) }} className="h-10 rounded-full pl-10 w-full sm:w-[160px]" /></div>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">To Date</label>
-              <div className="relative"><Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setCurrentPage(1) }} className="h-10 rounded-full pl-10 w-full sm:w-[160px]" /></div>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Retailer</label>
-              <Select value={retailerId} onValueChange={v => { setRetailerId(v); setCurrentPage(1) }}>
-                <SelectTrigger className="!h-10 rounded-full w-full sm:w-[160px]"><SelectValue placeholder="All Retailers" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Retailers</SelectItem>
-                  {retailers.map(r => <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Payment Status</label>
-              <Select value={paymentStatus} onValueChange={v => { setPaymentStatus(v); setCurrentPage(1) }}>
-                <SelectTrigger className="!h-10 rounded-full w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="outstanding">Outstanding</SelectItem>
-                  <SelectItem value="cleared">Cleared</SelectItem>
-                  <SelectItem value="overpaid">Overpaid</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Sort By</label>

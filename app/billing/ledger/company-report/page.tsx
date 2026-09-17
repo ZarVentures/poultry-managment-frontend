@@ -1,11 +1,11 @@
 'use client'
 
 import React from 'react'
-import Link from 'next/link'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ArrowUpRight, BookOpen, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Building2, Calendar, FileText } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { ArrowUpRight, TrendingUp, TrendingDown, DollarSign, Calendar, FileText } from 'lucide-react'
 import { billingApi } from '@/lib/api'
 
 interface StatementItem {
@@ -24,18 +24,30 @@ interface StatementSection {
 }
 
 const CompanyLedgerReportPage = () => {
+  const yearStart = () => {
+    const d = new Date()
+    d.setMonth(0, 1)
+    return d.toISOString().split('T')[0]
+  }
+  const [dateFrom, setDateFrom] = React.useState(yearStart)
+  const [dateTo, setDateTo] = React.useState(() => new Date().toISOString().split('T')[0])
   const [data, setData] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
 
-  React.useEffect(() => {
-    billingApi.getCompanyReport().then((res) => {
+  const load = React.useCallback(() => {
+    setLoading(true)
+    billingApi.getCompanyReport(dateFrom || undefined, dateTo || undefined).then((res) => {
       setData(res)
       setLoading(false)
     }).catch((err) => {
       console.error(err)
       setLoading(false)
     })
-  }, [])
+  }, [dateFrom, dateTo])
+
+  React.useEffect(() => {
+    load()
+  }, [load])
 
   const summary = data?.summary || { totalRevenue: 0, grossProfit: 0, operatingExpenses: 0, netProfit: 0 }
 
@@ -85,7 +97,7 @@ const CompanyLedgerReportPage = () => {
     { status: 'success', label: `Data Processed (${data.auditLog.dataSources.salesCount} Sales, ${data.auditLog.dataSources.purchasesCount} Purchases)`, user: 'System', time: new Date(data.auditLog.generatedAt).toLocaleString() }
   ] : []
 
-  if (loading) return <DashboardLayout><div className="p-8 text-center text-gray-500">Loading Report Data...</div></DashboardLayout>
+  if (loading && !data) return <DashboardLayout><div className="p-8 text-center text-gray-500">Loading Report Data...</div></DashboardLayout>
 
   return (
     <DashboardLayout>
@@ -98,9 +110,31 @@ const CompanyLedgerReportPage = () => {
     </h1>
 
     <p className="text-gray-500 text-sm sm:text-md mt-3">
-      Consolidated Profit & Loss statement for the current fiscal year.
+      Consolidated Profit & Loss for {dateFrom ? new Date(dateFrom + 'T00:00:00').toLocaleDateString('en-GB') : 'start'} — {dateTo ? new Date(dateTo + 'T00:00:00').toLocaleDateString('en-GB') : 'today'}.
     </p>
 </div>
+
+        <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">From Date</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-10 rounded-full pl-10 w-full sm:w-[170px]" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">To Date</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-10 rounded-full pl-10 w-full sm:w-[170px]" />
+              </div>
+            </div>
+            <Button onClick={load} disabled={loading} className="rounded-full h-10">
+              {loading ? 'Loading...' : 'Apply'}
+            </Button>
+          </div>
+        </div>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
@@ -136,7 +170,7 @@ const CompanyLedgerReportPage = () => {
           </Card>
           <Card className="rounded-2xl transition-shadow hover:shadow-lg hover:shadow-emerald-500/5 overflow-hidden">
             <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
-              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">NET PROFIT (YTD)</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground min-w-0 leading-tight">NET PROFIT</CardTitle>
               <span className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"><DollarSign size={16} className="lg:h-[18px] lg:w-[18px]" /></span>
             </CardHeader>
             <CardContent className="min-w-0">
