@@ -15,7 +15,7 @@ import {
   Users, Truck, Package, AlertCircle, ArrowUpRight, ArrowDownRight,
   Bird, BarChart3, Tractor, Wallet, IndianRupee, Calendar,
 } from "lucide-react"
-import { farmersApi, retailersApi, vehiclesApi, purchasesApi, salesApi, mortalityApi } from "@/lib/api"
+import { farmersApi, retailersApi, vehiclesApi, purchasesApi, salesApi, mortalityApi, godownApi } from "@/lib/api"
 import { getApiBaseUrl } from "@/lib/api-base-url"
 
 const EXPENSE_COLORS: Record<string, string> = {
@@ -112,6 +112,7 @@ export default function DashboardPage() {
         salesResult,
         purchasesResult,
         mortalityResult,
+        godownSummaryResult,
       ] = await Promise.allSettled([
         authFetch(`${API_BASE}/dashboard/comprehensive${dateQuery}`),
         farmersApi.getAll(),
@@ -127,6 +128,7 @@ export default function DashboardPage() {
             ? `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`
             : undefined,
         ),
+        godownApi.getSummary(),
       ])
 
       const dashboard = dashboardResult.status === 'fulfilled' ? dashboardResult.value : null
@@ -136,9 +138,15 @@ export default function DashboardPage() {
       const sales = salesResult.status === 'fulfilled' ? salesResult.value : []
       const purchases = purchasesResult.status === 'fulfilled' ? purchasesResult.value : []
       const mortality = mortalityResult.status === 'fulfilled' ? mortalityResult.value : null
+      const godownSummary = godownSummaryResult.status === 'fulfilled' ? godownSummaryResult.value : null
 
       if (dashboard) {
-        setKpis(dashboard.kpis)
+        const godownStock = Number(godownSummary?.currentValue || 0)
+        const kpiStock = Number(dashboard.kpis?.availableStock || 0)
+        setKpis({
+          ...dashboard.kpis,
+          availableStock: kpiStock > 0 ? kpiStock : godownStock,
+        })
         setMonthlyTrends(dashboard.monthlyTrends || [])
         setExpensesByCategory(dashboard.expensesByCategory || [])
         setPurchasesSummary(dashboard.purchasesSummary)
@@ -200,7 +208,7 @@ export default function DashboardPage() {
     loadDashboard(start, end)
   }
 
-  const netPL = kpis ? kpis.totalRevenue - kpis.totalExpenses : 0
+  const netPL = kpis ? Number(kpis.profit ?? 0) : 0
   const isProfit = netPL >= 0
 
   const chartTrends = useMemo(() =>
@@ -319,11 +327,11 @@ export default function DashboardPage() {
 </div>
 
         {/* Row 1 - Financial KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           <StatCard
-            title="Total Sales (This Month)"
-            value={loading ? "..." : `₹${Number(kpis?.totalRevenue || 0).toLocaleString()}`}
-            sub={`${kpis?.totalSales || 0} transactions`}
+            title="Total Revenue"
+            value={loading ? "..." : `₹${Number((Number(kpis?.poultryRevenue || 0) + Number(kpis?.godownRevenue || 0)) || kpis?.totalRevenue || 0).toLocaleString()}`}
+            sub={`${kpis?.totalSales || 0} transactions · Vehicle ₹${Number(kpis?.poultryRevenue || 0).toLocaleString()} + Godown ₹${Number(kpis?.godownRevenue || 0).toLocaleString()}`}
             icon={Wallet}
             color="text-green-600"
             trend="up"
@@ -331,11 +339,19 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Total Purchases (This Month)"
-            value={loading ? "..." : `₹${Number(purchasesSummary?.totalValue || 0).toLocaleString()}`}
+            value={loading ? "..." : `₹${Number(kpis?.totalPurchase || purchasesSummary?.totalValue || 0).toLocaleString()}`}
             sub={`${purchasesSummary?.totalOrders || 0} orders`}
             icon={ShoppingCart}
             color="text-red-600"
             chipClass="bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400"
+          />
+          <StatCard
+            title="Available Stock"
+            value={loading ? "..." : `₹${Number(kpis?.availableStock || 0).toLocaleString()}`}
+            sub={`After mortality (count + kg). Opening ₹${Number(kpis?.openingStock || 0).toLocaleString()}`}
+            icon={Package}
+            color="text-teal-600"
+            chipClass="bg-teal-100 text-teal-600 dark:bg-teal-500/15 dark:text-teal-400"
           />
           <StatCard
             title="Total Expenses (This Month)"
@@ -348,7 +364,7 @@ export default function DashboardPage() {
           <StatCard
             title="Net Profit / Loss"
             value={loading ? "..." : `₹${Math.abs(netPL).toLocaleString()}`}
-            sub={isProfit ? "Profit this month" : "Loss this month"}
+            sub={isProfit ? "Revenue − COGS − Expenses" : "Loss this period"}
             icon={isProfit ? TrendingUp : TrendingDown}
             color={isProfit ? "text-green-600" : "text-red-600"}
             trend={isProfit ? "up" : "down"}
