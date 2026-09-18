@@ -51,25 +51,17 @@ export default function ReportsPage() {
     )
 
   const fetchReport = async (endpoint: string, setter: Function) => {
-    try {
-      setLoading(true)
-      const token = localStorage.getItem('token')
-      const params = new URLSearchParams()
-      if (startDate) params.append('startDate', startDate)
-      if (endDate) params.append('endDate', endDate)
+    const token = localStorage.getItem('token')
+    const params = new URLSearchParams()
+    if (startDate) params.append('startDate', startDate)
+    if (endDate) params.append('endDate', endDate)
 
-      const response = await fetch(`${getApiBaseUrl()}/reports/${endpoint}?${params}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+    const response = await fetch(`${getApiBaseUrl()}/reports/${endpoint}?${params}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
 
-      if (!response.ok) throw new Error('Failed to fetch')
-      const data = await response.json()
-      setter(data)
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to load report')
-    } finally {
-      setLoading(false)
-    }
+    if (!response.ok) throw new Error(`Failed to fetch ${endpoint}`)
+    setter(await response.json())
   }
 
   const downloadCSV = (data: any[], filename: string) => {
@@ -105,14 +97,15 @@ export default function ReportsPage() {
     sections.push({
       title: 'Profit & Loss',
       headers: ['Metric', 'Value'],
-      rows: profitLossData?.summary
+      rows: (profitLossData?.summary || salesData || godownSalesData)
         ? [
-            ['Revenue', `Rs. ${profitLossData.summary.totalRevenue?.toFixed(2) || '0.00'}`],
-            ['Cost', `Rs. ${profitLossData.summary.totalCost?.toFixed(2) || '0.00'}`],
-            ['Gross Profit', `Rs. ${profitLossData.summary.grossProfit?.toFixed(2) || '0.00'}`],
-            ['Expenses', `Rs. ${profitLossData.summary.totalExpenses?.toFixed(2) || '0.00'}`],
-            ['Net Profit', `Rs. ${profitLossData.summary.netProfit?.toFixed(2) || '0.00'}`],
-            ['Margin', `${profitLossData.summary.profitMargin?.toFixed(2) || '0.00'}%`],
+            ['Total Revenue', `Rs. ${Number(profitLossData?.summary?.totalRevenue || 0).toFixed(2)}`],
+            ['Opening Stock', `Rs. ${Number(profitLossData?.summary?.openingStock || 0).toFixed(2)}`],
+            ['Available Stock', `Rs. ${Number(profitLossData?.summary?.availableStock || 0).toFixed(2)}`],
+            ['Purchase', `Rs. ${Number(profitLossData?.summary?.totalPurchase || 0).toFixed(2)}`],
+            ['COGS', `Rs. ${Number(profitLossData?.summary?.cogs || 0).toFixed(2)}`],
+            ['Expenses', `Rs. ${Number(profitLossData?.summary?.totalExpenses || 0).toFixed(2)}`],
+            ['Net Profit', `Rs. ${Number(profitLossData?.summary?.netProfit || 0).toFixed(2)}`],
           ]
         : noData(2),
     })
@@ -142,8 +135,8 @@ export default function ReportsPage() {
     sections.push({
       title: 'Sales',
       headers: ['Bill No', 'Date', 'Customer', 'Birds', 'Weight', 'Rate/KG', 'Amount', 'Paid Amount', 'Balance', 'Total Amount', 'Status'],
-      rows: salesData?.sales?.length
-        ? salesData.sales.map((s: any) => {
+      rows: salesRows.length
+        ? salesRows.map((s: any) => {
             const amount = parseFloat(s.netAmount || 0)
             const paid = parseFloat(s.amountReceived || 0)
             const totalAmount = parseFloat(s.totalAmount || s.grossAmount || amount || 0)
@@ -273,7 +266,7 @@ export default function ReportsPage() {
         ? [
             ['Birds in Godown', String(stockData.godown?.currentStock ?? 0)],
             ['Bird Weight', `${(stockData.godown?.currentWeight ?? 0).toFixed(2)} kg`],
-            ['Bird Value', `Rs. ${(stockData.godown?.currentValue ?? 0).toFixed(2)}`],
+            ['Bird Value', `Rs. ${godownStockFromQty.toFixed(2)}`],
           ]
         : noData(2),
     })
@@ -366,53 +359,56 @@ export default function ReportsPage() {
   }
 
   const fetchMortalityReport = async () => {
+    const data = await mortalityApi.getAll(startDate, endDate)
+    const rows = Array.isArray(data) ? data : []
+    setMortalityData(filterMortalityRows(rows))
+  }
+
+  const generateAllReports = async () => {
+    if (!startDate || !endDate) return toast.error('Select date range')
+    setLoading(true)
     try {
-      setLoading(true)
-      const data = await mortalityApi.getAll(startDate, endDate)
-      const rows = Array.isArray(data) ? data : []
-      setMortalityData(filterMortalityRows(rows))
-    } catch (error: any) {
-      console.error('Error fetching mortality report:', error)
-      toast.error(error.message || 'Failed to load mortality report')
+      const run = (task: Promise<any>) => task.catch((error: any) => {
+        toast.error(error.message || 'Failed to load report')
+      })
+      await Promise.all([
+        run(fetchReport('profit-loss', setProfitLossData)),
+        run(fetchReport('expense-breakdown', setExpenseData)),
+        run(fetchReport('farm-wise-profit', setFarmWiseData)),
+        run(fetchReport('customer-wise-sales', setCustomerWiseData)),
+        run(fetchReport('purchases', setPurchaseData)),
+        run(fetchReport('sales', setSalesData)),
+        run(fetchReport('godown-sales', setGodownSalesData)),
+        run(fetchReport('godown-inward', setGodownInwardData)),
+        run(fetchReport('weight-loss', setWeightLossData)),
+        run(fetchMortalityReport()),
+        run(fetchReport('outstanding', setOutstandingData)),
+        run(fetchStockReport()),
+      ])
     } finally {
       setLoading(false)
     }
   }
 
-  const generateAllReports = () => {
-    if (!startDate || !endDate) return toast.error('Select date range')
-    fetchReport('profit-loss', setProfitLossData)
-    fetchReport('expense-breakdown', setExpenseData)
-    fetchReport('farm-wise-profit', setFarmWiseData)
-    fetchReport('customer-wise-sales', setCustomerWiseData)
-    fetchReport('purchases', setPurchaseData)
-    fetchReport('sales', setSalesData)
-    fetchReport('godown-sales', setGodownSalesData)
-    fetchReport('godown-inward', setGodownInwardData)
-    fetchReport('weight-loss', setWeightLossData)
-    fetchMortalityReport()
-    fetchReport('outstanding', setOutstandingData)
-    fetchStockReport()
-  }
-
   const fetchStockReport = async () => {
+    const token = localStorage.getItem('token')
+    const headers = { Authorization: `Bearer ${token}` }
+    const godownRes = await fetch(`${getApiBaseUrl()}/godown/summary`, { headers })
+    if (!godownRes.ok) throw new Error('Failed to fetch godown summary')
+    const godownData = await godownRes.json()
+    let inventoryData: any[] = []
     try {
-      const token = localStorage.getItem('token')
-      const [godownRes, inventoryRes] = await Promise.all([
-        fetch(`${getApiBaseUrl()}/godown/summary`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${getApiBaseUrl()}/inventory`, { headers: { Authorization: `Bearer ${token}` } }),
-      ])
-      if (!godownRes.ok) throw new Error('Failed to fetch godown summary')
-      if (!inventoryRes.ok) throw new Error('Failed to fetch inventory')
-      const godownData = await godownRes.json()
-      const inventoryData = await inventoryRes.json()
-      setStockData({ godown: godownData, inventory: inventoryData })
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to load stock data')
+      const inventoryRes = await fetch(`${getApiBaseUrl()}/inventory`, { headers })
+      if (inventoryRes.ok) inventoryData = await inventoryRes.json()
+    } catch {
+      inventoryData = []
     }
+    setStockData({ godown: godownData, inventory: Array.isArray(inventoryData) ? inventoryData : [] })
   }
 
-  const salesRows = salesData?.sales || []
+  const salesRows = (salesData?.sales || []).filter(
+    (s: any) => String(s.saleMode || 'from_vehicle') !== 'from_godown',
+  )
   const n = (v: any) => {
     const x = Number(v)
     return Number.isFinite(x) ? x : 0
@@ -441,14 +437,15 @@ export default function ReportsPage() {
     totalPartial: salesRows.filter((s: any) => normalizeStatus(s.paymentStatus || s.status) === 'partial').length,
   }
   const salesSummary = {
-    totalSales: n(salesData?.summary?.totalSales) > 0 ? n(salesData?.summary?.totalSales) : salesSummaryDerived.totalSales,
-    totalBirds: n(salesData?.summary?.totalBirds || salesData?.summary?.numberOfBirds) > 0 ? n(salesData?.summary?.totalBirds || salesData?.summary?.numberOfBirds) : salesSummaryDerived.totalBirds,
-    totalWeight: n(salesData?.summary?.totalWeight || salesData?.summary?.totalQuantity) > 0 ? n(salesData?.summary?.totalWeight || salesData?.summary?.totalQuantity) : salesSummaryDerived.totalWeight,
-    totalRevenue: n(salesData?.summary?.totalNetAmount || salesData?.summary?.totalAmount || salesData?.summary?.revenue) > 0 ? n(salesData?.summary?.totalNetAmount || salesData?.summary?.totalAmount || salesData?.summary?.revenue) : salesSummaryDerived.totalRevenue,
-    totalDeductions: n(salesData?.summary?.totalDeductions) > 0 ? n(salesData?.summary?.totalDeductions) : salesSummaryDerived.totalDeductions,
-    totalWeightShortageKg: n(salesData?.summary?.totalWeightShortageKg) > 0 ? n(salesData?.summary?.totalWeightShortageKg) : salesSummaryDerived.totalWeightShortageKg,
-    totalPaid: n(salesData?.summary?.totalPaid) > 0 ? n(salesData?.summary?.totalPaid) : salesSummaryDerived.totalPaid,
-    totalPending: n(salesData?.summary?.totalPending) > 0 ? n(salesData?.summary?.totalPending) : salesSummaryDerived.totalPending,
+    totalSales: salesSummaryDerived.totalSales,
+    totalBirds: salesSummaryDerived.totalBirds,
+    totalWeight: salesSummaryDerived.totalWeight,
+    totalRevenue: salesSummaryDerived.totalRevenue,
+    totalDeductions: salesSummaryDerived.totalDeductions,
+    totalWeightShortageKg: salesSummaryDerived.totalWeightShortageKg,
+    totalPaid: salesSummaryDerived.totalPaid,
+    totalPending: salesSummaryDerived.totalPending,
+    totalPartial: salesSummaryDerived.totalPartial,
   }
 
   const purchaseRows = purchaseData?.purchases || []
@@ -478,6 +475,56 @@ export default function ReportsPage() {
     totalBirds: n(godownSalesData?.summary?.totalBirds || godownSalesData?.summary?.numberOfBirds) > 0 ? n(godownSalesData?.summary?.totalBirds || godownSalesData?.summary?.numberOfBirds) : godownSalesRows.reduce((sum: number, s: any) => sum + n(s.numberOfBirds || s.totalBirds || s.birds || s.quantity), 0),
   }
 
+  const vehicleRevenue = salesSummary.totalRevenue
+  const godownRevenue = godownSalesSummary.totalAmount
+  const combinedRevenue = vehicleRevenue + godownRevenue
+  const combinedSalesSummary = {
+    ...salesSummary,
+    totalSales: salesSummary.totalSales + godownSalesSummary.totalSales,
+    totalBirds: salesSummary.totalBirds + godownSalesSummary.totalBirds,
+    totalWeight: salesSummary.totalWeight + godownSalesRows.reduce((sum: number, s: any) => sum + n(s.totalWeight || s.weight || s.quantity), 0),
+    totalRevenue: combinedRevenue,
+    totalPaid: salesSummary.totalPaid + godownSalesRows.filter((s: any) => normalizeStatus(s.paymentStatus || s.status) === 'paid').length,
+    totalPending: salesSummary.totalPending + godownSalesRows.filter((s: any) => normalizeStatus(s.paymentStatus || s.status) === 'pending').length,
+    totalPartial: salesSummary.totalPartial + godownSalesRows.filter((s: any) => normalizeStatus(s.paymentStatus || s.status) === 'partial').length,
+  }
+  const combinedSaleRows = [
+    ...salesRows.map((s: any) => ({ ...s, _source: 'Vehicle' })),
+    ...godownSalesRows.map((s: any) => ({
+      ...s,
+      _source: 'Godown',
+      invoiceNumber: s.invoiceNumber || s.saleNo,
+      netAmount: s.totalAmount,
+      amountReceived: s.amountReceived,
+      unitPrice: s.ratePerKg,
+      totalBirds: s.numberOfBirds,
+      totalWeight: s.totalWeight,
+      quantity: s.totalWeight,
+    })),
+  ].sort((a: any, b: any) => String(b.saleDate || '').localeCompare(String(a.saleDate || '')))
+
+  const customerMap: Record<string, { customerName: string; totalSales: number; totalRevenue: number; totalQuantity: number }> = {}
+  const addCustomerSale = (name: string, revenue: number, qty: number) => {
+    const key = name || 'Unknown'
+    if (!customerMap[key]) customerMap[key] = { customerName: key, totalSales: 0, totalRevenue: 0, totalQuantity: 0 }
+    customerMap[key].totalSales += 1
+    customerMap[key].totalRevenue += revenue
+    customerMap[key].totalQuantity += qty
+  }
+  salesRows.forEach((s: any) => addCustomerSale(s.customerName || 'Unknown', n(s.netAmount || s.totalAmount), n(s.quantity || s.totalWeight)))
+  godownSalesRows.forEach((s: any) => addCustomerSale(s.customerName || 'Unknown', n(s.totalAmount || s.netAmount), n(s.totalWeight || s.quantity)))
+  const combinedCustomers = Object.values(customerMap).sort((a, b) => b.totalRevenue - a.totalRevenue)
+  const customerReport = (salesData || godownSalesData)
+    ? {
+        customers: combinedCustomers,
+        summary: {
+          totalCustomers: combinedCustomers.length,
+          totalRevenue: combinedRevenue,
+          totalSales: combinedSalesSummary.totalSales,
+        },
+      }
+    : customerWiseData
+
   const godownInwardRows = godownInwardData?.entries || []
   const godownInwardSummary = {
     totalEntries: n(godownInwardData?.summary?.totalEntries) > 0 ? n(godownInwardData?.summary?.totalEntries) : godownInwardRows.length,
@@ -504,14 +551,75 @@ export default function ReportsPage() {
     }
     return 0
   }
+  const mortalityAmountOf = (record: any) => {
+    const amount = getMortalityFieldValue(record, ['amount', 'mortalityDeduction', 'mortalityAmount', 'deductionAmount'])
+    if (amount > 0) return amount
+    const weight = getMortalityFieldValue(record, ['weightOfDeadBirds', 'mortalityWeight', 'deadWeight', 'totalMortalityWeight'])
+    const rate = getMortalityFieldValue(record, ['ratePerKg', 'rate', 'unitPrice'])
+    return weight > 0 && rate > 0 ? weight * rate : 0
+  }
   const mortalitySummary = {
     totalOrders: mortalityRows.length,
     totalMortalityWeight: mortalityRows.reduce((sum: number, record: any) => sum + getMortalityFieldValue(record, ['weightOfDeadBirds', 'mortalityWeight', 'deadWeight', 'totalMortalityWeight']), 0),
-    totalMortalityDeduction: mortalityRows.reduce((sum: number, record: any) => sum + getMortalityFieldValue(record, ['amount', 'mortalityDeduction', 'mortalityAmount', 'deductionAmount']), 0),
+    totalMortalityDeduction: mortalityRows.reduce((sum: number, record: any) => sum + mortalityAmountOf(record), 0),
     averageMortalityPerOrder: mortalityRows.length > 0
-      ? mortalityRows.reduce((sum: number, record: any) => sum + getMortalityFieldValue(record, ['amount', 'mortalityDeduction', 'mortalityAmount', 'deductionAmount']), 0) / mortalityRows.length
+      ? mortalityRows.reduce((sum: number, record: any) => sum + mortalityAmountOf(record), 0) / mortalityRows.length
       : 0,
   }
+
+  const godownInwardValue = n(stockData?.godown?.totalInwardValue)
+  const godownInwardWeight = n(stockData?.godown?.totalInwardWeight)
+  const godownCurrentWeight = n(stockData?.godown?.currentWeight)
+  const godownStockFromQty = godownInwardWeight > 0
+    ? (godownCurrentWeight * godownInwardValue) / godownInwardWeight
+    : 0
+  const godownLiveValue = n(stockData?.godown?.currentValue) || godownStockFromQty
+  const vehicleStock = n(profitLossData?.summary?.vehicleStock)
+  const availableStock = godownLiveValue > 0
+    ? godownLiveValue + vehicleStock
+    : n(profitLossData?.summary?.availableStock)
+  const openingStock = n(profitLossData?.summary?.openingStock)
+  const vehicleCogs = n(profitLossData?.summary?.vehicleCogs)
+  const godownCogs = n(profitLossData?.summary?.godownCogs)
+  const cogs = n(profitLossData?.summary?.cogs) > 0
+    ? n(profitLossData?.summary?.cogs)
+    : Math.round((vehicleCogs + godownCogs) * 100) / 100
+
+  const plSummary = (() => {
+    if (!profitLossData && !salesData && !godownSalesData && !purchaseData && !stockData && !mortalityData && !expenseData) return null
+    const poultryRev = Math.max(n(profitLossData?.summary?.poultryRevenue), vehicleRevenue)
+    const godownRev = Math.max(n(profitLossData?.summary?.godownRevenue), godownRevenue)
+    const totalRevenue = poultryRev + godownRev
+    const totalPurchase = n(profitLossData?.summary?.totalPurchase) > 0 ? n(profitLossData.summary.totalPurchase) : purchaseSummary.totalAmount
+    const totalMortality = n(profitLossData?.summary?.totalMortality) > 0 ? n(profitLossData.summary.totalMortality) : mortalitySummary.totalMortalityDeduction
+    const totalExpenses = n(profitLossData?.summary?.totalExpenses) > 0
+      ? n(profitLossData?.summary?.totalExpenses)
+      : n(expenseData?.summary?.totalExpenses)
+    const netProfit = totalRevenue - cogs - totalExpenses
+    return {
+      ...(profitLossData?.summary || {}),
+      totalRevenue,
+      poultryRevenue: poultryRev,
+      godownRevenue: godownRev,
+      openingStock,
+      availableStock,
+      godownStock: n(profitLossData?.summary?.godownStock),
+      vehicleStock: n(profitLossData?.summary?.vehicleStock),
+      godownBirds: n(profitLossData?.summary?.godownBirds) || n(stockData?.godown?.currentStock),
+      godownWeightKg: n(profitLossData?.summary?.godownWeightKg) || n(stockData?.godown?.currentWeight),
+      vehicleBirds: n(profitLossData?.summary?.vehicleBirds),
+      vehicleWeightKg: n(profitLossData?.summary?.vehicleWeightKg),
+      vehicleCogs,
+      godownCogs,
+      cogs,
+      totalCost: totalPurchase,
+      totalPurchase,
+      totalMortality,
+      totalExpenses,
+      netProfit,
+      profitMargin: totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0,
+    }
+  })()
 
   // Godown Sales: payment status distribution for pie
   const godownSalesStatusCounts = (godownSalesRows || []).reduce(
@@ -640,68 +748,81 @@ export default function ReportsPage() {
               <CardHeader className="px-3 sm:px-6">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                   <CardTitle className="text-base sm:text-lg">Profit & Loss Statement</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => profitLossData && downloadCSV([profitLossData.summary], 'pl')}>
+                  <Button variant="outline" size="sm" onClick={() => plSummary && downloadCSV([plSummary], 'pl')}>
                     <Download className="mr-2" size={16} />CSV
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="px-3 sm:px-6">
-                {loading ? <p className="text-center py-8">Loading...</p> : !profitLossData ? (
+                {loading ? <p className="text-center py-8">Loading...</p> : !plSummary ? (
                   <p className="text-center py-8 text-muted-foreground">Select dates and generate</p>
                 ) : (
                   <div className="space-y-6">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Net Profit = Total Revenue − COGS − Expenses. Available Stock is remaining inventory at cost and is not deducted from profit.
+                    </p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                       <div className="p-3 sm:p-4 border rounded min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <div className="p-1.5 rounded-md bg-green-50"><TrendingUp size={16} className="text-green-600" /></div>
-                          <p className="text-xs sm:text-sm text-muted-foreground">Revenue</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Total Revenue</p>
                         </div>
-                        <p className="text-lg sm:text-2xl font-bold text-green-600 whitespace-nowrap">₹{profitLossData.summary.totalRevenue.toFixed(2)}</p>
+                        <p className="text-lg sm:text-2xl font-bold text-green-600 whitespace-nowrap">₹{plSummary.totalRevenue.toFixed(2)}</p>
+                        <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 leading-snug">
+                          Vehicle ₹{(plSummary.poultryRevenue ?? 0).toFixed(2)} + Godown ₹{(plSummary.godownRevenue ?? 0).toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="p-3 sm:p-4 border rounded min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-teal-50"><Package size={16} className="text-teal-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Available Stock</p>
+                        </div>
+                        <p className="text-lg sm:text-2xl font-bold text-teal-600 whitespace-nowrap">₹{plSummary.availableStock.toFixed(2)}</p>
+                        <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 leading-snug">
+                          Godown {Number(stockData?.godown?.currentStock ?? plSummary.godownBirds ?? 0).toLocaleString()} birds / {(Number(stockData?.godown?.currentWeight ?? plSummary.godownWeightKg ?? 0)).toFixed(2)} kg
+                          {` · Vehicle ${Number(plSummary.vehicleBirds ?? 0).toLocaleString()} birds / ${Number(plSummary.vehicleWeightKg ?? 0).toFixed(2)} kg. Mortality out of stock. Opening ₹${plSummary.openingStock.toFixed(2)}`}
+                        </p>
                       </div>
                       <div className="p-3 sm:p-4 border rounded min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <div className="p-1.5 rounded-md bg-red-50"><TrendingDown size={16} className="text-red-600" /></div>
-                          <p className="text-xs sm:text-sm text-muted-foreground">Cost</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Purchase</p>
                         </div>
-                        <p className="text-lg sm:text-2xl font-bold text-red-600 whitespace-nowrap">₹{profitLossData.summary.totalCost.toFixed(2)}</p>
+                        <p className="text-lg sm:text-2xl font-bold text-red-600 whitespace-nowrap">₹{plSummary.totalPurchase.toFixed(2)}</p>
                       </div>
                       <div className="p-3 sm:p-4 border rounded min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <div className="p-1.5 rounded-md bg-blue-50"><IndianRupee size={16} className="text-blue-600" /></div>
-                          <p className="text-xs sm:text-sm text-muted-foreground">Gross Profit</p>
+                          <div className="p-1.5 rounded-md bg-rose-50"><Calculator size={16} className="text-rose-600" /></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">COGS</p>
                         </div>
-                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">₹{profitLossData.summary.grossProfit.toFixed(2)}</p>
+                        <p className="text-lg sm:text-2xl font-bold text-rose-600 whitespace-nowrap">₹{plSummary.cogs.toFixed(2)}</p>
+                        <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 leading-snug">
+                          Vehicle (purchase rate) ₹{(plSummary.vehicleCogs ?? 0).toFixed(2)} + Godown (inward rate) ₹{(plSummary.godownCogs ?? 0).toFixed(2)}
+                        </p>
                       </div>
                       <div className="p-3 sm:p-4 border rounded min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <div className="p-1.5 rounded-md bg-orange-50"><Receipt size={16} className="text-orange-600" /></div>
                           <p className="text-xs sm:text-sm text-muted-foreground">Expenses</p>
                         </div>
-                        <p className="text-lg sm:text-2xl font-bold text-orange-600 whitespace-nowrap">₹{profitLossData.summary.totalExpenses.toFixed(2)}</p>
+                        <p className="text-lg sm:text-2xl font-bold text-orange-600 whitespace-nowrap">₹{plSummary.totalExpenses.toFixed(2)}</p>
                       </div>
                       <div className="p-3 sm:p-4 border rounded min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <div className="p-1.5 rounded-md bg-blue-50"><Wallet size={16} className="text-blue-600" /></div>
                           <p className="text-xs sm:text-sm text-muted-foreground">Net Profit</p>
                         </div>
-                        <p className="text-lg sm:text-2xl font-bold text-blue-600 whitespace-nowrap">₹{profitLossData.summary.netProfit.toFixed(2)}</p>
-                      </div>
-                      <div className="p-3 sm:p-4 border rounded min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="p-1.5 rounded-md bg-purple-50"><Percent size={16} className="text-purple-600" /></div>
-                          <p className="text-xs sm:text-sm text-muted-foreground">Margin</p>
-                        </div>
-                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{profitLossData.summary.profitMargin.toFixed(2)}%</p>
+                        <p className={`text-lg sm:text-2xl font-bold whitespace-nowrap ${plSummary.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>₹{plSummary.netProfit.toFixed(2)}</p>
                       </div>
                     </div>
                     {viewMode === 'chart' && (
                       <div className="w-full min-w-0 overflow-hidden">
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={[
-                          { name: 'Revenue', value: profitLossData.summary.totalRevenue },
-                          { name: 'Cost', value: profitLossData.summary.totalCost },
-                          { name: 'Expenses', value: profitLossData.summary.totalExpenses },
-                          { name: 'Net Profit', value: profitLossData.summary.netProfit },
+                          { name: 'Revenue', value: plSummary.totalRevenue },
+                          { name: 'COGS', value: plSummary.cogs },
+                          { name: 'Expenses', value: plSummary.totalExpenses },
+                          { name: 'Net Profit', value: plSummary.netProfit },
                         ]}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="name" />
@@ -717,9 +838,9 @@ export default function ReportsPage() {
                       <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                           <Pie data={[
-                            { name: 'Revenue', value: profitLossData.summary.totalRevenue },
-                            { name: 'Cost', value: profitLossData.summary.totalCost },
-                            { name: 'Expenses', value: profitLossData.summary.totalExpenses },
+                            { name: 'Revenue', value: Math.max(0, plSummary.totalRevenue) },
+                            { name: 'COGS', value: Math.max(0, plSummary.cogs) },
+                            { name: 'Expenses', value: Math.max(0, plSummary.totalExpenses) },
                           ]} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
                             {[0, 1, 2].map((_, index) => <Cell key={index} fill={COLORS[index]} />)}
                           </Pie>
@@ -876,13 +997,13 @@ export default function ReportsPage() {
             </Card>
           </TabsContent>
 
-          {/* Sales Report */}
+          {/* Sales Report — vehicle sales only; godown is on Godown Sales tab */}
           <TabsContent value="sales">
             <Card className="overflow-hidden min-w-0">
               <CardHeader className="px-3 sm:px-6">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                   <CardTitle className="text-base sm:text-lg">Sales Report</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => salesData && downloadCSV(salesData.sales, 'sales')}>
+                  <Button variant="outline" size="sm" onClick={() => salesRows.length && downloadCSV(salesRows, 'sales')}>
                     <Download className="mr-2" size={16} />CSV
                   </Button>
                 </div>
@@ -967,8 +1088,8 @@ export default function ReportsPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {salesData.sales.map((sale: any) => {
-                              const amount = parseFloat(sale.netAmount || 0)
+                            {salesRows.map((sale: any) => {
+                              const amount = parseFloat(sale.netAmount || sale.totalAmount || 0)
                               const paid = parseFloat(sale.amountReceived || 0)
                               const totalAmount = parseFloat(sale.totalAmount || sale.grossAmount || amount || 0)
                               return (
@@ -1002,9 +1123,9 @@ export default function ReportsPage() {
                       <div className="w-full min-w-0 overflow-hidden">
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={[
-                          { name: 'Paid', value: salesData.summary.totalPaid },
-                          { name: 'Partial', value: salesData.summary.totalPartial },
-                          { name: 'Pending', value: salesData.summary.totalPending },
+                          { name: 'Paid', value: salesSummary.totalPaid },
+                          { name: 'Partial', value: salesSummary.totalPartial },
+                          { name: 'Pending', value: salesSummary.totalPending },
                         ]}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="name" />
@@ -1020,9 +1141,9 @@ export default function ReportsPage() {
                       <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                           <Pie data={[
-                            { name: 'Paid', value: salesData.summary.totalPaid },
-                            { name: 'Partial', value: salesData.summary.totalPartial },
-                            { name: 'Pending', value: salesData.summary.totalPending },
+                            { name: 'Paid', value: salesSummary.totalPaid },
+                            { name: 'Partial', value: salesSummary.totalPartial },
+                            { name: 'Pending', value: salesSummary.totalPending },
                           ]} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
                             {[0, 1, 2].map((_, index) => <Cell key={index} fill={COLORS[index]} />)}
                           </Pie>
@@ -1493,7 +1614,7 @@ export default function ReportsPage() {
                                 <TableCell>{formatDate(record.purchaseDate || record.mortalityDate || record.createdAt || '')}</TableCell>
                                 <TableCell className="text-right">{getMortalityFieldValue(record, ['numberOfBirdsDied', 'mortalityBirds', 'birdsDied', 'deadBirds', 'totalBirdsDied'])}</TableCell>
                                 <TableCell className="text-right">{getMortalityFieldValue(record, ['weightOfDeadBirds', 'mortalityWeight', 'deadWeight', 'totalMortalityWeight']).toFixed(2)} kg</TableCell>
-                                <TableCell className="text-red-600">₹{getMortalityFieldValue(record, ['amount', 'mortalityDeduction', 'mortalityAmount', 'deductionAmount']).toFixed(2)}</TableCell>
+                                <TableCell className="text-red-600">₹{mortalityAmountOf(record).toFixed(2)}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -1546,7 +1667,7 @@ export default function ReportsPage() {
                     const summary = [
                       { Metric: 'Birds in Godown', Value: stockData.godown?.currentStock ?? 0 },
                       { Metric: 'Bird Weight (kg)', Value: (stockData.godown?.currentWeight ?? 0).toFixed(2) },
-                      { Metric: 'Bird Value (Rs)', Value: (stockData.godown?.currentValue ?? 0).toFixed(2) },
+                      { Metric: 'Bird Value (Rs)', Value: godownStockFromQty.toFixed(2) },
                     ]
                     downloadCSV([...summary, ...(stockData.inventory || []).map((i: any) => ({ Metric: i.name || i.itemName, Value: `${i.currentStockLevel ?? 0} ${i.unit || 'pcs'}` }))], 'stock')
                   }}>
@@ -1577,7 +1698,7 @@ export default function ReportsPage() {
                           <div className="p-1.5 rounded-md bg-teal-100 dark:bg-teal-800/40"><IndianRupee size={16} className="text-teal-600 dark:text-teal-300" /></div>
                           <p className="text-xs sm:text-sm text-muted-foreground">Bird Value</p>
                         </div>
-                        <p className="text-lg sm:text-2xl font-bold text-teal-600 dark:text-teal-300 whitespace-nowrap">₹{(stockData.godown?.currentValue ?? 0).toFixed(2)}</p>
+                        <p className="text-lg sm:text-2xl font-bold text-teal-600 dark:text-teal-300 whitespace-nowrap">₹{(n(stockData.godown?.currentValue) || godownStockFromQty).toFixed(2)}</p>
                       </div>
                     </div>
 
@@ -1870,13 +1991,13 @@ export default function ReportsPage() {
               <CardHeader className="px-3 sm:px-6">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                   <CardTitle className="text-base sm:text-lg">Customer-wise Sales</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => customerWiseData && downloadCSV(customerWiseData.customers, 'customers')}>
+                  <Button variant="outline" size="sm" onClick={() => customerReport && downloadCSV(customerReport.customers, 'customers')}>
                     <Download className="mr-2" size={16} />CSV
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="px-3 sm:px-6">
-                {!customerWiseData ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
+                {!customerReport ? <p className="text-center py-8 text-muted-foreground">Generate report</p> : (
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                       <div className="p-3 sm:p-4 border rounded min-w-0">
@@ -1884,21 +2005,21 @@ export default function ReportsPage() {
                           <div className="p-1.5 rounded-md bg-blue-50"><Users size={16} className="text-blue-600" /></div>
                           <p className="text-xs sm:text-sm text-muted-foreground">Total Customers</p>
                         </div>
-                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{customerWiseData.summary.totalCustomers}</p>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{customerReport.summary.totalCustomers}</p>
                       </div>
                       <div className="p-3 sm:p-4 border rounded min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <div className="p-1.5 rounded-md bg-green-50"><IndianRupee size={16} className="text-green-600" /></div>
                           <p className="text-xs sm:text-sm text-muted-foreground">Total Revenue</p>
                         </div>
-                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">₹{customerWiseData.summary.totalRevenue.toFixed(2)}</p>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">₹{customerReport.summary.totalRevenue.toFixed(2)}</p>
                       </div>
                       <div className="p-3 sm:p-4 border rounded min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <div className="p-1.5 rounded-md bg-purple-50"><BarChart3 size={16} className="text-purple-600" /></div>
                           <p className="text-xs sm:text-sm text-muted-foreground">Total Sales</p>
                         </div>
-                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{customerWiseData.summary.totalSales}</p>
+                        <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{customerReport.summary.totalSales}</p>
                       </div>
                     </div>
                     {viewMode === 'table' && (
@@ -1913,7 +2034,7 @@ export default function ReportsPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {customerWiseData.customers.map((customer: any, i: number) => (
+                            {customerReport.customers.map((customer: any, i: number) => (
                               <TableRow key={i}>
                                 <TableCell>{customer.customerName}</TableCell>
                                 <TableCell>{customer.totalSales}</TableCell>
@@ -1928,7 +2049,7 @@ export default function ReportsPage() {
                     {viewMode === 'chart' && (
                       <div className="w-full min-w-0 overflow-hidden">
                       <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={customerWiseData.customers.slice(0, 10)}>
+                        <BarChart data={customerReport.customers.slice(0, 10)}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="customerName" />
                           <YAxis />
@@ -1942,8 +2063,8 @@ export default function ReportsPage() {
                       <div className="w-full min-w-0 overflow-hidden">
                       <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
-                          <Pie data={customerWiseData.customers.slice(0, 6)} dataKey="totalRevenue" nameKey="customerName" cx="50%" cy="50%" outerRadius={100} label>
-                            {customerWiseData.customers.slice(0, 6).map((_: any, index: number) => <Cell key={index} fill={COLORS[index]} />)}
+                          <Pie data={customerReport.customers.slice(0, 6)} dataKey="totalRevenue" nameKey="customerName" cx="50%" cy="50%" outerRadius={100} label>
+                            {customerReport.customers.slice(0, 6).map((_: any, index: number) => <Cell key={index} fill={COLORS[index]} />)}
                           </Pie>
                           <Tooltip />
                           <Legend />
