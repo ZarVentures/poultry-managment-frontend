@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertTriangle, Download, Printer, ChevronLeft, ChevronRight, Search, CircleDollarSign, BadgeDollarSign, Users } from 'lucide-react'
 import { reportsApi } from '@/lib/api'
 import { Input } from '@/components/ui/input'
+import { escapeHtml, fetchOrgInfo, type OrgInfo } from '@/lib/org-info'
 
 interface RetailerOutstanding {
   id: string
@@ -31,6 +32,7 @@ const OutstandingReportPage = () => {
   const [pageSize, setPageSize] = useState(20)
   const [totalItems, setTotalItems] = useState(0)
   const [summary, setSummary] = useState<any>(null)
+  const [orgInfo, setOrgInfo] = useState<OrgInfo>({ name: '', location: '', phone: '' })
 
   const fetchData = async () => {
     try {
@@ -50,6 +52,10 @@ const OutstandingReportPage = () => {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchOrgInfo().then(setOrgInfo).catch(() => {})
+  }, [])
 
   useEffect(() => {
     fetchData()
@@ -74,6 +80,80 @@ const OutstandingReportPage = () => {
     window.URL.revokeObjectURL(url)
   }
 
+  const handlePrint = async () => {
+    let printRows = sorted
+    let printSummary = summary
+    try {
+      const res = await reportsApi.getOutstandingReport({
+        page: 1,
+        limit: Math.max(totalItems || 0, sorted.length, 1000),
+        sortBy,
+        search: search || undefined,
+      })
+      if (Array.isArray(res.data) && res.data.length) printRows = res.data
+      if (res.summary) printSummary = res.summary
+    } catch {
+      // Use rows already on screen.
+    }
+    if (!printRows.length) { alert('No data to print.'); return }
+
+    const org = await fetchOrgInfo().catch(() => orgInfo)
+    const farmName = (org.name || orgInfo.name || '').trim()
+    const farmMeta = [org.location || orgInfo.location, org.phone || orgInfo.phone].filter(Boolean).join('  |  ')
+    const money = (n: number) => `₹${Number(n || 0).toLocaleString('en-IN')}`
+    const rows = printRows.map(r => `
+      <tr>
+        <td>${escapeHtml(r.name || '-')}</td>
+        <td>${escapeHtml(r.phone || '-')}</td>
+        <td style="text-align:right">${money(r.totalSales)}</td>
+        <td style="text-align:right">${money(r.totalReceived)}</td>
+        <td style="text-align:right;font-weight:bold">${money(r.outstanding)}</td>
+        <td style="text-align:center">${escapeHtml(getStatusText(Number(r.outstanding || 0)))}</td>
+      </tr>`).join('')
+    const totalSales = printRows.reduce((s, r) => s + Number(r.totalSales || 0), 0)
+    const totalReceived = printRows.reduce((s, r) => s + Number(r.totalReceived || 0), 0)
+    const totalOut = printSummary?.totalOutstanding ?? printRows.reduce((s, r) => s + Math.max(0, Number(r.outstanding || 0)), 0)
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receivable Report</title>
+      <style>
+        @page{size:landscape;margin:8mm}
+        body{font-family:Arial,sans-serif;margin:0;padding:12px;color:#111}
+        h1,h2,p{text-align:center;margin:0}
+        h1{font-size:22px;margin-bottom:2px}
+        h2{font-size:16px;font-weight:normal;color:#444;margin:4px 0 10px}
+        .meta{font-size:12px;color:#555;margin-top:2px}
+        table{width:100%;border-collapse:collapse;margin-top:8px}
+        th,td{border:1px solid #ddd;padding:6px;font-size:11px}
+        th{background:#293e56;color:#fff}
+        .totals td{font-weight:bold;background:#f3f4f6}
+      </style></head><body>
+      ${farmName ? `<h1>${escapeHtml(farmName)}</h1>` : ''}
+      ${farmMeta ? `<p class="meta">${escapeHtml(farmMeta)}</p>` : ''}
+      <h2>Receivable / Outstanding Report</h2>
+      <table>
+        <thead><tr><th>Retailer Name</th><th>Phone</th><th>Total Sales</th><th>Amount Received</th><th>Outstanding</th><th>Status</th></tr></thead>
+        <tbody>
+          ${rows}
+          <tr class="totals">
+            <td colspan="2">TOTAL</td>
+            <td style="text-align:right">${money(totalSales)}</td>
+            <td style="text-align:right">${money(totalReceived)}</td>
+            <td style="text-align:right">${money(totalOut)}</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+      </body></html>`
+
+    const w = window.open('', '_blank')
+    if (!w) { alert('Please allow popups to print the receivable report.'); return }
+    w.document.open()
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    setTimeout(() => w.print(), 300)
+  }
+
   const getStatusColor = (outstanding: number) => {
     if (outstanding < 0) return 'bg-blue-100 text-blue-800'
     if (outstanding === 0) return 'bg-green-100 text-green-800'
@@ -96,7 +176,7 @@ const OutstandingReportPage = () => {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={downloadCSV} type="button" className="rounded-full h-10"><Download className="w-4 h-4 mr-2" />Export</Button>
-            <Button variant="outline" onClick={() => window.print()} type="button" className="rounded-full h-10"><Printer className="w-4 h-4 mr-2" />Print</Button>
+            <Button variant="outline" onClick={handlePrint} type="button" className="rounded-full h-10"><Printer className="w-4 h-4 mr-2" />Print</Button>
           </div>
         </div>
 
