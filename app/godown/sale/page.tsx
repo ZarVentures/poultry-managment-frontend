@@ -15,13 +15,14 @@ import { Textarea } from "@/components/ui/textarea"
 import { godownApi, retailersApi, purchasesApi, type GodownSale, type Retailer } from "@/lib/api"
 import { escapeHtml, fetchOrgInfo, type OrgInfo } from "@/lib/org-info"
 import { toast } from "sonner"
-import { getApiBaseUrl } from "@/lib/api-base-url"
 import { toDateOnlyString, formatDate, getTodayIST } from "@/lib/date-utils"
 
 const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer", "advance"] as const
 type PaymentMode = typeof PAYMENT_MODES[number]
 interface PaymentRow { mode: PaymentMode; amount: string }
 const emptyPayment = (): PaymentRow => ({ mode: "cash", amount: "" })
+const saleNumber = (sale: GodownSale | any) =>
+  sale?.saleNo || sale?.invoiceNumber || ""
 
 
 export default function GodownSalePage() {
@@ -65,7 +66,7 @@ export default function GodownSalePage() {
     try {
       setLoading(true)
       const data = await godownApi.sales.getAll()
-      setSales(data)
+      setSales(Array.isArray(data) ? data : (data?.data || []))
     } catch (error: any) {
       console.error("Failed to fetch sales:", error)
       toast.error("Failed to load sales")
@@ -113,14 +114,8 @@ export default function GodownSalePage() {
 
   const fetchNextSaleNumber = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${getApiBaseUrl()}/godown/sales/generate/next-sale-number`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (response.ok) {
-        const data = await response.json()
-        return data.nextSaleNumber || ""
-      }
+      const data = await godownApi.sales.nextSaleNumber()
+      return data?.nextSaleNumber || ""
     } catch (error) {
       console.error('Failed to fetch next sale number:', error)
     }
@@ -133,7 +128,8 @@ export default function GodownSalePage() {
     setPayments(p => p.map((x, idx) => idx === i ? { ...x, [field]: value } : x))
 
   const resetForm = async () => {
-    const nextNumber = editingId ? "" : await fetchNextSaleNumber()
+    setEditingId(null)
+    const nextNumber = await fetchNextSaleNumber()
     setFormData({
       saleDate: getTodayIST(),
       purchaseBillNo: "",
@@ -156,7 +152,7 @@ export default function GodownSalePage() {
     setFormData({
       saleDate: toDateOnlyString(sale.saleDate) || getTodayIST(),
       purchaseBillNo: (sale as any).purchaseBillNo || "",
-      invoiceNumber: (sale as any).invoiceNumber || "",
+      invoiceNumber: saleNumber(sale),
       retailerId: (sale as any).retailerId || "",
       customerName: sale.customerName,
       numberOfBirds: String(sale.numberOfBirds || ""),
@@ -265,6 +261,7 @@ export default function GodownSalePage() {
         retailerId: formData.retailerId || undefined,
         saleDate: formData.saleDate,
         invoiceNumber: formData.invoiceNumber || undefined,
+        saleNo: formData.invoiceNumber || undefined,
         customerName: formData.customerName,
         numberOfBirds: parseInt(formData.numberOfBirds) || 0,
         totalWeight: parseFloat(formData.totalWeight) || undefined,
@@ -283,8 +280,9 @@ export default function GodownSalePage() {
         toast.success("Sale updated successfully")
       } else {
         const saved = await godownApi.sales.create(saleData)
-        if (saved?.invoiceNumber) {
-          toast.success(`Sale created successfully - GDS No: ${saved.invoiceNumber}`)
+        const savedNo = saleNumber(saved)
+        if (savedNo) {
+          toast.success(`Sale created successfully - GDS No: ${savedNo}`)
         } else {
           toast.success("Sale created successfully")
         }
@@ -346,7 +344,8 @@ export default function GodownSalePage() {
       const query = searchQuery.toLowerCase().trim()
       filtered = filtered.filter(
         (sale) =>
-          sale.customerName.toLowerCase().includes(query)
+          sale.customerName.toLowerCase().includes(query) ||
+          saleNumber(sale).toLowerCase().includes(query)
       )
     }
 
@@ -421,7 +420,7 @@ export default function GodownSalePage() {
             <tbody>
               ${filteredSales.map(sale => `
                 <tr>
-                  <td>${sale.invoiceNumber || "-"}</td>
+                  <td>${escapeHtml(saleNumber(sale) || "-")}</td>
                   <td>${new Date(sale.saleDate).toLocaleDateString('en-GB')}</td>
                   <td>${sale.customerName}</td>
                   <td>${sale.numberOfBirds} birds</td>
@@ -480,7 +479,7 @@ export default function GodownSalePage() {
     const discount = 0
     const tax = 0
     const grandTotal = subtotal - discount + tax
-    const invoiceNumber = sale.invoiceNumber || "INV-2026-000124"
+    const invoiceNumber = saleNumber(sale) || "-"
     const invoiceDate = new Date(sale.saleDate).toLocaleDateString('en-GB')
     const dueDate = new Date(sale.saleDate)
     dueDate.setDate(dueDate.getDate() + 7)
@@ -1086,7 +1085,7 @@ export default function GodownSalePage() {
                     
                     return (
                       <TableRow key={sale.id}>
-                        <TableCell>{sale.invoiceNumber || "-"}</TableCell>
+                        <TableCell>{saleNumber(sale) || "-"}</TableCell>
                         <TableCell>{formatDate(sale.saleDate)}</TableCell>
                         <TableCell>{sale.customerName}</TableCell>
                         <TableCell className="text-right">{sale.numberOfBirds} birds</TableCell>

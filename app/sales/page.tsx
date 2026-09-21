@@ -937,7 +937,7 @@ export default function SalesPage() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-5xl max-sm:max-w-[calc(100%-2rem)] max-h-[90vh] flex flex-col" aria-describedby="sale-dialog-desc">
               <DialogHeader>
-                <DialogTitle>{editingId ? "Edit Sale" : "Add New Sale"}</DialogTitle>
+                <DialogTitle>{isReadOnly ? "View Sale" : editingId ? "Edit Sale" : "Add New Sale"}</DialogTitle>
                 <p id="sale-dialog-desc" className="sr-only">Sale form</p>
               </DialogHeader>
               <div className="space-y-5 overflow-y-auto flex-1 pr-1 pb-2 overflow-x-hidden">
@@ -1234,16 +1234,6 @@ export default function SalesPage() {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Sale Mode</Label>
-                        <Select value={formData.saleMode} onValueChange={(v: any) => setFormData(f => ({ ...f, saleMode: v }))} disabled={loading || isReadOnly}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="from_vehicle">From Vehicle</SelectItem>
-                            <SelectItem value="from_godown">From Godown</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
                       <div className="space-y-2">
                         <Label>Vehicle</Label>
                         <Select value={formData.vehicleId || '__none__'} onValueChange={v => setFormData(f => ({ ...f, vehicleId: v === '__none__' ? '' : v }))} disabled={loading || isReadOnly}>
@@ -1618,6 +1608,7 @@ export default function SalesPage() {
                       <TableHead className="font-bold">Mode</TableHead>
                       <TableHead className="font-bold">Birds</TableHead>
                       <TableHead className="font-bold">Weight</TableHead>
+                      <TableHead className="font-bold">Rate/Kg</TableHead>
                       <TableHead className="font-bold text-orange-800">Loss / Adj</TableHead>
                       <TableHead className="font-bold">Net Amount</TableHead>
                       <TableHead className="font-bold">Payment</TableHead>
@@ -1652,6 +1643,7 @@ export default function SalesPage() {
                           })()}
                         </TableCell>
                         <TableCell>{Number(s.quantity || 0).toFixed(2)} kg</TableCell>
+                        <TableCell>₹{Number(s.unitPrice || 0).toFixed(2)}</TableCell>
                         <TableCell>
                           {(() => {
                             const details = parseWeightLossDetails(s.notes || "")
@@ -1682,14 +1674,12 @@ export default function SalesPage() {
                         <TableCell>
                           <div className="flex gap-1">
                             <Button variant="ghost" size="sm" onClick={() => handlePrintSale(s)}><Printer size={14} /></Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleView(s)}><Eye size={14} /></Button>
                             {canUpdate('sales') && (
                               <Button variant="ghost" size="sm" onClick={() => handleEdit(s)}><Edit2 size={14} /></Button>
                             )}
                             {canDelete('sales') && (
                               <Button variant="ghost" size="sm" onClick={() => handleDelete(s.id)} className="text-red-500"><Trash2 size={14} /></Button>
-                            )}
-                            {!canUpdate('sales') && (
-                              <Button variant="ghost" size="sm" onClick={() => handleView(s)}><Eye size={14} /></Button>
                             )}
                           </div>
                         </TableCell>

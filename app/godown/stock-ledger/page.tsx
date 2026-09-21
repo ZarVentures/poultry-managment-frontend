@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   ArrowLeft, Calendar, Download, FileText, Printer, Search,
-  Bird, PackagePlus, PackageMinus, AlertCircle, Scale, Undo2,
+  Bird, PackagePlus, PackageMinus, AlertCircle, Scale, Undo2, TrendingDown,
 } from "lucide-react"
 import { godownApi, type StockLedgerEntry, type StockLedgerResponse } from "@/lib/api"
 import { fetchOrgInfo } from "@/lib/org-info"
@@ -83,7 +83,8 @@ export default function StockLedgerPage() {
   const opening = ledger?.opening || { birds: 0, weight: 0 }
   const period = ledger?.period || {
     birdsIn: 0, birdsOut: 0, weightIn: 0, weightOut: 0, amountIn: 0, amountOut: 0,
-    soldBirds: 0, soldWeight: 0, mortalityBirds: 0, mortalityWeight: 0,
+    soldBirds: 0, soldWeight: 0, billedSaleWeight: 0, mortalityBirds: 0, mortalityWeight: 0,
+    weightLoss: 0, weightLossPercent: 0, fromWeight: 0, accountedWeight: 0,
   }
   const closing = ledger?.closing || { birds: 0, weight: 0 }
   const soldBirds = period.soldBirds ?? entries.filter((e) => e.movementType === "SALE").reduce((s, e) => s + e.birdsOut, 0)
@@ -92,6 +93,9 @@ export default function StockLedgerPage() {
   const mortalityWeight = period.mortalityWeight ?? entries.filter((e) => e.movementType === "MORTALITY").reduce((s, e) => s + e.weightOut, 0)
   const returnBirds = period.returnBirds ?? entries.filter((e) => e.movementType === "RETURN").reduce((s, e) => s + e.birdsIn, 0)
   const returnWeight = period.returnWeight ?? entries.filter((e) => e.movementType === "RETURN").reduce((s, e) => s + e.weightIn, 0)
+  const billedSaleWeight = period.billedSaleWeight ?? 0
+  const weightLoss = period.weightLoss ?? 0
+  const weightLossPercent = period.weightLossPercent ?? 0
 
   const downloadCSV = () => {
     if (!entries.length && opening.birds === 0) {
@@ -251,7 +255,7 @@ export default function StockLedgerPage() {
             h1 { font-size: 20px; margin-top: 4px; }
             .period { font-size: 12px; margin: 4px 0 12px; }
             .summary { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-            .summary td { border: 1px solid #111; padding: 6px 8px; font-size: 11px; width: 14.28%; }
+            .summary td { border: 1px solid #111; padding: 6px 8px; font-size: 11px; width: 12.5%; }
             .summary .label { font-size: 10px; color: #444; }
             .summary .val { font-size: 13px; font-weight: 700; }
             table.ledger { width: 100%; border-collapse: collapse; }
@@ -275,6 +279,7 @@ export default function StockLedgerPage() {
               <td><div class="label">Returns</div><div class="val">+${fmtNum(returnBirds)}</div><div>${fmtNum(returnWeight, 2)} kg</div></td>
               <td><div class="label">Sold</div><div class="val">−${fmtNum(soldBirds)}</div><div>${fmtNum(soldWeight, 2)} kg</div></td>
               <td><div class="label">Mortality</div><div class="val">−${fmtNum(mortalityBirds)}</div><div>${fmtNum(mortalityWeight, 2)} kg</div></td>
+              <td><div class="label">Weight Loss</div><div class="val">${fmtNum(weightLoss, 2)} kg</div><div>Open+Inward − sale ${fmtNum(billedSaleWeight, 2)} − mort − close</div></td>
               <td><div class="label">Closing</div><div class="val">${fmtNum(closing.birds)}</div><div>${fmtNum(closing.weight, 2)} kg</div></td>
               <td><div class="label">Period Value</div><div>In ₹${fmtNum(period.amountIn, 2)}</div><div>Out ₹${fmtNum(period.amountOut, 2)}</div></td>
             </tr>
@@ -366,8 +371,8 @@ export default function StockLedgerPage() {
               
               <div className="min-w-0">
                 <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Stock Ledger</h1>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  Chronological bird stock movements with opening, period, and closing balance
+          <p className="mt-0.5 text-sm text-muted-foreground">
+                  Chronological bird stock movements with opening, period, closing, and weight loss
                 </p>
               </div>
             </div>
@@ -395,7 +400,7 @@ export default function StockLedgerPage() {
 
         
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7 [&>*]:break-words">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8 [&>*]:break-words">
           <Card className="rounded-2xl border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-800/50 dark:bg-blue-900/20">
             <div className="mb-1 flex items-center gap-2 text-xs font-medium text-blue-700 dark:text-blue-300">
               <Bird size={20} /> Opening
@@ -430,6 +435,15 @@ export default function StockLedgerPage() {
             </div>
             <div className="text-xl font-bold tracking-tight text-red-900 dark:text-red-100 sm:text-2xl">−{fmtNum(mortalityBirds)}</div>
             <div className="mt-0.5 text-xs text-red-600 dark:text-red-400">{fmtNum(mortalityWeight, 2)} kg</div>
+          </Card>
+          <Card className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-800/50 dark:bg-amber-900/20">
+            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-amber-800 dark:text-amber-300">
+              <TrendingDown size={20} /> Weight Loss
+            </div>
+            <div className="text-xl font-bold tracking-tight text-amber-950 dark:text-amber-100 sm:text-2xl">{fmtNum(weightLoss, 2)} kg</div>
+            <div className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
+              Open+Inward − billed sale − mort − close{weightLossPercent > 0 ? ` · ${fmtNum(weightLossPercent, 2)}%` : ""}
+            </div>
           </Card>
           <Card className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-800/50 dark:bg-indigo-900/20">
             <div className="mb-1 flex items-center gap-2 text-xs font-medium text-indigo-700 dark:text-indigo-300">

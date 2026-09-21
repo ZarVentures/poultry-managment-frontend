@@ -16,6 +16,17 @@ import { formatDate, toDateOnlyString } from "@/lib/date-utils"
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D']
 
+const isWeightLossFormulaRow = (row: any) => {
+  const text = [
+    row?.documentNo,
+    row?.party,
+    row?.invoiceNumber,
+    row?.saleNo,
+    row?.customerName,
+  ].map((v) => String(v ?? '')).join(' ')
+  return /inward/i.test(text) && /available/i.test(text)
+}
+
 type ViewMode = 'table' | 'chart' | 'pie'
 
 export default function ReportsPage() {
@@ -61,7 +72,11 @@ export default function ReportsPage() {
     })
 
     if (!response.ok) throw new Error(`Failed to fetch ${endpoint}`)
-    setter(await response.json())
+    const data = await response.json()
+    if (endpoint === 'weight-loss' && data?.details) {
+      data.details = data.details.filter((row: any) => !isWeightLossFormulaRow(row))
+    }
+    setter(data)
   }
 
   const downloadCSV = (data: any[], filename: string) => {
@@ -204,10 +219,12 @@ export default function ReportsPage() {
     })
 
     if (weightLossData?.details?.length) {
+      const detailRows = weightLossData.details.filter((r: any) => !isWeightLossFormulaRow(r))
+      if (detailRows.length) {
       sections.push({
         title: 'Weight Loss Details',
         headers: ['Part', 'Document No', 'Date', 'Party', 'Purchase Bill', 'Birds', 'From Weight', 'Recorded Weight', 'Weight Loss', 'Loss %'],
-        rows: weightLossData.details.map((r: any) => [
+        rows: detailRows.map((r: any) => [
           r.channelLabel || r.channel || '',
           r.documentNo || '',
           r.date ? new Date(r.date).toLocaleDateString('en-GB') : '',
@@ -220,6 +237,7 @@ export default function ReportsPage() {
           `${wlNum(r.lossPercent).toFixed(2)}%`,
         ]),
       })
+      }
     }
 
     sections.push({
@@ -536,7 +554,7 @@ export default function ReportsPage() {
 
   const weightLossSummary = weightLossData?.summary || {}
   const weightLossChannels = weightLossData?.byChannel || []
-  const weightLossDetails = weightLossData?.details || []
+  const weightLossDetails = (weightLossData?.details || []).filter((row: any) => !isWeightLossFormulaRow(row))
   const weightLossPieData = weightLossChannels
     .map((c: any) => ({ name: c.label || c.key, value: n(c.weightLoss) }))
     .filter((d: any) => d.value > 0)
@@ -1324,7 +1342,6 @@ export default function ReportsPage() {
                           <p className="text-xs sm:text-sm text-muted-foreground">Godown Sales</p>
                         </div>
                         <p className="text-lg sm:text-2xl font-bold text-yellow-700 whitespace-nowrap">{n(weightLossSummary.godownSalesLoss).toFixed(2)} kg</p>
-                        <p className="text-[10px] text-muted-foreground">Inward − Sale − Available</p>
                       </div>
                     </div>
 
@@ -1389,7 +1406,7 @@ export default function ReportsPage() {
                                 <TableRow>
                                   <TableCell colSpan={10} className="text-center text-muted-foreground">No documents in this date range</TableCell>
                                 </TableRow>
-                              ) : weightLossDetails.map((row: any, idx: number) => (
+                              ) : weightLossDetails.filter((row: any) => !isWeightLossFormulaRow(row)).map((row: any, idx: number) => (
                                 <TableRow key={`${row.channel}-${row.documentNo}-${idx}`}>
                                   <TableCell>{row.channelLabel}</TableCell>
                                   <TableCell className="font-mono">{row.documentNo}</TableCell>

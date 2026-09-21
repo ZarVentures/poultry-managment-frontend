@@ -9,10 +9,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Download, Printer, Calendar, Banknote, CreditCard, CheckCircle, ChevronLeft, ChevronRight, CircleDollarSign } from 'lucide-react'
 import { reportsApi } from '@/lib/api'
+import { escapeHtml, fetchOrgInfo, type OrgInfo } from '@/lib/org-info'
 
 const CollectionReportPage = () => {
   const [collections, setCollections] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [orgInfo, setOrgInfo] = useState<OrgInfo>({ name: '', location: '', phone: '' })
   const [dateFrom, setDateFrom] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0] })
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0])
   const [modeFilter, setModeFilter] = useState('all')
@@ -42,6 +44,10 @@ const CollectionReportPage = () => {
   }
 
   useEffect(() => {
+    fetchOrgInfo().then(setOrgInfo).catch(() => {})
+  }, [])
+
+  useEffect(() => {
     fetchData()
   }, [dateFrom, dateTo, modeFilter, currentPage])
 
@@ -66,29 +72,64 @@ const CollectionReportPage = () => {
     window.URL.revokeObjectURL(url)
   }
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (!filtered.length) { alert('No data to print.'); return }
-    const rows = filtered.map(e => `
+    const org = await fetchOrgInfo().catch(() => orgInfo)
+    const farmName = (org.name || orgInfo.name || '').trim()
+    const farmMeta = [org.location || orgInfo.location, org.phone || orgInfo.phone].filter(Boolean).join('  |  ')
+    let printRows = filtered
+    let printTotal = totalCollected
+    try {
+      const res = await reportsApi.getCollectionReport({
+        startDate: dateFrom,
+        endDate: dateTo,
+        mode: modeFilter,
+        page: 1,
+        limit: Math.max(totalItems || 0, filtered.length, 1000),
+      })
+      if (Array.isArray(res.data) && res.data.length) printRows = res.data
+      if (res.summary?.totalAmount != null) printTotal = res.summary.totalAmount
+    } catch {
+      // Fall back to the rows already on screen.
+    }
+    const rows = printRows.map(e => `
       <tr>
-        <td>${getRowDate(e)}</td>
-        <td>${e.type || '-'}</td>
-        <td>${e.invoiceNumber || '-'}</td>
-        <td>${e.customerName || '-'}</td>
-        <td>${getRowMode(e)}</td>
+        <td>${escapeHtml(getRowDate(e))}</td>
+        <td>${escapeHtml(e.type || '-')}</td>
+        <td>${escapeHtml(e.invoiceNumber || '-')}</td>
+        <td>${escapeHtml(e.customerName || '-')}</td>
+        <td>${escapeHtml(getRowMode(e))}</td>
         <td style="text-align:right">₹${Number(e.amount || 0).toLocaleString('en-IN')}</td>
-        <td style="text-align:center">${getRowStatus(e)}</td>
+        <td style="text-align:center">${escapeHtml(getRowStatus(e))}</td>
       </tr>`).join('')
-    const html = `<!DOCTYPE html><html><head><title>Collection Report</title>
-      <style>@page{size:landscape;margin:8mm}body{font-family:Arial,sans-serif;padding:10px}
-      h2{text-align:center}table{width:100%;border-collapse:collapse;margin-top:12px}
-      th,td{border:1px solid #ddd;padding:6px;font-size:11px}th{background:#293e56;color:#fff}</style></head><body>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Collection Report</title>
+      <style>
+        @page{size:landscape;margin:8mm}
+        body{font-family:Arial,sans-serif;margin:0;padding:12px;color:#111}
+        h1,h2,p{text-align:center;margin:0}
+        h1{font-size:22px;margin-bottom:2px}
+        h2{font-size:16px;font-weight:normal;color:#444;margin:4px 0}
+        .meta{font-size:12px;color:#555;margin-top:2px}
+        .period{font-size:12px;color:#777;margin:6px 0 4px}
+        .total{font-weight:bold;margin-bottom:10px}
+        table{width:100%;border-collapse:collapse;margin-top:8px}
+        th,td{border:1px solid #ddd;padding:6px;font-size:11px}
+        th{background:#293e56;color:#fff}
+      </style></head><body>
+      ${farmName ? `<h1>${escapeHtml(farmName)}</h1>` : ''}
+      ${farmMeta ? `<p class="meta">${escapeHtml(farmMeta)}</p>` : ''}
       <h2>Collection Report</h2>
-      <p style="text-align:center">${new Date(dateFrom).toLocaleDateString('en-GB')} - ${new Date(dateTo).toLocaleDateString('en-GB')}</p>
-      <p style="text-align:center;font-weight:bold">Total Collected: ₹${totalCollected.toLocaleString('en-IN')}</p>
+      <p class="period">${new Date(dateFrom).toLocaleDateString('en-GB')} - ${new Date(dateTo).toLocaleDateString('en-GB')}</p>
+      <p class="total">Total Collected: ₹${Number(printTotal).toLocaleString('en-IN')}</p>
       <table><thead><tr><th>Date</th><th>Type</th><th>Bill No</th><th>Customer</th><th>Mode</th><th>Amount</th><th>Status</th></tr></thead>
       <tbody>${rows}</tbody></table></body></html>`
     const w = window.open('', '_blank')
-    if (w) { w.document.write(html); w.document.close(); w.onload = () => w.print() }
+    if (!w) { alert('Please allow popups to print the collection report.'); return }
+    w.document.open()
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    setTimeout(() => w.print(), 300)
   }
 
   const getModeColor = (mode: string) => {
@@ -112,6 +153,17 @@ const CollectionReportPage = () => {
             <Button variant="outline" onClick={downloadCSV} type="button" className="rounded-full h-10"><Download className="w-4 h-4 mr-2" />Export</Button>
             <Button variant="outline" onClick={handlePrint} type="button" className="rounded-full h-10"><Printer className="w-4 h-4 mr-2" />Print</Button>
           </div>
+        </div>
+
+        <div className="hidden print:block text-center mb-4">
+          {orgInfo.name ? <h2 className="text-xl font-bold">{orgInfo.name}</h2> : null}
+          {(orgInfo.location || orgInfo.phone) ? (
+            <p className="text-sm text-muted-foreground">
+              {[orgInfo.location, orgInfo.phone].filter(Boolean).join('  |  ')}
+            </p>
+          ) : null}
+          <h1 className="text-lg font-semibold">Collection Report</h1>
+          <p className="text-sm">{new Date(dateFrom).toLocaleDateString('en-GB')} - {new Date(dateTo).toLocaleDateString('en-GB')}</p>
         </div>
 
         <Card className="rounded-2xl p-4 no-print">

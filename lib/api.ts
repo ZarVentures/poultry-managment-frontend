@@ -419,6 +419,7 @@ export interface GodownInward {
 export interface GodownSale {
   id: string;
   saleDate: string;
+  saleNo?: string;
   invoiceNumber?: string;
   customerName: string;
   retailerId?: string;
@@ -522,10 +523,16 @@ export interface StockLedgerResponse {
     amountOut: number;
     soldBirds?: number;
     soldWeight?: number;
+    billedSaleWeight?: number;
     mortalityBirds?: number;
     mortalityWeight?: number;
     returnBirds?: number;
     returnWeight?: number;
+    inwardWeight?: number;
+    fromWeight?: number;
+    accountedWeight?: number;
+    weightLoss?: number;
+    weightLossPercent?: number;
   };
   closing: { birds: number; weight: number };
   entries: StockLedgerEntry[];
@@ -1465,6 +1472,8 @@ export const godownApi = {
       return apiRequest<any>(`/godown/sales${s ? `?${s}` : ''}`);
     },
     getOne: (id: string) => apiRequest<GodownSale>(`/godown/sales/${id}`),
+    nextSaleNumber: () =>
+      apiRequest<{ nextSaleNumber: string }>('/godown/sales/generate/next-sale-number'),
     create: (data: Omit<GodownSale, 'id' | 'createdAt' | 'updatedAt'>) =>
       apiRequest<GodownSale>('/godown/sales', {
         method: 'POST',
