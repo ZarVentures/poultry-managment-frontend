@@ -37,6 +37,16 @@ export default function SignupPage() {
     return () => { if (cooldownRef.current) clearInterval(cooldownRef.current) }
   }, [])
 
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const params = new URLSearchParams(window.location.search)
+    const plan = params.get("plan")
+    const billing = params.get("billing")
+    if (plan && billing) {
+      sessionStorage.setItem("pendingPlan", JSON.stringify({ plan, billing }))
+    }
+  }, [])
+
   const startCooldown = () => {
     setCooldown(COOLDOWN_SECS)
     cooldownRef.current = setInterval(() => {

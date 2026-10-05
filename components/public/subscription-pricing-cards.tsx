@@ -103,7 +103,13 @@ export function SubscriptionPricingCards() {
             )}
             variant={plan.highlighted ? "default" : "secondary"}
           >
-            <Link href="/signup">
+            <Link
+              href={
+                plan.id === "annual"
+                  ? "/signup?plan=professional&billing=yearly"
+                  : "/signup?plan=starter&billing=monthly"
+              }
+            >
               {plan.ctaLabel}
               {plan.highlighted && <ArrowRight className="ml-1 h-4 w-4" />}
             </Link>

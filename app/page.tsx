@@ -28,7 +28,7 @@ import { ModulesSection } from "@/components/public/modules-section"
 import { PublicLayout } from "@/components/public-layout"
 import { Reveal } from "@/components/public/reveal"
 import { SectionHeading } from "@/components/public/section-heading"
-import { SubscriptionPricingCards } from "@/components/public/subscription-pricing-cards"
+import { PublicPricingSection } from "@/components/public/public-pricing-section"
 
 export const metadata: Metadata = {
   title: "Poultry Trading Management Software",
@@ -448,11 +448,11 @@ export default function HomePage() {
             <SectionHeading
               eyebrow="Pricing"
               title="Simple & Transparent Pricing"
-              subtitle="Choose the subscription duration that best fits your poultry business. Every plan includes the complete Poultry Sathi platform with no feature limitations."
+              subtitle="Starter, Professional, and Enterprise — pick the plan that fits your poultry business."
             />
           </Reveal>
           <Reveal delay={0.1} className="mt-14">
-            <SubscriptionPricingCards />
+            <PublicPricingSection />
           </Reveal>
           <Reveal delay={0.15} className="mt-10 text-center">
             <Button variant="link" asChild>

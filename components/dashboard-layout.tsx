@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { motion, AnimatePresence } from "framer-motion"
 import { useDevMode } from "@/lib/dev-mode"
-import { setDevLogger } from "@/lib/api"
+import {
+  setDevLogger,
+  subscriptionsApi,
+  type SubscriptionMe,
+} from "@/lib/api"
 import { PermissionsProvider, usePermissions } from "@/lib/permissions"
 import { useIsMobile } from "@/hooks/use-mobile"
 import {
@@ -17,7 +21,7 @@ import {
   Truck, AlertCircle, Terminal, Copy, Trash2,
   ChartNoAxesCombined, Tractor, User, PackageOpen, PackagePlus,
   PackageCheck, CreditCard, BookOpen, Scale,
-  TrendingDown, Building2, MessageSquare, Lock, ShieldCheck, Tag,
+  TrendingDown, Building2, MessageSquare, Lock, ShieldCheck, Tag, BadgeCheck,
 } from "lucide-react"
 
 const IS_STAGING = process.env.NEXT_PUBLIC_IS_STAGING === 'true'
@@ -101,6 +105,7 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
   const [purchasesOpen, setPurchasesOpen] = useState(false)
   const [salesOpen, setSalesOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [subscription, setSubscription] = useState<SubscriptionMe | null>(null)
   const router = useRouter()
   const pathname = usePathname()
   const isMobile = useIsMobile()
@@ -125,6 +130,25 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
   useEffect(() => {
     if (isMobile) setMobileSidebarOpen(false)
   }, [pathname, isMobile])
+
+  useEffect(() => {
+    let cancelled = false
+    subscriptionsApi.getMe()
+      .then((data) => {
+        if (!cancelled) setSubscription(data)
+      })
+      .catch(() => {
+        /* auth/tenant errors are handled elsewhere */
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    if (!subscription) return
+    if (subscription.canAccessApp) return
+    if (pathname.startsWith("/subscription")) return
+    router.replace("/subscription")
+  }, [subscription, pathname, router])
 
   useEffect(() => {
     if (pathname.startsWith("/billing")) setBillingOpen(true)
@@ -334,6 +358,8 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
             <SidebarLink href="/users" icon={User} label="Users" open={sidebarOpen} />
           )}
 
+          <SidebarLink href="/subscription" icon={BadgeCheck} label="Subscription" open={sidebarOpen} />
+
           {showSettings && (
             <div className="space-y-1">
               <Tooltip>
@@ -409,12 +435,36 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
             </div>
           )}
 
-          <div className="flex min-w-0 items-center gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link
+              href="/subscription"
+              className="hidden items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground sm:inline-flex"
+            >
+              <BadgeCheck className="h-3.5 w-3.5 text-primary" />
+              <span className="font-medium text-foreground">
+                {subscription?.plan
+                  ? subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1)
+                  : subscription?.subscriptionStatus === "trial"
+                    ? "Trial"
+                    : "No plan"}
+              </span>
+            </Link>
             <div className="max-w-28 truncate text-xs text-muted-foreground sm:max-w-none sm:text-sm">Role: {user.role}</div>
           </div>
         </header>
 
         <main className="flex-1 overflow-auto bg-background">
+          {subscription?.subscriptionStatus === "trial" &&
+            subscription.daysLeft != null &&
+            subscription.daysLeft >= 0 &&
+            subscription.daysLeft <= 7 && (
+              <div className="border-b border-amber-200/80 bg-amber-50 px-4 py-2.5 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                Trial ends in {subscription.daysLeft} day{subscription.daysLeft === 1 ? "" : "s"}.{" "}
+                <Link href="/subscription" className="font-medium underline underline-offset-2">
+                  View plans
+                </Link>
+              </div>
+            )}
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}

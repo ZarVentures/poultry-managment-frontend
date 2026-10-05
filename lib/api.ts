@@ -53,10 +53,12 @@ async function apiRequest<T>(
 
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}`;
+      let errorCode = '';
       try {
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           const error = await response.json();
+          errorCode = String(error.error || '');
           const raw = error.message ?? error.error;
           errorMessage = Array.isArray(raw) ? raw.filter(Boolean).join(', ') : (raw || errorMessage);
         } else {
@@ -64,6 +66,17 @@ async function apiRequest<T>(
           errorMessage = text || errorMessage;
         }
       } catch (e) { }
+      if (
+        typeof window !== 'undefined' &&
+        response.status === 403 &&
+        (errorCode === 'SUBSCRIPTION_REQUIRED' ||
+          errorMessage.includes('SUBSCRIPTION_REQUIRED') ||
+          /trial or subscription/i.test(errorMessage))
+      ) {
+        if (!window.location.pathname.startsWith('/subscription')) {
+          window.location.assign('/subscription');
+        }
+      }
       throw new Error(errorMessage);
     }
 
@@ -73,7 +86,7 @@ async function apiRequest<T>(
     }
     const text = await response.text();
     if (!text || text.trim() === '') return undefined as T;
-    return JSON.parse(text);
+    return JSON.parse(text); 
   } catch (err) {
     // Log failed requests too
     if (_devLogger && typeof window !== 'undefined' && localStorage.getItem('dev_mode_enabled') === 'true') {
@@ -853,6 +866,52 @@ export const tenantsApi = {
     }),
 
   getMe: () => apiRequest<Tenant>('/tenants/me'),
+};
+
+export type PaidPlanId = 'starter' | 'professional';
+export type BillingPeriod = 'monthly' | 'yearly';
+
+export interface SubscriptionMe {
+  tenantId: string;
+  plan: PaidPlanId | 'enterprise' | null;
+  billingPeriod: BillingPeriod | null;
+  subscriptionStatus: 'trial' | 'active' | 'past_due' | 'expired' | 'cancelled';
+  trialEndsAt: string | null;
+  currentPeriodEndsAt: string | null;
+  canAccessApp: boolean;
+  daysLeft: number | null;
+  plans: {
+    starter: { name: string; monthlyPaise: number; yearlyPaise: number };
+    professional: { name: string; monthlyPaise: number; yearlyPaise: number };
+  };
+}
+
+export const subscriptionsApi = {
+  getMe: () => apiRequest<SubscriptionMe>('/subscriptions/me'),
+
+  createOrder: (plan: PaidPlanId, billingPeriod: BillingPeriod) =>
+    apiRequest<{
+      orderId: string;
+      amount: number;
+      currency: string;
+      keyId: string;
+      plan: PaidPlanId;
+      billingPeriod: BillingPeriod;
+      planName: string;
+    }>('/subscriptions/create-order', {
+      method: 'POST',
+      body: JSON.stringify({ plan, billingPeriod }),
+    }),
+
+  verify: (data: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+  }) =>
+    apiRequest<SubscriptionMe>('/subscriptions/verify', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 // ============================================
