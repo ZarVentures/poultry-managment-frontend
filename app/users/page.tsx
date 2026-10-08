@@ -191,6 +191,11 @@ export default function UsersPage() {
   }
 
   const handleToggleStatus = async (id: string, currentStatus: string) => {
+    const target = users.find((u) => u.id === id)
+    if (target?.deletedAt) {
+      toast.error("This account is scheduled for deletion. The user must recover it from the login screen.")
+      return
+    }
     if (!canUpdate('users')) {
       toast.error("You don't have permission to change user status")
       return
@@ -253,7 +258,7 @@ export default function UsersPage() {
 
     return {
       totalUsers: users.length,
-      activeUsers: users.filter(u => u.status === 'active').length,
+      activeUsers: users.filter(u => u.status === 'active' && !u.deletedAt).length,
       administrators: users.filter(u => u.role === 'admin').length,
       managers: users.filter(u => u.role === 'manager').length,
       staff: users.filter(u => u.role === 'staff').length
@@ -574,9 +579,9 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2 flex-nowrap">
-                            <span className={`inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium ${user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                            <span className={`inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium ${user.deletedAt ? 'bg-amber-100 text-amber-800' : user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                               }`}>
-                              {user.status === 'active' ? 'Active' : 'Inactive'}
+                              {user.deletedAt ? 'Scheduled for deletion' : user.status === 'active' ? 'Active' : 'Inactive'}
                             </span>
                             {isInactive(user.status) && (
                               <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -592,20 +597,20 @@ export default function UsersPage() {
                         <TableCell>
                           {(canUpdate('users') || canDelete('users')) && (
                             <div className="flex gap-2">
+                              {canUpdate('users') && !user.deletedAt && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleToggleStatus(user.id, user.status)}
+                                  title={user.status === "active" ? "Deactivate user (lock)" : "Activate user (unlock)"}
+                                >
+                                  {user.status === "active" ? <Lock size={16} className="text-orange-600" /> : <Unlock size={16} className="text-green-600" />}
+                                </Button>
+                              )}
                               {canUpdate('users') && (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleToggleStatus(user.id, user.status)}
-                                    title={user.status === "active" ? "Deactivate user (lock)" : "Activate user (unlock)"}
-                                  >
-                                    {user.status === "active" ? <Lock size={16} className="text-orange-600" /> : <Unlock size={16} className="text-green-600" />}
-                                  </Button>
-                                  <Button variant="ghost" size="sm" onClick={() => handleEdit(user)}>
-                                    <Edit2 size={16} />
-                                  </Button>
-                                </>
+                                <Button variant="ghost" size="sm" onClick={() => handleEdit(user)}>
+                                  <Edit2 size={16} />
+                                </Button>
                               )}
                               {canDelete('users') && (
                                 <Button

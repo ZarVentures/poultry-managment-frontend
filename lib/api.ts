@@ -1,5 +1,23 @@
 import { getApiBaseUrl } from '@/lib/api-base-url';
 
+export class ApiError extends Error {
+  status: number
+  code?: string
+  recoveryExpiresAt?: string
+
+  constructor(
+    message: string,
+    status: number,
+    extras?: { code?: string; recoveryExpiresAt?: string },
+  ) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.code = extras?.code
+    this.recoveryExpiresAt = extras?.recoveryExpiresAt
+  }
+}
+
 // API Configuration and Utilities
 
 // Get auth token from localStorage
@@ -53,18 +71,22 @@ async function apiRequest<T>(
 
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}`;
+      let code: string | undefined;
+      let recoveryExpiresAt: string | undefined;
       try {
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           const error = await response.json();
           const raw = error.message ?? error.error;
           errorMessage = Array.isArray(raw) ? raw.filter(Boolean).join(', ') : (raw || errorMessage);
+          code = typeof error.code === 'string' ? error.code : undefined;
+          recoveryExpiresAt = typeof error.recoveryExpiresAt === 'string' ? error.recoveryExpiresAt : undefined;
         } else {
           const text = await response.text();
           errorMessage = text || errorMessage;
         }
       } catch (e) { }
-      throw new Error(errorMessage);
+      throw new ApiError(errorMessage, response.status, { code, recoveryExpiresAt });
     }
 
     const contentType = response.headers.get('content-type');
@@ -155,6 +177,8 @@ export interface User {
   notes?: string;
   tenantId?: string;
   organizationId?: string;
+  deletedAt?: string | null;
+  recoveryExpiresAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -817,6 +841,40 @@ export const authApi = {
     apiRequest<{ accessToken: string; user: User }>('/auth/2fa/authenticate', {
       method: 'POST',
       body: JSON.stringify({ tempToken, code }),
+    }),
+
+  sendDeleteOtp: () =>
+    apiRequest<{ message: string; devOtp?: string; channel?: 'sms' | 'email'; deletesOrganization?: boolean }>('/auth/account/delete/send-otp', {
+      method: 'POST',
+    }),
+
+  deleteAccount: (data: {
+    confirmation: 'DELETE'
+    otp: string
+    totpCode?: string
+    reason?: string
+  }) =>
+    apiRequest<{ message: string; recoveryExpiresAt: string }>('/auth/account/delete', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  recoverSendOtp: (data: { phoneNumber?: string; email?: string }) =>
+    apiRequest<{ message: string; devOtp?: string }>('/auth/account/recover/send-otp', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  recoverVerifyOtp: (data: { phoneNumber?: string; email?: string; otp: string }) =>
+    apiRequest<{ recoveryToken: string; expiresIn: number; twoFactorRequired: boolean }>('/auth/account/recover/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  restoreAccount: (data: { recoveryToken: string; totpCode?: string }) =>
+    apiRequest<{ accessToken: string; user: User }>('/auth/account/recover/restore', {
+      method: 'POST',
+      body: JSON.stringify(data),
     }),
 };
 
