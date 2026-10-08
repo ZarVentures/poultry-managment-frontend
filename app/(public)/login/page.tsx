@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { authApi } from "@/lib/api"
+import { ApiError, authApi } from "@/lib/api"
 import { applyAuthResponse, type AuthResponse } from "@/lib/auth-session"
 import { toast } from "sonner"
 
@@ -26,6 +26,13 @@ const COOLDOWN_SECS = 60
 
 type Channel = "mobile" | "email"
 type EmailStep = "credentials" | "otp"
+
+function formatRecoveryDate(iso?: string) {
+  if (!iso) return "30 days"
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return "30 days"
+  return date.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })
+}
 
 function AuthError({ message }: { message: string }) {
   return (
@@ -52,6 +59,10 @@ export default function LoginPage() {
   const [twoFactorPending, setTwoFactorPending] = useState(false)
   const [tempToken, setTempToken] = useState("")
   const [twoFactorCode, setTwoFactorCode] = useState("")
+  const [pendingDeletion, setPendingDeletion] = useState<{ recoveryExpiresAt?: string } | null>(null)
+  const [recoveryStep, setRecoveryStep] = useState<"prompt" | "otp" | "totp">("prompt")
+  const [recoveryToken, setRecoveryToken] = useState("")
+  const [recoveryTotp, setRecoveryTotp] = useState("")
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -71,6 +82,25 @@ export default function LoginPage() {
         return prev - 1
       })
     }, 1000)
+  }
+
+  const notePendingDeletion = (err: unknown) => {
+    const error = err as ApiError
+    if (error?.code !== "ACCOUNT_PENDING_DELETION") return false
+    setPendingDeletion({ recoveryExpiresAt: error.recoveryExpiresAt })
+    setRecoveryStep("prompt")
+    setError(error.message || "Your account is currently scheduled for deletion.")
+    return true
+  }
+
+  const clearRecovery = () => {
+    setPendingDeletion(null)
+    setRecoveryStep("prompt")
+    setRecoveryToken("")
+    setRecoveryTotp("")
+    setOtp("")
+    setDevOtp("")
+    setError("")
   }
 
   const completeAuth = (response: AuthResponse) => {
@@ -109,7 +139,7 @@ export default function LoginPage() {
       startCooldown()
       toast.success("OTP sent successfully!")
     } catch (err: any) {
-      setError(err.message || "Failed to send OTP")
+      if (!notePendingDeletion(err)) setError(err.message || "Failed to send OTP")
     } finally {
       setIsLoading(false)
     }
@@ -126,7 +156,7 @@ export default function LoginPage() {
       startCooldown()
       toast.success("OTP resent!")
     } catch (err: any) {
-      setError(err.message || "Failed to resend OTP")
+      if (!notePendingDeletion(err)) setError(err.message || "Failed to resend OTP")
     } finally {
       setIsLoading(false)
     }
@@ -142,7 +172,7 @@ export default function LoginPage() {
       const response = await authApi.loginVerifyOtp(phoneNumber, otp)
       completeAuth(response)
     } catch (err: any) {
-      setError(err.message || "Invalid OTP")
+      if (!notePendingDeletion(err)) setError(err.message || "Invalid OTP")
     } finally {
       setIsLoading(false)
     }
@@ -162,7 +192,7 @@ export default function LoginPage() {
       const response = await authApi.login(trimmed, password)
       completeAuth(response)
     } catch (err: any) {
-      setError(err.message || "Invalid email or password")
+      if (!notePendingDeletion(err)) setError(err.message || "Invalid email or password")
     } finally {
       setIsLoading(false)
     }
@@ -184,7 +214,7 @@ export default function LoginPage() {
       startCooldown()
       toast.success("OTP sent to your email")
     } catch (err: any) {
-      setError(err.message || "Failed to send email OTP")
+      if (!notePendingDeletion(err)) setError(err.message || "Failed to send email OTP")
     } finally {
       setIsLoading(false)
     }
@@ -200,7 +230,7 @@ export default function LoginPage() {
       startCooldown()
       toast.success("OTP resent!")
     } catch (err: any) {
-      setError(err.message || "Failed to resend OTP")
+      if (!notePendingDeletion(err)) setError(err.message || "Failed to resend OTP")
     } finally {
       setIsLoading(false)
     }
@@ -214,7 +244,64 @@ export default function LoginPage() {
       const response = await authApi.loginVerifyEmailOtp(email.trim(), otp)
       completeAuth(response)
     } catch (err: any) {
-      setError(err.message || "Invalid OTP")
+      if (!notePendingDeletion(err)) setError(err.message || "Invalid OTP")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const recoveryIdentifier = () =>
+    channel === "mobile"
+      ? { phoneNumber: normalizePhone(phoneRaw) }
+      : { email: email.trim() }
+
+  const handleStartRecovery = async () => {
+    setIsLoading(true)
+    setError("")
+    try {
+      const response = await authApi.recoverSendOtp(recoveryIdentifier())
+      setDevOtp(response.devOtp || "")
+      setOtp("")
+      setRecoveryStep("otp")
+      startCooldown()
+      toast.success("If this account can be recovered, a code has been sent.")
+    } catch (err: any) {
+      setError(err.message || "Could not send recovery code")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleVerifyRecovery = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError("")
+    try {
+      const response = await authApi.recoverVerifyOtp({ ...recoveryIdentifier(), otp })
+      setRecoveryToken(response.recoveryToken)
+      if (response.twoFactorRequired) {
+        setRecoveryStep("totp")
+        setRecoveryTotp("")
+      } else {
+        const session = await authApi.restoreAccount({ recoveryToken: response.recoveryToken })
+        completeAuth(session)
+      }
+    } catch (err: any) {
+      setError(err.message || "Could not verify the recovery code")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleRestoreRecovery = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError("")
+    try {
+      const session = await authApi.restoreAccount({ recoveryToken, totpCode: recoveryTotp })
+      completeAuth(session)
+    } catch (err: any) {
+      setError(err.message || "Could not restore the account")
     } finally {
       setIsLoading(false)
     }
@@ -237,10 +324,18 @@ export default function LoginPage() {
   const showDevOtp =
     !!devOtp &&
     !twoFactorPending &&
-    ((channel === "mobile" && authStep === "otp") || (channel === "email" && emailStep === "otp"))
+    ((pendingDeletion && recoveryStep === "otp") ||
+      (channel === "mobile" && authStep === "otp") ||
+      (channel === "email" && emailStep === "otp"))
 
   const description = twoFactorPending
     ? "Enter the 6-digit code from your authenticator app"
+    : pendingDeletion
+      ? recoveryStep === "totp"
+        ? "Enter the 6-digit code from your authenticator app to finish restoring this account."
+        : recoveryStep === "otp"
+          ? "Enter the recovery code sent to your registered contact."
+          : `Your account is scheduled for deletion until ${formatRecoveryDate(pendingDeletion.recoveryExpiresAt)}.`
     : channel === "mobile"
       ? authStep === "phone"
         ? "Owners sign in with mobile OTP, then work inside their organization."
@@ -273,7 +368,7 @@ export default function LoginPage() {
                 🐔
               </div>
               <CardTitle className="text-xl font-bold tracking-tight sm:text-2xl">
-                {twoFactorPending ? "Two-Factor Authentication" : "Sign in"}
+                {twoFactorPending ? "Two-Factor Authentication" : pendingDeletion ? "Recover account" : "Sign in"}
               </CardTitle>
               <CardDescription className="mt-1.5 text-sm leading-relaxed">
                 {description}
@@ -293,7 +388,55 @@ export default function LoginPage() {
           </CardHeader>
 
           <CardContent className="pt-2">
-            {twoFactorPending ? (
+            {pendingDeletion && !twoFactorPending ? (
+              recoveryStep === "prompt" ? (
+                <div className="space-y-5">
+                  {error && <AuthError message={error} />}
+                  <p className="text-sm text-muted-foreground">
+                    Your account is scheduled for deletion until {formatRecoveryDate(pendingDeletion.recoveryExpiresAt)}. Recover before then to restore the login. If you are the only admin, the organization and its records come back with the account. After that date they are permanently deleted.
+                  </p>
+                  <Button type="button" className="h-11 w-full rounded-xl text-sm font-semibold" onClick={handleStartRecovery} disabled={isLoading}>
+                    {isLoading ? "Sending code…" : "Recover account"}
+                  </Button>
+                  <Button type="button" variant="ghost" className="w-full text-sm text-muted-foreground" onClick={clearRecovery}>
+                    Back to login
+                  </Button>
+                </div>
+              ) : recoveryStep === "otp" ? (
+                <form onSubmit={handleVerifyRecovery} className="space-y-5">
+                  {error && <AuthError message={error} />}
+                  <div className="space-y-2">
+                    <Label htmlFor="recovery-otp" className="text-sm font-medium">Recovery code</Label>
+                    <Input
+                      id="recovery-otp" inputMode="numeric" maxLength={6} placeholder="000000"
+                      value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      className="h-12 text-center text-2xl tracking-[0.5em]" required
+                    />
+                  </div>
+                  <Button type="submit" className="h-11 w-full rounded-xl text-sm font-semibold" disabled={isLoading || otp.length !== 6}>
+                    {isLoading ? "Verifying…" : "Verify and restore"}
+                  </Button>
+                  <Button type="button" variant="ghost" className="w-full text-sm text-muted-foreground" onClick={() => { setRecoveryStep("prompt"); setOtp(""); setError(""); setDevOtp("") }}>
+                    Back
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={handleRestoreRecovery} className="space-y-5">
+                  {error && <AuthError message={error} />}
+                  <div className="space-y-2">
+                    <Label htmlFor="recovery-totp" className="text-sm font-medium">Authenticator code</Label>
+                    <Input
+                      id="recovery-totp" inputMode="numeric" maxLength={6} placeholder="000000"
+                      value={recoveryTotp} onChange={(e) => setRecoveryTotp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      className="h-12 text-center text-2xl tracking-widest" required
+                    />
+                  </div>
+                  <Button type="submit" className="h-11 w-full rounded-xl text-sm font-semibold" disabled={isLoading || recoveryTotp.length !== 6}>
+                    {isLoading ? "Restoring…" : "Restore account"}
+                  </Button>
+                </form>
+              )
+            ) : twoFactorPending ? (
               <form onSubmit={handle2FAVerify} className="space-y-5">
                 {error && <AuthError message={error} />}
                 <div className="space-y-2">
