@@ -152,8 +152,8 @@ export default function SecurityPage() {
       authApi.logout()
       toast.success(
         deletesOrganization
-          ? "Your account and organization are scheduled for deletion. Recover within 30 days to restore the business."
-          : "Your account is scheduled for deletion. You can recover it for 30 days.",
+          ? "Your account and organization are scheduled for deletion. Recover within 5 minutes to restore the business."
+          : "Your account is scheduled for deletion. You can recover it for 5 minutes.",
       )
       router.push("/login")
     } catch (e: unknown) {
@@ -224,7 +224,7 @@ export default function SecurityPage() {
             <div>
               <p className="font-medium text-sm sm:text-base">Delete account</p>
               <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-                If you are the only admin, the organization closes immediately. Sales, purchases, stock, customers, and every other business record are permanently removed after 30 days. Recover before then to bring the shop back. A staff or manager delete only removes that login.
+                If you are the only admin, the organization closes immediately. Sales, purchases, stock, customers, and every other business record are permanently removed after 5 minutes. Recover before then to bring the shop back. A staff or manager delete only removes that login.
               </p>
             </div>
             <Button variant="destructive" size="sm" className="rounded-full" onClick={openDelete}>
@@ -246,7 +246,7 @@ export default function SecurityPage() {
                   Your login stops on every device. If you are the only admin, staff and managers are signed out too, and the organization cannot be used.
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  You can restore the account for 30 days from the login screen. After that, a sole admin deletion permanently removes the organization and its sales, purchases, stock, customers, and other records. A staff or manager deletion only removes that login.
+                  You can restore the account for 5 minutes from the login screen. After that, a sole admin deletion permanently removes the organization and its sales, purchases, stock, customers, and other records. A staff or manager deletion only removes that login.
                 </p>
                 <Button className="w-full rounded-full" variant="destructive" onClick={continueDelete} disabled={loading}>
                   {loading ? "Checking…" : "Continue"}
@@ -265,7 +265,7 @@ export default function SecurityPage() {
               <div className="space-y-4">
                 {deletesOrganization && (
                   <p className="text-sm text-red-600">
-                    This will close the organization. After 30 days its sales, purchases, and other records are permanently deleted. Recover before then to restore them.
+                    This will close the organization. After 5 minutes its sales, purchases, and other records are permanently deleted. Recover before then to restore them.
                   </p>
                 )}
                 {deleteDevOtp && (
