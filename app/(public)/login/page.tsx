@@ -28,10 +28,16 @@ type Channel = "mobile" | "email"
 type EmailStep = "credentials" | "otp"
 
 function formatRecoveryDate(iso?: string) {
-  if (!iso) return "30 days"
+  if (!iso) return "the recovery deadline"
   const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return "30 days"
-  return date.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })
+  if (Number.isNaN(date.getTime())) return "the recovery deadline"
+  return date.toLocaleString(undefined, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })
 }
 
 function AuthError({ message }: { message: string }) {
