@@ -232,9 +232,9 @@ export default function ReportsPage() {
           r.purchaseBillNo || '',
           String(r.birds || 0),
           `${wlNum(r.purchaseWeight).toFixed(2)} kg`,
-          `${wlNum(r.recordedWeight).toFixed(2)} kg`,
-          `${wlNum(r.weightLoss).toFixed(2)} kg`,
-          `${wlNum(r.lossPercent).toFixed(2)}%`,
+          r.recordedWeight == null ? 'Not weighed' : `${wlNum(r.recordedWeight).toFixed(2)} kg`,
+          r.weightLoss == null ? 'Not weighed' : `${wlNum(r.weightLoss).toFixed(2)} kg`,
+          r.lossPercent == null ? 'Not weighed' : `${wlNum(r.lossPercent).toFixed(2)}%`,
         ]),
       })
       }
@@ -777,7 +777,7 @@ export default function ReportsPage() {
                 ) : (
                   <div className="space-y-6">
                     <p className="text-xs sm:text-sm text-muted-foreground">
-                      Net Profit = Total Revenue − COGS − Expenses. Available Stock is remaining inventory at cost and is not deducted from profit.
+                      Net Profit = Total Revenue − COGS − Expenses. Available Stock is remaining inventory at cost and is not deducted from profit. Godown weight-loss cost is shown separately and is not added to COGS again.
                     </p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                       <div className="p-3 sm:p-4 border rounded min-w-0">
@@ -833,6 +833,51 @@ export default function ReportsPage() {
                         <p className={`text-lg sm:text-2xl font-bold whitespace-nowrap ${plSummary.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>₹{plSummary.netProfit.toFixed(2)}</p>
                       </div>
                     </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                      <div className="p-3 border rounded">
+                        <p className="text-xs text-muted-foreground">Godown opening</p>
+                        <p className="font-semibold">{n(plSummary.godownOpeningWeight).toFixed(2)} kg</p>
+                        <p className="text-xs text-muted-foreground">₹{n(plSummary.godownOpeningValue).toFixed(2)}</p>
+                      </div>
+                      <div className="p-3 border rounded">
+                        <p className="text-xs text-muted-foreground">Godown inward</p>
+                        <p className="font-semibold">{n(plSummary.godownInwardWeight).toFixed(2)} kg</p>
+                        <p className="text-xs text-muted-foreground">₹{n(plSummary.godownInwardValue).toFixed(2)}</p>
+                      </div>
+                      <div className="p-3 border rounded">
+                        <p className="text-xs text-muted-foreground">Godown sold</p>
+                        <p className="font-semibold">{n(plSummary.godownSoldWeight).toFixed(2)} kg</p>
+                      </div>
+                      <div className="p-3 border rounded">
+                        <p className="text-xs text-muted-foreground">Godown closing</p>
+                        <p className="font-semibold">{n(plSummary.godownClosingWeight).toFixed(2)} kg</p>
+                        <p className="text-xs text-muted-foreground">₹{n(plSummary.godownClosingValue).toFixed(2)}</p>
+                      </div>
+                      <div className="p-3 border rounded">
+                        <p className="text-xs text-muted-foreground">Weight loss</p>
+                        <p className="font-semibold text-amber-700">{n(plSummary.godownWeightLossKg).toFixed(2)} kg</p>
+                        <p className="text-xs text-muted-foreground">{n(plSummary.godownWeightLossPercent).toFixed(2)}% of opening + inward</p>
+                      </div>
+                      <div className="p-3 border rounded">
+                        <p className="text-xs text-muted-foreground">Average cost rate</p>
+                        <p className="font-semibold">₹{n(plSummary.godownAverageRate).toFixed(2)}/kg</p>
+                      </div>
+                      <div className="p-3 border rounded">
+                        <p className="text-xs text-muted-foreground">Weight-loss cost</p>
+                        <p className="font-semibold">₹{n(plSummary.godownWeightLossCost).toFixed(2)}</p>
+                      </div>
+                      <div className="p-3 border rounded">
+                        <p className="text-xs text-muted-foreground">COGS rate check</p>
+                        <p className="font-semibold">₹{n(plSummary.godownRate).toFixed(2)}/kg</p>
+                        <p className="text-xs text-muted-foreground">Used for godown COGS, not added to weight-loss cost</p>
+                      </div>
+                    </div>
+                    {plSummary.godownReconciliationFlagged ? (
+                      <p className="text-xs text-amber-700">
+                        {plSummary.godownReconciliationNote || 'Stock reconciliation needs a check.'}
+                        {n(plSummary.godownDiscrepancyKg) !== 0 ? ` Difference ${n(plSummary.godownDiscrepancyKg).toFixed(2)} kg.` : ''}
+                      </p>
+                    ) : null}
                     {viewMode === 'chart' && (
                       <div className="w-full min-w-0 overflow-hidden">
                       <ResponsiveContainer width="100%" height={300}>
@@ -1321,6 +1366,7 @@ export default function ReportsPage() {
                         </div>
                         <p className="text-lg sm:text-2xl font-bold text-red-600 whitespace-nowrap">{n(weightLossSummary.totalLoss).toFixed(2)} kg</p>
                         <p className="text-[10px] text-muted-foreground">{n(weightLossSummary.lossPercent).toFixed(2)}% of from-weight</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Godown stock loss {n(weightLossSummary.godownWeightLoss).toFixed(2)} kg · ₹{n(weightLossSummary.godownWeightLossCost).toFixed(2)} · {n(weightLossSummary.godownWeightLossPercent).toFixed(2)}%</p>
                       </div>
                       <div className="p-3 sm:p-4 border rounded min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -1368,7 +1414,10 @@ export default function ReportsPage() {
                                   <TableCell className="text-right">{c.birds || 0}</TableCell>
                                   <TableCell className="text-right">{n(c.purchaseWeight).toFixed(2)} kg</TableCell>
                                   <TableCell className="text-right">{n(c.recordedWeight).toFixed(2)} kg</TableCell>
-                                  <TableCell className="text-right text-orange-600 font-medium">{n(c.weightLoss).toFixed(2)} kg</TableCell>
+                                  <TableCell className="text-right text-orange-600 font-medium">
+                                    {n(c.weightLoss).toFixed(2)} kg
+                                    {c.unmeasuredLosses > 0 ? ` (${c.unmeasuredLosses} not weighed)` : ""}
+                                  </TableCell>
                                   <TableCell className="text-right">{n(c.lossPercent).toFixed(2)}%</TableCell>
                                 </TableRow>
                               ))}
@@ -1415,9 +1464,9 @@ export default function ReportsPage() {
                                   <TableCell>{row.purchaseBillNo || '-'}</TableCell>
                                   <TableCell className="text-right">{row.birds || 0}</TableCell>
                                   <TableCell className="text-right">{n(row.purchaseWeight).toFixed(2)} kg</TableCell>
-                                  <TableCell className="text-right">{n(row.recordedWeight).toFixed(2)} kg</TableCell>
-                                  <TableCell className="text-right text-orange-600">{n(row.weightLoss).toFixed(2)} kg</TableCell>
-                                  <TableCell className="text-right">{n(row.lossPercent).toFixed(2)}%</TableCell>
+                                  <TableCell className="text-right">{row.recordedWeight == null ? "—" : `${n(row.recordedWeight).toFixed(2)} kg`}</TableCell>
+                                  <TableCell className="text-right text-orange-600">{row.weightLoss == null ? "—" : `${n(row.weightLoss).toFixed(2)} kg`}</TableCell>
+                                  <TableCell className="text-right">{row.lossPercent == null ? "—" : `${n(row.lossPercent).toFixed(2)}%`}</TableCell>
                                 </TableRow>
                               ))}
                             </TableBody>
