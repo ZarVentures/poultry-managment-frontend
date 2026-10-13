@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   ArrowLeft, Calendar, Download, FileText, Printer, Search,
-  Bird, PackagePlus, PackageMinus, AlertCircle, Scale, Undo2, TrendingDown,
+  Bird, PackagePlus, PackageMinus, AlertCircle, Scale, Undo2, TrendingDown, IndianRupee,
 } from "lucide-react"
 import { godownApi, type StockLedgerEntry, type StockLedgerResponse } from "@/lib/api"
 import { fetchOrgInfo } from "@/lib/org-info"
@@ -84,7 +84,8 @@ export default function StockLedgerPage() {
   const period = ledger?.period || {
     birdsIn: 0, birdsOut: 0, weightIn: 0, weightOut: 0, amountIn: 0, amountOut: 0,
     soldBirds: 0, soldWeight: 0, billedSaleWeight: 0, mortalityBirds: 0, mortalityWeight: 0,
-    weightLoss: 0, weightLossPercent: 0, fromWeight: 0, accountedWeight: 0,
+    weightLoss: 0, weightLossValue: 0, weightLossPercent: 0, fromWeight: 0, accountedWeight: 0,
+    discrepancyKg: 0, reconciliationNote: "", inwardWeight: 0, billedSaleWeight: 0,
   }
   const closing = ledger?.closing || { birds: 0, weight: 0 }
   const soldBirds = period.soldBirds ?? entries.filter((e) => e.movementType === "SALE").reduce((s, e) => s + e.birdsOut, 0)
@@ -93,9 +94,12 @@ export default function StockLedgerPage() {
   const mortalityWeight = period.mortalityWeight ?? entries.filter((e) => e.movementType === "MORTALITY").reduce((s, e) => s + e.weightOut, 0)
   const returnBirds = period.returnBirds ?? entries.filter((e) => e.movementType === "RETURN").reduce((s, e) => s + e.birdsIn, 0)
   const returnWeight = period.returnWeight ?? entries.filter((e) => e.movementType === "RETURN").reduce((s, e) => s + e.weightIn, 0)
-  const billedSaleWeight = period.billedSaleWeight ?? 0
   const weightLoss = period.weightLoss ?? 0
   const weightLossPercent = period.weightLossPercent ?? 0
+  const avgWeight = ledger?.avgWeight ?? 0
+  const avgRate = ledger?.avgRate ?? 0
+  const weightLossValue = period.weightLossValue ?? weightLoss * avgRate
+  const unmeasuredLossCount = period.unmeasuredLossCount ?? 0
 
   const downloadCSV = () => {
     if (!entries.length && opening.birds === 0) {
@@ -105,11 +109,15 @@ export default function StockLedgerPage() {
     const headers = [
       "Date", "Type", "Reference", "Party", "Purchase Invoice",
       "Birds In", "Birds Out", "Weight In (kg)", "Weight Out (kg)",
+      "Average Weight (kg/bird)", "Weighed (kg)", "Weight Loss (kg)",
       "Rate/kg", "Amount", "Balance Birds", "Balance Weight (kg)", "Notes",
     ].join(",")
     const openingRow = [
       dateFrom, "OPENING", "-", "Opening Balance", "",
-      "", "", "", "", "", "", opening.birds, opening.weight.toFixed(2), "",
+      "", "", "", "",
+      avgWeight ? avgWeight.toFixed(2) : "",
+      "", "",
+      "", "", opening.birds, opening.weight.toFixed(2), "",
     ].join(",")
     const rows = entries.map((e) => [
       e.date,
@@ -121,6 +129,9 @@ export default function StockLedgerPage() {
       e.birdsOut || "",
       e.weightIn || "",
       e.weightOut || "",
+      e.averageWeight ?? "",
+      e.weighedKg ?? "",
+      e.weightLoss ?? "",
       e.ratePerKg ?? "",
       e.amount ?? "",
       e.runningBirds,
@@ -130,6 +141,8 @@ export default function StockLedgerPage() {
     const closingRow = [
       dateTo, "CLOSING", "-", "Closing Balance", "",
       period.birdsIn, period.birdsOut, period.weightIn, period.weightOut,
+      avgWeight ? avgWeight.toFixed(2) : "",
+      "", weightLoss ? weightLoss.toFixed(2) : "",
       "", "", closing.birds, closing.weight.toFixed(2), "",
     ].join(",")
     const blob = new Blob([[headers, openingRow, ...rows, closingRow].join("\n")], {
@@ -174,10 +187,18 @@ export default function StockLedgerPage() {
       titleY + 6,
       { align: "center" },
     )
+    doc.text(
+      `Average weight ${fmtNum(avgWeight, 2)} kg/bird · Average rate ₹${fmtNum(avgRate, 2)}/kg · Weight loss ${fmtNum(weightLoss, 2)} kg = ₹${fmtNum(weightLossValue, 2)}`,
+      pageW / 2,
+      titleY + 11,
+      { align: "center" },
+    )
 
     const body: any[] = [
       [
         { content: "Opening Balance", colSpan: 8, styles: { fontStyle: "bold" as const, halign: "right" as const } },
+        avgWeight ? fmtNum(avgWeight, 2) : "-",
+        "-",
         String(opening.birds),
         `${opening.weight.toFixed(2)} kg`,
         "",
@@ -191,12 +212,16 @@ export default function StockLedgerPage() {
         e.birdsOut || "-",
         e.weightIn ? `${e.weightIn.toFixed(2)}` : "-",
         e.weightOut ? `${e.weightOut.toFixed(2)}` : "-",
+        e.averageWeight != null ? fmtNum(e.averageWeight, 2) : "-",
+        e.weightLoss != null ? fmtNum(e.weightLoss, 2) : "-",
         String(e.runningBirds),
         `${Number(e.runningWeight).toFixed(2)} kg`,
         e.amount != null ? `₹${fmtNum(e.amount, 2)}` : "-",
       ]),
       [
         { content: "Closing Balance", colSpan: 8, styles: { fontStyle: "bold" as const, halign: "right" as const } },
+        avgWeight ? fmtNum(avgWeight, 2) : "-",
+        "-",
         String(closing.birds),
         `${closing.weight.toFixed(2)} kg`,
         "",
@@ -204,8 +229,8 @@ export default function StockLedgerPage() {
     ]
 
     autoTable(doc, {
-      startY: titleY + 10,
-      head: [["Date", "Type", "Ref", "Party", "In", "Out", "Wt In", "Wt Out", "Bal Birds", "Bal Wt", "Amount"]],
+      startY: titleY + 16,
+      head: [["Date", "Type", "Ref", "Party", "In", "Out", "Wt In", "Wt Out", "Avg Wt", "Wt Loss", "Bal Birds", "Bal Wt", "Amount"]],
       body,
       styles: { fontSize: 7, cellPadding: 1.5 },
       headStyles: { fillColor: [30, 64, 175], fontSize: 7 },
@@ -235,12 +260,14 @@ export default function StockLedgerPage() {
             <td class="num">${e.birdsOut ? `−${fmtNum(e.birdsOut)}` : "—"}</td>
             <td class="num">${e.weightIn ? fmtNum(e.weightIn, 2) : "—"}</td>
             <td class="num">${e.weightOut ? fmtNum(e.weightOut, 2) : "—"}</td>
+            <td class="num">${e.averageWeight != null ? fmtNum(e.averageWeight, 2) : "—"}</td>
+            <td class="num">${e.weightLoss != null ? fmtNum(e.weightLoss, 2) : "—"}</td>
             <td class="num">${e.ratePerKg != null ? `₹${fmtNum(e.ratePerKg, 2)}` : "—"}</td>
             <td class="num">${e.amount != null ? `₹${fmtNum(e.amount, 2)}` : "—"}</td>
             <td class="num">${fmtNum(e.runningBirds)}</td>
             <td class="num">${fmtNum(e.runningWeight, 2)} kg</td>
           </tr>`).join("")
-      : `<tr><td colspan="13" style="text-align:center;padding:16px">No stock movements in this period</td></tr>`
+      : `<tr><td colspan="15" style="text-align:center;padding:16px">No stock movements in this period</td></tr>`
 
     const html = `<!DOCTYPE html>
       <html>
@@ -279,9 +306,13 @@ export default function StockLedgerPage() {
               <td><div class="label">Returns</div><div class="val">+${fmtNum(returnBirds)}</div><div>${fmtNum(returnWeight, 2)} kg</div></td>
               <td><div class="label">Sold</div><div class="val">−${fmtNum(soldBirds)}</div><div>${fmtNum(soldWeight, 2)} kg</div></td>
               <td><div class="label">Mortality</div><div class="val">−${fmtNum(mortalityBirds)}</div><div>${fmtNum(mortalityWeight, 2)} kg</div></td>
-              <td><div class="label">Weight Loss</div><div class="val">${fmtNum(weightLoss, 2)} kg</div><div>Open+Inward − sale ${fmtNum(billedSaleWeight, 2)} − mort − close</div></td>
+              <td><div class="label">Weight Loss</div><div class="val">${fmtNum(weightLoss, 2)} kg</div><div>₹${fmtNum(weightLossValue, 2)}</div></td>
               <td><div class="label">Closing</div><div class="val">${fmtNum(closing.birds)}</div><div>${fmtNum(closing.weight, 2)} kg</div></td>
               <td><div class="label">Period Value</div><div>In ₹${fmtNum(period.amountIn, 2)}</div><div>Out ₹${fmtNum(period.amountOut, 2)}</div></td>
+            </tr>
+            <tr>
+              <td colspan="4"><div class="label">Average Weight</div><div class="val">${fmtNum(avgWeight, 2)} kg/bird</div></td>
+              <td colspan="4"><div class="label">Average Rate</div><div class="val">₹${fmtNum(avgRate, 2)}/kg</div></td>
             </tr>
           </table>
           <table class="ledger">
@@ -289,6 +320,7 @@ export default function StockLedgerPage() {
               <tr>
                 <th>Date</th><th>Type</th><th>Reference</th><th>Party</th><th>Purchase Inv</th>
                 <th>Birds In</th><th>Birds Out</th><th>Wt In</th><th>Wt Out</th>
+                <th>Avg Wt</th><th>Wt Loss</th>
                 <th>Rate</th><th>Amount</th><th>Bal. Birds</th><th>Bal. Wt</th>
               </tr>
             </thead>
@@ -296,6 +328,7 @@ export default function StockLedgerPage() {
               <tr class="open">
                 <td colspan="5" style="text-align:right">Opening Balance (${esc(fmtDate(dateFrom))})</td>
                 <td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td>
+                <td class="num">${fmtNum(avgWeight, 2)}</td><td class="num">—</td>
                 <td class="num">—</td><td class="num">—</td>
                 <td class="num">${fmtNum(opening.birds)}</td>
                 <td class="num">${fmtNum(opening.weight, 2)} kg</td>
@@ -307,6 +340,8 @@ export default function StockLedgerPage() {
                 <td class="num">−${fmtNum(period.birdsOut)}</td>
                 <td class="num">${fmtNum(period.weightIn, 2)}</td>
                 <td class="num">${fmtNum(period.weightOut, 2)}</td>
+                <td class="num">${fmtNum(avgWeight, 2)}</td>
+                <td class="num">${fmtNum(weightLoss, 2)}</td>
                 <td></td>
                 <td class="num">In ₹${fmtNum(period.amountIn, 2)}<br/>Out ₹${fmtNum(period.amountOut, 2)}</td>
                 <td></td><td></td>
@@ -314,13 +349,14 @@ export default function StockLedgerPage() {
               <tr class="close">
                 <td colspan="5" style="text-align:right">Closing Balance (${esc(fmtDate(dateTo))})</td>
                 <td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td>
+                <td class="num">${fmtNum(avgWeight, 2)}</td><td class="num">—</td>
                 <td class="num">—</td><td class="num">—</td>
                 <td class="num">${fmtNum(closing.birds)}</td>
                 <td class="num">${fmtNum(closing.weight, 2)} kg</td>
               </tr>
             </tbody>
           </table>
-          <p class="foot">Opening + Inward + Returns − Sale − Mortality = Closing</p>
+          <p class="foot">Stock kg = birds × avg weight ${esc(fmtNum(avgWeight, 2))} kg. Avg rate ₹${esc(fmtNum(avgRate, 2))}/kg. Weight loss ${esc(fmtNum(weightLoss, 2))} kg = ₹${esc(fmtNum(weightLossValue, 2))}.${unmeasuredLossCount > 0 ? ` ${esc(unmeasuredLossCount)} movement(s) have no weighed kg, so they are not counted as zero loss.` : ""}</p>
         </body>
       </html>`
 
@@ -400,7 +436,7 @@ export default function StockLedgerPage() {
 
         
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8 [&>*]:break-words">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-5 [&>*]:break-words">
           <Card className="rounded-2xl border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-800/50 dark:bg-blue-900/20">
             <div className="mb-1 flex items-center gap-2 text-xs font-medium text-blue-700 dark:text-blue-300">
               <Bird size={20} /> Opening
@@ -442,8 +478,24 @@ export default function StockLedgerPage() {
             </div>
             <div className="text-xl font-bold tracking-tight text-amber-950 dark:text-amber-100 sm:text-2xl">{fmtNum(weightLoss, 2)} kg</div>
             <div className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
-              Open+Inward − billed sale − mort − close{weightLossPercent > 0 ? ` · ${fmtNum(weightLossPercent, 2)}%` : ""}
+              ₹{fmtNum(weightLossValue, 2)}
+              {weightLossPercent > 0 ? ` · ${fmtNum(weightLossPercent, 2)}%` : ""}
+              {period.discrepancyKg ? ` · check ${fmtNum(period.discrepancyKg, 2)} kg` : ""}
             </div>
+          </Card>
+          <Card className="rounded-2xl border border-teal-200 bg-teal-50/50 p-4 dark:border-teal-800/50 dark:bg-teal-900/20">
+            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-teal-800 dark:text-teal-300">
+              <Scale size={20} /> Average Weight
+            </div>
+            <div className="text-xl font-bold tracking-tight text-teal-950 dark:text-teal-100 sm:text-2xl">{fmtNum(avgWeight, 2)}</div>
+            <div className="mt-0.5 text-xs text-teal-700 dark:text-teal-400">kg/bird</div>
+          </Card>
+          <Card className="rounded-2xl border border-cyan-200 bg-cyan-50/50 p-4 dark:border-cyan-800/50 dark:bg-cyan-900/20">
+            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-cyan-800 dark:text-cyan-300">
+              <IndianRupee size={20} /> Average Rate
+            </div>
+            <div className="text-xl font-bold tracking-tight text-cyan-950 dark:text-cyan-100 sm:text-2xl">₹{fmtNum(avgRate, 2)}</div>
+            <div className="mt-0.5 text-xs text-cyan-700 dark:text-cyan-400">per kg</div>
           </Card>
           <Card className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-800/50 dark:bg-indigo-900/20">
             <div className="mb-1 flex items-center gap-2 text-xs font-medium text-indigo-700 dark:text-indigo-300">
@@ -525,6 +577,8 @@ export default function StockLedgerPage() {
                   <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-orange-700">Birds Out</TableHead>
                   <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Wt In</TableHead>
                   <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Wt Out</TableHead>
+                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-teal-800">Avg Wt</TableHead>
+                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-amber-800">Wt Loss</TableHead>
                   <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rate</TableHead>
                   <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount</TableHead>
                   <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bal. Birds</TableHead>
@@ -540,6 +594,8 @@ export default function StockLedgerPage() {
                   <TableCell className="text-right">—</TableCell>
                   <TableCell className="text-right">—</TableCell>
                   <TableCell className="text-right">—</TableCell>
+                  <TableCell className="text-right text-teal-800 dark:text-teal-300">{fmtNum(avgWeight, 2)}</TableCell>
+                  <TableCell className="text-right">—</TableCell>
                   <TableCell className="text-right">—</TableCell>
                   <TableCell className="text-right">—</TableCell>
                   <TableCell className="text-right font-bold text-blue-900 dark:text-blue-200">{fmtNum(opening.birds)}</TableCell>
@@ -548,13 +604,13 @@ export default function StockLedgerPage() {
 
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="text-center py-10 text-muted-foreground animate-pulse">
+                    <TableCell colSpan={15} className="text-center py-10 text-muted-foreground animate-pulse">
                       Loading stock movements...
                     </TableCell>
                   </TableRow>
                 ) : entries.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={15} className="text-center py-10 text-muted-foreground">
                       No stock movements in this period
                     </TableCell>
                   </TableRow>
@@ -582,6 +638,19 @@ export default function StockLedgerPage() {
                       <TableCell className="text-right text-sm">
                         {e.weightOut ? `${fmtNum(e.weightOut, 2)}` : "—"}
                       </TableCell>
+                      <TableCell className="text-right text-sm text-teal-800 dark:text-teal-300">
+                        {e.averageWeight != null ? fmtNum(e.averageWeight, 2) : "—"}
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-amber-800 dark:text-amber-300">
+                        {e.weightLoss != null ? (
+                          <div>
+                            <div>{fmtNum(e.weightLoss, 2)}</div>
+                            {e.weighedKg != null ? (
+                              <div className="text-[10px] font-normal text-muted-foreground">weighed {fmtNum(e.weighedKg, 2)}</div>
+                            ) : null}
+                          </div>
+                        ) : "—"}
+                      </TableCell>
                       <TableCell className="text-right text-sm">
                         {e.ratePerKg != null ? `₹${fmtNum(e.ratePerKg, 2)}` : "—"}
                       </TableCell>
@@ -600,6 +669,8 @@ export default function StockLedgerPage() {
                   <TableCell className="text-right text-orange-700">−{fmtNum(period.birdsOut)}</TableCell>
                   <TableCell className="text-right">{fmtNum(period.weightIn, 2)}</TableCell>
                   <TableCell className="text-right">{fmtNum(period.weightOut, 2)}</TableCell>
+                  <TableCell className="text-right text-teal-800 dark:text-teal-300">{fmtNum(avgWeight, 2)}</TableCell>
+                  <TableCell className="text-right text-amber-800 dark:text-amber-300">{fmtNum(weightLoss, 2)}</TableCell>
                   <TableCell />
                   <TableCell className="text-right text-xs">
                     <div>In ₹{fmtNum(period.amountIn, 2)}</div>
@@ -617,6 +688,8 @@ export default function StockLedgerPage() {
                   <TableCell className="text-right">—</TableCell>
                   <TableCell className="text-right">—</TableCell>
                   <TableCell className="text-right">—</TableCell>
+                  <TableCell className="text-right text-teal-800 dark:text-teal-300">{fmtNum(avgWeight, 2)}</TableCell>
+                  <TableCell className="text-right">—</TableCell>
                   <TableCell className="text-right">—</TableCell>
                   <TableCell className="text-right">—</TableCell>
                   <TableCell className="text-right text-lg text-indigo-900 dark:text-indigo-200">{fmtNum(closing.birds)}</TableCell>
@@ -628,8 +701,10 @@ export default function StockLedgerPage() {
         </Card>
 
         <p className="text-xs text-muted-foreground print:hidden">
-          Stock formula: Opening + Inward + Returns − Sale − Mortality = Closing.
-          Processed godown bird returns appear as violet RETURN rows (restocked / dead / not restocked).
+          Weight loss = opening {fmtNum(opening.weight, 2)} kg + inward {fmtNum(period.reconciliation?.inwardWeight ?? period.inwardWeight ?? 0, 2)} kg + returns in {fmtNum(period.reconciliation?.returnWeightIn ?? 0, 2)} kg − sold {fmtNum(period.reconciliation?.soldWeight ?? period.billedSaleWeight ?? 0, 2)} kg − mortality {fmtNum(period.reconciliation?.mortalityWeight ?? mortalityWeight, 2)} kg − returns out {fmtNum(period.reconciliation?.returnWeightOut ?? 0, 2)} kg − closing {fmtNum(period.reconciliation?.closingWeight ?? closing.weight, 2)} kg.
+          Cost = {fmtNum(weightLoss, 2)} kg × ₹{fmtNum(ledger?.periodAverageRate ?? avgRate, 2)}/kg = ₹{fmtNum(weightLossValue, 2)}. This cost is not added to COGS.
+          {period.reconciliationNote ? ` ${period.reconciliationNote}` : ""}
+          {unmeasuredLossCount > 0 ? ` ${unmeasuredLossCount} movement(s) have no weighed kg.` : ""}
         </p>
       </div>
     </DashboardLayout>
