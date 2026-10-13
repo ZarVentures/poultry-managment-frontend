@@ -85,7 +85,7 @@ export default function StockLedgerPage() {
     birdsIn: 0, birdsOut: 0, weightIn: 0, weightOut: 0, amountIn: 0, amountOut: 0,
     soldBirds: 0, soldWeight: 0, billedSaleWeight: 0, mortalityBirds: 0, mortalityWeight: 0,
     weightLoss: 0, weightLossValue: 0, weightLossPercent: 0, fromWeight: 0, accountedWeight: 0,
-    discrepancyKg: 0, reconciliationNote: "", inwardWeight: 0, billedSaleWeight: 0,
+    discrepancyKg: 0, reconciliationNote: "", inwardWeight: 0,
   }
   const closing = ledger?.closing || { birds: 0, weight: 0 }
   const soldBirds = period.soldBirds ?? entries.filter((e) => e.movementType === "SALE").reduce((s, e) => s + e.birdsOut, 0)
