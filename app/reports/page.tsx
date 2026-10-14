@@ -815,7 +815,7 @@ export default function ReportsPage() {
                         </div>
                         <p className="text-lg sm:text-2xl font-bold text-rose-600 whitespace-nowrap">₹{plSummary.cogs.toFixed(2)}</p>
                         <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 leading-snug">
-                          Vehicle (purchase rate) ₹{(plSummary.vehicleCogs ?? 0).toFixed(2)} + Godown (inward rate) ₹{(plSummary.godownCogs ?? 0).toFixed(2)}
+                          Vehicle (sold kg × attached purchase bill rate) ₹{(plSummary.vehicleCogs ?? 0).toFixed(2)} + Godown (inward rate) ₹{(plSummary.godownCogs ?? 0).toFixed(2)}
                         </p>
                       </div>
                       <div className="p-3 sm:p-4 border rounded min-w-0">
