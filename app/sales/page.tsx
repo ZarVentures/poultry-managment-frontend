@@ -28,7 +28,7 @@ interface CustomerRow { id: string; customerName: string; cageId: string; numBir
 
 export default function SalesPage() {
   const router = useRouter()
-  const { canUpdate, canDelete } = usePermissions()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
   const [sales, setSales] = useState<ApiSale[]>([])
   const [retailers, setRetailers] = useState<any[]>([])
   const [vehicles, setVehicles] = useState<any[]>([])
@@ -588,6 +588,10 @@ export default function SalesPage() {
   }
 
   const handleSave = async () => {
+    if (!editingId && !canCreate("sales")) {
+      toast.error("You only have view permission for sales")
+      return
+    }
     // invoiceNumber is now optional - backend will auto-generate if not provided
     if (!formData.customerName) {
       toast.error("Customer name is required"); return
@@ -932,9 +936,11 @@ export default function SalesPage() {
             <p className="text-muted-foreground">Manage your sales records</p>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
+            {canCreate("sales") && (
             <DialogTrigger asChild>
               <Button onClick={resetForm} className="shrink-0 self-start sm:self-auto"><Plus className="mr-2" size={20} />Add New Sale</Button>
             </DialogTrigger>
+            )}
             <DialogContent className="sm:max-w-5xl max-sm:max-w-[calc(100%-2rem)] max-h-[90vh] flex flex-col" aria-describedby="sale-dialog-desc">
               <DialogHeader>
                 <DialogTitle>{isReadOnly ? "View Sale" : editingId ? "Edit Sale" : "Add New Sale"}</DialogTitle>

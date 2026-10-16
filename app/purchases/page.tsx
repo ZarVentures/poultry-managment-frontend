@@ -29,7 +29,7 @@ const emptyCage = () => ({ cageId: "", numberOfBirds: "", cageWeight: "" })
 
 export default function PurchasesPage() {
   const router = useRouter()
-  const { canUpdate, canDelete } = usePermissions()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
   const [purchases, setPurchases] = useState<ApiPurchaseOrder[]>([])
   const [invoiceList, setInvoiceList] = useState<Array<{ id: string; orderNumber: string; orderDate: string; supplierName: string }>>([])
   const [farmers, setFarmers] = useState<Farmer[]>([])
@@ -221,6 +221,10 @@ export default function PurchasesPage() {
   const balanceAmount = Math.max(0, netAmount - totalPaymentMade)
 
   const handleSave = async () => {
+    if (!editingId && !canCreate("purchases")) {
+      toast.error("You only have view permission for purchases")
+      return
+    }
     if (!formData.orderNumber || !formData.supplierName) {
       toast.error("Purchase Bill No and Supplier are required")
       return
@@ -543,9 +547,11 @@ export default function PurchasesPage() {
             <p className="text-muted-foreground">Manage your purchase orders</p>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
+            {canCreate("purchases") && (
             <DialogTrigger asChild>
               <Button onClick={resetForm} className="shrink-0 self-start sm:self-auto"><Plus className="mr-0" size={20} />Add New Purchase</Button>
             </DialogTrigger>
+            )}
             <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-xl lg:max-w-2xl xl:max-w-4xl max-h-[90vh] flex flex-col" aria-describedby="purchase-dialog-desc">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Edit Purchase Order" : "New Purchase Order"}</DialogTitle>
