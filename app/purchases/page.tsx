@@ -27,6 +27,34 @@ interface PaymentRow { mode: PaymentMode; amount: string; isAdvance: boolean }
 const emptyPayment = (): PaymentRow => ({ mode: "cash", amount: "", isAdvance: false })
 const emptyCage = () => ({ cageId: "", numberOfBirds: "", cageWeight: "" })
 
+function attachmentHref(path?: string | null) {
+  if (!path) return ""
+  if (/^https?:\/\//i.test(path)) return path
+  const origin = getApiBaseUrl().replace(/\/$/, "").replace(/\/api\/v1$/i, "").replace(/\/api$/i, "")
+  return `${origin}${path.startsWith("/") ? path : `/${path}`}`
+}
+
+function cageStatusMeta(status?: string | null) {
+  switch (status) {
+    case "sold":
+      return { label: "Sold", className: "bg-green-100 text-green-800" }
+    case "godown_sold":
+      return { label: "Godown Sold", className: "bg-emerald-100 text-emerald-800" }
+    case "in_godown":
+      return { label: "In Godown", className: "bg-blue-100 text-blue-800" }
+    case "on_vehicle":
+      return { label: "On Vehicle", className: "bg-amber-100 text-amber-800" }
+    default:
+      return { label: "Pending", className: "bg-gray-100 text-gray-700" }
+  }
+}
+
+function paymentStatusClass(status?: string | null) {
+  if (status === "paid") return "bg-green-100 text-green-800"
+  if (status === "partial") return "bg-yellow-100 text-yellow-800"
+  return "bg-red-100 text-red-800"
+}
+
 export default function PurchasesPage() {
   const router = useRouter()
   const { canCreate, canUpdate, canDelete } = usePermissions()
@@ -50,8 +78,10 @@ export default function PurchasesPage() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [loadingPreview, setLoadingPreview] = useState(false)
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null)
+  const [existingAttachment, setExistingAttachment] = useState<string | null>(null)
   const [uploadingFile, setUploadingFile] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const formSession = useRef(0)
   const [allowEditBillNo, setAllowEditBillNo] = useState(false)
 
   const [formData, setFormData] = useState({
@@ -127,36 +157,52 @@ export default function PurchasesPage() {
     catch { setVehicles([]) }
   }
 
+  const blankForm = () => ({
+    orderNumber: "", supplierName: "",
+    orderDate: getTodayIST(),
+    dueDate: "", status: "pending" as const, branch: "",
+    farmerId: "", farmerMobile: "", farmLocation: "", vehicleId: "",
+    purchasePaymentStatus: "pending" as const, ratePerKg: "",
+    transportCharges: "", otherCharges: "", notes: "",
+  })
+
   const fetchNextOrderNumber = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${getApiBaseUrl()}/purchases/generate/next-order-number`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (response.ok) {
-        const data = await response.json()
-        return data.nextOrderNumber || ""
-      }
-    } catch (error) {
-      console.error('Failed to fetch next order number:', error)
+      const data = await purchasesApi.getNextOrderNumber()
+      return data?.nextOrderNumber || ""
+    } catch {
+      return ""
     }
-    return ""
   }
 
-  const resetForm = async () => {
-    const nextNumber = editingId ? "" : await fetchNextOrderNumber()
-    setFormData({
-      orderNumber: nextNumber, supplierName: "",
-      orderDate: getTodayIST(),
-      dueDate: "", status: "pending", branch: "",
-      farmerId: "", farmerMobile: "", farmLocation: "", vehicleId: "",
-      purchasePaymentStatus: "pending", ratePerKg: "",
-      transportCharges: "", otherCharges: "", notes: "",
+  const openNewPurchase = () => {
+    const session = ++formSession.current
+    setEditingId(null)
+    setAllowEditBillNo(false)
+    setInvoiceFile(null)
+    setExistingAttachment(null)
+    setCages([emptyCage()])
+    setPayments([emptyPayment()])
+    setFormData(blankForm())
+    setShowDialog(true)
+    void fetchNextOrderNumber().then((nextNumber) => {
+      if (formSession.current !== session) return
+      if (!nextNumber) {
+        toast.error("Purchase bill number could not be generated. Close the form and try again.")
+        return
+      }
+      setFormData((prev) => ({ ...prev, orderNumber: nextNumber }))
     })
+  }
+
+  const resetForm = () => {
+    formSession.current += 1
+    setFormData(blankForm())
     setCages([emptyCage()])
     setPayments([emptyPayment()])
     setEditingId(null)
     setInvoiceFile(null)
+    setExistingAttachment(null)
     setAllowEditBillNo(false)
   }
 
@@ -166,6 +212,7 @@ export default function PurchasesPage() {
   }
 
   const handleEdit = async (purchase: ApiPurchaseOrder) => {
+    formSession.current += 1
     // Fetch full detail to get cages and payments
     let full: ApiPurchaseOrder = purchase
     try {
@@ -197,6 +244,7 @@ export default function PurchasesPage() {
       : [emptyPayment()])
     setEditingId(full.id)
     setInvoiceFile(null)
+    setExistingAttachment(full.invoiceAttachment || null)
     setShowDialog(true)
   }
 
@@ -225,14 +273,31 @@ export default function PurchasesPage() {
       toast.error("You only have view permission for purchases")
       return
     }
-    if (!formData.orderNumber || !formData.supplierName) {
-      toast.error("Purchase Bill No and Supplier are required")
+    const billNo = formData.orderNumber.trim()
+    if (!billNo || billNo === "PO" || billNo === "PO-") {
+      toast.error("Purchase bill number is missing. Close the form and open it again.")
+      return
+    }
+    if (!formData.orderDate) {
+      toast.error("Purchase date is required")
+      return
+    }
+    if (!formData.supplierName.trim() || (!editingId && !formData.farmerId)) {
+      toast.error("Farmer name is required")
+      return
+    }
+    const validCages = cages.filter(c => Number(c.numberOfBirds) > 0 && Number(c.cageWeight) > 0)
+      .map(c => ({ cageId: c.cageId || undefined, numberOfBirds: parseInt(c.numberOfBirds) || 0, cageWeight: parseFloat(c.cageWeight) || 0 }))
+    if (!editingId && validCages.length === 0) {
+      toast.error("Add at least one cage with birds and weight")
+      return
+    }
+    if (!editingId && !(parseFloat(formData.ratePerKg) > 0)) {
+      toast.error("Rate per kg is required")
       return
     }
     try {
       setLoading(true)
-      const validCages = cages.filter(c => c.numberOfBirds && c.cageWeight)
-        .map(c => ({ cageId: c.cageId || undefined, numberOfBirds: parseInt(c.numberOfBirds) || 0, cageWeight: parseFloat(c.cageWeight) || 0 }))
       const validPayments = payments.filter(p => p.amount && parseFloat(p.amount) > 0)
         .map(p => ({ paymentMode: p.mode, amount: p.amount, isAdvance: p.isAdvance }))
 
@@ -271,7 +336,7 @@ export default function PurchasesPage() {
           setUploadingFile(true)
           await purchasesApi.uploadInvoice(saved.id, invoiceFile)
           toast.success("Invoice attachment uploaded")
-        } catch { toast.error("Order saved but file upload failed") }
+        } catch (error: any) { toast.error(error?.message || "Order saved but file upload failed") }
         finally { setUploadingFile(false) }
       }
 
@@ -549,7 +614,7 @@ export default function PurchasesPage() {
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             {canCreate("purchases") && (
             <DialogTrigger asChild>
-              <Button onClick={resetForm} className="shrink-0 self-start sm:self-auto"><Plus className="mr-0" size={20} />Add New Purchase</Button>
+              <Button onClick={openNewPurchase} className="shrink-0 self-start sm:self-auto"><Plus className="mr-0" size={20} />Add New Purchase</Button>
             </DialogTrigger>
             )}
             <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-xl lg:max-w-2xl xl:max-w-4xl max-h-[90vh] flex flex-col" aria-describedby="purchase-dialog-desc">
@@ -624,17 +689,41 @@ export default function PurchasesPage() {
 
                     <div className="space-y-2">
                       <Label>Attach Bill (PDF/JPG/PNG)</Label>
-                      <div className="flex items-center gap-3">
-                        <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
-                          onChange={e => setInvoiceFile(e.target.files?.[0] || null)} />
-                        <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={loading}>
-                          <Paperclip size={14} className="mr-1" /> Choose File
-                        </Button>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <label className={`inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm ${loading ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-gray-50"}`}>
+                          <Paperclip size={14} /> Choose File
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
+                            className="sr-only"
+                            disabled={loading}
+                            onChange={e => {
+                              const file = e.target.files?.[0] || null
+                              if (file && !/\.(pdf|jpe?g|png)$/i.test(file.name) && !["application/pdf", "image/jpeg", "image/png"].includes(file.type)) {
+                                toast.error("Only PDF, JPG, and PNG files can be attached")
+                                e.target.value = ""
+                                return
+                              }
+                              if (file && file.size > 10 * 1024 * 1024) {
+                                toast.error("File must be 10 MB or smaller")
+                                e.target.value = ""
+                                return
+                              }
+                              setInvoiceFile(file)
+                            }}
+                          />
+                        </label>
                         {invoiceFile && (
                           <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-1 rounded">
                             <span>{invoiceFile.name}</span>
-                            <button onClick={() => setInvoiceFile(null)}><X size={12} /></button>
+                            <button type="button" onClick={() => { setInvoiceFile(null); if (fileInputRef.current) fileInputRef.current.value = "" }}><X size={12} /></button>
                           </div>
+                        )}
+                        {!invoiceFile && existingAttachment && (
+                          <a href={attachmentHref(existingAttachment)} target="_blank" rel="noreferrer" className="text-sm text-blue-700 underline">
+                            View attached bill
+                          </a>
                         )}
                       </div>
                     </div>
@@ -655,8 +744,8 @@ export default function PurchasesPage() {
                     <div className="space-y-3">
                       <div className="hidden sm:grid grid-cols-3 gap-4">
                         <Label className="text-sm font-medium">Cage ID</Label>
-                        <Label className="text-sm font-medium">Number of Birds</Label>
-                        <Label className="text-sm font-medium">Cage Weight (Kg)</Label>
+                        <Label className="text-sm font-medium">Number of Birds *</Label>
+                        <Label className="text-sm font-medium">Cage Weight (Kg) *</Label>
                       </div>
                       {cages.map((cage, i) => (
                         <div key={i} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -679,7 +768,7 @@ export default function PurchasesPage() {
                         <Input value={totalWeight.toFixed(2)} disabled className="bg-gray-50" />
                       </div>
                       <div className="space-y-2">
-                        <Label>Rate per Kg (₹)</Label>
+                        <Label>Rate per Kg (₹) *</Label>
                         <Input type="number" step="0.01" value={formData.ratePerKg} onChange={e => setFormData(prev => ({ ...prev, ratePerKg: e.target.value }))} placeholder="0.00" disabled={loading} onWheel={(e) => e.currentTarget.blur()}  />
                       </div>
                     </div>
@@ -940,12 +1029,19 @@ export default function PurchasesPage() {
                           <div className="flex gap-1">
                             <Button variant="ghost" size="sm" onClick={() => handlePrintPurchase(p)}><Printer size={14} /></Button>
                             <Button variant="ghost" size="sm" onClick={async () => {
+                              const requestedId = p.id
                               setViewingPurchase(p)
                               setShowInvoiceModal(true)
                               setLoadingPreview(true)
                               try {
-                                const full = await purchasesApi.getOne(p.id)
-                                setViewingPurchase(full)
+                                const full = await purchasesApi.getOne(requestedId)
+                                setViewingPurchase((current) => {
+                                  if (!current || current.id !== requestedId) return current
+                                  return {
+                                    ...full,
+                                    purchasePaymentStatus: full.purchasePaymentStatus || p.purchasePaymentStatus,
+                                  }
+                                })
                               } catch { /* keep list data */ }
                               finally { setLoadingPreview(false) }
                             }}><Eye size={14} /></Button>
@@ -988,7 +1084,7 @@ export default function PurchasesPage() {
           <Dialog open={showInvoiceModal} onOpenChange={setShowInvoiceModal}>
             <DialogContent className="sm:max-w-2xl max-sm:max-w-[calc(100%-2rem)] max-h-[90vh] flex flex-col">
               <DialogHeader>
-                <DialogTitle>Purchase Bill ₹� {viewingPurchase.orderNumber}</DialogTitle>
+                <DialogTitle>Purchase Bill {viewingPurchase.orderNumber}</DialogTitle>
               </DialogHeader>
               <div className="overflow-y-auto flex-1 space-y-4 text-sm">
                 {loadingPreview && (
@@ -998,18 +1094,33 @@ export default function PurchasesPage() {
                   <div><span className="font-semibold">Bill No:</span> {viewingPurchase.orderNumber}</div>
                   <div><span className="font-semibold">Date:</span> {formatDate(viewingPurchase.orderDate)}</div>
                   <div><span className="font-semibold">Supplier:</span> {viewingPurchase.supplierName}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">Payment Status:</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${paymentStatusClass(viewingPurchase.purchasePaymentStatus)}`}>
+                      {viewingPurchase.purchasePaymentStatus || "pending"}
+                    </span>
+                  </div>
                   {viewingPurchase.farmerMobile && <div><span className="font-semibold">Mobile:</span> {viewingPurchase.farmerMobile}</div>}
                   {viewingPurchase.farmLocation && <div className="col-span-2"><span className="font-semibold">Location:</span> {viewingPurchase.farmLocation}</div>}
                   {(viewingPurchase as any).branch && <div><span className="font-semibold">Branch:</span> {(viewingPurchase as any).branch}</div>}
+                  {viewingPurchase.invoiceAttachment && (
+                    <div className="col-span-2">
+                      <a href={attachmentHref(viewingPurchase.invoiceAttachment)} target="_blank" rel="noreferrer" className="text-blue-700 underline">
+                        View attached bill
+                      </a>
+                    </div>
+                  )}
                 </div>
                 {viewingPurchase.cages && viewingPurchase.cages.length > 0 && (
                   <div>
                     <div className="flex flex-col gap-2 items-start sm:flex-row sm:items-center sm:justify-between mb-1">
                       <span className="text-xs font-semibold">Cage Details</span>
                       <div className="flex flex-wrap gap-2 text-xs">
-                        <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700">Pending: {viewingPurchase.cages.filter(c => !c.status || c.status === 'pending').length}</span>
-                        <span className="px-2 py-0.5 rounded bg-green-100 text-green-700">Sold: {viewingPurchase.cages.filter(c => c.status === 'sold').length}</span>
-                        <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700">In Godown: {viewingPurchase.cages.filter(c => c.status === 'in_godown').length}</span>
+                        <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700">Pending: {viewingPurchase.cages.filter(c => !c.status || c.status === "pending").length}</span>
+                        <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800">On Vehicle: {viewingPurchase.cages.filter(c => c.status === "on_vehicle").length}</span>
+                        <span className="px-2 py-0.5 rounded bg-green-100 text-green-700">Sold: {viewingPurchase.cages.filter(c => c.status === "sold").length}</span>
+                        <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700">In Godown: {viewingPurchase.cages.filter(c => c.status === "in_godown").length}</span>
+                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Godown Sold: {viewingPurchase.cages.filter(c => c.status === "godown_sold").length}</span>
                       </div>
                     </div>
                     <table className="w-full border-collapse text-xs">
@@ -1021,17 +1132,13 @@ export default function PurchasesPage() {
                         <th className="border px-2 py-1">Status</th>
                       </tr></thead>
                       <tbody>{viewingPurchase.cages.map((c, i) => (
-                        <tr key={i} className={c.status === 'sold' ? 'bg-green-50' : c.status === 'in_godown' ? 'bg-blue-50' : ''}>
+                        <tr key={i} className={c.status === "sold" || c.status === "godown_sold" ? "bg-green-50" : c.status === "in_godown" ? "bg-blue-50" : c.status === "on_vehicle" ? "bg-amber-50" : ""}>
                           <td className="border px-2 py-1 text-center">{i + 1}</td>
                           <td className="border px-2 py-1 font-medium">{c.cageId || "-"}</td>
                           <td className="border px-2 py-1 text-right">{c.numberOfBirds}</td>
                           <td className="border px-2 py-1 text-right">{Number((c as any).purchaseWeight || c.cageWeight || 0).toFixed(2)}</td>
                           <td className="border px-2 py-1 text-center">
-                            <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                              c.status === 'sold' ? 'bg-green-100 text-green-800' :
-                              c.status === 'in_godown' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-700'
-                            }`}>{c.status || 'pending'}</span>
+                            <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${cageStatusMeta(c.status).className}`}>{cageStatusMeta(c.status).label}</span>
                           </td>
                         </tr>
                       ))}</tbody>

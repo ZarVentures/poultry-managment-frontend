@@ -445,3 +445,62 @@ input[type="number"] {
 .ant-picker-dropdown {
   position: fixed !important;
 }
+
+/* Single-date calendar: keep a 7-column month grid inside dialogs */
+.ant-picker-dropdown.app-date-popup {
+  position: absolute !important;
+  width: max-content !important;
+  min-width: 288px !important;
+}
+.ant-picker-dropdown.app-date-popup .ant-picker-panel-container,
+.ant-picker-dropdown.app-date-popup .ant-picker-panel,
+.ant-picker-dropdown.app-date-popup .ant-picker-date-panel {
+  width: 288px !important;
+}
+.ant-picker-dropdown.app-date-popup .ant-picker-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 4px !important;
+}
+.ant-picker-dropdown.app-date-popup .ant-picker-header button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 28px !important;
+  min-width: 28px !important;
+  flex: 0 0 28px !important;
+}
+.ant-picker-dropdown.app-date-popup .ant-picker-header-view {
+  flex: 1 1 auto !important;
+  text-align: center !important;
+}
+.ant-picker-dropdown.app-date-popup svg {
+  display: inline-block !important;
+  width: 7px !important;
+  height: 7px !important;
+}
+.ant-picker-dropdown.app-date-popup table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  table-layout: fixed !important;
+  width: 252px !important;
+  margin: 0 auto !important;
+}
+.ant-picker-dropdown.app-date-popup th,
+.ant-picker-dropdown.app-date-popup td.ant-picker-cell {
+  width: 36px !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  text-align: center !important;
+}
+.ant-picker-dropdown.app-date-popup .ant-picker-cell-inner {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 28px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+  margin: 2px auto !important;
+}

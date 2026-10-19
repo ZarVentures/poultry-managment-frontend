@@ -12,7 +12,7 @@ import {
   ArrowLeft, Calendar, Download, FileText, Printer, Search,
   Bird, PackagePlus, PackageMinus, AlertCircle, Scale, Undo2, TrendingDown, IndianRupee,
 } from "lucide-react"
-import { godownApi, type StockLedgerEntry, type StockLedgerResponse } from "@/lib/api"
+import { godownApi, type GodownSale, type StockLedgerEntry, type StockLedgerResponse } from "@/lib/api"
 import { fetchOrgInfo } from "@/lib/org-info"
 import { toast } from "sonner"
 
@@ -26,6 +26,21 @@ function fmtNum(n: number, digits = 0) {
 function fmtDate(d: string) {
   if (!d) return "-"
   return new Date(d + (d.includes("T") ? "" : "T00:00:00")).toLocaleDateString("en-GB")
+}
+
+function saleWeightKg(sale: { totalWeight?: number | null }) {
+  const weight = Number(sale.totalWeight || 0)
+  return Number.isFinite(weight) ? weight : 0
+}
+
+function applyGodownSaleWeights(entries: StockLedgerEntry[], sales: GodownSale[]) {
+  const byId = new Map(sales.map((sale) => [String(sale.id), sale]))
+  return entries.map((entry) => {
+    if (entry.movementType !== "SALE") return entry
+    const sale = byId.get(String(entry.referenceId))
+    if (!sale) return entry
+    return { ...entry, weightOut: saleWeightKg(sale) }
+  })
 }
 
 function typeBadge(type: StockLedgerEntry["movementType"]) {
@@ -58,12 +73,25 @@ export default function StockLedgerPage() {
   const fetchLedger = async () => {
     try {
       setLoading(true)
-      const data = await godownApi.getStockLedger({
-        startDate: dateFrom,
-        endDate: dateTo,
-        type,
-        search: search || undefined,
-      })
+      const [data, salesResult] = await Promise.all([
+        godownApi.getStockLedger({
+          startDate: dateFrom,
+          endDate: dateTo,
+          type,
+          search: search || undefined,
+        }),
+        godownApi.sales.getAll().catch(() => []),
+      ])
+      const sales: GodownSale[] = Array.isArray(salesResult) ? salesResult : (salesResult?.data || [])
+      if (data?.entries) {
+        data.entries = applyGodownSaleWeights(data.entries, sales)
+        const soldRows = data.entries.filter((entry) => entry.movementType === "SALE")
+        data.period = {
+          ...data.period,
+          soldWeight: soldRows.reduce((sum, entry) => sum + Number(entry.weightOut || 0), 0),
+          weightOut: data.entries.reduce((sum, entry) => sum + Number(entry.weightOut || 0), 0),
+        }
+      }
       setLedger(data)
     } catch (e: any) {
       console.error(e)
@@ -85,7 +113,7 @@ export default function StockLedgerPage() {
     birdsIn: 0, birdsOut: 0, weightIn: 0, weightOut: 0, amountIn: 0, amountOut: 0,
     soldBirds: 0, soldWeight: 0, billedSaleWeight: 0, mortalityBirds: 0, mortalityWeight: 0,
     weightLoss: 0, weightLossValue: 0, weightLossPercent: 0, fromWeight: 0, accountedWeight: 0,
-    discrepancyKg: 0, reconciliationNote: "", inwardWeight: 0,
+    discrepancyKg: 0, reconciliationNote: "", inwardBirds: 0, inwardWeight: 0,
   }
   const closing = ledger?.closing || { birds: 0, weight: 0 }
   const soldBirds = period.soldBirds ?? entries.filter((e) => e.movementType === "SALE").reduce((s, e) => s + e.birdsOut, 0)
@@ -94,6 +122,8 @@ export default function StockLedgerPage() {
   const mortalityWeight = period.mortalityWeight ?? entries.filter((e) => e.movementType === "MORTALITY").reduce((s, e) => s + e.weightOut, 0)
   const returnBirds = period.returnBirds ?? entries.filter((e) => e.movementType === "RETURN").reduce((s, e) => s + e.birdsIn, 0)
   const returnWeight = period.returnWeight ?? entries.filter((e) => e.movementType === "RETURN").reduce((s, e) => s + e.weightIn, 0)
+  const inwardBirds = period.inwardBirds ?? entries.filter((e) => e.movementType === "INWARD").reduce((s, e) => s + e.birdsIn, 0)
+  const inwardWeight = period.inwardWeight ?? entries.filter((e) => e.movementType === "INWARD").reduce((s, e) => s + e.weightIn, 0)
   const weightLoss = period.weightLoss ?? 0
   const weightLossPercent = period.weightLossPercent ?? 0
   const avgWeight = ledger?.avgWeight ?? 0
@@ -302,7 +332,7 @@ export default function StockLedgerPage() {
           <table class="summary">
             <tr>
               <td><div class="label">Opening</div><div class="val">${fmtNum(opening.birds)}</div><div>${fmtNum(opening.weight, 2)} kg</div></td>
-              <td><div class="label">Inward</div><div class="val">+${fmtNum(period.birdsIn - returnBirds)}</div><div>${fmtNum(Math.max(0, period.weightIn - returnWeight), 2)} kg</div></td>
+              <td><div class="label">Inward</div><div class="val">+${fmtNum(inwardBirds)}</div><div>${fmtNum(inwardWeight, 2)} kg</div></td>
               <td><div class="label">Returns</div><div class="val">+${fmtNum(returnBirds)}</div><div>${fmtNum(returnWeight, 2)} kg</div></td>
               <td><div class="label">Sold</div><div class="val">−${fmtNum(soldBirds)}</div><div>${fmtNum(soldWeight, 2)} kg</div></td>
               <td><div class="label">Mortality</div><div class="val">−${fmtNum(mortalityBirds)}</div><div>${fmtNum(mortalityWeight, 2)} kg</div></td>
@@ -448,8 +478,8 @@ export default function StockLedgerPage() {
             <div className="mb-1 flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-300">
               <PackagePlus size={20} /> Inward
             </div>
-            <div className="text-xl font-bold tracking-tight text-emerald-900 dark:text-emerald-100 sm:text-2xl">+{fmtNum(period.birdsIn - returnBirds)}</div>
-            <div className="mt-0.5 text-xs text-emerald-600 dark:text-emerald-400">{fmtNum(Math.max(0, period.weightIn - returnWeight), 2)} kg</div>
+            <div className="text-xl font-bold tracking-tight text-emerald-900 dark:text-emerald-100 sm:text-2xl">+{fmtNum(inwardBirds)}</div>
+            <div className="mt-0.5 text-xs text-emerald-600 dark:text-emerald-400">{fmtNum(inwardWeight, 2)} kg</div>
           </Card>
           <Card className="rounded-2xl border border-violet-200 bg-violet-50/50 p-4 dark:border-violet-800/50 dark:bg-violet-900/20">
             <div className="mb-1 flex items-center gap-2 text-xs font-medium text-violet-700 dark:text-violet-300">

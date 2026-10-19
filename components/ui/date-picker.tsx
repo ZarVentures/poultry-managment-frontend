@@ -51,7 +51,7 @@ export function DatePicker({
         getPopupContainer={() => document.body}
         classNames={{
           popup: {
-            root: "no-calendar-shadow"
+            root: "no-calendar-shadow app-date-popup"
           }
         }}
         className={`
