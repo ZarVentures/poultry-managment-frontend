@@ -555,6 +555,7 @@ export interface StockLedgerResponse {
     mortalityWeight?: number;
     returnBirds?: number;
     returnWeight?: number;
+    inwardBirds?: number;
     inwardWeight?: number;
     fromWeight?: number;
     accountedWeight?: number;
@@ -1387,6 +1388,8 @@ export const purchasesApi = {
   },
 
   getInvoiceList: () => apiRequest<Array<{ id: string; orderNumber: string; orderDate: string; supplierName: string }>>('/purchases/invoices/list'),
+
+  getNextOrderNumber: () => apiRequest<{ nextOrderNumber: string }>('/purchases/generate/next-order-number'),
 
   getOne: (id: string) => apiRequest<PurchaseOrder>(`/purchases/${id}`),
 
