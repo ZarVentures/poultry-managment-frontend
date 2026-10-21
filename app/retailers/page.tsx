@@ -35,7 +35,7 @@ function formatJoinDate(retailer: ApiRetailer) {
 
 export default function RetailersPage() {
   const router = useRouter()
-  const { canUpdate, canDelete } = usePermissions()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
   const [retailers, setRetailers] = useState<ApiRetailer[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -232,12 +232,14 @@ export default function RetailersPage() {
             <p className="text-muted-foreground text-sm sm:text-base">Manage all retailers and their information</p>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
+            {canCreate("retailers") && (
             <DialogTrigger asChild>
               <Button onClick={resetForm} className="w-fit h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm md:h-10 md:px-4 md:text-sm">
                 <Plus className="mr-1 sm:mr-0" size={16} />
                 New Retailer
               </Button>
             </DialogTrigger>
+            )}
             <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>{editingId ? "Edit Retailer" : "New Retailer"}</DialogTitle></DialogHeader>
               <div className="space-y-4">

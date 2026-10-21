@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { godownApi, retailersApi, purchasesApi, type GodownSale, type Retailer } from "@/lib/api"
 import { escapeHtml, fetchOrgInfo, type OrgInfo } from "@/lib/org-info"
 import { toast } from "sonner"
+import { usePermissions } from "@/lib/permissions"
 import { toDateOnlyString, formatDate, getTodayIST } from "@/lib/date-utils"
 
 const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer", "advance"] as const
@@ -26,6 +27,7 @@ const saleNumber = (sale: GodownSale | any) =>
 
 
 export default function GodownSalePage() {
+  const { canCreate } = usePermissions()
   const [sales, setSales] = useState<GodownSale[]>([])
   const [retailers, setRetailers] = useState<Retailer[]>([])
 
@@ -678,10 +680,12 @@ export default function GodownSalePage() {
             </div>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
+            {canCreate("godown") && (
             <Button onClick={handleOpenNewSale} className="shrink-0 self-start sm:self-auto">
               <Plus className="mr-0" size={20} />
               New Sale
             </Button>
+            )}
             <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-xl lg:max-w-2xl max-h-[90vh] flex flex-col rounded-2xl" aria-describedby="dialog-description">
               <DialogHeader className="pb-1">
                 <DialogTitle className="text-xl">{editingId ? "Edit Sale" : "New Sale"}</DialogTitle>

@@ -14,8 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { birdReturnsApi, salesApi, godownApi, type BirdReturn, type CreateBirdReturnDto } from "@/lib/api"
 import { toast } from "sonner"
+import { usePermissions } from "@/lib/permissions"
 
 export default function BirdReturnsPage() {
+  const { canCreate } = usePermissions()
   const [returns, setReturns] = useState<BirdReturn[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -345,12 +347,14 @@ export default function BirdReturnsPage() {
             </div>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
+            {canCreate("godown") && (
             <DialogTrigger asChild>
               <Button onClick={resetForm} className="shrink-0 self-start sm:self-auto">
                 <Plus className="mr-0" size={20} />
                 Record Return
               </Button>
             </DialogTrigger>
+            )}
             <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-xl lg:max-w-3xl max-h-[90vh] overflow-y-auto" aria-describedby="dialog-description">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Edit Return" : "Record Bird Return"}</DialogTitle>

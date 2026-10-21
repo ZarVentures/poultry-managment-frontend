@@ -19,7 +19,7 @@ import { toast } from "sonner"
 
 export default function VehiclesPage() {
   const router = useRouter()
-  const { canUpdate, canDelete } = usePermissions()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
   const [vehicles, setVehicles] = useState<ApiVehicle[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -187,12 +187,14 @@ export default function VehiclesPage() {
             <p className="text-muted-foreground text-sm sm:text-base">Manage all vehicles</p>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
+            {canCreate("vehicles") && (
             <DialogTrigger asChild>
               <Button onClick={resetForm} className="w-fit h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm md:h-10 md:px-4 md:text-sm">
                 <Plus className="mr-1 sm:mr-0" size={16} />
                 New Vehicle
               </Button>
             </DialogTrigger>
+            )}
             <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>{editingId ? "Edit Vehicle" : "New Vehicle"}</DialogTitle></DialogHeader>
               <div className="space-y-4">

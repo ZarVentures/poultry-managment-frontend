@@ -23,7 +23,7 @@ import { toast } from "sonner"
 
 export default function ExpensesPage() {
   const router = useRouter()
-  const { canUpdate, canDelete } = usePermissions()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
   const [expenses, setExpenses] = useState<ApiExpense[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -343,6 +343,7 @@ export default function ExpensesPage() {
               Categories
             </Button>
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
+            {canCreate("expenses") && (
             <DialogTrigger asChild>
               <Button onClick={resetForm} className="w-fit h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm md:h-10 md:px-4 md:text-sm">
                 <Plus className="mr-1 sm:mr-0" size={16} />
@@ -350,6 +351,7 @@ export default function ExpensesPage() {
                 <span className="sm:hidden">Add Expense</span>
               </Button>
             </DialogTrigger>
+            )}
             <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto" aria-describedby="dialog-description">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Edit Expense" : "New Expense"}</DialogTitle>

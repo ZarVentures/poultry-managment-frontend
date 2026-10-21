@@ -23,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Copy, Check, Plus, Pencil, Trash2, XCircle, CheckCircle, Calendar } from "lucide-react";
+import { usePermissions } from "@/lib/permissions";
 
 function todayISO(): string {
   const d = new Date();
@@ -62,6 +63,7 @@ const initialFormState = {
 };
 
 export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucherFlow }) {
+  const { canCreate } = usePermissions();
   const config = useMemo(
     () =>
       variant === "in"
@@ -275,9 +277,11 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
             <h1 className="text-2xl font-bold">{config.pageTitle}</h1>
             <p className="text-muted-foreground text-sm">{config.subtitle}</p>
           </div>
+          {canCreate(variant === "in" ? "sales" : "purchases") && (
           <Button onClick={openCreate} className="shrink-0 self-start sm:self-auto gap-2">
             <Plus className="size-4" /> New Voucher
           </Button>
+          )}
         </div>
 
         {/* Filters */}

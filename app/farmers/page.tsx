@@ -40,7 +40,7 @@ interface Farmer {
 
 export default function FarmersPage() {
   const router = useRouter()
-  const { canUpdate, canDelete } = usePermissions()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
   const [farmers, setFarmers] = useState<Farmer[]>([])
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -295,12 +295,14 @@ export default function FarmersPage() {
             <p className="text-muted-foreground text-sm sm:text-base">Manage all farmers and their information</p>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
+            {canCreate("farmers") && (
             <DialogTrigger asChild>
               <Button onClick={resetForm} className="w-fit h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm md:h-10 md:px-4 md:text-sm">
                 <Plus className="mr-1 sm:mr-0" size={16} />
                 Add New Farmer
               </Button>
             </DialogTrigger>
+            )}
             <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Edit Farmer" : "Add New Farmer"}</DialogTitle>
