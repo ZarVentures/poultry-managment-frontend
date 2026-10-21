@@ -47,7 +47,7 @@ interface Mortality {
 
 export default function MortalityPage() {
   const router = useRouter()
-  const { canUpdate, canDelete } = usePermissions()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
   const [mortalities, setMortalities] = useState<Mortality[]>([])
   const [purchases, setPurchases] = useState<PurchaseOrder[]>([])
   const [mounted, setMounted] = useState(false)
@@ -634,12 +634,14 @@ export default function MortalityPage() {
             <p className="text-muted-foreground">Record and manage bird mortality</p>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
+            {canCreate("mortality") && (
             <DialogTrigger asChild>
               <Button onClick={() => { resetForm(); fetchGodownStock(); }} className="shrink-0 self-start sm:self-auto">
                 <Plus className="mr-0" size={20} />
                 Add New Mortality
               </Button>
             </DialogTrigger>
+            )}
             <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Edit Mortality Record" : "Add New Mortality"}</DialogTitle>

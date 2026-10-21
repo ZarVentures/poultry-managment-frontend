@@ -16,7 +16,6 @@ import { salesApi, retailersApi, vehiclesApi, purchasesApi, settingsApi, type Sa
 import { escapeHtml, fetchOrgInfo, type OrgInfo } from "@/lib/org-info"
 import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
-import { getApiBaseUrl } from "@/lib/api-base-url"
 import { getTodayIST, toLocalYMD, formatDate } from "@/lib/date-utils"
 
 const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer", "advance"] as const
@@ -91,6 +90,7 @@ export default function SalesPage() {
     notes: "",
   })
   const [payments, setPayments] = useState<PaymentRow[]>([emptyPayment()])
+  const formSession = useRef(0)
 
   useEffect(() => {
     setMounted(true)
@@ -182,18 +182,11 @@ export default function SalesPage() {
 
   const fetchNextInvoiceNumber = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${getApiBaseUrl()}/sales/generate/next-invoice-number`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (response.ok) {
-        const data = await response.json()
-        return data.nextInvoiceNumber || ""
-      }
-    } catch (error) {
-      console.error('Failed to fetch next invoice number:', error)
+      const data = await salesApi.generateNextInvoiceNumber()
+      return data?.nextInvoiceNumber || ""
+    } catch {
+      return ""
     }
-    return ""
   }
 
   const handlePurchaseBillChange = async (orderNumber: string) => {
@@ -423,22 +416,46 @@ export default function SalesPage() {
   const totalPaymentMade = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
   const balance = Math.max(0, netAmount - totalPaymentMade)
 
-  const resetForm = async () => {
-    const nextNumber = editingId ? "" : await fetchNextInvoiceNumber()
-    setFormData({
-      invoiceNumber: nextNumber, saleNo: nextNumber, purchaseBillNo: "", cageNo: "",
-      numBirds: "", totalWeight: "",
-      saleDate: getTodayIST(),
-      retailerId: "", customerName: "", ownerName: "", phone: "", address: "",
-      saleMode: "from_vehicle", vehicleId: "", productType: "meat",
-      ratePerKg: "", transportCharges: "", loadingCharges: "", commission: "",
-      otherCharges: "", deductions: "", paymentStatus: "pending", amountReceived: "", notes: "",
+  const blankSaleForm = () => ({
+    invoiceNumber: "", saleNo: "", purchaseBillNo: "", cageNo: "",
+    numBirds: "", totalWeight: "",
+    saleDate: getTodayIST(),
+    retailerId: "", customerName: "", ownerName: "", phone: "", address: "",
+    saleMode: "from_vehicle" as const, vehicleId: "", productType: "meat" as const,
+    ratePerKg: "", transportCharges: "", loadingCharges: "", commission: "",
+    otherCharges: "", deductions: "", paymentStatus: "pending" as const, amountReceived: "", notes: "",
+  })
+
+  const openNewSale = () => {
+    const session = ++formSession.current
+    setEditingId(null)
+    setIsEditMode(false)
+    setAllowEditBillNo(false)
+    setSaleFile(null)
+    setPayments([emptyPayment()])
+    setPurchaseCages([])
+    setSelectedCageIds(new Set())
+    setFormData(blankSaleForm())
+    setShowDialog(true)
+    void fetchNextInvoiceNumber().then((nextNumber) => {
+      if (formSession.current !== session) return
+      if (!nextNumber) {
+        toast.error("Sale bill number could not be generated. Close the form and try again.")
+        return
+      }
+      setFormData((prev) => ({ ...prev, invoiceNumber: nextNumber, saleNo: nextNumber }))
     })
+  }
+
+  const resetForm = () => {
+    formSession.current += 1
+    setFormData(blankSaleForm())
     setPayments([emptyPayment()])
     setPurchaseCages([])
     setSelectedCageIds(new Set())
     setIsEditMode(false)
-    setEditingId(null); setSaleFile(null)
+    setEditingId(null)
+    setSaleFile(null)
     setAllowEditBillNo(false)
   }
 
@@ -452,6 +469,7 @@ export default function SalesPage() {
   }
 
   const handleEdit = async (sale: ApiSale) => {
+    formSession.current += 1
     setEditingId(sale.id)
     setIsEditMode(true)
     setShowDialog(true)
@@ -531,6 +549,7 @@ export default function SalesPage() {
   }
 
   const handleView = async (sale: ApiSale) => {
+    formSession.current += 1
     try {
       const full = await salesApi.getOne(sale.id)
       setEditingId(full.id)
@@ -572,7 +591,10 @@ export default function SalesPage() {
       })
 
       setPayments(full.payments && full.payments.length > 0
-        ? full.payments.map((p: any) => ({ ...p, id: p.id || crypto.randomUUID() }))
+        ? full.payments.map((p: any) => ({
+            mode: String(p.mode || p.paymentMode || "cash").toLowerCase() as PaymentMode,
+            amount: String(p.amount ?? ""),
+          }))
         : [emptyPayment()])
 
       const purchaseBillNo = (full as any).purchaseBillNo || ""
@@ -592,12 +614,30 @@ export default function SalesPage() {
       toast.error("You only have view permission for sales")
       return
     }
-    // invoiceNumber is now optional - backend will auto-generate if not provided
-    if (!formData.customerName) {
-      toast.error("Customer name is required"); return
+    const billNo = (formData.invoiceNumber || formData.saleNo || "").trim()
+    if (!editingId && (!billNo || billNo === "SL" || billNo === "SL-")) {
+      toast.error("Sale bill number is missing. Close the form and open it again.")
+      return
+    }
+    if (!formData.saleDate) {
+      toast.error("Sale date is required")
+      return
+    }
+    if (!formData.customerName.trim() || (!editingId && !formData.retailerId)) {
+      toast.error("Retailer name is required")
+      return
+    }
+    if (!editingId && !(parseFloat(formData.ratePerKg) > 0)) {
+      toast.error("Rate per kg is required")
+      return
     }
     if (totalWeight <= 0) {
-      toast.error("Enter total weight"); return
+      toast.error("Enter total weight")
+      return
+    }
+    if (!editingId && formData.purchaseBillNo && selectedCageIds.size === 0) {
+      toast.error("Select at least one cage from the purchase bill")
+      return
     }
     try {
       setLoading(true)
@@ -642,8 +682,8 @@ export default function SalesPage() {
         loadingCharges: formData.loadingCharges || "0",
         commission: formData.commission || "0",
         otherCharges: formData.otherCharges || "0",
-        weightShortage: String(netExcessLossAmount),
-        weightShortageKg: String(netExcessLoss),
+        weightShortage: "0",
+        weightShortageKg: "0",
         mortalityDeduction: formData.deductions || "0",
         otherDeduction: "0",
         paymentStatus: formData.paymentStatus,
@@ -704,7 +744,7 @@ export default function SalesPage() {
     const invoiceDate = formatDate(sale.saleDate)
     const dueDate = new Date(sale.saleDate)
     dueDate.setDate(dueDate.getDate() + 7)
-    const subtotal = Number(sale.netAmount || sale.totalAmount || 0)
+    const subtotal = saleBillAmount(sale)
     const received = Number((sale as any).amountReceived || 0)
     const balance = Math.max(0, subtotal - received)
     const paymentStatus = String((sale as any).paymentStatus || "pending").toUpperCase()
@@ -888,6 +928,13 @@ export default function SalesPage() {
     finally { setLoading(false) }
   }
 
+  const saleBillAmount = (sale: any): number => {
+    const gross = Number(sale?.grossAmount || 0)
+    const other = Number(sale?.mortalityDeduction || 0) + Number(sale?.otherDeduction || 0)
+    if (gross > 0) return Math.max(0, gross - other)
+    return Math.max(0, Number(sale?.netAmount || 0) + Number(sale?.weightShortage || 0) || Number(sale?.totalAmount || 0))
+  }
+
   const getSaleBirds = (sale: any): number => {
     const direct = Number(sale?.numberOfBirds || 0)
     if (direct > 0) return direct
@@ -915,9 +962,9 @@ export default function SalesPage() {
       count: sales.length,
       totalBirds: sales.reduce((s, x) => s + getSaleBirds(x), 0),
       totalWeight: sales.reduce((s, x) => s + parseFloat(String(x.quantity || 0)), 0),
-      totalRevenue: sales.reduce((s, x) => s + parseFloat(String(x.netAmount || x.totalAmount || 0)), 0),
+      totalRevenue: sales.reduce((s, x) => s + saleBillAmount(x), 0),
       totalReceived: sales.reduce((s, x) => s + parseFloat(String(x.amountReceived || 0)), 0),
-      totalPending: sales.reduce((s, x) => s + Math.max(0, parseFloat(String(x.netAmount || x.totalAmount || 0)) - parseFloat(String(x.amountReceived || 0))), 0),
+      totalPending: sales.reduce((s, x) => s + Math.max(0, saleBillAmount(x) - parseFloat(String(x.amountReceived || 0))), 0),
     }
   }, [sales, serverStats, totalRecords, summaryTotals])
 
@@ -938,7 +985,7 @@ export default function SalesPage() {
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             {canCreate("sales") && (
             <DialogTrigger asChild>
-              <Button onClick={resetForm} className="shrink-0 self-start sm:self-auto"><Plus className="mr-2" size={20} />Add New Sale</Button>
+              <Button onClick={openNewSale} className="shrink-0 self-start sm:self-auto"><Plus className="mr-2" size={20} />Add New Sale</Button>
             </DialogTrigger>
             )}
             <DialogContent className="sm:max-w-5xl max-sm:max-w-[calc(100%-2rem)] max-h-[90vh] flex flex-col" aria-describedby="sale-dialog-desc">
@@ -1443,7 +1490,10 @@ export default function SalesPage() {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t">
                       <div className="space-y-2"><Label>Total Received (₹)</Label><Input value={`₹${totalPaymentMade.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-green-700" /></div>
-                      <div className="space-y-2"><Label>Balance (₹)</Label><Input value={`₹${balance.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-red-600" /></div>
+                      <div className="space-y-2">
+                        <Label>Balance (₹)</Label>
+                        <Input value={`₹${balance.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-red-600" />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -1659,24 +1709,20 @@ export default function SalesPage() {
                             return (
                               <div className="text-xs space-y-0.5">
                                 <div className="font-medium text-gray-700">Loss: {details.totalWeightLoss.toFixed(2)} kg</div>
-                                {details.netExcessLoss > 0.01 ? (
-                                  <div className="text-[10px] text-red-700 font-bold bg-red-50 border border-red-100 rounded px-1.5 py-0.2 w-fit">
-                                    Adj: -₹{details.netExcessLossAmount.toFixed(0)} ({details.netExcessLoss.toFixed(2)} kg)
-                                  </div>
-                                ) : (
+                                {!(details.netExcessLoss > 0.01) && (
                                   <div className="text-[9px] text-green-700 font-semibold bg-green-50 px-1 py-0.2 rounded w-fit">Within Limit</div>
                                 )}
                               </div>
                             )
                           })()}
                         </TableCell>
-                        <TableCell>₹{Number(s.netAmount || s.totalAmount || 0).toFixed(2)}</TableCell>
+                        <TableCell>₹{saleBillAmount(s).toFixed(2)}</TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${s.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' : s.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
                             {s.paymentStatus}
                           </span>
                         </TableCell>
-                        <TableCell>₹{Math.max(0, Number(s.netAmount || s.totalAmount || 0) - Number(s.amountReceived || 0)).toFixed(2)}</TableCell>
+                        <TableCell>₹{Math.max(0, saleBillAmount(s) - Number(s.amountReceived || 0)).toFixed(2)}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">
                             <Button variant="ghost" size="sm" onClick={() => handlePrintSale(s)}><Printer size={14} /></Button>

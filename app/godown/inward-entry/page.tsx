@@ -24,7 +24,7 @@ const emptyCage = (): GodownCage => ({ cageId: "", birdType: "", numberOfBirds: 
 
 export default function GodownInwardPage() {
   const router = useRouter()
-  const { canUpdate, canDelete } = usePermissions()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
   const [entries, setEntries] = useState<GodownInward[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [farmers, setFarmers] = useState<ActiveFarmer[]>([])
@@ -698,12 +698,14 @@ export default function GodownInwardPage() {
 </p>  </div>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
+            {canCreate("godown") && (
             <DialogTrigger asChild>
               <Button onClick={resetForm} className="shrink-0 self-start sm:self-auto">
                 <Plus className="mr-0" size={20} />
                 New Entry
               </Button>
             </DialogTrigger>
+            )}
             <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-xl lg:max-w-2xl max-h-[90vh] flex flex-col rounded-2xl" aria-describedby="dialog-description">
               <DialogHeader className="pb-1">
                 <DialogTitle className="text-xl">{editingId ? "Edit Entry" : "New Entry"}</DialogTitle>
