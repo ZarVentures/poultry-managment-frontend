@@ -61,8 +61,8 @@ function PublicHeader() {
       )}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          <Logo />
+        <div className="flex h-20 items-center justify-between">
+          <Logo priority className="h-12 w-auto" />
 
           <nav className="hidden items-center gap-1 lg:flex">
             {NAV_LINKS.map((link) => (
