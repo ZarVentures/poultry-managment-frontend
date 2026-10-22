@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, CheckCircle, XCircle, Clock, Package, AlertTriangle, RotateCcw, CheckCircle2, PackageCheck, Bird, IndianRupee, Calendar, Search } from "lucide-react"
+import { Plus, Edit2, Trash2, CheckCircle, XCircle, Clock, Package, AlertTriangle, RotateCcw, CheckCircle2, PackageCheck, Bird, IndianRupee, Calendar, Search, Eye } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { birdReturnsApi, salesApi, godownApi, type BirdReturn, type CreateBirdReturnDto } from "@/lib/api"
@@ -23,6 +23,7 @@ export default function BirdReturnsPage() {
   const [mounted, setMounted] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [viewingReturn, setViewingReturn] = useState<BirdReturn | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
@@ -334,6 +335,13 @@ export default function BirdReturnsPage() {
     return labels[reason] || reason
   }
 
+  const returnWeightKg = (birdReturn: BirdReturn) => {
+    const raw = birdReturn.weightReturned ?? (birdReturn as { weight_returned?: number | string }).weight_returned
+    if (raw === null || raw === undefined || raw === "") return null
+    const weight = Number(raw)
+    return Number.isFinite(weight) ? weight : null
+  }
+
   if (!mounted) return null
 
   return (
@@ -635,7 +643,7 @@ export default function BirdReturnsPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <Table className="min-w-[820px]">
+                <Table className="min-w-[920px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Return #</TableHead>
@@ -643,6 +651,7 @@ export default function BirdReturnsPage() {
                       <TableHead>Sale Invoice</TableHead>
                       <TableHead>Customer</TableHead>
                       <TableHead className="text-right">Birds</TableHead>
+                      <TableHead className="text-right">Weight</TableHead>
                       <TableHead>Reason</TableHead>
                       <TableHead className="text-right">Refund</TableHead>
                       <TableHead>Status</TableHead>
@@ -650,7 +659,9 @@ export default function BirdReturnsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredReturns.map((birdReturn) => (
+                    {filteredReturns.map((birdReturn) => {
+                      const weight = returnWeightKg(birdReturn)
+                      return (
                       <TableRow 
                         key={birdReturn.id}
                         className={
@@ -664,6 +675,7 @@ export default function BirdReturnsPage() {
                         <TableCell>{birdReturn.sale?.invoiceNumber || '-'}</TableCell>
                         <TableCell>{birdReturn.customerName}</TableCell>
                         <TableCell className="text-right">{birdReturn.numberOfBirdsReturned ?? (birdReturn as any).number_of_birds_returned ?? '-'}</TableCell>
+                        <TableCell className="text-right">{weight == null ? "-" : `${weight.toFixed(2)} kg`}</TableCell>
                         <TableCell>
                           {birdReturn.returnReason === 'sick' ? (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
@@ -681,6 +693,15 @@ export default function BirdReturnsPage() {
                         <TableCell>{getStatusBadge(birdReturn.status)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setViewingReturn(birdReturn)}
+                              disabled={loading}
+                              aria-label="View return"
+                            >
+                              <Eye size={14} />
+                            </Button>
                             {birdReturn.status === 'pending' && (
                               <>
                                 <Button
@@ -741,13 +762,91 @@ export default function BirdReturnsPage() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </div>
             )}
           </CardContent>
         </Card>
+
+        <Dialog open={!!viewingReturn} onOpenChange={(open) => { if (!open) setViewingReturn(null) }}>
+          <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>View Return</DialogTitle>
+              <p className="sr-only">View bird return details</p>
+            </DialogHeader>
+            {viewingReturn && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground">Return #</p>
+                  <p className="font-medium">{viewingReturn.returnNumber || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Date</p>
+                  <p className="font-medium">{viewingReturn.returnDate ? new Date(viewingReturn.returnDate).toLocaleDateString() : "-"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Sale Invoice</p>
+                  <p className="font-medium">{viewingReturn.sale?.invoiceNumber || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Customer</p>
+                  <p className="font-medium">{viewingReturn.customerName || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Birds Returned</p>
+                  <p className="font-medium">{viewingReturn.numberOfBirdsReturned ?? "-"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Weight</p>
+                  <p className="font-medium">
+                    {(() => {
+                      const weight = returnWeightKg(viewingReturn)
+                      return weight == null ? "-" : `${weight.toFixed(2)} kg`
+                    })()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Reason</p>
+                  <p className="font-medium">{getReasonLabel(viewingReturn.returnReason)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <div className="mt-1">{getStatusBadge(viewingReturn.status)}</div>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-muted-foreground">Reason Description</p>
+                  <p className="font-medium">{viewingReturn.reasonDescription || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Refund</p>
+                  <p className="font-medium">₹{Number(viewingReturn.refundAmount || 0).toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Adjustment</p>
+                  <p className="font-medium">₹{Number(viewingReturn.adjustmentAmount || 0).toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Returned to Inventory</p>
+                  <p className="font-medium">{viewingReturn.returnedToInventory ? "Yes" : "No"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Location</p>
+                  <p className="font-medium">{viewingReturn.inventoryLocation || "-"}</p>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-muted-foreground">Notes</p>
+                  <p className="font-medium">{viewingReturn.notes || "-"}</p>
+                </div>
+                <div className="sm:col-span-2 flex justify-end pt-2">
+                  <Button variant="outline" onClick={() => setViewingReturn(null)}>Close</Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   )

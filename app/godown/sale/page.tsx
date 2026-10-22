@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit2, Trash2, X, Printer, ShoppingCart, Bird, Scale, IndianRupee, BadgeCheck, Clock, Calendar, Search } from "lucide-react"
+import { Plus, Edit2, Trash2, X, Printer, ShoppingCart, Bird, Scale, IndianRupee, BadgeCheck, Clock, Calendar, Search, Eye } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { godownApi, retailersApi, purchasesApi, type GodownSale, type Retailer } from "@/lib/api"
@@ -37,9 +37,11 @@ export default function GodownSalePage() {
   const [showDialog, setShowDialog] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState<"" | "paid" | "partial" | "pending">("")
   const [dateRangeStart, setDateRangeStart] = useState<Date | undefined>(undefined)
   const [dateRangeEnd, setDateRangeEnd] = useState<Date | undefined>(undefined)
   const [allowEditBillNo, setAllowEditBillNo] = useState(false)
+  const [isViewMode, setIsViewMode] = useState(false)
   const [formData, setFormData] = useState({
     saleDate: getTodayIST(),
     purchaseBillNo: "",
@@ -131,6 +133,7 @@ export default function GodownSalePage() {
 
   const resetForm = async () => {
     setEditingId(null)
+    setIsViewMode(false)
     const nextNumber = await fetchNextSaleNumber()
     setFormData({
       saleDate: getTodayIST(),
@@ -150,7 +153,8 @@ export default function GodownSalePage() {
     setAllowEditBillNo(false)
   }
 
-  const handleEdit = async (sale: GodownSale) => {
+  const openSaleDialog = async (sale: GodownSale, viewOnly: boolean) => {
+    setIsViewMode(viewOnly)
     setFormData({
       saleDate: toDateOnlyString(sale.saleDate) || getTodayIST(),
       purchaseBillNo: (sale as any).purchaseBillNo || "",
@@ -182,6 +186,9 @@ export default function GodownSalePage() {
     setShowDialog(true)
   }
 
+  const handleEdit = (sale: GodownSale) => openSaleDialog(sale, false)
+  const handleView = (sale: GodownSale) => openSaleDialog(sale, true)
+
 
 
   const calculateTotal = () => {
@@ -200,15 +207,26 @@ export default function GodownSalePage() {
       toast.error("Cannot create sale. Godown has 0 birds.")
       return
     }
+    setIsViewMode(false)
     await resetForm()
     setShowDialog(true)
   }
 
   const handleSave = async () => {
-    if (savingRef.current) return
+    if (savingRef.current || isViewMode) return
 
-    if (!formData.customerName || !formData.numberOfBirds || !formData.paymentStatus) {
-      toast.error("Please fill all required fields")
+    const missing: string[] = []
+    if (!formData.saleDate) missing.push("Sale Date")
+    if (!formData.customerName.trim()) missing.push("Customer Name")
+    if (!(parseInt(formData.numberOfBirds, 10) > 0)) missing.push("Number of Birds")
+    if (!(parseFloat(formData.totalWeight) > 0)) missing.push("Total Weight")
+    if (!(parseFloat(formData.ratePerKg) > 0)) missing.push("Rate per Kg")
+    const enteredAmount = parseFloat(formData.totalAmount)
+    const computedAmount = (parseFloat(formData.totalWeight) || 0) * (parseFloat(formData.ratePerKg) || 0)
+    if (!(enteredAmount > 0) && !(computedAmount > 0)) missing.push("Total Amount")
+    if (!formData.paymentStatus) missing.push("Payment Status")
+    if (missing.length > 0) {
+      toast.error(`Please fill all required fields: ${missing.join(", ")}`)
       return
     }
 
@@ -351,6 +369,12 @@ export default function GodownSalePage() {
       )
     }
 
+    if (statusFilter) {
+      filtered = filtered.filter(
+        (sale) => ((sale as any).paymentStatus || "pending") === statusFilter,
+      )
+    }
+
     // Apply date range filter
     if (dateRangeStart && dateRangeEnd) {
       const start = new Date(dateRangeStart)
@@ -366,7 +390,7 @@ export default function GodownSalePage() {
     }
 
     return filtered
-  }, [sales, searchQuery, dateRangeStart, dateRangeEnd])
+  }, [sales, searchQuery, statusFilter, dateRangeStart, dateRangeEnd])
 
   const salesStats = useMemo(() => {
     return filteredSales.reduce(
@@ -415,6 +439,7 @@ export default function GodownSalePage() {
                 <th>Date</th>
                 <th>Customer</th>
                 <th>Quantity</th>
+                <th>Weight</th>
                 <th>Rate</th>
                 <th>Total</th>
               </tr>
@@ -426,6 +451,7 @@ export default function GodownSalePage() {
                   <td>${new Date(sale.saleDate).toLocaleDateString('en-GB')}</td>
                   <td>${sale.customerName}</td>
                   <td>${sale.numberOfBirds} birds</td>
+                  <td>${Number(sale.totalWeight || 0).toFixed(2)} kg</td>
                   <td>₹${Number(sale.ratePerKg || 0).toFixed(2)}/kg</td>
                   <td>₹${Number(sale.totalAmount || 0).toFixed(2)}</td>
                 </tr>
@@ -666,6 +692,8 @@ export default function GodownSalePage() {
     window.setTimeout(cleanup, 30000)
   }
 
+  const fieldsLocked = loading || isViewMode
+
   if (!mounted) return null
 
   return (
@@ -679,7 +707,7 @@ export default function GodownSalePage() {
               <p className="mt-0.5 text-sm text-muted-foreground">Record sales from godown</p>
             </div>
           </div>
-          <Dialog open={showDialog} onOpenChange={setShowDialog}>
+          <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) setIsViewMode(false) }}>
             {canCreate("godown") && (
             <Button onClick={handleOpenNewSale} className="shrink-0 self-start sm:self-auto">
               <Plus className="mr-0" size={20} />
@@ -688,9 +716,9 @@ export default function GodownSalePage() {
             )}
             <DialogContent className="max-sm:max-w-[calc(100%-2rem)] sm:max-w-xl lg:max-w-2xl max-h-[90vh] flex flex-col rounded-2xl" aria-describedby="dialog-description">
               <DialogHeader className="pb-1">
-                <DialogTitle className="text-xl">{editingId ? "Edit Sale" : "New Sale"}</DialogTitle>
+                <DialogTitle className="text-xl">{isViewMode ? "View Sale" : editingId ? "Edit Sale" : "New Sale"}</DialogTitle>
                 <p id="dialog-description" className="sr-only">
-                  {editingId ? "Edit godown sale details" : "Create a new godown sale"}
+                  {isViewMode ? "View godown sale details" : editingId ? "Edit godown sale details" : "Create a new godown sale"}
                 </p>
               </DialogHeader>
               <div className="flex-1 space-y-5 overflow-y-auto pr-1 pb-2">
@@ -700,7 +728,7 @@ export default function GodownSalePage() {
                     <DatePicker
                       value={formData.saleDate}
                       onChange={(date) => setFormData({ ...formData, saleDate: date })}
-                      disabled={loading}
+                      disabled={fieldsLocked}
                     />
                   </div>
                   <div className="space-y-2">
@@ -712,6 +740,7 @@ export default function GodownSalePage() {
                           checked={allowEditBillNo}
                           onChange={(e) => setAllowEditBillNo(e.target.checked)}
                           className="cursor-pointer"
+                          disabled={isViewMode}
                         />
                         <span>Edit manually</span>
                       </label>
@@ -720,9 +749,9 @@ export default function GodownSalePage() {
                       value={formData.invoiceNumber}
                       onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
                       placeholder="Auto-generated on save"
-                      disabled={loading}
-                      readOnly={!allowEditBillNo}
-                      className={!allowEditBillNo ? "bg-gray-50" : ""}
+                      disabled={fieldsLocked}
+                      readOnly={!allowEditBillNo || isViewMode}
+                      className={!allowEditBillNo || isViewMode ? "bg-gray-50" : ""}
                     />
                   </div>
                 </div>
@@ -734,7 +763,7 @@ export default function GodownSalePage() {
                   <Select
                     value={formData.retailerId || '__none__'}
                     onValueChange={(v) => handleRetailerChange(v === '__none__' ? '' : v)}
-                    disabled={loading}
+                    disabled={fieldsLocked}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select retailer" />
@@ -767,7 +796,7 @@ export default function GodownSalePage() {
                     value={formData.customerName}
                     onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
                     placeholder="Customer name"
-                    disabled={loading}
+                    disabled={fieldsLocked}
                   />
                 </div>
 
@@ -781,7 +810,7 @@ export default function GodownSalePage() {
                       value={formData.numberOfBirds}
                       onChange={(e) => setFormData({ ...formData, numberOfBirds: e.target.value })}
                       placeholder="0"
-                      disabled={loading}
+                      disabled={fieldsLocked}
                       onWheel={(e) => e.currentTarget.blur()}
                     />
                     <p className="text-xs text-muted-foreground">
@@ -789,7 +818,7 @@ export default function GodownSalePage() {
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <Label>Rate per Kg (₹)</Label>
+                    <Label>Rate per Kg (₹) *</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -800,7 +829,7 @@ export default function GodownSalePage() {
                         setFormData({ ...formData, ratePerKg: rate, totalAmount: total })
                       }}
                       placeholder="0.00"
-                      disabled={loading}
+                      disabled={fieldsLocked}
                       onWheel={(e) => e.currentTarget.blur()} 
                     />
                   </div>
@@ -808,7 +837,7 @@ export default function GodownSalePage() {
 
                 <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
-                    <Label>Total Weight (kg)</Label>
+                    <Label>Total Weight (kg) *</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -819,7 +848,7 @@ export default function GodownSalePage() {
                         setFormData({ ...formData, totalWeight: weight, totalAmount: total })
                       }}
                       placeholder="0.00"
-                      disabled={loading}
+                      disabled={fieldsLocked}
                       onWheel={(e) => e.currentTarget.blur()} 
                     />
                   </div>
@@ -827,14 +856,14 @@ export default function GodownSalePage() {
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Total Amount (₹)</Label>
+                    <Label>Total Amount (₹) *</Label>
                     <Input
                       type="number"
                       step="0.01"
                       value={formData.totalAmount}
                       onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
                       placeholder="0.00"
-                      disabled={loading}
+                      disabled={fieldsLocked}
                       onWheel={(e) => e.currentTarget.blur()} 
                     />
                   </div>
@@ -843,7 +872,7 @@ export default function GodownSalePage() {
                     <Select
                       value={formData.paymentStatus}
                       onValueChange={(v: any) => setFormData({ ...formData, paymentStatus: v })}
-                      disabled={loading}
+                      disabled={fieldsLocked}
                     >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -868,7 +897,7 @@ export default function GodownSalePage() {
                       </div>
                       {payments.map((p, i) => (
                         <div key={i} className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                          <Select value={p.mode} onValueChange={v => updatePayment(i, "mode", v as PaymentMode)} disabled={loading}>
+                          <Select value={p.mode} onValueChange={v => updatePayment(i, "mode", v as PaymentMode)} disabled={fieldsLocked}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="advance">Advance</SelectItem>
@@ -886,10 +915,10 @@ export default function GodownSalePage() {
                               placeholder="0.00" 
                               value={p.amount} 
                               onChange={e => updatePayment(i, "amount", e.target.value)} 
-                              disabled={loading}  
+                              disabled={fieldsLocked}  
                               onWheel={(e) => e.currentTarget.blur()}
                             />
-                            {payments.length > 1 && (
+                            {payments.length > 1 && !isViewMode && (
                               <Button 
                                 type="button" 
                                 variant="ghost" 
@@ -903,6 +932,7 @@ export default function GodownSalePage() {
                           </div>
                         </div>
                       ))}
+                      {!isViewMode && (
                       <Button 
                         type="button" 
                         variant="outline" 
@@ -912,6 +942,7 @@ export default function GodownSalePage() {
                       >
                         <Plus size={14} className="mr-1" /> Add Payment Mode
                       </Button>
+                      )}
                     </div>
                     <div className="grid grid-cols-1 gap-4 border-t pt-2 sm:grid-cols-2">
                       <div className="space-y-2">
@@ -941,23 +972,31 @@ export default function GodownSalePage() {
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     placeholder="Additional notes"
                     rows={3}
-                    disabled={loading}
+                    disabled={fieldsLocked}
                     onWheel={(e) => e.currentTarget.blur()} 
                   />
                 </div>
 
                 <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    onClick={handleSave}
-                    className="flex-1"
-                    disabled={loading || availableBirdsForSale(editingId) <= 0}
-                  >
-                    {loading ? "Saving..." : editingId ? "Update" : "Create"}
-                  </Button>
-                  <Button variant="outline" size="icon" onClick={() => setShowDialog(false)} disabled={loading} aria-label="Cancel">
-                    <X size={20} />
-                  </Button>
+                  {isViewMode ? (
+                    <Button type="button" onClick={() => setShowDialog(false)} className="flex-1">
+                      Close
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        onClick={handleSave}
+                        className="flex-1"
+                        disabled={loading || availableBirdsForSale(editingId) <= 0}
+                      >
+                        {loading ? "Saving..." : editingId ? "Update" : "Create"}
+                      </Button>
+                      <Button variant="outline" size="icon" onClick={() => setShowDialog(false)} disabled={loading} aria-label="Cancel">
+                        <X size={20} />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </DialogContent>
@@ -1043,6 +1082,20 @@ export default function GodownSalePage() {
               </label>
               <Input type="date" className="w-full sm:w-[160px] h-10 rounded-full" value={dateRangeEnd ? `${dateRangeEnd.getFullYear()}-${String(dateRangeEnd.getMonth() + 1).padStart(2, "0")}-${String(dateRangeEnd.getDate()).padStart(2, "0")}` : ""} onChange={(e) => { const v = e.target.value; if (v) { const [y, m, d] = v.split("-").map(Number); setDateRangeEnd(new Date(y, m - 1, d)) } else { setDateRangeEnd(undefined) } }} />
             </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
+              <Select value={statusFilter || "__all__"} onValueChange={(v) => setStatusFilter(v === "__all__" ? "" : v as "paid" | "partial" | "pending")}>
+                <SelectTrigger className="h-10 w-full sm:w-[140px] rounded-full">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All Status</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="partial">Partial</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Button
               variant="outline"
               size="sm"
@@ -1061,18 +1114,19 @@ export default function GodownSalePage() {
               <p className="text-center py-8 text-muted-foreground">Loading...</p>
             ) : filteredSales.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">
-                {searchQuery || (dateRangeStart && dateRangeEnd) 
+                {searchQuery || statusFilter || (dateRangeStart && dateRangeEnd) 
                   ? "No sales match your filters" 
                   : "No sales found"}
               </p>
             ) : (
-              <Table className="min-w-[860px] [&_td]:px-3 [&_td]:py-2.5 [&_th]:px-3 [&_th]:py-3">
+              <Table className="min-w-[960px] [&_td]:px-3 [&_td]:py-2.5 [&_th]:px-3 [&_th]:py-3">
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">GDS No</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Customer</TableHead>
                     <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Birds</TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Weight</TableHead>
                     <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rate</TableHead>
                     <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total</TableHead>
                     <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Received</TableHead>
@@ -1093,6 +1147,7 @@ export default function GodownSalePage() {
                         <TableCell>{formatDate(sale.saleDate)}</TableCell>
                         <TableCell>{sale.customerName}</TableCell>
                         <TableCell className="text-right">{sale.numberOfBirds} birds</TableCell>
+                        <TableCell className="text-right">{Number(sale.totalWeight || 0).toFixed(2)} kg</TableCell>
                         <TableCell className="text-right">₹{Number(sale.ratePerKg || 0).toFixed(2)}/kg</TableCell>
                         <TableCell className="text-right">₹{totalAmount.toFixed(2)}</TableCell>
                         <TableCell className="text-right font-medium text-green-700">₹{amountReceived.toFixed(2)}</TableCell>
@@ -1108,7 +1163,10 @@ export default function GodownSalePage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1.5">
-                            <Button variant="ghost" size="icon" onClick={() => handleEdit(sale)}>
+                            <Button variant="ghost" size="icon" onClick={() => handleView(sale)} aria-label="View sale">
+                              <Eye size={16} />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(sale)} aria-label="Edit sale">
                               <Edit2 size={16} />
                             </Button>
                             <Button variant="ghost" size="icon" onClick={() => handlePrintSale(sale)}>
