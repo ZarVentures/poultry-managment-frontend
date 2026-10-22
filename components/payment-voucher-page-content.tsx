@@ -98,7 +98,6 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
 
   const [form, setForm] = useState(initialFormState);
   const [submitting, setSubmitting] = useState(false);
@@ -119,7 +118,6 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
       const params: Record<string, string | undefined> = { voucherType: variant };
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
-      if (statusFilter) params.status = statusFilter;
       const data = await paymentVouchersApi.findAll(params);
       setVouchers(Array.isArray(data) ? data : []);
     } catch {
@@ -127,7 +125,7 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
     } finally {
       setLoadingList(false);
     }
-  }, [startDate, endDate, statusFilter, variant]);
+  }, [startDate, endDate, variant]);
 
   useEffect(() => {
     setLoadingParties(true);
@@ -300,16 +298,6 @@ export function PaymentVoucherPageContent({ variant }: { variant: PaymentVoucher
               </label>
               <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
                 className="w-full sm:w-[160px] h-10 rounded-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 px-3 text-sm" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full sm:w-[160px] h-10 rounded-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 px-3 text-sm">
-                <option value="">All</option>
-                <option value="paid">Paid</option>
-                <option value="pending">Pending</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
             </div>
             <Button variant="outline" size="sm" onClick={fetchVouchers} className="rounded-full px-5 h-10 w-full sm:w-auto">
               Refresh

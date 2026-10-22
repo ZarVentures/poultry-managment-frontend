@@ -446,11 +446,19 @@ input[type="number"] {
   position: fixed !important;
 }
 
-/* Single-date calendar: keep a 7-column month grid inside dialogs */
+/* Single-date calendar: float a 7-column month grid above dialogs */
 .ant-picker-dropdown.app-date-popup {
   position: absolute !important;
   width: max-content !important;
   min-width: 288px !important;
+  background: #fff !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16) !important;
+  overflow: visible !important;
+}
+.dark .ant-picker-dropdown.app-date-popup {
+  background: hsl(var(--popover, 222 47% 11%)) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45) !important;
 }
 .ant-picker-dropdown.app-date-popup .ant-picker-panel-container,
 .ant-picker-dropdown.app-date-popup .ant-picker-panel,

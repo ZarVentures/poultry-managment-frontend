@@ -27,6 +27,30 @@ function typeBadge(type: StockLedgerEntry["movementType"]) {
   return "bg-red-100 text-red-800 border-red-200"
 }
 
+function fmtKg(value: number) {
+  return `${Number(value || 0).toLocaleString("en-US", { maximumFractionDigits: 2, useGrouping: false })} kg`
+}
+
+/** Weight shown on the overview. Sales and inwards keep their bill weight. */
+function movementWeightKg(entry: StockLedgerEntry): number | null {
+  if (entry.movementType === "MORTALITY") {
+    if (entry.weighedKg != null && Number.isFinite(Number(entry.weighedKg))) return Number(entry.weighedKg)
+    return entry.birdsOut ? Number(entry.weightOut) : null
+  }
+  if (entry.movementType === "RETURN") {
+    const stock = entry.birdsOut
+      ? Number(entry.stockWeightOut ?? entry.stockWeightIn ?? 0)
+      : Number(entry.stockWeightIn ?? 0)
+    if (stock > 0) return stock
+    if (entry.birdsIn) return Number(entry.weightIn)
+    if (entry.birdsOut) return Number(entry.weightOut)
+    return null
+  }
+  if (entry.birdsIn) return Number(entry.weightIn)
+  if (entry.birdsOut) return Number(entry.weightOut)
+  return null
+}
+
 export default function InventoryPage() {
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -195,7 +219,7 @@ export default function InventoryPage() {
             </div>
             <div className="mt-3 text-2xl font-bold tracking-tight text-violet-800 dark:text-violet-200">{(summary?.totalReturns ?? 0).toLocaleString()}</div>
             <p className="mt-auto pt-4 text-xs text-muted-foreground">
-              {(summary?.totalReturnWeight ?? 0).toLocaleString()} kg returned
+              {fmtKg(summary?.totalReturnWeight ?? 0)} returned
             </p>
           </div>
           <div className="flex h-full flex-col rounded-2xl border border-red-200 bg-red-50/40 p-5 shadow-sm transition-shadow hover:shadow-md dark:border-red-800/50 dark:bg-red-900/15">
@@ -207,7 +231,7 @@ export default function InventoryPage() {
             </div>
             <div className="mt-3 text-2xl font-bold tracking-tight text-red-700 dark:text-red-300">{(summary?.totalMortality ?? 0).toLocaleString()}</div>
             <p className="mt-auto pt-4 text-xs text-muted-foreground">
-              {(summary?.totalMortalityWeight ?? 0).toLocaleString()} kg dead
+              {fmtKg(summary?.totalMortalityWeight ?? 0)} dead
             </p>
           </div>
         </div>
@@ -287,7 +311,10 @@ export default function InventoryPage() {
                           {e.birdsOut ? `−${e.birdsOut}` : "—"}
                         </TableCell>
                         <TableCell className="px-4 py-3.5 text-right font-medium tabular-nums text-muted-foreground">
-                          {e.birdsIn ? `${e.weightIn} kg` : e.birdsOut ? `${e.weightOut} kg` : "—"}
+                          {(() => {
+                            const kg = movementWeightKg(e)
+                            return kg != null && kg > 0 ? fmtKg(kg) : "—"
+                          })()}
                         </TableCell>
                       </TableRow>
                     ))

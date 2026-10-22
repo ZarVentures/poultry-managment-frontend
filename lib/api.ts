@@ -527,6 +527,8 @@ export interface StockLedgerEntry {
   birdsOut: number;
   weightIn: number;
   weightOut: number;
+  stockWeightIn?: number;
+  stockWeightOut?: number;
   ratePerKg?: number | null;
   amount?: number | null;
   averageWeight?: number | null;
