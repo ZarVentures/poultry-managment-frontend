@@ -1,28 +1,28 @@
 import Link from "next/link"
-import { Bird } from "lucide-react"
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 
 interface LogoProps {
   className?: string
   href?: string
-  showText?: boolean
+  priority?: boolean
 }
 
-export function Logo({ className, href = "/", showText = true }: LogoProps) {
+export function Logo({ className, href = "/", priority = false }: LogoProps) {
   return (
     <Link
       href={href}
-      className={cn("group flex items-center gap-2.5", className)}
+      className="group flex items-center"
       aria-label="Poultry Sathi Home"
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-green-700 text-white shadow-md shadow-emerald-600/20 transition-transform group-hover:scale-105">
-        <Bird className="h-5 w-5" />
-      </span>
-      {showText && (
-        <span className="text-lg font-bold tracking-tight text-foreground">
-          Poultry<span className="text-primary"> Sathi</span>
-        </span>
-      )}
+      <Image
+        src="/logo.png"
+        alt="Poultry Sathi"
+        width={1201}
+        height={301}
+        priority={priority}
+        className={cn("h-10 w-auto transition-transform group-hover:scale-105", className)}
+      />
     </Link>
   )
 }

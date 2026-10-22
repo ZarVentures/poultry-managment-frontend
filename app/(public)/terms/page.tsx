@@ -89,7 +89,7 @@ const SECTIONS = [
     content: [
       "For questions, requests, or complaints regarding these Terms & Conditions, please contact:",
       "Poultry Sathi / Zar Solutions",
-      "Email: contact@zarsolutions.co.in",
+      "Email: info@zarsolutions.co.in",
       "Phone: +91 72472 48886",
       "Website: poultrysathi.com",
     ],

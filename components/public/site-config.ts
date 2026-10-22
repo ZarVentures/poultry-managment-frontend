@@ -81,7 +81,7 @@ export const SOCIAL_LINKS: SocialLink[] = [
 ]
 
 export const CONTACT_INFO = {
-  email: "contact@zarsolutions.co.in",
+  email: "info@zarsolutions.co.in",
   phone: "+91 72472 48886",
   address: "Zar Solutions, 241-242, First Floor, Chouhan Estate, Supela, Bhilai Nagar, Durg, Chhattisgarh – 490023, India",
 }

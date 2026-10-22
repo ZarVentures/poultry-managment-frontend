@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -370,9 +371,14 @@ export default function LoginPage() {
         <Card className="w-full border-border/60 shadow-lg shadow-black/[0.03]">
           <CardHeader className="space-y-1 pb-2">
             <div className="text-center">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-3xl">
-                🐔
-              </div>
+              <Image
+                src="/logo.png"
+                alt="Poultry Sathi"
+                width={1201}
+                height={301}
+                priority
+                className="mx-auto mb-3 h-12 w-auto"
+              />
               <CardTitle className="text-xl font-bold tracking-tight sm:text-2xl">
                 {twoFactorPending ? "Two-Factor Authentication" : pendingDeletion ? "Recover account" : "Sign in"}
               </CardTitle>
