@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
@@ -188,7 +189,16 @@ function DashboardLayoutInner({ children, user }: { children: React.ReactNode; u
         ].join(" ")}
       >
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-          {sidebarOpen && <h1 className="truncate text-xl font-bold text-sidebar-foreground">🐔 Poultry Sathi</h1>}
+          {sidebarOpen && (
+            <Image
+              src="/logo.png"
+              alt="Poultry Sathi"
+              width={1201}
+              height={301}
+              priority
+              className="h-10 w-auto"
+            />
+          )}
           <Button variant="ghost" size="icon" onClick={toggleSidebar} className="shrink-0 text-sidebar-foreground">
             {isMobile ? (mobileSidebarOpen ? <X size={20} /> : <Menu size={20} />) : <Menu size={20} />}
           </Button>
