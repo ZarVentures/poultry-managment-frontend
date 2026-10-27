@@ -5,7 +5,7 @@ import { DatePicker as AntDatePicker } from "antd"
 import dayjs, { Dayjs } from "dayjs"
 import customParseFormat from "dayjs/plugin/customParseFormat"
 import { CalendarDays } from "lucide-react"
-import { toDateOnlyString } from "@/lib/date-utils"
+import { getTodayIST, toDateOnlyString } from "@/lib/date-utils"
 import "antd/dist/reset.css"
 
 dayjs.extend(customParseFormat)
@@ -17,6 +17,8 @@ interface DatePickerProps {
   placeholder?: string
   className?: string
   format?: string
+  /** Entry forms: only today can be chosen. Existing saved dates stay as they are. */
+  todayOnly?: boolean
 }
 
 export function DatePicker({
@@ -26,12 +28,18 @@ export function DatePicker({
   placeholder = "Select date",
   className = "",
   format = "DD-MMM-YYYY",
+  todayOnly = false,
 }: DatePickerProps) {
 
   const handleChange = (date: Dayjs | null) => {
-    if (onChange) {
-      onChange(date ? date.format("YYYY-MM-DD") : "")
+    if (!onChange) return
+    if (!date) {
+      onChange("")
+      return
     }
+    const ymd = date.format("YYYY-MM-DD")
+    if (todayOnly && ymd !== getTodayIST()) return
+    onChange(ymd)
   }
 
   const parsed = value ? toDateOnlyString(value) : null
@@ -48,6 +56,12 @@ export function DatePicker({
         disabled={disabled}
         placeholder={placeholder}
         format={format}
+        inputReadOnly={todayOnly}
+        disabledDate={
+          todayOnly
+            ? (current) => !!current && current.format("YYYY-MM-DD") !== getTodayIST()
+            : undefined
+        }
         getPopupContainer={() => document.body}
         classNames={{
           popup: {

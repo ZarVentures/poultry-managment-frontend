@@ -653,7 +653,7 @@ export default function PurchasesPage() {
                       </div>
                       <div className="space-y-2">
                         <Label>Purchase Date *</Label>
-                        <DatePicker value={formData.orderDate} onChange={date => setFormData(prev => ({ ...prev, orderDate: date }))} disabled={loading} />
+                        <DatePicker value={formData.orderDate} onChange={date => setFormData(prev => ({ ...prev, orderDate: date }))} disabled={loading} todayOnly />
                       </div>
                     </div>
 

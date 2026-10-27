@@ -750,6 +750,7 @@ export default function MortalityPage() {
                       value={formData.purchaseDate}
                       onChange={(date) => setFormData({ ...formData, purchaseDate: date })}
                       disabled={loading}
+                      todayOnly
                     />
                   </div>
                   <div className="space-y-2">

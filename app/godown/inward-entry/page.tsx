@@ -721,6 +721,7 @@ export default function GodownInwardPage() {
                       value={formData.entryDate}
                       onChange={(date) => setFormData({ ...formData, entryDate: date })}
                       disabled={loading}
+                      todayOnly
                     />
                   </div>
                   <div className="space-y-2">

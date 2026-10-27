@@ -46,15 +46,17 @@ export default function ExpensesPage() {
   useEffect(() => {
     setMounted(true)
     fetchExpenses()
-    fetchCategories()
+    fetchCategories(true)
   }, [])
 
-  const fetchCategories = async () => {
+  const fetchCategories = async (preferFirst = false) => {
     try {
-      const data = await expenseCategoriesApi.getActive('main')
-      setCategories(Array.isArray(data) ? data : [])
-      if (Array.isArray(data) && data.length > 0 && !editingId) {
-        setFormData(prev => ({ ...prev, categoryId: data[0].id }))
+      // Include godown-only categories. The expense form is the only place they can be used.
+      const data = await expenseCategoriesApi.getActive()
+      const list = Array.isArray(data) ? data.filter((cat) => cat.isActive !== false) : []
+      setCategories(list)
+      if (preferFirst && list.length > 0) {
+        setFormData(prev => ({ ...prev, categoryId: prev.categoryId ?? list[0].id }))
       }
     } catch (e) {
       console.error("Failed to fetch categories:", e)
@@ -99,6 +101,7 @@ export default function ExpensesPage() {
     })
     setEditingId(expense.id)
     setShowDialog(true)
+    void fetchCategories(false)
   }
 
   const handleSave = async () => {
@@ -345,7 +348,7 @@ export default function ExpensesPage() {
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
             {canCreate("expenses") && (
             <DialogTrigger asChild>
-              <Button onClick={resetForm} className="w-fit h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm md:h-10 md:px-4 md:text-sm">
+              <Button onClick={() => { resetForm(); void fetchCategories(false) }} className="w-fit h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm md:h-10 md:px-4 md:text-sm">
                 <Plus className="mr-1 sm:mr-0" size={16} />
                 <span className="hidden sm:inline">Add New Expense</span>
                 <span className="sm:hidden">Add Expense</span>
@@ -377,6 +380,7 @@ export default function ExpensesPage() {
                       value={formData.expenseDate}
                       onChange={(date) => setFormData({ ...formData, expenseDate: date })}
                       disabled={loading}
+                      todayOnly
                     />
                   </div>
                   <div className="space-y-2">
@@ -391,7 +395,10 @@ export default function ExpensesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {categories.filter(c => c.isActive).map(cat => (
-                          <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
+                          <SelectItem key={cat.id} value={String(cat.id)}>
+                            {cat.name}
+                            {cat.appliesTo === "godown" ? " (Godown)" : cat.appliesTo === "main" ? " (Main)" : ""}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
