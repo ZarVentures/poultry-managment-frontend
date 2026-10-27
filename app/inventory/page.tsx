@@ -31,20 +31,17 @@ function fmtKg(value: number) {
   return `${Number(value || 0).toLocaleString("en-US", { maximumFractionDigits: 2, useGrouping: false })} kg`
 }
 
-/** Weight shown on the overview. Sales and inwards keep their bill weight. */
+/** Weight shown on the overview. Sales and inwards keep their bill weight. Returns keep the kg entered on the return. */
 function movementWeightKg(entry: StockLedgerEntry): number | null {
   if (entry.movementType === "MORTALITY") {
     if (entry.weighedKg != null && Number.isFinite(Number(entry.weighedKg))) return Number(entry.weighedKg)
     return entry.birdsOut ? Number(entry.weightOut) : null
   }
   if (entry.movementType === "RETURN") {
-    const stock = entry.birdsOut
-      ? Number(entry.stockWeightOut ?? entry.stockWeightIn ?? 0)
-      : Number(entry.stockWeightIn ?? 0)
-    if (stock > 0) return stock
-    if (entry.birdsIn) return Number(entry.weightIn)
-    if (entry.birdsOut) return Number(entry.weightOut)
-    return null
+    const recorded = entry.birdsIn ? Number(entry.weightIn) : Number(entry.weightOut)
+    if (Number.isFinite(recorded) && recorded > 0) return recorded
+    const stock = Number(entry.stockWeightIn || entry.stockWeightOut || 0)
+    return stock > 0 ? stock : null
   }
   if (entry.birdsIn) return Number(entry.weightIn)
   if (entry.birdsOut) return Number(entry.weightOut)

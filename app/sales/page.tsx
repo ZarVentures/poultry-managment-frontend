@@ -1045,7 +1045,7 @@ export default function SalesPage() {
                       </div>
                       <div className="space-y-2">
                         <Label>Sale Date *</Label>
-                        <DatePicker value={formData.saleDate} onChange={d => setFormData(f => ({ ...f, saleDate: d }))} disabled={loading || isReadOnly} />
+                        <DatePicker value={formData.saleDate} onChange={d => setFormData(f => ({ ...f, saleDate: d }))} disabled={loading || isReadOnly} todayOnly />
                       </div>
                     </div>
 

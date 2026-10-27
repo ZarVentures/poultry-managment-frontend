@@ -729,6 +729,7 @@ export default function GodownSalePage() {
                       value={formData.saleDate}
                       onChange={(date) => setFormData({ ...formData, saleDate: date })}
                       disabled={fieldsLocked}
+                      todayOnly
                     />
                   </div>
                   <div className="space-y-2">
