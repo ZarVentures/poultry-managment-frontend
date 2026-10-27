@@ -179,7 +179,7 @@ const FAQ_ITEMS = [
   {
     question: "Do all subscription plans include the same features?",
     answer:
-      "All current Poultry Sathi features are included in every subscription plan. However, selected upcoming premium features may be introduced exclusively for 6 Months and Annual subscription plans. Any such additions will be communicated in advance.",
+      "No. Basic, Advance and Premium have different limits and features. Prices exclude 18% GST. The pricing page lists what each plan includes, including items marked Coming Soon.",
   },
   {
     question: "Can I access Poultry Sathi from anywhere?",
@@ -448,7 +448,7 @@ export default function HomePage() {
             <SectionHeading
               eyebrow="Pricing"
               title="Simple & Transparent Pricing"
-              subtitle="Choose the subscription duration that best fits your poultry business. Every plan includes the complete Poultry Sathi platform with no feature limitations."
+              subtitle="Choose Basic, Advance or Premium. Monthly prices exclude 18% GST. Compare billing options and features on the pricing page."
             />
           </Reveal>
           <Reveal delay={0.1} className="mt-14">
