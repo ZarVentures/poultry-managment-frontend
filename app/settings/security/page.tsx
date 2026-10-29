@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Shield, ShieldCheck, ShieldOff } from "lucide-react"
+import { Lock, Shield, ShieldCheck, ShieldOff } from "lucide-react"
 import { authApi, ApiError } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -17,6 +17,11 @@ export default function SecurityPage() {
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [is2FAEnabled, setIs2FAEnabled] = useState(false)
+  const [hasPassword, setHasPassword] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [passwordSaving, setPasswordSaving] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteStep, setDeleteStep] = useState<"warn" | "verify" | "blocked">("warn")
   const [deleteChannel, setDeleteChannel] = useState<"sms" | "email">("sms")
@@ -49,6 +54,44 @@ export default function SecurityPage() {
       setIs2FAEnabled(data.isTwoFactorEnabled)
     } catch {
       // ignore
+    }
+    try {
+      const password = await authApi.getPasswordStatus()
+      setHasPassword(Boolean(password.hasPassword))
+    } catch {
+      // ignore
+    }
+  }
+
+  const handleSavePassword = async () => {
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters")
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match")
+      return
+    }
+    if (hasPassword && !currentPassword) {
+      toast.error("Enter your current password")
+      return
+    }
+    try {
+      setPasswordSaving(true)
+      await authApi.setPassword({
+        password: newPassword,
+        ...(hasPassword ? { currentPassword } : {}),
+      })
+      setHasPassword(true)
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+      toast.success("Password saved. You can sign in with it on the Admin login screen.")
+    } catch (e: unknown) {
+      const err = e as ApiError
+      toast.error(err.message || "Could not save password")
+    } finally {
+      setPasswordSaving(false)
     }
   }
 
@@ -215,6 +258,71 @@ export default function SecurityPage() {
                   <ShieldCheck size={14} className="mr-1" /> Enable
                 </Button>
               )}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border bg-card p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+              <Lock size={20} />
+            </div>
+            <div className="min-w-0 flex-1 space-y-4">
+              <div>
+                <p className="font-medium text-sm sm:text-base">
+                  {hasPassword ? "Change password" : "Set a password"}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {hasPassword
+                    ? "Use this password with your mobile number on the Admin sign-in screen. Forgot it? Reset it from the login screen."
+                    : "Set a password so you can sign in with your mobile number. You can also set one from Forgot password on the login screen."}
+                </p>
+              </div>
+              <div className="grid gap-3 sm:max-w-sm">
+                {hasPassword && (
+                  <div className="space-y-2">
+                    <Label htmlFor="current-password">Current password</Label>
+                    <Input
+                      id="current-password"
+                      type="password"
+                      autoComplete="current-password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      disabled={passwordSaving}
+                    />
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    disabled={passwordSaving}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={passwordSaving}
+                  />
+                </div>
+                <Button
+                  className="rounded-full sm:w-fit"
+                  onClick={handleSavePassword}
+                  disabled={passwordSaving || newPassword.length < 6 || newPassword !== confirmPassword}
+                >
+                  {passwordSaving ? "Saving…" : hasPassword ? "Update password" : "Save password"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
