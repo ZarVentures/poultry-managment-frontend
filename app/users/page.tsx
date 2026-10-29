@@ -297,7 +297,7 @@ export default function UsersPage() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">User Management</h1>
             <p className="text-muted-foreground text-sm sm:text-base">
-              Invite people into this organization as admin, manager, or staff. They sign in with email + password or OTP.
+              Invite people into this organization as admin, manager, or staff. They sign in with email and password.
             </p>
           </div>
           {canCreate('users') && (
@@ -347,7 +347,7 @@ export default function UsersPage() {
                       disabled={loading}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Unique mobile — do not reuse the owner&apos;s number. Staff and managers sign in with email + password or email OTP, not this admin mobile login.
+                      Unique mobile. Admins sign in with this number and password. Staff and managers sign in with email and password.
                     </p>
                   </div>
                   <div className="space-y-2">

@@ -25,7 +25,6 @@ function normalizePhone(raw: string): string {
 const COOLDOWN_SECS = 60
 
 type Channel = "mobile" | "email"
-type EmailStep = "credentials" | "otp"
 
 function formatRecoveryDate(iso?: string) {
   if (!iso) return "the recovery deadline"
@@ -55,9 +54,11 @@ export default function LoginPage() {
   const [otp, setOtp] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [emailStep, setEmailStep] = useState<EmailStep>("credentials")
   const [error, setError] = useState("")
-  const [authStep, setAuthStep] = useState<"phone" | "otp">("phone")
+  const [resetChannel, setResetChannel] = useState<"phone" | "email" | null>(null)
+  const [resetStep, setResetStep] = useState<"send" | "confirm">("send")
+  const [resetPassword, setResetPassword] = useState("")
+  const [resetConfirm, setResetConfirm] = useState("")
   const [devOtp, setDevOtp] = useState("")
   const [cooldown, setCooldown] = useState(0)
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -126,59 +127,101 @@ export default function LoginPage() {
     })
   }
 
-  const handleSendOtp = async (e: React.FormEvent) => {
+  const startReset = (which: "phone" | "email") => {
+    setResetChannel(which)
+    setResetStep("send")
+    setOtp("")
+    setResetPassword("")
+    setResetConfirm("")
+    setError("")
+    setDevOtp("")
+    setPassword("")
+  }
+
+  const cancelReset = () => {
+    setResetChannel(null)
+    setResetStep("send")
+    setOtp("")
+    setResetPassword("")
+    setResetConfirm("")
+    setError("")
+    setDevOtp("")
+  }
+
+  const handleSendReset = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    if (!resetChannel) return
+    setIsLoading(true)
+    setError("")
+    try {
+      if (resetChannel === "phone") {
+        const phoneNumber = normalizePhone(phoneRaw)
+        if (!/^\+91[6-9]\d{9}$/.test(phoneNumber)) {
+          setError("Please enter a valid Indian phone number (e.g. 98765 43210)")
+          return
+        }
+        const response = await authApi.forgotPasswordPhone(phoneNumber)
+        setDevOtp(response.devOtp || "")
+      } else {
+        const trimmed = email.trim()
+        if (!trimmed.includes("@")) {
+          setError("Please enter a valid email address")
+          return
+        }
+        const response = await authApi.forgotPasswordEmail(trimmed)
+        setDevOtp(response.devOtp || "")
+      }
+      setResetStep("confirm")
+      setOtp("")
+      startCooldown()
+      toast.success("Reset code sent")
+    } catch (err: any) {
+      if (!notePendingDeletion(err)) setError(err.message || "Could not send reset code")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleConfirmReset = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!resetChannel) return
+    if (resetPassword.length < 6) {
+      setError("Password must be at least 6 characters")
+      return
+    }
+    if (resetPassword !== resetConfirm) {
+      setError("Passwords do not match")
+      return
+    }
+    setIsLoading(true)
+    setError("")
+    try {
+      const response = resetChannel === "phone"
+        ? await authApi.resetPasswordPhone(normalizePhone(phoneRaw), otp, resetPassword)
+        : await authApi.resetPasswordEmail(email.trim(), otp, resetPassword)
+      completeAuth(response)
+    } catch (err: any) {
+      if (!notePendingDeletion(err)) setError(err.message || "Could not reset password")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handlePhonePassword = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
-
     const phoneNumber = normalizePhone(phoneRaw)
     if (!/^\+91[6-9]\d{9}$/.test(phoneNumber)) {
       setError("Please enter a valid Indian phone number (e.g. 98765 43210)")
       setIsLoading(false)
       return
     }
-
     try {
-      const response = await authApi.loginSendOtp(phoneNumber)
-      setDevOtp(response.devOtp || "")
-      setAuthStep("otp")
-      startCooldown()
-      toast.success("OTP sent successfully!")
-    } catch (err: any) {
-      if (!notePendingDeletion(err)) setError(err.message || "Failed to send OTP")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleResendOtp = async () => {
-    if (cooldown > 0) return
-    setIsLoading(true)
-    setError("")
-    const phoneNumber = normalizePhone(phoneRaw)
-    try {
-      const response = await authApi.loginSendOtp(phoneNumber)
-      setDevOtp(response.devOtp || "")
-      startCooldown()
-      toast.success("OTP resent!")
-    } catch (err: any) {
-      if (!notePendingDeletion(err)) setError(err.message || "Failed to resend OTP")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
-    const phoneNumber = normalizePhone(phoneRaw)
-
-    try {
-      const response = await authApi.loginVerifyOtp(phoneNumber, otp)
+      const response = await authApi.loginWithPhonePassword(phoneNumber, password)
       completeAuth(response)
     } catch (err: any) {
-      if (!notePendingDeletion(err)) setError(err.message || "Invalid OTP")
+      if (!notePendingDeletion(err)) setError(err.message || "Invalid phone or password")
     } finally {
       setIsLoading(false)
     }
@@ -199,58 +242,6 @@ export default function LoginPage() {
       completeAuth(response)
     } catch (err: any) {
       if (!notePendingDeletion(err)) setError(err.message || "Invalid email or password")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleSendEmailOtp = async () => {
-    setIsLoading(true)
-    setError("")
-    const trimmed = email.trim()
-    if (!trimmed.includes("@")) {
-      setError("Please enter a valid email address")
-      setIsLoading(false)
-      return
-    }
-    try {
-      const response = await authApi.loginSendEmailOtp(trimmed)
-      setDevOtp(response.devOtp || "")
-      setEmailStep("otp")
-      startCooldown()
-      toast.success("OTP sent to your email")
-    } catch (err: any) {
-      if (!notePendingDeletion(err)) setError(err.message || "Failed to send email OTP")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleResendEmailOtp = async () => {
-    if (cooldown > 0) return
-    setIsLoading(true)
-    setError("")
-    try {
-      const response = await authApi.loginSendEmailOtp(email.trim())
-      setDevOtp(response.devOtp || "")
-      startCooldown()
-      toast.success("OTP resent!")
-    } catch (err: any) {
-      if (!notePendingDeletion(err)) setError(err.message || "Failed to resend OTP")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleVerifyEmailOtp = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
-    try {
-      const response = await authApi.loginVerifyEmailOtp(email.trim(), otp)
-      completeAuth(response)
-    } catch (err: any) {
-      if (!notePendingDeletion(err)) setError(err.message || "Invalid OTP")
     } finally {
       setIsLoading(false)
     }
@@ -331,8 +322,7 @@ export default function LoginPage() {
     !!devOtp &&
     !twoFactorPending &&
     ((pendingDeletion && recoveryStep === "otp") ||
-      (channel === "mobile" && authStep === "otp") ||
-      (channel === "email" && emailStep === "otp"))
+      (resetChannel && resetStep === "confirm"))
 
   const description = twoFactorPending
     ? "Enter the 6-digit code from your authenticator app"
@@ -342,13 +332,17 @@ export default function LoginPage() {
         : recoveryStep === "otp"
           ? "Enter the recovery code sent to your registered contact."
           : `Your account is scheduled for deletion until ${formatRecoveryDate(pendingDeletion.recoveryExpiresAt)}.`
-    : channel === "mobile"
-      ? authStep === "phone"
-        ? "Owners sign in with mobile OTP, then work inside their organization."
-        : `OTP sent to +91 ****${phoneRaw.replace(/\D/g, "").slice(-4)}`
-      : emailStep === "otp"
-        ? `OTP sent to ${email.trim()}`
-        : "Staff and managers sign in with email + password, or email OTP. Same organization as the admin who invited you."
+    : resetChannel
+      ? resetStep === "send"
+        ? resetChannel === "phone"
+          ? "We'll send a code to this mobile number so you can choose a new password."
+          : "We'll send a code to this email so you can choose a new password."
+        : resetChannel === "phone"
+          ? `Enter the code sent to +91 ****${phoneRaw.replace(/\D/g, "").slice(-4)} and choose a new password.`
+          : `Enter the code sent to ${email.trim()} and choose a new password.`
+      : channel === "mobile"
+        ? "Owners sign in with their mobile number and password."
+        : "Staff and managers sign in with email and password."
 
   return (
     <div className="relative grid min-h-screen place-items-center px-4 py-12 sm:px-6 lg:px-8">
@@ -374,7 +368,7 @@ export default function LoginPage() {
                 🐔
               </div>
               <CardTitle className="text-xl font-bold tracking-tight sm:text-2xl">
-                {twoFactorPending ? "Two-Factor Authentication" : pendingDeletion ? "Recover account" : "Sign in"}
+                {resetChannel ? "Reset password" : twoFactorPending ? "Two-Factor Authentication" : pendingDeletion ? "Recover account" : "Sign in"}
               </CardTitle>
               <CardDescription className="mt-1.5 text-sm leading-relaxed">
                 {description}
@@ -469,6 +463,94 @@ export default function LoginPage() {
                   ← Back
                 </Button>
               </form>
+            ) : resetChannel ? (
+              resetStep === "send" ? (
+                <form onSubmit={handleSendReset} className="space-y-5">
+                  {error && <AuthError message={error} />}
+                  {resetChannel === "phone" ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-phone" className="text-sm font-medium">Phone Number</Label>
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">+91</span>
+                        <Input
+                          id="reset-phone" type="tel" inputMode="numeric" placeholder="98765 43210"
+                          value={phoneRaw} onChange={(e) => setPhoneRaw(e.target.value)}
+                          className="h-11 rounded-xl pl-14" maxLength={14} required
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-email" className="text-sm font-medium">Email</Label>
+                      <Input
+                        id="reset-email" type="email" autoComplete="email" placeholder="you@company.com"
+                        value={email} onChange={(e) => setEmail(e.target.value)}
+                        className="h-11 rounded-xl" required
+                      />
+                    </div>
+                  )}
+                  <Button type="submit" className="h-11 w-full rounded-xl text-sm font-semibold" disabled={isLoading}>
+                    {isLoading ? "Sending code…" : "Send reset code"}
+                  </Button>
+                  <Button type="button" variant="ghost" className="w-full text-sm text-muted-foreground" onClick={cancelReset}>
+                    ← Back to sign in
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={handleConfirmReset} className="space-y-5">
+                  {error && <AuthError message={error} />}
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-otp" className="text-sm font-medium">Reset code</Label>
+                    <Input
+                      id="reset-otp" inputMode="numeric" maxLength={6} placeholder="000000"
+                      value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      className="h-12 text-center text-2xl tracking-[0.5em]" required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-password" className="text-sm font-medium">New password</Label>
+                    <Input
+                      id="reset-password" type="password" autoComplete="new-password" placeholder="At least 6 characters"
+                      value={resetPassword} onChange={(e) => setResetPassword(e.target.value)}
+                      className="h-11 rounded-xl" required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-confirm" className="text-sm font-medium">Confirm password</Label>
+                    <Input
+                      id="reset-confirm" type="password" autoComplete="new-password" placeholder="Repeat password"
+                      value={resetConfirm} onChange={(e) => setResetConfirm(e.target.value)}
+                      className="h-11 rounded-xl" required
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="h-11 w-full rounded-xl text-sm font-semibold"
+                    disabled={isLoading || otp.length !== 6 || resetPassword.length < 6 || resetPassword !== resetConfirm}
+                  >
+                    {isLoading ? "Resetting…" : "Reset password"}
+                  </Button>
+                  <div className="text-center text-sm">
+                    {cooldown > 0 ? (
+                      <p className="text-muted-foreground">
+                        Resend code in <span className="font-semibold text-foreground">{cooldown}s</span>
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleSendReset()}
+                        disabled={isLoading}
+                        className="font-semibold text-primary hover:underline disabled:opacity-50"
+                      >
+                        Resend code
+                      </button>
+                    )}
+                  </div>
+                  <Button type="button" variant="ghost" className="w-full text-sm text-muted-foreground" onClick={() => { setResetStep("send"); setOtp(""); setError(""); setDevOtp("") }}>
+                    ← Back
+                  </Button>
+                </form>
+              )
             ) : (
               <>
                 <div className="mb-4 grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
@@ -480,7 +562,7 @@ export default function LoginPage() {
                     onClick={() => { setChannel("mobile"); setError(""); setOtp("") }}
                   >
                     Admin
-                    <span className="mt-0.5 block text-[11px] font-normal opacity-70">Mobile OTP</span>
+                    <span className="mt-0.5 block text-[11px] font-normal opacity-70">Mobile + password</span>
                   </button>
                   <button
                     type="button"
@@ -490,16 +572,15 @@ export default function LoginPage() {
                     onClick={() => { setChannel("email"); setError(""); setOtp("") }}
                   >
                     Staff / Manager
-                    <span className="mt-0.5 block text-[11px] font-normal opacity-70">Email + password / OTP</span>
+                    <span className="mt-0.5 block text-[11px] font-normal opacity-70">Email + password</span>
                   </button>
                 </div>
 
                 {channel === "mobile" ? (
-                  authStep === "phone" ? (
-                    <form onSubmit={handleSendOtp} className="space-y-5">
+                    <form onSubmit={handlePhonePassword} className="space-y-5">
                       {error && <AuthError message={error} />}
                       <div className="space-y-2">
-                        <Label htmlFor="phone" className="text-sm font-medium">
+                        <Label htmlFor="phone-password" className="text-sm font-medium">
                           Phone Number
                         </Label>
                         <div className="relative">
@@ -507,18 +588,37 @@ export default function LoginPage() {
                             +91
                           </span>
                           <Input
-                            id="phone" type="tel" inputMode="numeric" placeholder="98765 43210"
+                            id="phone-password" type="tel" inputMode="numeric" placeholder="98765 43210"
                             value={phoneRaw} onChange={(e) => setPhoneRaw(e.target.value)}
                             className="h-11 rounded-xl pl-14" maxLength={14} required
                           />
                         </div>
                       </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="admin-password" className="text-sm font-medium">
+                          Password
+                        </Label>
+                        <Input
+                          id="admin-password" type="password" autoComplete="current-password" placeholder="••••••••"
+                          value={password} onChange={(e) => setPassword(e.target.value)}
+                          className="h-11 rounded-xl" required
+                        />
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => startReset("phone")}
+                          className="text-sm font-semibold text-primary hover:underline"
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
                       <Button
                         type="submit"
                         className="h-11 w-full rounded-xl text-sm font-semibold"
-                        disabled={isLoading}
+                        disabled={isLoading || !password}
                       >
-                        {isLoading ? "Sending OTP…" : "Send OTP"}
+                        {isLoading ? "Signing in…" : "Sign in"}
                       </Button>
                       <p className="text-center text-sm text-muted-foreground">
                         Don&apos;t have an account?{" "}
@@ -527,50 +627,7 @@ export default function LoginPage() {
                         </Link>
                       </p>
                     </form>
-                  ) : (
-                    <form onSubmit={handleVerifyOtp} className="space-y-5">
-                      {error && <AuthError message={error} />}
-                      <div className="space-y-2">
-                        <Label htmlFor="otp" className="text-sm font-medium">
-                          Enter 6-digit OTP
-                        </Label>
-                        <Input
-                          id="otp" type="text" inputMode="numeric" placeholder="● ● ● ● ● ●"
-                          value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                          className="h-12 text-center text-2xl tracking-[0.5em]" maxLength={6} required
-                        />
-                      </div>
-                      <Button
-                        type="submit"
-                        className="h-11 w-full rounded-xl text-sm font-semibold"
-                        disabled={isLoading || otp.length !== 6}
-                      >
-                        {isLoading ? "Verifying…" : "Verify & Sign In"}
-                      </Button>
-                      <div className="text-center text-sm">
-                        {cooldown > 0 ? (
-                          <p className="text-muted-foreground">
-                            Resend OTP in{" "}
-                            <span className="font-semibold text-foreground">{cooldown}s</span>
-                          </p>
-                        ) : (
-                          <button
-                            type="button" onClick={handleResendOtp} disabled={isLoading}
-                            className="font-semibold text-primary hover:underline disabled:opacity-50"
-                          >
-                            Resend OTP
-                          </button>
-                        )}
-                      </div>
-                      <Button
-                        type="button" variant="ghost" className="w-full text-sm text-muted-foreground"
-                        onClick={() => { setAuthStep("phone"); setOtp(""); setError(""); setDevOtp("") }}
-                      >
-                        ← Change phone number
-                      </Button>
-                    </form>
-                  )
-                ) : emailStep === "credentials" ? (
+                ) : (
                     <form onSubmit={handleEmailPassword} className="space-y-5">
                       {error && <AuthError message={error} />}
                       <div className="space-y-2">
@@ -593,62 +650,21 @@ export default function LoginPage() {
                           className="h-11 rounded-xl" required
                         />
                       </div>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => startReset("email")}
+                          className="text-sm font-semibold text-primary hover:underline"
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
                       <Button
                         type="submit"
                         className="h-11 w-full rounded-xl text-sm font-semibold"
                         disabled={isLoading || !password}
                       >
                         {isLoading ? "Signing in…" : "Sign in"}
-                      </Button>
-                      <button
-                        type="button"
-                        onClick={handleSendEmailOtp}
-                        disabled={isLoading}
-                        className="w-full text-center text-sm font-semibold text-primary hover:underline disabled:opacity-50"
-                      >
-                        Sign in with OTP instead
-                      </button>
-                    </form>
-                ) : (
-                    <form onSubmit={handleVerifyEmailOtp} className="space-y-5">
-                      {error && <AuthError message={error} />}
-                      <div className="space-y-2">
-                        <Label htmlFor="email-otp" className="text-sm font-medium">
-                          Enter 6-digit OTP
-                        </Label>
-                        <Input
-                          id="email-otp" type="text" inputMode="numeric" placeholder="● ● ● ● ● ●"
-                          value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                          className="h-12 text-center text-2xl tracking-[0.5em]" maxLength={6} required
-                        />
-                      </div>
-                      <Button
-                        type="submit"
-                        className="h-11 w-full rounded-xl text-sm font-semibold"
-                        disabled={isLoading || otp.length !== 6}
-                      >
-                        {isLoading ? "Verifying…" : "Verify & Sign In"}
-                      </Button>
-                      <div className="text-center text-sm">
-                        {cooldown > 0 ? (
-                          <p className="text-muted-foreground">
-                            Resend OTP in{" "}
-                            <span className="font-semibold text-foreground">{cooldown}s</span>
-                          </p>
-                        ) : (
-                          <button
-                            type="button" onClick={handleResendEmailOtp} disabled={isLoading}
-                            className="font-semibold text-primary hover:underline disabled:opacity-50"
-                          >
-                            Resend OTP
-                          </button>
-                        )}
-                      </div>
-                      <Button
-                        type="button" variant="ghost" className="w-full text-sm text-muted-foreground"
-                        onClick={() => { setEmailStep("credentials"); setOtp(""); setError(""); setDevOtp("") }}
-                      >
-                        ← Back to password
                       </Button>
                     </form>
                 )}

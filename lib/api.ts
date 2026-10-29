@@ -795,6 +795,45 @@ export const authApi = {
       body: JSON.stringify({ email, password }),
     }),
 
+  loginWithPhonePassword: (phoneNumber: string, password: string) =>
+    apiRequest<{ accessToken: string; user: User } | { status: '2FA_REQUIRED'; tempToken: string }>('/auth/login/phone-password', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber, password }),
+    }),
+
+  getPasswordStatus: () =>
+    apiRequest<{ hasPassword: boolean }>('/auth/password'),
+
+  setPassword: (data: { password: string; currentPassword?: string }) =>
+    apiRequest<{ message: string; hasPassword: boolean }>('/auth/password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  forgotPasswordPhone: (phoneNumber: string) =>
+    apiRequest<{ message: string; devOtp?: string }>('/auth/password/forgot/phone', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber }),
+    }),
+
+  resetPasswordPhone: (phoneNumber: string, otp: string, password: string) =>
+    apiRequest<{ accessToken: string; user: User } | { status: '2FA_REQUIRED'; tempToken: string }>('/auth/password/reset/phone', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber, otp, password }),
+    }),
+
+  forgotPasswordEmail: (email: string) =>
+    apiRequest<{ message: string; devOtp?: string }>('/auth/password/forgot/email', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPasswordEmail: (email: string, otp: string, password: string) =>
+    apiRequest<{ accessToken: string; user: User } | { status: '2FA_REQUIRED'; tempToken: string }>('/auth/password/reset/email', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp, password }),
+    }),
+
   // ── Phone + OTP: Login ────────────────────────────────────────────────────
   loginSendOtp: (phoneNumber: string) =>
     apiRequest<{ message: string; devOtp: string }>('/auth/login/send-otp', {
@@ -827,10 +866,10 @@ export const authApi = {
       body: JSON.stringify({ name, phoneNumber }),
     }),
 
-  registerVerifyOtp: (name: string, phoneNumber: string, otp: string) =>
+  registerVerifyOtp: (name: string, phoneNumber: string, otp: string, password: string) =>
     apiRequest<{ accessToken: string; user: User }>('/auth/register/verify-otp', {
       method: 'POST',
-      body: JSON.stringify({ name, phoneNumber, otp }),
+      body: JSON.stringify({ name, phoneNumber, otp, password }),
     }),
 
   // ── Deprecated helpers (kept for any callers still using them) ────────────

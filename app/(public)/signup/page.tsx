@@ -29,6 +29,8 @@ export default function SignupPage() {
   const [name, setName] = useState("")
   const [phoneRaw, setPhoneRaw] = useState("")
   const [otp, setOtp] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [devOtp, setDevOtp] = useState("")
   const [cooldown, setCooldown] = useState(0)
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -61,6 +63,16 @@ export default function SignupPage() {
     const phoneNumber = normalizePhone(phoneRaw)
     if (!/^\+91[6-9]\d{9}$/.test(phoneNumber)) {
       setError("Please enter a valid Indian mobile number (e.g. 98765 43210).")
+      setIsLoading(false)
+      return
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.")
+      setIsLoading(false)
+      return
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.")
       setIsLoading(false)
       return
     }
@@ -102,7 +114,7 @@ export default function SignupPage() {
     const phoneNumber = normalizePhone(phoneRaw)
 
     try {
-      const response = await authApi.registerVerifyOtp(name.trim(), phoneNumber, otp)
+      const response = await authApi.registerVerifyOtp(name.trim(), phoneNumber, otp, password)
       const result = finishAuth(response.accessToken, response.user)
       if (!result.ok) {
         setError(result.message)
@@ -143,7 +155,7 @@ export default function SignupPage() {
               </div>
               <CardTitle className="text-xl font-bold tracking-tight sm:text-2xl">Create your account</CardTitle>
               <CardDescription className="mt-1.5 text-sm leading-relaxed">
-                {step === "details" && "Owner signup with mobile OTP. Staff and managers should sign in with email."}
+                {step === "details" && "Create your owner account with a mobile number and password. Staff and managers are invited by an admin."}
                 {step === "otp" && `OTP sent to +91 ****${phoneRaw.replace(/\D/g, "").slice(-4)}`}
                 {step === "done" && "Account created successfully!"}
               </CardDescription>
@@ -215,10 +227,26 @@ export default function SignupPage() {
                     />
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                  <Input
+                    id="password" type="password" autoComplete="new-password" placeholder="At least 6 characters"
+                    value={password} onChange={e => setPassword(e.target.value)}
+                    className="h-11 rounded-xl" required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password" className="text-sm font-medium">Confirm password</Label>
+                  <Input
+                    id="confirm-password" type="password" autoComplete="new-password" placeholder="Repeat password"
+                    value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                    className="h-11 rounded-xl" required
+                  />
+                </div>
                 <Button
                   type="submit"
                   className="h-11 w-full rounded-xl text-sm font-semibold"
-                  disabled={isLoading}
+                  disabled={isLoading || password.length < 6 || password !== confirmPassword}
                 >
                   {isLoading ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending OTP…</>
