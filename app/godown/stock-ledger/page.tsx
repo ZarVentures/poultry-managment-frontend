@@ -12,7 +12,7 @@ import {
   ArrowLeft, Calendar, Download, FileText, Printer, Search,
   Bird, PackagePlus, PackageMinus, AlertCircle, Scale, Undo2, TrendingDown, IndianRupee,
 } from "lucide-react"
-import { godownApi, type GodownSale, type StockLedgerEntry, type StockLedgerResponse } from "@/lib/api"
+import { godownApi, mortalityApi, type GodownSale, type MortalityRecord, type StockLedgerEntry, type StockLedgerResponse } from "@/lib/api"
 import { fetchOrgInfo } from "@/lib/org-info"
 import { toast } from "sonner"
 
@@ -40,6 +40,44 @@ function applyGodownSaleWeights(entries: StockLedgerEntry[], sales: GodownSale[]
     const sale = byId.get(String(entry.referenceId))
     if (!sale) return entry
     return { ...entry, weightOut: saleWeightKg(sale) }
+  })
+}
+
+function finiteKg(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null
+  const n = Number(value)
+  return Number.isFinite(n) && n >= 0 ? n : null
+}
+
+/** Mortality kg on the ledger is the weight written on the mortality record. */
+function applyMortalityRecords(entries: StockLedgerEntry[], records: MortalityRecord[]) {
+  const byGodownId = new Map<string, MortalityRecord>()
+  const byRecordNo = new Map<string, MortalityRecord>()
+  for (const record of records) {
+    if (record.source && record.source !== "godown") continue
+    const godownId = record.godownMortalityId
+    if (godownId) byGodownId.set(String(godownId), record)
+    if (record.recordNumber) byRecordNo.set(record.recordNumber, record)
+  }
+
+  return entries.map((entry) => {
+    if (entry.movementType !== "MORTALITY") return entry
+    const record = byGodownId.get(String(entry.referenceId)) || byRecordNo.get(entry.referenceNo)
+    const recorded = finiteKg(record?.weightOfDeadBirds) ?? finiteKg(entry.weighedKg)
+    const rate = record?.ratePerKg != null ? Number(record.ratePerKg) : entry.ratePerKg
+    const amount = record?.amount != null ? Number(record.amount) : entry.amount
+    return {
+      ...entry,
+      referenceNo: record?.recordNumber || entry.referenceNo,
+      weightOut: recorded != null ? recorded : entry.weightOut,
+      weighedKg: recorded ?? entry.weighedKg,
+      averageWeight: recorded != null && entry.birdsOut > 0
+        ? recorded / entry.birdsOut
+        : entry.averageWeight,
+      ratePerKg: rate != null && Number.isFinite(Number(rate)) ? Number(rate) : entry.ratePerKg,
+      amount: amount != null && Number.isFinite(Number(amount)) ? Number(amount) : entry.amount,
+      weightLoss: null,
+    }
   })
 }
 
@@ -73,7 +111,7 @@ export default function StockLedgerPage() {
   const fetchLedger = async () => {
     try {
       setLoading(true)
-      const [data, salesResult] = await Promise.all([
+      const [data, salesResult, mortalityResult] = await Promise.all([
         godownApi.getStockLedger({
           startDate: dateFrom,
           endDate: dateTo,
@@ -81,14 +119,18 @@ export default function StockLedgerPage() {
           search: search || undefined,
         }),
         godownApi.sales.getAll().catch(() => []),
+        mortalityApi.getAll().catch(() => []),
       ])
       const sales: GodownSale[] = Array.isArray(salesResult) ? salesResult : (salesResult?.data || [])
+      const mortalityRecords: MortalityRecord[] = Array.isArray(mortalityResult) ? mortalityResult : []
       if (data?.entries) {
-        data.entries = applyGodownSaleWeights(data.entries, sales)
+        data.entries = applyMortalityRecords(applyGodownSaleWeights(data.entries, sales), mortalityRecords)
         const soldRows = data.entries.filter((entry) => entry.movementType === "SALE")
+        const mortalityRows = data.entries.filter((entry) => entry.movementType === "MORTALITY")
         data.period = {
           ...data.period,
           soldWeight: soldRows.reduce((sum, entry) => sum + Number(entry.weightOut || 0), 0),
+          mortalityWeight: mortalityRows.reduce((sum, entry) => sum + Number(entry.weightOut || 0), 0),
           weightOut: data.entries.reduce((sum, entry) => sum + Number(entry.weightOut || 0), 0),
         }
       }
@@ -731,7 +773,7 @@ export default function StockLedgerPage() {
         </Card>
 
         <p className="text-xs text-muted-foreground print:hidden">
-          Weight loss = opening {fmtNum(opening.weight, 2)} kg + inward {fmtNum(period.reconciliation?.inwardWeight ?? period.inwardWeight ?? 0, 2)} kg + returns in {fmtNum(period.reconciliation?.returnWeightIn ?? 0, 2)} kg − sold {fmtNum(period.reconciliation?.soldWeight ?? period.billedSaleWeight ?? 0, 2)} kg − mortality {fmtNum(period.reconciliation?.mortalityWeight ?? mortalityWeight, 2)} kg − returns out {fmtNum(period.reconciliation?.returnWeightOut ?? 0, 2)} kg − closing {fmtNum(period.reconciliation?.closingWeight ?? closing.weight, 2)} kg.
+          Weight loss = opening {fmtNum(opening.weight, 2)} kg + inward {fmtNum(period.reconciliation?.inwardWeight ?? period.inwardWeight ?? 0, 2)} kg + returns in {fmtNum(period.reconciliation?.returnWeightIn ?? 0, 2)} kg − sold {fmtNum(period.reconciliation?.soldWeight ?? period.billedSaleWeight ?? 0, 2)} kg − mortality stock {fmtNum(period.reconciliation?.mortalityWeight ?? 0, 2)} kg − returns out {fmtNum(period.reconciliation?.returnWeightOut ?? 0, 2)} kg − closing {fmtNum(period.reconciliation?.closingWeight ?? closing.weight, 2)} kg.
           Cost = {fmtNum(weightLoss, 2)} kg × ₹{fmtNum(ledger?.periodAverageRate ?? avgRate, 2)}/kg = ₹{fmtNum(weightLossValue, 2)}. This cost is not added to COGS.
           {period.reconciliationNote ? ` ${period.reconciliationNote}` : ""}
           {unmeasuredLossCount > 0 ? ` ${unmeasuredLossCount} movement(s) have no weighed kg.` : ""}

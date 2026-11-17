@@ -17,6 +17,7 @@ import { escapeHtml, fetchOrgInfo, type OrgInfo } from "@/lib/org-info"
 import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 import { getTodayIST, toLocalYMD, formatDate } from "@/lib/date-utils"
+import { advanceFromOverpayment, derivePaymentStatus } from "@/lib/payment-status"
 
 const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer", "advance"] as const
 type PaymentMode = typeof PAYMENT_MODES[number]
@@ -24,6 +25,29 @@ interface PaymentRow { mode: PaymentMode; amount: string }
 const emptyPayment = (): PaymentRow => ({ mode: "cash", amount: "" })
 
 interface CustomerRow { id: string; customerName: string; cageId: string; numBirds: string; weight: string; amount: number }
+
+function roundKg(value: number): number {
+  return Math.round((Number(value) || 0) * 100) / 100
+}
+
+/** Expected kg for the birds being sold = cage avg × birds sold. Never the full purchase weight unless all birds are sold. */
+function expectedSoldWeightKg(availWt: number, availBirds: number, soldBirds: number): number {
+  const birds = Number(soldBirds) || 0
+  const availableBirds = Number(availBirds) || 0
+  const availableWt = Number(availWt) || 0
+  if (birds <= 0 || availableBirds <= 0 || availableWt <= 0) return 0
+  if (birds >= availableBirds) return availableWt
+  return (availableWt / availableBirds) * birds
+}
+
+/** Weight loss = expected kg for sold birds − actual sold kg. Blank sold kg is not a loss. */
+function cageWeightLossKg(availWt: number, availBirds: number, soldBirds: number, soldWeight: number): number {
+  const sold = Number(soldWeight) || 0
+  if (sold <= 0) return 0
+  const expected = expectedSoldWeightKg(availWt, availBirds, soldBirds)
+  if (expected <= 0) return 0
+  return roundKg(Math.max(0, expected - sold))
+}
 
 export default function SalesPage() {
   const router = useRouter()
@@ -214,8 +238,9 @@ export default function SalesPage() {
               purchaseWeight: availWt,
               initialBirds: availBirds,
               initialWeight: availWt,
-              soldBirds: String(c.soldBirds ?? availBirds),
-              soldWeight: String(c.purchaseWeight ?? availWt),
+              // Empty until the user enters birds/weight so loss is never purchase − sold by default.
+              soldBirds: '',
+              soldWeight: '',
               weightLoss: '0',
             }
           })
@@ -333,9 +358,8 @@ export default function SalesPage() {
     return selectedCageList.reduce((sum, cage) => {
       const availBirds = cage.initialBirds || cage.numberOfBirds
       const availWt = cage.initialWeight || cage.purchaseWeight
-      const avgWt = availBirds > 0 ? availWt / availBirds : 0
       const enteredBirdsCount = parseInt(cage.soldBirds) || 0
-      const expectedSoldWt = avgWt * enteredBirdsCount
+      const expectedSoldWt = expectedSoldWeightKg(availWt, availBirds, enteredBirdsCount)
       
       let maxAllowed = 0
       if (bearableLossType === 'percentage') {
@@ -375,15 +399,21 @@ export default function SalesPage() {
             const isThisSale = String(c.saleId) === String(saleId) || (c.status === 'sold' && !c.saleId)
             const availBirds = Number(c.numberOfBirds ?? 0)
             const availWt = Number(c.purchaseWeight ?? c.cageWeight ?? 0)
+            const soldBirds = isThisSale ? availBirds : 0
+            const soldWeight = isThisSale
+              ? Number(c.saleWeight ?? c.purchaseWeight ?? availWt)
+              : 0
             return {
               ...c,
               id: c.id ?? '',
               purchaseWeight: availWt,
               initialBirds: availBirds,
               initialWeight: availWt,
-              soldBirds: String(isThisSale ? (c.numberOfBirds ?? availBirds) : availBirds),
-              soldWeight: String(isThisSale ? (c.saleWeight ?? c.purchaseWeight ?? availWt) : availWt),
-              weightLoss: String(isThisSale ? (Number(c.purchaseWeight || 0) - Number(c.saleWeight || c.purchaseWeight || 0)).toFixed(2) : '0.00'),
+              soldBirds: isThisSale ? String(soldBirds) : '',
+              soldWeight: isThisSale ? String(soldWeight) : '',
+              weightLoss: isThisSale
+                ? cageWeightLossKg(availWt, availBirds, soldBirds, soldWeight).toFixed(2)
+                : '0.00',
             }
           })
         : []
@@ -415,6 +445,14 @@ export default function SalesPage() {
   const netAmount = grossAmount - deductions
   const totalPaymentMade = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
   const balance = Math.max(0, netAmount - totalPaymentMade)
+  const autoPaymentStatus = derivePaymentStatus(netAmount, totalPaymentMade)
+  const advanceCredit = advanceFromOverpayment(netAmount, totalPaymentMade)
+
+  useEffect(() => {
+    if (isReadOnly) return
+    if (formData.paymentStatus === autoPaymentStatus) return
+    setFormData((f) => ({ ...f, paymentStatus: autoPaymentStatus }))
+  }, [autoPaymentStatus, formData.paymentStatus, isReadOnly])
 
   const blankSaleForm = () => ({
     invoiceNumber: "", saleNo: "", purchaseBillNo: "", cageNo: "",
@@ -639,27 +677,44 @@ export default function SalesPage() {
       toast.error("Select at least one cage from the purchase bill")
       return
     }
+    const selectedCages = purchaseCages.filter(c => selectedCageIds.has(c.id!))
+    if (!editingId && selectedCages.length > 0) {
+      const incomplete = selectedCages.find(c => !(parseInt(String(c.soldBirds), 10) > 0) || !(parseFloat(String(c.soldWeight)) > 0))
+      if (incomplete) {
+        toast.error(`Enter birds and sold weight for cage ${incomplete.cageId || incomplete.id}`)
+        return
+      }
+    }
     try {
       setLoading(true)
       const validPayments = payments.filter(p => parseFloat(p.amount) > 0).map(p => ({ paymentMode: p.mode, amount: p.amount }))
-      
-      const selectedCages = purchaseCages.filter(c => selectedCageIds.has(c.id!))
-      const cageMapping = selectedCages.map(c => ({
-        cageId: c.id,
-        soldBirds: parseInt(String(c.soldBirds)) || 0,
-        soldWeight: parseFloat(String(c.soldWeight)) || 0,
-        weightLoss: parseFloat(String(c.weightLoss)) || 0,
-      }))
 
+      const cageMapping = selectedCages.map(c => {
+        const availBirds = Number(c.initialBirds || c.numberOfBirds) || 0
+        const availWt = Number(c.initialWeight || c.purchaseWeight) || 0
+        const soldBirds = parseInt(String(c.soldBirds), 10) || 0
+        const soldWeight = parseFloat(String(c.soldWeight)) || 0
+        const computedLoss = cageWeightLossKg(availWt, availBirds, soldBirds, soldWeight)
+        const typedLoss = parseFloat(String(c.weightLoss))
+        const weightLoss = Number.isFinite(typedLoss) ? roundKg(Math.max(0, typedLoss)) : computedLoss
+        return {
+          cageId: c.id,
+          soldBirds,
+          soldWeight,
+          weightLoss,
+        }
+      })
+
+      const mappedLossTotal = cageMapping.reduce((s, c) => s + (Number(c.weightLoss) || 0), 0)
       let finalNotesString = formData.notes || ""
       if (selectedCages.length > 0) {
         finalNotesString = JSON.stringify({
           text: formData.notes || "",
           weightLoss: {
-            totalWeightLoss,
+            totalWeightLoss: mappedLossTotal,
             totalBearableLoss,
-            netExcessLoss,
-            netExcessLossAmount,
+            netExcessLoss: Math.max(0, mappedLossTotal - totalBearableLoss),
+            netExcessLossAmount: Math.max(0, mappedLossTotal - totalBearableLoss) * rate,
             totalBirds,
             totalWeight,
           }
@@ -686,7 +741,7 @@ export default function SalesPage() {
         weightShortageKg: "0",
         mortalityDeduction: formData.deductions || "0",
         otherDeduction: "0",
-        paymentStatus: formData.paymentStatus,
+        paymentStatus: autoPaymentStatus,
         amountReceived: String(totalPaymentMade),
         totalBirds: totalBirds,
         numberOfBirds: totalBirds,
@@ -1103,13 +1158,11 @@ export default function SalesPage() {
                                 </thead>
                                 <tbody>
                                   {visibleCages.map(cage => {
-                                    const availBirds = cage.initialBirds || cage.numberOfBirds
-                                    const availWt = cage.initialWeight || cage.purchaseWeight
-
-                                    const avgWt = availBirds > 0 ? availWt / availBirds : 0
-                                    const enteredBirdsCount = parseInt(cage.soldBirds) || 0
-                                    const expectedSoldWt = avgWt * enteredBirdsCount
-                                    const currentLoss = parseFloat(cage.weightLoss) || 0
+                                    const availBirds = Number(cage.initialBirds || cage.numberOfBirds) || 0
+                                    const availWt = Number(cage.initialWeight || cage.purchaseWeight) || 0
+                                    const enteredBirdsCount = parseInt(String(cage.soldBirds), 10) || 0
+                                    const expectedSoldWt = expectedSoldWeightKg(availWt, availBirds, enteredBirdsCount)
+                                    const currentLoss = parseFloat(String(cage.weightLoss)) || 0
 
                                     let isHighLoss = false
                                     let maxAllowed = 0
@@ -1148,23 +1201,19 @@ export default function SalesPage() {
                                              disabled={loading || isReadOnly}
                                             onChange={e => {
                                               const val = e.target.value
-                                              const enteredBirds = parseInt(val) || 0
+                                              const enteredBirds = parseInt(val, 10) || 0
                                               if (enteredBirds > availBirds) {
                                                 toast.error(`Cannot sell ${enteredBirds} birds. Only ${availBirds} available in cage ${cage.cageId}.`)
                                                 return
                                               }
-                                              // Auto-calculate proportional weight to sell
-                                              const calculatedWt = enteredBirds === availBirds 
-                                                ? availWt 
-                                                : (avgWt * enteredBirds)
-                                              
-                                              const updatedList = purchaseCages.map(c => c.id === cage.id 
-                                                ? { 
-                                                    ...c, 
-                                                    soldBirds: val, 
-                                                    soldWeight: calculatedWt.toFixed(2),
-                                                    weightLoss: '0.00' 
-                                                  } 
+                                              const soldWtNow = parseFloat(String(cage.soldWeight)) || 0
+                                              const calculatedLoss = cageWeightLossKg(availWt, availBirds, enteredBirds, soldWtNow)
+                                              const updatedList = purchaseCages.map(c => c.id === cage.id
+                                                ? {
+                                                    ...c,
+                                                    soldBirds: val,
+                                                    weightLoss: calculatedLoss.toFixed(2),
+                                                  }
                                                 : c
                                               )
                                               setPurchaseCages(updatedList)
@@ -1185,19 +1234,20 @@ export default function SalesPage() {
                                             onChange={e => {
                                               const val = e.target.value
                                               const enteredWt = parseFloat(val) || 0
-                                              if (enteredWt > availWt) {
+                                              const soldBirdsNow = parseInt(String(cage.soldBirds), 10) || 0
+                                              if (enteredWt > availWt + 0.001) {
                                                 toast.error(`Cannot sell ${enteredWt} kg. Only ${availWt.toFixed(2)} kg available in cage ${cage.cageId}.`)
                                                 return
                                               }
-                                              // Auto-calculate weight loss based on difference from expected weight
-                                              const calculatedLoss = Math.max(0, expectedSoldWt - enteredWt)
-                                              
-                                              const updatedList = purchaseCages.map(c => c.id === cage.id 
-                                                ? { 
-                                                    ...c, 
+                                              const calculatedLoss = soldBirdsNow > 0
+                                                ? cageWeightLossKg(availWt, availBirds, soldBirdsNow, enteredWt)
+                                                : 0
+                                              const updatedList = purchaseCages.map(c => c.id === cage.id
+                                                ? {
+                                                    ...c,
                                                     soldWeight: val,
-                                                    weightLoss: calculatedLoss.toFixed(2)
-                                                  } 
+                                                    weightLoss: calculatedLoss.toFixed(2),
+                                                  }
                                                 : c
                                               )
                                               setPurchaseCages(updatedList)
@@ -1214,6 +1264,7 @@ export default function SalesPage() {
                                               type="number"
                                               step="0.01"
                                               placeholder="0.00"
+                                              title={enteredBirdsCount > 0 ? `Expected ${expectedSoldWt.toFixed(2)} kg for ${enteredBirdsCount} birds` : 'Enter birds and sold weight'}
                                               value={cage.weightLoss}
                                                disabled={loading || isReadOnly}
                                               onChange={e => {
@@ -1453,7 +1504,7 @@ export default function SalesPage() {
                   <CardContent className="space-y-4 pt-4">
                     <div className="space-y-2">
                       <Label>Payment Status</Label>
-                      <Select value={formData.paymentStatus} onValueChange={(v: any) => setFormData(f => ({ ...f, paymentStatus: v }))} disabled={loading || isReadOnly}>
+                      <Select value={autoPaymentStatus} disabled>
                         <SelectTrigger className="w-full sm:w-[200px]"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="paid">Paid</SelectItem>
@@ -1461,6 +1512,9 @@ export default function SalesPage() {
                           <SelectItem value="partial">Partial</SelectItem>
                         </SelectContent>
                       </Select>
+                      <p className="text-[11px] text-muted-foreground">
+                        Auto: exact = Paid, less = Partial, none = Pending. Extra becomes advance.
+                      </p>
                     </div>
                     <div className="space-y-3">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1495,6 +1549,11 @@ export default function SalesPage() {
                         <Input value={`₹${balance.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-red-600" />
                       </div>
                     </div>
+                    {advanceCredit > 0.001 && (
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                        Extra ₹{advanceCredit.toFixed(2)} will be added to this customer&apos;s advance balance.
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
