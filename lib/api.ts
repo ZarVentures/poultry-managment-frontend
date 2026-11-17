@@ -616,6 +616,7 @@ export interface MortalityRecord {
   cause: string;
   notes?: string;
   source?: 'godown' | 'travel_sales';
+  godownMortalityId?: string;
   mortalityDate?: string;
   createdAt?: string;
   updatedAt?: string;

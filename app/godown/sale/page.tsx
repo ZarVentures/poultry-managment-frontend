@@ -17,6 +17,7 @@ import { escapeHtml, fetchOrgInfo, type OrgInfo } from "@/lib/org-info"
 import { toast } from "sonner"
 import { usePermissions } from "@/lib/permissions"
 import { toDateOnlyString, formatDate, getTodayIST } from "@/lib/date-utils"
+import { advanceFromOverpayment, derivePaymentStatus } from "@/lib/payment-status"
 
 const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer", "advance"] as const
 type PaymentMode = typeof PAYMENT_MODES[number]
@@ -198,7 +199,16 @@ export default function GodownSalePage() {
   }
 
   const totalPaymentMade = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
-  const balanceAmount = Math.max(0, parseFloat(formData.totalAmount || calculateTotal()) - totalPaymentMade)
+  const dueAmount = parseFloat(formData.totalAmount || calculateTotal()) || 0
+  const balanceAmount = Math.max(0, dueAmount - totalPaymentMade)
+  const autoPaymentStatus = derivePaymentStatus(dueAmount, totalPaymentMade)
+  const advanceCredit = advanceFromOverpayment(dueAmount, totalPaymentMade)
+
+  useEffect(() => {
+    if (isViewMode) return
+    if (formData.paymentStatus === autoPaymentStatus) return
+    setFormData((prev) => ({ ...prev, paymentStatus: autoPaymentStatus }))
+  }, [autoPaymentStatus, formData.paymentStatus, isViewMode])
 
   const handleOpenNewSale = async () => {
     const stock = await fetchGodownStock()
@@ -287,7 +297,7 @@ export default function GodownSalePage() {
         totalWeight: parseFloat(formData.totalWeight) || undefined,
         ratePerKg: parseFloat(formData.ratePerKg) || undefined,
         totalAmount: parseFloat(formData.totalAmount) || parseFloat(calculateTotal()) || 0,
-        paymentStatus: formData.paymentStatus,
+        paymentStatus: autoPaymentStatus,
         amountReceived: totalPaymentMade,
         notes: formData.notes,
         payments: validPayments,
@@ -870,11 +880,7 @@ export default function GodownSalePage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Payment Status *</Label>
-                    <Select
-                      value={formData.paymentStatus}
-                      onValueChange={(v: any) => setFormData({ ...formData, paymentStatus: v })}
-                      disabled={fieldsLocked}
-                    >
+                    <Select value={autoPaymentStatus} disabled>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="pending">Pending</SelectItem>
@@ -882,6 +888,9 @@ export default function GodownSalePage() {
                         <SelectItem value="paid">Paid</SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Auto: exact = Paid, less = Partial, none = Pending. Extra becomes advance.
+                    </p>
                   </div>
                 </div>
 
@@ -963,6 +972,11 @@ export default function GodownSalePage() {
                         />
                       </div>
                     </div>
+                    {advanceCredit > 0.001 && (
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                        Extra ₹{advanceCredit.toFixed(2)} will be added to this customer&apos;s advance balance.
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 

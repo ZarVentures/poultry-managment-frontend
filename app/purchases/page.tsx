@@ -19,6 +19,7 @@ import { usePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 import { getApiBaseUrl } from "@/lib/api-base-url"
 import { getTodayIST, toLocalYMD, formatDate } from "@/lib/date-utils"
+import { advanceFromOverpayment, derivePaymentStatus } from "@/lib/payment-status"
 
 const PAYMENT_MODES = ["cash", "upi", "card", "cheque", "bank_transfer"] as const
 type PaymentMode = typeof PAYMENT_MODES[number]
@@ -267,6 +268,13 @@ export default function PurchasesPage() {
   const netAmount = grossAmount
   const totalPaymentMade = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
   const balanceAmount = Math.max(0, netAmount - totalPaymentMade)
+  const autoPaymentStatus = derivePaymentStatus(netAmount, totalPaymentMade)
+  const advanceCredit = advanceFromOverpayment(netAmount, totalPaymentMade)
+
+  useEffect(() => {
+    if (formData.purchasePaymentStatus === autoPaymentStatus) return
+    setFormData((prev) => ({ ...prev, purchasePaymentStatus: autoPaymentStatus }))
+  }, [autoPaymentStatus, formData.purchasePaymentStatus])
 
   const handleSave = async () => {
     if (!editingId && !canCreate("purchases")) {
@@ -316,7 +324,7 @@ export default function PurchasesPage() {
         ratePerKg: formData.ratePerKg || undefined,
         transportCharges: formData.transportCharges || undefined,
         otherCharges: formData.otherCharges || undefined,
-        purchasePaymentStatus: formData.purchasePaymentStatus,
+        purchasePaymentStatus: autoPaymentStatus,
         notes: formData.notes || undefined,
         cages: validCages,
         payments: validPayments,
@@ -787,14 +795,17 @@ export default function PurchasesPage() {
                   <CardContent className="space-y-4 pt-4">
                     <div className="space-y-2">
                       <Label>Payment Status</Label>
-                      <Select value={formData.purchasePaymentStatus} onValueChange={(v: any) => setFormData(prev => ({ ...prev, purchasePaymentStatus: v }))} disabled={loading}>
-                        <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+                      <Select value={autoPaymentStatus} disabled>
+                        <SelectTrigger className="w-full sm:w-[200px]"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="paid">Paid</SelectItem>
                           <SelectItem value="pending">Pending</SelectItem>
                           <SelectItem value="partial">Partial</SelectItem>
                         </SelectContent>
                       </Select>
+                      <p className="text-[11px] text-muted-foreground">
+                        Auto: exact = Paid, less = Partial, none = Pending. Extra becomes advance.
+                      </p>
                     </div>
 
                     {/* Net Amount display */}
@@ -856,6 +867,11 @@ export default function PurchasesPage() {
                         <Input value={`₹${balanceAmount.toFixed(2)}`} disabled className="bg-gray-50 font-semibold text-red-600" />
                       </div>
                     </div>
+                    {advanceCredit > 0.001 && (
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                        Extra ₹{advanceCredit.toFixed(2)} will be added to this farmer&apos;s advance balance.
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
