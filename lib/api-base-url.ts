@@ -7,6 +7,7 @@
  * - `prod.*.amplifyapp.com` → prod backend
  * - `*.amplifyapp.com` (root) → prod backend
  * - Other `*.amplifyapp.com` preview URLs → staging backend (safe default)
+ * - `poultrysathi.com` and `www.poultrysathi.com` → prod backend
  * - `staging.` or `stage.` prefixed custom domains → staging backend
  * - `localhost` / `127.0.0.1` → NEXT_PUBLIC_API_URL or local Nest default
  * - All other custom domains → NEXT_PUBLIC_API_URL or prod default
@@ -27,11 +28,10 @@ const LOCAL_API_BASE =
   process.env.NEXT_PUBLIC_LOCAL_API_BASE?.trim() ||
   "http://localhost:3001/api/v1";
 
-// ─── Custom domain → environment mapping ─────────────────────────────────
-// Add/edit your custom staging domain here. Matches with or without "www.".
-// Any custom domain NOT listed here falls back to the prod backend.
+// Customer site always uses production. Subdomains such as staging.poultrysathi.com
+// are not listed here, so the staging/stage prefix rule below still applies.
 const CUSTOM_DOMAIN_MAP: Array<{ domain: string; base: string }> = [
-  { domain: "poultrysathi.com", base: STAGING_API_BASE },
+  { domain: "poultrysathi.com", base: PROD_API_BASE },
 ];
 
 function isAmplifyHost(host: string): boolean {
@@ -40,7 +40,7 @@ function isAmplifyHost(host: string): boolean {
 
 function customDomainBackend(host: string): string | null {
   for (const entry of CUSTOM_DOMAIN_MAP) {
-    if (host === entry.domain || host.endsWith("." + entry.domain)) { 
+    if (host === entry.domain || host === `www.${entry.domain}`) {
       return entry.base;
     }
   }
